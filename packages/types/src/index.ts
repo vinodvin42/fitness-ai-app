@@ -871,6 +871,31 @@ export interface CreateSupportTicketInput {
   message: string;
 }
 
+// Support Ticket Messages (added 3 Sep 2026, closes gap §19's remaining
+// "no message thread" note) — see apps/api's prisma/schema.prisma
+// SupportTicketMessage doc comment for the full design. `sender` is who
+// wrote a given reply; a "user" message is always from the ticket's one
+// owner, an "admin" message from whichever admin replied.
+export type SupportTicketMessageSender = "user" | "admin";
+
+export interface SupportTicketMessage {
+  id: string;
+  sender: SupportTicketMessageSender;
+  body: string;
+  createdAt: string;
+}
+
+/** GET /support/tickets/:id — owner-only ticket detail + its full thread. */
+export interface SupportTicketDetailResponse {
+  ticket: SupportTicket;
+  messages: SupportTicketMessage[];
+}
+
+/** Body for POST /support/tickets/:id/messages — matches support.schema.ts's sendSupportTicketMessageSchema. */
+export interface SendSupportTicketMessageInput {
+  body: string;
+}
+
 // ---- Referral -------------------------------------------------------------
 // §O "Refer & Invite" (docs/mobile/03-screen-inventory.md), added 19 Aug
 // 2026. See the `Referral` model's doc comment in apps/api's
@@ -1993,7 +2018,7 @@ export interface AdminSupportTicketStats {
 export interface AdminSupportTicketDirectoryResponse {
   tickets: AdminSupportTicketListItem[];
   stats: AdminSupportTicketStats;
-  /** "conversationThread" (only the one original message exists, no reply table), "assignee" (no backing field). */
+  /** "assignee" (no backing field — see adminSupport.service.ts). The conversation thread is real now (3 Sep 2026); see AdminSupportTicketDetailResponse.messages. */
   notAvailable: string[];
 }
 
@@ -2005,12 +2030,28 @@ export interface AdminSupportTicketHistoryEntry {
   createdAt: string;
 }
 
+// Support Ticket Messages (added 3 Sep 2026) — the admin-side view of the
+// same thread apps/user-mobile's SupportTicketMessage backs. Carries
+// `senderAdminName` (unlike the consumer-side `SupportTicketMessage`)
+// because, unlike a ticket's one fixed owner, any admin can reply — the
+// UI needs to say which one wrote a given message.
+export interface AdminSupportTicketMessageItem {
+  id: string;
+  sender: SupportTicketMessageSender;
+  /** Set only when sender is "admin" — the ticket's own userFullName covers "user" messages. */
+  senderAdminName: string | null;
+  body: string;
+  createdAt: string;
+}
+
 export interface AdminSupportTicketDetailResponse {
   ticket: AdminSupportTicketListItem;
   /** Real triage-change audit trail — see adminSupport.service.ts. */
   history: AdminSupportTicketHistoryEntry[];
   /** This ticket's most recent Escalation, if it's ever been escalated — `null` otherwise. Added 25 Aug 2026 (08.02). */
   escalation: AdminEscalationListItem | null;
+  /** Real conversation thread, added 3 Sep 2026 — see adminSupport.service.ts. */
+  messages: AdminSupportTicketMessageItem[];
   notAvailable: string[];
 }
 
@@ -2019,6 +2060,11 @@ export interface UpdateAdminSupportTicketInput {
   status?: SupportTicketStatus;
   priority?: SupportTicketPriority;
   category?: SupportTicketCategory;
+}
+
+/** Matches apps/api's sendAdminSupportTicketMessageSchema (Zod). Added 3 Sep 2026. */
+export interface AdminSendSupportTicketMessageInput {
+  body: string;
 }
 
 // 08.02 Escalations, added 25 Aug 2026 — see adminSupport.service.ts for

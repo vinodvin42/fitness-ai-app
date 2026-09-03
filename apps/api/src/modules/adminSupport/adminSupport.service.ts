@@ -6,6 +6,7 @@ import {
   ListEscalationsQuery,
   ListSupportTicketsQuery,
   ResolveEscalationInput,
+  SendAdminSupportTicketMessageInput,
   UpdateSupportTicketInput,
 } from "./adminSupport.schema";
 
@@ -102,6 +103,22 @@ import {
  * `open`→`resolved` is the escalation's entire lifecycle; a ticket that
  * flares back up gets a new `Escalation` row, not a resurrected old one,
  * so the queue's history stays an honest record of each time it happened.
+ *
+ * **3 Sep 2026: the conversation thread shipped too** — closing the one
+ * piece of 08.01's own spec this file's original comment above named as
+ * genuinely missing (`conversationThread` in `notAvailable`). A new
+ * `SupportTicketMessage` table (prisma/schema.prisma's own doc comment
+ * has the full design) backs a real, chronological reply thread: the
+ * detail panel now shows every message alongside the ticket's original
+ * submission, and `addSupportTicketMessage` below is the real composer
+ * action — an admin can genuinely reply, not just read. Every reply is
+ * audited (`admin.supportTicketMessage.created`) same as every other
+ * mutation in this module. Two things deliberately NOT part of this: (1)
+ * replying does not auto-transition `SupportTicket.status` — status stays
+ * `updateSupportTicket`'s explicit, separate action, not an implicit
+ * side effect of talking to a user; (2) `assignee` is still genuinely
+ * unmodeled (no ownership concept exists anywhere in this schema) and
+ * stays in `notAvailable` on its own.
  *
  * **08.03 Complaints and 08.04 Safety/Abuse Reports remain genuinely NOT
  * built.** Both are a meaningfully different, heavier shape of gap than
@@ -211,10 +228,13 @@ export async function listSupportTickets(query: ListSupportTicketsQuery) {
   return {
     tickets: filtered.map(toListItem),
     stats,
-    // 08.01's spec'd conversation-thread/composer/assignee — see this
-    // file's top comment. Listed at the directory level too (not just
-    // detail) so a single NotAvailablePanel copy covers both.
-    notAvailable: ["conversationThread", "assignee"],
+    // "assignee" — 08.01's spec'd ownership field, still genuinely
+    // unmodeled (see this file's top comment). "conversationThread" is
+    // real now (3 Sep 2026) — see getSupportTicketDetail below, where the
+    // actual message list lives; this directory-level response only
+    // carries what's still missing, for a single shared NotAvailablePanel
+    // copy across both list and detail.
+    notAvailable: ["assignee"],
   };
 }
 
@@ -249,6 +269,10 @@ export async function getSupportTicketDetail(id: string) {
     orderBy: { createdAt: "desc" },
   });
 
+  // Real conversation thread (3 Sep 2026) — see this file's top comment
+  // and prisma/schema.prisma's SupportTicketMessage doc comment.
+  const messages = await getMessagesForTicket(id);
+
   return {
     ticket: toListItem(ticket),
     // Real triage history — see this file's top comment.
@@ -262,7 +286,8 @@ export async function getSupportTicketDetail(id: string) {
       createdAt: h.createdAt,
     })),
     escalation: latestEscalation ? toEscalationListItem(latestEscalation as EscalationRow) : null,
-    notAvailable: ["conversationThread", "assignee"],
+    messages,
+    notAvailable: ["assignee"],
   };
 }
 
@@ -443,4 +468,65 @@ export async function resolveEscalation(actorAdminId: string, id: string, input:
   });
 
   return toEscalationListItem(await getEscalationOrThrow(id));
+}
+
+// ---- Support Ticket Messages (added 3 Sep 2026) — see this file's top
+// comment's "3 Sep 2026" entry and prisma/schema.prisma's
+// SupportTicketMessage doc comment for the full design. ------------------
+
+type SupportTicketMessageRow = {
+  id: string;
+  sender: string;
+  body: string;
+  createdAt: Date;
+  senderAdmin: { fullName: string } | null;
+};
+
+const MESSAGE_INCLUDE = {
+  senderAdmin: { select: { fullName: true } },
+} as const;
+
+function toMessageItem(m: SupportTicketMessageRow) {
+  return {
+    id: m.id,
+    sender: m.sender,
+    // Only meaningful for sender: "admin" — a "user" message is always
+    // from the ticket's one owner, whose name the detail response's own
+    // `ticket.userFullName` already carries, so it isn't duplicated here.
+    senderAdminName: m.senderAdmin?.fullName ?? null,
+    body: m.body,
+    createdAt: m.createdAt,
+  };
+}
+
+async function getMessagesForTicket(ticketId: string) {
+  const rows = await prisma.supportTicketMessage.findMany({
+    where: { ticketId },
+    include: MESSAGE_INCLUDE,
+    orderBy: { createdAt: "asc" },
+  });
+  return (rows as SupportTicketMessageRow[]).map(toMessageItem);
+}
+
+export async function addSupportTicketMessage(
+  actorAdminId: string,
+  ticketId: string,
+  input: SendAdminSupportTicketMessageInput,
+) {
+  await getSupportTicketOrThrow(ticketId);
+
+  const message = await prisma.supportTicketMessage.create({
+    data: { ticketId, sender: "admin", senderAdminId: actorAdminId, body: input.body },
+    include: MESSAGE_INCLUDE,
+  });
+
+  await recordAudit({
+    actorAdminId,
+    action: "admin.supportTicketMessage.created",
+    entityType: "SupportTicketMessage",
+    entityId: message.id,
+    metadata: { ticketId },
+  });
+
+  return toMessageItem(message as SupportTicketMessageRow);
 }

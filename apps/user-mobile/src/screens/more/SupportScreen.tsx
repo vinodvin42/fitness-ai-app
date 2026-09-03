@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Linking, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -29,21 +29,23 @@ const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   { q: "How do I delete my account?", a: "Go to More -> Settings -> Security & Privacy -> Delete Account. This permanently deletes your workouts, meals, measurements, purchases, and reminders." },
 ];
 
-const STATUS_LABEL: Record<SupportTicket["status"], string> = {
+// Exported so SupportTicketDetailScreen.tsx can reuse the exact same
+// labels/tones rather than duplicating this mapping.
+export const STATUS_LABEL: Record<SupportTicket["status"], string> = {
   open: "Open",
   in_progress: "In Progress",
   resolved: "Resolved",
   closed: "Closed",
 };
 
-const STATUS_TONE: Record<SupportTicket["status"], "warning" | "accent" | "success" | "neutral"> = {
+export const STATUS_TONE: Record<SupportTicket["status"], "warning" | "accent" | "success" | "neutral"> = {
   open: "warning",
   in_progress: "accent",
   resolved: "success",
   closed: "neutral",
 };
 
-const CATEGORY_LABEL: Record<SupportTicket["category"], string> = {
+export const CATEGORY_LABEL: Record<SupportTicket["category"], string> = {
   bug: "Bug report",
   feature_request: "Feature request",
   billing: "Billing",
@@ -62,10 +64,13 @@ function formatDate(iso: string) {
  * a real "Email Support" quick-contact action via the device's mail app,
  * and a static (not fake — just not server-driven) FAQ list answering
  * real questions about this build. Not built: live chat (needs real
- * chat/agent infrastructure, not just a screen) and any ticket-status
- * progression beyond `open` — there's no admin console yet (Phase 6) for
- * anyone to triage, reply to, or resolve a ticket, so every ticket you
- * submit here will show "Open" until that exists.
+ * chat/agent infrastructure, not just a screen).
+ *
+ * **3 Sep 2026:** ticket status progression and a real reply thread are
+ * live now — the admin console (Phase 6) can triage a ticket's Status/
+ * Priority/Category and reply on it, so a ticket no longer necessarily
+ * stays "Open" forever. Tapping a row opens `SupportTicketDetailScreen`,
+ * which shows the full thread and lets you reply too.
  */
 export function SupportScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
@@ -128,7 +133,11 @@ export function SupportScreen({ navigation }: Props) {
         ) : (
           <View style={{ gap: spacing.sm }}>
             {(tickets ?? []).map((ticket) => (
-              <View key={ticket.id} style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm }}>
+              <Pressable
+                key={ticket.id}
+                onPress={() => navigation.navigate("SupportTicketDetail", { ticketId: ticket.id })}
+                style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm }}
+              >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, flex: 1, marginRight: spacing.sm }}>
                     {ticket.subject}
@@ -138,7 +147,7 @@ export function SupportScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
                   {CATEGORY_LABEL[ticket.category]} · {formatDate(ticket.createdAt)}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}

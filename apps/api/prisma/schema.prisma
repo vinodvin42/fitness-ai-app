@@ -269,6 +269,11 @@ model User {
   programPurchases  ProgramPurchase[]
   reminders         Reminder[]
   supportTickets    SupportTicket[]
+  // Support Ticket Messages (added 3 Sep 2026) — see that model's own doc
+  // comment. This user is always the reply's author when `sender` is
+  // "user" (a support thread has exactly one consumer party, the ticket's
+  // own owner).
+  supportTicketMessages SupportTicketMessage[]
   referralsMade     Referral[]        @relation("ReferralsMade")
   referredBy        Referral?         @relation("ReferralReceived")
   payments          Payment[]
@@ -831,6 +836,9 @@ model SupportTicket {
   updatedAt DateTime               @updatedAt
 
   escalations Escalation[]
+  // Support Ticket Messages (added 3 Sep 2026) — see the
+  // SupportTicketMessage model's own doc comment below.
+  messages    SupportTicketMessage[]
 
   @@index([userId])
   @@map("support_tickets")
@@ -880,6 +888,65 @@ model Escalation {
   @@index([supportTicketId])
   @@index([status])
   @@map("escalations")
+}
+
+// ---- Support Ticket Messages (added 3 Sep 2026) ------------------------
+// docs/mobile/07-open-questions-gaps.md gap §19 + adminSupport.service.ts's
+// own top comment named the real remaining hole in Module 08.01: the
+// Figma's "message bubbles ... conversation thread ... composer" had no
+// backing table — `SupportTicket.message` is only the original submission,
+// a single field, not a thread. This is that thread: a flat, chronological
+// list of replies on one `SupportTicket`, closing that specific gap (listed
+// as `conversationThread` in `AdminSupportTicketDetailResponse.notAvailable`
+// until now). `assignee` remains genuinely unmodeled — no ownership concept
+// exists anywhere in this schema — this pass doesn't touch that.
+//
+// Shape mirrors `CoachMessage` (sender attribution + a text body +
+// createdAt) but NOT its fixed `userId`+`professionalId`-pair-plus-`sender`
+// design: a coaching thread has exactly two fixed parties, so `sender` only
+// needs to say which of the two wrote a given row. A support thread's
+// "admin side" isn't one fixed party — any admin holding `support:edit` can
+// reply to any ticket — so attribution instead needs the same "at most one
+// of several nullable actor FKs" shape `AuditLog` already uses for
+// `actorId`/`actorAdminId`/`actorProfessionalId`. `sender` still names which
+// one is set (never both, never neither — enforced in the two service
+// functions that create a row, same "pass at most one actor field" contract
+// `recordAudit()` documents for itself, not a DB-level check).
+//
+// `senderUserId` cascades with its User (same as `SupportTicket.userId`
+// itself — the whole ticket, thread included, disappears with its owner).
+// `senderAdminId` uses SetNull instead, same precedent as `AuditLog.
+// actorAdminId`/`Program.createdByAdminId`: a ticket's conversation history
+// is real, meaningful record that should survive a staff account later
+// being removed, just with its attribution cleared rather than the message
+// itself vanishing.
+//
+// No `readAt`/unread-count (unlike `CoachMessage`) — neither the mobile
+// ticket list nor the admin directory asked for one this pass; adding it
+// would be inventing scope beyond "a real reply thread exists". No status
+// side-effects either (posting a reply does NOT auto-transition
+// `SupportTicket.status`) — status stays a deliberate, explicit admin
+// action (`updateSupportTicket`), not an implicit one, consistent with
+// this module's existing "any direction, admin-driven" transition model.
+enum SupportTicketMessageSender {
+  user
+  admin
+}
+
+model SupportTicketMessage {
+  id            String                     @id @default(uuid())
+  ticketId      String
+  ticket        SupportTicket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender        SupportTicketMessageSender
+  senderUserId  String?
+  senderUser    User?                      @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+  senderAdminId String?
+  senderAdmin   AdminUser?                 @relation(fields: [senderAdminId], references: [id], onDelete: SetNull)
+  body          String                     @db.Text
+  createdAt     DateTime                   @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_ticket_messages")
 }
 
 // ---- Finance (Module 10, added 26 Aug 2026) --------------------------
@@ -1203,6 +1270,11 @@ model AdminUser {
   // see `Escalation`'s own comment for why no self-guard applies here.
   escalationsRaised   Escalation[] @relation("EscalationEscalatedBy")
   escalationsResolved Escalation[] @relation("EscalationResolvedBy")
+  // Support Ticket Messages (added 3 Sep 2026) — any admin holding
+  // support:edit can reply to any ticket, so unlike Escalation's two fixed
+  // relations this is just the one "messages this admin has sent" list —
+  // see SupportTicketMessage's own doc comment.
+  supportTicketMessagesSent SupportTicketMessage[]
   // Module 10 Finance, added 26 Aug 2026 — one relation each, unlike
   // Escalation/ContentReview/Sensitive Data Access above: an Expense is
   // recorded once by whoever entered it, a TaxConfig is updated by

@@ -13,3 +13,14 @@ export const createSupportTicketSchema = z.object({
   message: z.string().min(1).max(4000),
 });
 export type CreateSupportTicketInput = z.infer<typeof createSupportTicketSchema>;
+
+// Support Ticket Messages (added 3 Sep 2026, closes gap §19's remaining
+// "no message thread" note) — see prisma/schema.prisma's
+// SupportTicketMessage doc comment. Same length cap as the ticket's own
+// original `message` field, not CoachMessage's shorter 2000 — a reply here
+// is describing the same class of content (an ongoing support issue) as
+// the initial submission, so there's no reason for a tighter limit.
+export const sendSupportTicketMessageSchema = z.object({
+  body: z.string().trim().min(1, "Message can't be empty").max(4000),
+});
+export type SendSupportTicketMessageInput = z.infer<typeof sendSupportTicketMessageSchema>;

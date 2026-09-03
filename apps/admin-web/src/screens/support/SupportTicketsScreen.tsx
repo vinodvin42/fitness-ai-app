@@ -61,13 +61,10 @@ async function fetchDetail(id: string): Promise<AdminSupportTicketDetailResponse
  * param — there's no deep-linking need the Figma spec calls for here.
  *
  * See apps/api's adminSupport.service.ts for the full real-vs-not
- * breakdown: the list, filters, and stats bar are real; the detail
- * panel's message is the ticket's one real submission (not a
- * multi-message "conversation thread" — no reply table exists, so
- * there's no composer either); the real action is re-triaging Status/
- * Priority/Category, backed by a real audited history trail below the
- * message. Also explains why this module was picked over Module 07 —
- * Growth this cycle.
+ * breakdown: the list, filters, and stats bar are real; the real action is
+ * re-triaging Status/Priority/Category, backed by a real audited history
+ * trail below the message. Also explains why this module was picked over
+ * Module 07 — Growth this cycle.
  *
  * **25 Aug 2026:** a second real action joins Triage — "Escalate" (08.02),
  * additive alongside it, not a replacement. It doesn't touch the ticket's
@@ -77,6 +74,13 @@ async function fetchDetail(id: string): Promise<AdminSupportTicketDetailResponse
  * Disabled once the ticket already has an open escalation — the backend
  * guards this too (`escalation_already_open`), the button just avoids
  * surfacing that as a confusing error.
+ *
+ * **3 Sep 2026:** the detail panel's message is no longer read-only — a
+ * real "Conversation" section (right below the ticket's original message)
+ * shows the full `SupportTicketMessage` thread and a real reply composer,
+ * closing the "conversationThread" gap this comment used to name. Replying
+ * does not itself change Status/Priority — those stay Triage's own
+ * separate, explicit action.
  */
 export function SupportTicketsScreen() {
   const queryClient = useQueryClient();
@@ -84,6 +88,7 @@ export function SupportTicketsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<UpdateAdminSupportTicketInput>({});
   const [escalateReason, setEscalateReason] = useState("");
+  const [replyDraft, setReplyDraft] = useState("");
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -127,6 +132,16 @@ export function SupportTicketsScreen() {
       setEscalateReason("");
       queryClient.invalidateQueries({ queryKey: ["admin-support-ticket-detail", selectedId] });
       queryClient.invalidateQueries({ queryKey: ["admin-escalations"] });
+    },
+  });
+
+  // Support Ticket Messages (added 3 Sep 2026) — the real composer behind
+  // the Conversation section below. See adminSupport.service.ts.
+  const sendMessageMutation = useMutation({
+    mutationFn: () => apiClient.post(`/admin/support-tickets/${selectedId}/messages`, { body: replyDraft.trim() }),
+    onSuccess: () => {
+      setReplyDraft("");
+      queryClient.invalidateQueries({ queryKey: ["admin-support-ticket-detail", selectedId] });
     },
   });
 
@@ -220,7 +235,10 @@ export function SupportTicketsScreen() {
                     <li key={t.id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedId(t.id)}
+                        onClick={() => {
+                          setSelectedId(t.id);
+                          setReplyDraft("");
+                        }}
                         className={`block w-full px-4 py-3 text-left transition-colors ${
                           selectedId === t.id ? "bg-accent/10" : "hover:bg-surface-raised"
                         }`}
@@ -283,6 +301,47 @@ export function SupportTicketsScreen() {
                 <div className="rounded-md border border-border-subtle bg-surface-raised p-3">
                   <div className="text-xs uppercase tracking-wide text-text-dim">Message</div>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{ticket.message}</p>
+                </div>
+
+                <div className="rounded-md border border-border-subtle p-3">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">Conversation</div>
+                  <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-border-subtle bg-surface-raised p-2">
+                    {(detail?.messages ?? []).length === 0 && (
+                      <p className="px-1 py-2 text-center text-xs text-text-dim">No replies yet.</p>
+                    )}
+                    {(detail?.messages ?? []).map((m) => (
+                      <div
+                        key={m.id}
+                        className={`rounded-md p-2 text-xs ${m.sender === "admin" ? "ml-6 bg-accent/10" : "mr-6 bg-surface"}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-text-dim">
+                          <span>{m.sender === "admin" ? (m.senderAdminName ?? "Admin") : ticket.userFullName}</span>
+                          <span>{new Date(m.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap text-text-secondary">{m.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="Write a reply…"
+                    value={replyDraft}
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                    className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                    rows={2}
+                  />
+                  <button
+                    type="button"
+                    disabled={!replyDraft.trim() || sendMessageMutation.isPending}
+                    onClick={() => sendMessageMutation.mutate()}
+                    className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Send Reply
+                  </button>
+                  {sendMessageMutation.isError && (
+                    <p className="mt-2 text-xs text-danger">
+                      {extractErrorMessage(sendMessageMutation.error, "That reply didn't send.")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="rounded-md border border-border-subtle p-3">

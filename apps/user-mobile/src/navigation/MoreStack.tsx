@@ -26,6 +26,7 @@ import { NotificationSettingsScreen } from "../screens/more/NotificationSettings
 import { SecurityScreen } from "../screens/more/SecurityScreen";
 import { SupportScreen } from "../screens/more/SupportScreen";
 import { SupportTicketFormScreen } from "../screens/more/SupportTicketFormScreen";
+import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailScreen";
 import { ReferralScreen } from "../screens/more/ReferralScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
@@ -48,7 +49,9 @@ import { MessageThreadScreen } from "../screens/coaching/MessageThreadScreen";
 // continued 19 Aug 2026): More Menu -> Settings -> Language /
 // Notifications / Security (Security folds in "Data & Privacy"'s
 // overlapping GDPR actions — see SecurityScreen.tsx) / Support -> New
-// Ticket. §O (Phase 4, continued 19 Aug 2026): More Menu -> Referral
+// Ticket -> (3 Sep 2026) tapping a ticket opens Support Ticket Detail, its
+// full reply thread against the new `SupportTicketMessage` model. §O
+// (Phase 4, continued 19 Aug 2026): More Menu -> Referral
 // (real code + real signup count, no reward grid — see
 // ReferralScreen.tsx). The other More-hub rows (Programs, Coaching) stay
 // inert placeholders in MoreScreen — later roadmap phases. §F (continued 19
@@ -94,6 +97,7 @@ export type MoreStackParamList = {
   Security: undefined;
   Support: undefined;
   SupportTicketForm: undefined;
+  SupportTicketDetail: { ticketId: string };
   Referral: undefined;
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
@@ -135,6 +139,7 @@ export function MoreStack() {
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="SupportTicketForm" component={SupportTicketFormScreen} />
+      <Stack.Screen name="SupportTicketDetail" component={SupportTicketDetailScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="CoachDiscovery" component={CoachDiscoveryScreen} />
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />

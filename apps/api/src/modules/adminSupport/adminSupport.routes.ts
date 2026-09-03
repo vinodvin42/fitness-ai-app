@@ -6,6 +6,7 @@ import {
   listEscalationsQuerySchema,
   listSupportTicketsQuerySchema,
   resolveEscalationSchema,
+  sendAdminSupportTicketMessageSchema,
   updateSupportTicketSchema,
 } from "./adminSupport.schema";
 import * as adminSupportService from "./adminSupport.service";
@@ -50,6 +51,28 @@ adminSupportRouter.patch(
       const input = updateSupportTicketSchema.parse(req.body);
       const ticket = await adminSupportService.updateSupportTicket(req.adminUserId as string, req.params.id, input);
       res.status(200).json({ ticket });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Support Ticket Messages (added 3 Sep 2026) — the real composer action
+// behind the detail panel's conversation thread, see adminSupport.service
+// .ts's "3 Sep 2026" comment entry. Gated by "support":"edit", same as
+// "escalate" just below — a reply is an action taken from within a ticket
+// you're already looking at, not a new standalone listable resource, the
+// same reasoning that comment gives for picking "edit" over "create".
+
+adminSupportRouter.post(
+  "/admin/support-tickets/:id/messages",
+  requireAdminAuth,
+  requirePermission("support", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = sendAdminSupportTicketMessageSchema.parse(req.body);
+      const message = await adminSupportService.addSupportTicketMessage(req.adminUserId as string, req.params.id, input);
+      res.status(201).json({ message });
     } catch (err) {
       next(err);
     }

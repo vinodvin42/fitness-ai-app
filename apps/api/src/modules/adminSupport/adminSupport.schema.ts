@@ -53,3 +53,14 @@ export const resolveEscalationSchema = z.object({
 export type EscalateSupportTicketInput = z.infer<typeof escalateSupportTicketSchema>;
 export type ListEscalationsQuery = z.infer<typeof listEscalationsQuerySchema>;
 export type ResolveEscalationInput = z.infer<typeof resolveEscalationSchema>;
+
+// Support Ticket Messages (added 3 Sep 2026) — closes the "conversationThread"
+// gap this file's sibling adminSupport.service.ts used to name in
+// `notAvailable`. Same length cap as the consumer-side
+// sendSupportTicketMessageSchema (apps/api's support.schema.ts) — an admin
+// reply is the same class of content as a user's, no reason for a tighter
+// limit.
+export const sendAdminSupportTicketMessageSchema = z.object({
+  body: z.string().trim().min(1, "Message can't be empty").max(4000),
+});
+export type SendAdminSupportTicketMessageInput = z.infer<typeof sendAdminSupportTicketMessageSchema>;
