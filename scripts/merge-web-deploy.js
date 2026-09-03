@@ -116,13 +116,14 @@ fs.writeFileSync(
   path.join(outputDir, "staticwebapp.config.json"),
   JSON.stringify(
     {
-      // Three explicit entries rather than relying on "/app/*" alone to
-      // also match the zero-length case — Azure's glob matching for a
-      // bare "/app" or "/app/" (nothing after the trailing slash) isn't
-      // something worth gambling on.
+      // Two entries, not three — Azure's own config validation rejects
+      // the deploy outright ("duplicate route /app/") if both "/app/" and
+      // "/app/*" are listed: the wildcard already covers the trailing-
+      // slash case internally. "/app" (no slash) is a distinct literal
+      // route Azure does NOT fold into the wildcard, so it still needs
+      // its own entry.
       routes: [
         { route: "/app", rewrite: "/app/index.html" },
-        { route: "/app/", rewrite: "/app/index.html" },
         { route: "/app/*", rewrite: "/app/index.html" },
       ],
       navigationFallback: {
