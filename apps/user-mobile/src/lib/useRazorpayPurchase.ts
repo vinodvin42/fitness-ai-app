@@ -1,8 +1,31 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import type { PaymentPurpose, RazorpayOrder } from "@fitness-ai-app/types";
-import { createRazorpayOrder, verifyRazorpayPayment } from "../api/payments";
+import { createRazorpayOrder, verifyRazorpayPayment, fetchPaymentsConfig } from "../api/payments";
 import { extractErrorMessage } from "./apiError";
+
+/**
+ * Go-live hardening (3 Sep 2026) — whether to show a real Subscribe/
+ * Purchase button or a "Coming soon" one, decided *before* a tap rather
+ * than after a 503 (see payments.ts's fetchPaymentsConfig doc comment).
+ * Defaults `configured: true` while the request is in flight rather than
+ * `false` — this is a fast, same-origin, unauthenticated GET, so the
+ * loading window is brief, and defaulting to "true" means the worst case
+ * is the pre-existing behaviour (a tap that resolves to today's graceful
+ * 503 + Alert), never a false "Coming soon" flash while this is still
+ * unconfigured on a fresh app any given screen visits. A 10-minute
+ * staleTime is plenty — this value doesn't change without a server
+ * redeploy.
+ */
+export function usePaymentsConfigured() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["payments", "config"],
+    queryFn: fetchPaymentsConfig,
+    staleTime: 10 * 60_000,
+  });
+  return { configured: data?.configured ?? true, isLoading };
+}
 
 interface Options {
   /** Called after a payment has been verified server-side — invalidate whatever queries this screen needs re-fetched (mirrors the same pattern every other mutation in this app already uses). Return type is unconstrained since callers commonly return `Promise.all([...])` of several invalidations. */

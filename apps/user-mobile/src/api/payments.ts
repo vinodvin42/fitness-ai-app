@@ -18,3 +18,10 @@ export function createRazorpayOrder(input: CreateRazorpayOrderInput) {
 export function verifyRazorpayPayment(input: VerifyRazorpayPaymentInput) {
   return apiClient.post<VerifyRazorpayPaymentResult>("/payments/razorpay/verify", input).then((r) => r.data);
 }
+
+// Go-live hardening (3 Sep 2026) — lets a screen know payments are parked
+// for this pilot *before* a purchase attempt, instead of only finding out
+// via a 503 after the tap. See useRazorpayPurchase.ts's usePaymentsConfigured().
+export function fetchPaymentsConfig() {
+  return apiClient.get<{ configured: boolean }>("/payments/config").then((r) => r.data);
+}

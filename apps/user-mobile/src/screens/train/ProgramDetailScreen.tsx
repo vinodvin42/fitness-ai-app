@@ -11,7 +11,7 @@ import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchProgramDetail } from "../../api/programs";
-import { useRazorpayPurchase } from "../../lib/useRazorpayPurchase";
+import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -49,6 +49,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
   // useRazorpayPurchase's purchase() handles its own errors internally
   // (shows its own Alert on failure), so there's no try/catch needed here.
   const onPurchase = () => purchase("program_purchase", programId);
+  const { configured: paymentsConfigured } = usePaymentsConfigured();
 
   if (isError) {
     return (
@@ -105,12 +106,15 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
         <Card>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Purchase this program</Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-            One-time purchase — unlocks every workout in {program.name}.
+            {paymentsConfigured
+              ? `One-time purchase — unlocks every workout in ${program.name}.`
+              : "Purchases aren't open yet during this pilot — check back soon."}
           </Text>
           <Button
-            label={`Purchase — $${(program.priceCents / 100).toFixed(2)}`}
+            label={paymentsConfigured ? `Purchase — $${(program.priceCents / 100).toFixed(2)}` : "Coming soon"}
             onPress={onPurchase}
             loading={isPurchasing}
+            disabled={!paymentsConfigured}
             style={{ marginTop: spacing.md }}
           />
         </Card>

@@ -12,7 +12,7 @@ import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } from "../../api/subscriptions";
-import { useRazorpayPurchase } from "../../lib/useRazorpayPurchase";
+import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -103,6 +103,7 @@ export function SubscriptionScreen({ navigation }: Props) {
       queryClient.invalidateQueries({ queryKey: ["subscriptions", "history"] }),
     ]);
 
+  const { configured: paymentsConfigured } = usePaymentsConfigured();
   const { order, purchase, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
     onVerified: refresh,
     // §M Payment Success / Failed screens (31 Aug 2026) — dedicated result
@@ -254,9 +255,10 @@ export function SubscriptionScreen({ navigation }: Props) {
                     </Text>
                   </View>
                   <Button
-                    label={current ? "Switch" : "Choose"}
+                    label={!paymentsConfigured && plan.priceCents > 0 ? "Coming soon" : current ? "Switch" : "Choose"}
                     onPress={() => onSubscribe(plan)}
                     loading={pendingPlanId === plan.id}
+                    disabled={!paymentsConfigured && plan.priceCents > 0}
                     style={{ paddingHorizontal: spacing.md, height: 40 }}
                   />
                 </View>

@@ -11,7 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { startWorkoutSession } from "../../api/workoutSessions";
-import { useRazorpayPurchase } from "../../lib/useRazorpayPurchase";
+import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -72,6 +72,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
   // useRazorpayPurchase's purchase() handles its own errors internally
   // (shows its own Alert on failure), so there's no try/catch needed here.
   const onPurchase = () => workout && purchase("program_purchase", workout.program.id);
+  const { configured: paymentsConfigured } = usePaymentsConfigured();
 
   if (isError) {
     return (
@@ -146,9 +147,14 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
         <Button label="Start Workout" onPress={onStart} loading={isStarting} style={{ marginTop: spacing.sm }} />
       ) : (
         <Button
-          label={`Purchase ${workout.program.name} — $${(workout.program.priceCents / 100).toFixed(2)}`}
+          label={
+            paymentsConfigured
+              ? `Purchase ${workout.program.name} — $${(workout.program.priceCents / 100).toFixed(2)}`
+              : "Coming soon"
+          }
           onPress={onPurchase}
           loading={isPurchasing}
+          disabled={!paymentsConfigured}
           style={{ marginTop: spacing.sm }}
         />
       )}
