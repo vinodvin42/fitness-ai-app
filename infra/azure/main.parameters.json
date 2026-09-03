@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "centralindia"
+    },
+    "namePrefix": {
+      "value": "primefit"
+    },
+    "postgresAdminUsername": {
+      "value": "primefitadmin"
+    },
+    "postgresVersion": {
+      "value": "16"
+    },
+    "postgresSkuName": {
+      "value": "Standard_B1ms"
+    },
+    "postgresSkuTier": {
+      "value": "Burstable"
+    },
+    "postgresStorageSizeGB": {
+      "value": 32
+    },
+    "databaseName": {
+      "value": "fitness_ai_app"
+    },
+    "appServicePlanSkuName": {
+      "value": "B1"
+    },
+    "appServicePlanSkuTier": {
+      "value": "Basic"
+    },
+    "linuxFxVersion": {
+      "value": "NODE|20-lts"
+    }
+  }
+}

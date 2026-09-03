@@ -1,0 +1,149 @@
+name: Deploy API to Azure
+
+# Go-live hardening, Azure path (3 Sep 2026). Deploys apps/api to the Azure
+# App Service provisioned by infra/azure/main.bicep. See
+# AZURE-DEPLOY-RUNBOOK.md for the full one-time setup this workflow
+# depends on (the App Service + Postgres must already exist, the Web App's
+# app settings must already carry the real JWT/2FA secrets, and the six
+# repository secrets referenced below must already be set) — none of that
+# happens automatically just because this file exists.
+#
+# workflow_dispatch ONLY, deliberately — NOT `on: push`. Real Azure
+# secrets don't exist yet as this file is written (see this repo's own
+# constraints for this pass), so auto-deploying on every push to main
+# isn't safe to turn on until someone has actually walked through
+# AZURE-DEPLOY-RUNBOOK.md once and confirmed a manual run works. Flip this
+# to `on: push: branches: [main]` yourself once that's true, if you want
+# continuous deploy — that's a deliberate follow-up decision, not an
+# oversight.
+#
+# Does NOT touch .github/workflows/ci.yml — that workflow (lint, typecheck,
+# ephemeral-Postgres boot test) is a separate, pre-existing workstream and
+# still runs on every push/PR exactly as before. This workflow only ever
+# runs when someone explicitly triggers it from the Actions tab.
+#
+# Build-then-deploy, not Oryx-build-during-deploy — see
+# infra/azure/modules/appService.bicep's top comment for the full
+# reasoning (short version: `prisma migrate deploy` needs the real
+# DATABASE_URL secret, which belongs in CI's controlled environment, not
+# folded into a build hook running on the App Service host).
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  # Required for azure/login's OIDC federated-credential flow — without
+  # this, Azure has nothing to exchange for an access token, no matter how
+  # correctly the federated credential itself is configured on the Azure
+  # side. See AZURE-DEPLOY-RUNBOOK.md's OIDC setup section.
+  id-token: write
+
+concurrency:
+  # Unlike ci.yml's concurrency group (safe to cancel a stale lint/test
+  # run), this one deliberately does NOT cancel-in-progress: a second
+  # manual dispatch while a deploy is mid-`prisma migrate deploy` should
+  # queue behind it, not race it or kill it partway through a migration.
+  group: deploy-azure-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Full monorepo install, root-level — mirrors render.yaml's own
+      # buildCommand (`npm install` at repo root, not scoped to apps/api)
+      # so this deploy path builds the exact same way the Render path
+      # already does. This does mean the deployed package below carries
+      # devDependencies and every other workspace's node_modules too, not
+      # just apps/api's — a real, known inefficiency, left alone
+      # deliberately for this first pass rather than risking a
+      # workspace-scoped install subtly missing something. Worth trimming
+      # later (e.g. a separate `npm ci --omit=dev` pass after the build
+      # step, or pruning to just apps/api's dependency closure) — not a
+      # launch blocker for a ~100-user pilot.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      # migrate deploy, not db push — unlike render.yaml (written when no
+      # migration history existed yet), apps/api/prisma/migrations/ is now
+      # real and committed, so this is the safe, additive, "just apply
+      # whatever's new" command from the start. Needs a real network path
+      # from this GitHub-hosted runner to the Postgres Flexible Server —
+      # see AZURE-DEPLOY-RUNBOOK.md's firewall step; this is NOT covered
+      # by infra/azure/modules/postgres.bicep's own "AllowAzureServices"
+      # rule, since a GitHub-hosted runner is not an Azure resource.
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Build the API
+        run: npm run build --workspace=apps/api
+
+      # OIDC federated-credential login — no client secret stored in
+      # GitHub at all. See AZURE-DEPLOY-RUNBOOK.md for the full
+      # az ad app / az ad sp / az ad app federated-credential setup this
+      # depends on. All three of these must already exist as repository
+      # secrets before this step can succeed.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Deploys the repo root as-is (dist/ + node_modules + the generated
+      # Prisma client + everything else `npm ci` + the build step above
+      # produced) — not just apps/api/ — because this monorepo's npm
+      # workspaces hoist @fitness-ai-app/types into root node_modules as a
+      # symlink to ../../packages/types. Deploying only the apps/api/
+      # subfolder would ship a broken symlink with nothing on the other
+      # end of it. AZURE_WEBAPP_NAME is the Web App resource name from
+      # infra/azure/main.bicep's `webAppName` output (also the same value
+      # as its default hostname's first label).
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          # Optional per the action's own inputs (app-name alone is
+          # enough, since Web App names are globally unique) — set
+          # explicitly anyway to skip an Azure Resource Graph lookup and
+          # remove any ambiguity about which app is targeted.
+          resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          package: .
+
+      # Real confirmation, not just "the deploy step exited 0" — same
+      # philosophy as ci.yml's own "boot the API and confirm /health
+      # responds" step, against the real deployed Azure endpoint this
+      # time. A fresh deploy/restart can take longer to come back up than
+      # ci.yml's local boot does, so this polls for up to ~4 minutes
+      # rather than ci.yml's ~15 seconds.
+      - name: Confirm the deployed API answers /health
+        run: |
+          url="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          ok=""
+          for i in $(seq 1 48); do
+            if curl -sf "$url"; then
+              echo
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$ok" ]; then
+            echo "API never answered /health at $url within ~4 minutes." >&2
+            echo "Check az webapp log tail (see AZURE-DEPLOY-RUNBOOK.md's smoke-test section) — a missing/invalid app setting (JWT secrets, TWO_FACTOR_ENCRYPTION_KEY, CORS_ORIGINS) is the most likely cause, since config/env.ts fails fast and exits on any of those." >&2
+            exit 1
+          fi
+          echo "Deployed API booted and answered /health successfully."

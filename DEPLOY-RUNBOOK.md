@@ -1,5 +1,17 @@
 # Deploy runbook — PrimeFit go-live
 
+> **3 Sep 2026 — Azure is now the live plan.** The product owner chose
+> Azure over this Render+Vercel path, knowing that means new
+> infrastructure-as-code and an unverified first deploy rather than
+> building on this path's own (also-not-yet-live) groundwork. See
+> **[`AZURE-DEPLOY-RUNBOOK.md`](AZURE-DEPLOY-RUNBOOK.md)** at the repo root
+> for the current, actively-maintained deploy path. Everything below is
+> kept exactly as it was — a real, working, CI-verified-to-boot fallback,
+> not a dead file — in case Azure ever needs to be abandoned for Render.
+> Nothing on this page has been touched or re-verified as part of that
+> Azure work; treat its own "verified vs. not" notes below as exactly as
+> current as they were on 29 Aug 2026.
+
 Written 25 Aug 2026 as part of go-live hardening. This turns "first real
 deploy attempt" from an open-ended task into a fixed checklist. Three
 services, three targets:
