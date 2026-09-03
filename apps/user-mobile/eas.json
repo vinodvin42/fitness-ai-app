@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://<your-render-api-url>"
+        "EXPO_PUBLIC_API_BASE_URL": "https://primefit-api-zjcprljmiu7mq.azurewebsites.net"
       }
     }
   }
