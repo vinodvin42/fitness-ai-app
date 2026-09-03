@@ -1,0 +1,44 @@
+import { Prisma } from "@prisma/client";
+import { prisma } from "../db/prisma";
+
+/**
+ * Write-once audit log helper. Call from service functions after a mutating
+ * action succeeds — deliberately NOT wired as blanket request middleware,
+ * since a meaningful audit entry needs to know entityType/entityId/action,
+ * not just "someone POSTed something".
+ *
+ * 20 Aug 2026 (Phase 6): accepts `actorAdminId` alongside the original
+ * `actorId` so admin-console actions attribute to the acting AdminUser
+ * rather than being logged as an anonymous system action — pass at most
+ * one of the two (a consumer action vs. a staff action), never both.
+ * Same day (Phase 5): accepts `actorProfessionalId` too, for the third
+ * `Professional` identity — pass at most one of the three actor fields.
+ */
+export async function recordAudit(params: {
+  actorId?: string | null;
+  actorAdminId?: string | null;
+  actorProfessionalId?: string | null;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  await prisma.auditLog.create({
+    data: {
+      actorId: params.actorId ?? null,
+      actorAdminId: params.actorAdminId ?? null,
+      actorProfessionalId: params.actorProfessionalId ?? null,
+      action: params.action,
+      entityType: params.entityType,
+      entityId: params.entityId ?? null,
+      // Cast to Prisma's JSON input type — a plain Record<string, unknown>
+      // isn't structurally assignable to InputJsonValue's recursive union
+      // (this surfaced 31 Aug 2026 the first time the Prisma client was
+      // actually generated; before that `prisma` was an un-typed stub).
+      // Only set when present so an undefined stays "field not set".
+      ...(params.metadata !== undefined
+        ? { metadata: params.metadata as Prisma.InputJsonObject }
+        : {}),
+    },
+  });
+}

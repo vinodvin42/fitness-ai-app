@@ -1,0 +1,133 @@
+# Render Blueprint — apps/api + its Postgres database.
+#
+# Go-live hardening (25 Aug 2026). This is Infrastructure-as-Code for
+# Render.com: import this file via Render's dashboard -> New -> Blueprint,
+# pointing at this repo, and it provisions both resources below wired
+# together (DATABASE_URL is injected automatically from the database
+# resource — never typed by hand, never committed anywhere).
+#
+# What's verified vs. not, honestly:
+# - buildCommand and the Prisma generate step are verified against this
+#   exact package.json/schema in this build.
+# - The actual "boots and serves real requests against real Postgres" step
+#   is NOT verified from here — every sandbox this project has been built
+#   in blocks binaries.prisma.sh (see apps/api/README.md's "Go-live
+#   hardening" section), which is the one thing `prisma generate` needs
+#   over the network. Render's own build environment has normal internet
+#   access, so this is expected to work there — but "expected" is not the
+#   same as "confirmed," which is why this is Thursday's first real test,
+#   not something already checked off.
+# - `prisma db push` (not `prisma migrate deploy`) is used for the first
+#   deploy because this project has no committed migration history yet
+#   (nothing has ever successfully run `prisma migrate dev` against a real
+#   database — see the note above). db push is Prisma's own recommended
+#   command for "no migration history yet, database is empty" — exactly
+#   this situation. Once this first deploy succeeds, run
+#   `npx prisma migrate dev --name init` from a real terminal with
+#   internet access (your own machine, not a Claude-controlled sandbox)
+#   and commit the generated apps/api/prisma/migrations/ folder — every
+#   deploy after that should use `prisma migrate deploy` instead, which is
+#   safer once there's real user data to protect.
+
+databases:
+  - name: primefit-db
+    plan: starter
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: primefit-api
+    runtime: node
+    plan: starter
+    region: oregon
+    rootDir: .
+    buildCommand: >-
+      npm install &&
+      npx prisma generate --schema=apps/api/prisma/schema.prisma &&
+      npm run build --workspace=apps/api
+    startCommand: npm run start --workspace=apps/api
+    # Runs once per deploy, after build, before the new instance takes
+    # traffic. First deploy: creates the schema. Every deploy after: a
+    # no-op if the schema hasn't changed, syncs it if it has (see the
+    # migration-history note above for when to switch this to
+    # `prisma migrate deploy`).
+    preDeployCommand: >-
+      npx prisma db push --accept-data-loss --schema=apps/api/prisma/schema.prisma
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: primefit-db
+          property: connectionString
+      - key: PORT
+        value: "4000"
+      # Secrets below: generate real values, never reuse the dev
+      # placeholders from .env.example. `openssl rand -base64 48` for each
+      # JWT secret. sync: false means Render will prompt for these in the
+      # dashboard instead of expecting them in this file — that's
+      # deliberate, none of these belong in a committed file.
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_TTL_MIN
+        value: "15"
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "30"
+      - key: ADMIN_JWT_SECRET
+        sync: false
+      - key: ADMIN_JWT_ACCESS_TTL_MIN
+        value: "480"
+      - key: PROFESSIONAL_JWT_SECRET
+        sync: false
+      - key: PROFESSIONAL_JWT_ACCESS_TTL_MIN
+        value: "15"
+      - key: PROFESSIONAL_JWT_REFRESH_TTL_DAYS
+        value: "30"
+      # Two-Factor Authentication (25 Aug 2026, gap §17) — encrypts
+      # User.twoFactorSecret at rest. MUST be exactly 64 hex chars (32
+      # bytes — AES-256-GCM's fixed key size), unlike the JWT secrets
+      # above which just need "at least 16 chars". Generate with:
+      # openssl rand -hex 32
+      - key: TWO_FACTOR_ENCRYPTION_KEY
+        sync: false
+      # Real Vercel domains once those two projects exist — see
+      # DEPLOY-RUNBOOK.md step 3. Must be non-empty or the API refuses to
+      # boot in production (config/env.ts's fail-fast check).
+      - key: CORS_ORIGINS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_CURRENCY
+        value: INR
+      - key: PRICE_CURRENCY_CONFIRMED
+        value: "false"
+      # Read once, by scripts/seed.ts (step 2.6 of DEPLOY-RUNBOOK.md), not
+      # by the running server — but set here anyway so Render prompts for
+      # a real value up front instead of it being easy to forget. Without
+      # these, the seed script falls back to admin@23primefit.com /
+      # ChangeMe123! — a default published in this repo's own
+      # RUN-LOCALLY.md, which must never be the real credential on a
+      # production database. Rotate it via PATCH /admin/auth/password
+      # after first login regardless (see adminAuth.routes.ts).
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: AI_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

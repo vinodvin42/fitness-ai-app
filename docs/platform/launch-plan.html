@@ -1,0 +1,545 @@
+<title>PrimeFit Go-Live Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --color-canvas: #0a0d12;
+    --color-surface: #12161c;
+    --color-surface-raised: #161b22;
+    --color-border-subtle: #232a33;
+    --color-accent: #12e5a6;
+    --color-accent-dim: #0d8f68;
+    --color-danger: #f04438;
+    --color-warning: #f5a623;
+    --color-info: #6b8ff5;
+    --color-text-primary: #f5f7fa;
+    --color-text-secondary: #9aa4b2;
+    --color-text-dim: #5b6472;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-text-primary);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--color-accent); color: var(--color-canvas); }
+
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 56px 24px 120px;
+  }
+
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(18,229,166,0.18);
+  }
+
+  h1 {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .dek {
+    color: var(--color-text-secondary);
+    font-size: 16px;
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .stat {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .stat .n {
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .stat .n.warn { color: var(--color-warning); }
+  .stat .n.danger { color: var(--color-danger); }
+  .stat .n.accent { color: var(--color-accent); }
+  .stat .l {
+    font-size: 12px;
+    color: var(--color-text-dim);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  section { margin-bottom: 48px; }
+
+  h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-dim);
+    margin: 0 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-border-subtle);
+  }
+
+  h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+  }
+
+  p { color: var(--color-text-secondary); margin: 0 0 12px; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--color-accent); text-decoration: none; border-bottom: 1px solid rgba(18,229,166,0.35); }
+  a:hover { border-bottom-color: var(--color-accent); }
+
+  /* scope split */
+  .scope-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .scope-grid { grid-template-columns: 1fr; } }
+  .scope-card {
+    border-radius: 14px;
+    padding: 20px 22px;
+    border: 1px solid var(--color-border-subtle);
+  }
+  .scope-card.live {
+    background: linear-gradient(180deg, rgba(18,229,166,0.08), rgba(18,229,166,0.02));
+    border-color: rgba(18,229,166,0.3);
+  }
+  .scope-card.deferred {
+    background: var(--color-surface);
+  }
+  .scope-card .tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  .scope-card.live .tag { background: rgba(18,229,166,0.16); color: var(--color-accent); }
+  .scope-card.deferred .tag { background: var(--color-surface-raised); color: var(--color-text-dim); }
+  .scope-card ul { margin: 10px 0 0; padding-left: 18px; }
+  .scope-card li { color: var(--color-text-secondary); margin-bottom: 6px; font-size: 14.5px; }
+
+  /* timeline */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .day {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .day:last-child { border-bottom: none; }
+  .day .datebox {
+    text-align: left;
+  }
+  .day .dow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-dim); font-weight: 700; }
+  .day .dom { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .day.milestone .dom { color: var(--color-accent); }
+  .day .label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    color: var(--color-text-secondary);
+  }
+  .day.milestone .label { color: var(--color-accent); }
+  .task-line {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 14.5px;
+    margin-bottom: 6px;
+    color: var(--color-text-secondary);
+  }
+  .task-line:last-child { margin-bottom: 0; }
+  .owner {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+  }
+  .owner.me { background: rgba(107,143,245,0.16); color: var(--color-info); }
+  .owner.you { background: rgba(245,166,35,0.16); color: var(--color-warning); }
+
+  /* checklist */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .check-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+  }
+  .check-item input[type="checkbox"] {
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--color-text-dim);
+    margin-top: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+  }
+  .check-item input[type="checkbox"]:checked {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .check-item input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 5px; top: 1px;
+    width: 4px; height: 9px;
+    border: solid var(--color-canvas);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .check-item input[type="checkbox"]:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .check-item .body { flex: 1; }
+  .check-item .title { font-weight: 600; font-size: 14.5px; color: var(--color-text-primary); }
+  .check-item .desc { font-size: 13.5px; color: var(--color-text-dim); margin-top: 3px; }
+  .check-item.checked .title { color: var(--color-text-dim); text-decoration: line-through; }
+  .sev {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-left: 8px;
+    vertical-align: 1px;
+  }
+  .sev.blocker { background: rgba(240,68,56,0.16); color: var(--color-danger); }
+  .sev.input { background: rgba(245,166,35,0.16); color: var(--color-warning); }
+  .sev.progress { background: rgba(107,143,245,0.16); color: var(--color-info); }
+
+  /* need-from-you cards */
+  .ask-list { display: flex; flex-direction: column; gap: 14px; }
+  .ask {
+    border: 1px solid rgba(245,166,35,0.3);
+    background: rgba(245,166,35,0.05);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .ask .n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--color-warning);
+    color: var(--color-canvas);
+    font-size: 12px;
+    font-weight: 800;
+    margin-right: 10px;
+  }
+  .ask h3 { display: inline; font-size: 15.5px; }
+  .ask p { margin-top: 8px; }
+
+  /* stack table */
+  .stack-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .stack-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-dim);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .stack-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    color: var(--color-text-secondary);
+    vertical-align: top;
+  }
+  .stack-table td:first-child { color: var(--color-text-primary); font-weight: 600; white-space: nowrap; }
+  .table-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--color-border-subtle); }
+  .table-scroll .stack-table { border: none; }
+  .table-scroll th:first-child, .table-scroll td:first-child { padding-left: 16px; }
+
+  .callout {
+    border-left: 3px solid var(--color-info);
+    background: rgba(107,143,245,0.06);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+  }
+  .callout p { color: var(--color-text-secondary); }
+  .callout strong { color: var(--color-text-primary); }
+
+  .footer-note {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border-subtle);
+    font-size: 13px;
+    color: var(--color-text-dim);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .stat, .check-item, .ask { transition: border-color 0.15s ease, background 0.15s ease; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Go-live plan &middot; drafted 25 Aug 2026</div>
+    <h1>Consumer app and admin console live this weekend. The coach marketplace ships when it's actually built right.</h1>
+    <p class="dek">Four working days to Saturday. This is the real, current-state plan &mdash; what's already genuine, what's still fake, what only you can unblock, and exactly what happens each day between now and launch.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="n accent">4</div><div class="l">days to Saturday</div></div>
+      <div class="stat"><div class="n danger">6</div><div class="l">launch blockers</div></div>
+      <div class="stat"><div class="n warn">5</div><div class="l">need your input</div></div>
+      <div class="stat"><div class="n">1</div><div class="l">app deferred</div></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Scope this weekend</h2>
+    <div class="scope-grid">
+      <div class="scope-card live">
+        <span class="tag">Live Saturday</span>
+        <h3>Consumer app (web) + Admin console</h3>
+        <ul>
+          <li>Real signup, onboarding, training, nutrition, progress tracking</li>
+          <li>Real subscriptions and program purchases via Razorpay</li>
+          <li>Real admin ops: users, professionals, programs, payments, pricing, support, audit log</li>
+          <li>Deployed as real websites &mdash; no app-store wait in the critical path</li>
+        </ul>
+      </div>
+      <div class="scope-card deferred">
+        <span class="tag">Deferred &mdash; built properly, not rushed</span>
+        <h3>Coach app &amp; coach&ndash;client matching</h3>
+        <ul>
+          <li>No code anywhere creates a coach&ndash;client pairing today &mdash; not a screen, not an admin action, not even a seed script</li>
+          <li>Docs call this the project's most consequential unresolved design conflict &mdash; two incompatible Figma flows, never reconciled</li>
+          <li>You chose to delay rather than ship a rushed manual hack &mdash; that decision is honored here</li>
+          <li>Design + build starts now as its own tracked project (see bottom of this page), not gated to this weekend</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What I need from you this week</h2>
+    <div class="ask-list">
+      <div class="ask">
+        <div><span class="n">1</span><h3>Razorpay live keys + the currency call</h3></div>
+        <p>Real prices are seeded in USD cents, but Razorpay's native currency is INR &mdash; charged as-is, that undercharges by ~80x. You said you'd handle this. I need either (a) real INR list prices to seed, or (b) confirmation your Razorpay account settles in USD. Once you decide, send me <code>RAZORPAY_KEY_ID</code>, <code>RAZORPAY_KEY_SECRET</code>, and <code>RAZORPAY_WEBHOOK_SECRET</code> (test-mode keys first, live keys once we've verified a real transaction Thursday).</p>
+      </div>
+      <div class="ask">
+        <div><span class="n">2</span><h3>Hosting accounts</h3></div>
+        <p>I can't create accounts or enter payment details on your behalf. See the recommended stack below &mdash; you'll need to sign up for a hosting provider and a Postgres database provider (or one provider that does both) and share the resulting connection details/API keys with me once created.</p>
+      </div>
+      <div class="ask">
+        <div><span class="n">3</span><h3>A GitHub repo</h3></div>
+        <p>This project has never used git &mdash; it's been zip-delivered the whole build. Modern hosting deploys want a git remote to push to. Create a private GitHub repo, and I'll walk you through pushing the current code to it (or tell me your GitHub username and I can prep the exact commands to run on your machine).</p>
+      </div>
+      <div class="ask">
+        <div><span class="n">4</span><h3>Staff role list for admin access</h3></div>
+        <p>You confirmed other staff need real, scoped admin access &mdash; today every admin account has full access regardless of assigned role. Tell me who needs an account and what they should be able to do (e.g. "a support person who can see and triage tickets but nothing financial"), and I'll build the real enforcement + a starter permission matrix around your actual roster rather than guessing at all 8 possible roles.</p>
+      </div>
+      <div class="ask">
+        <div><span class="n">5</span><h3>A quick look at the legal docs</h3></div>
+        <p>I'll draft a baseline Terms of Service and Privacy Policy (required regardless of web-only launch, since this app collects health data) &mdash; but I'm not a lawyer and neither is this draft. Have someone who is glance at them before real users see them, even a fast pass.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Schedule</h2>
+    <div class="timeline">
+      <div class="day">
+        <div class="datebox"><div class="dow">Tue</div><div class="dom">25</div></div>
+        <div>
+          <div class="label">Today &mdash; backend hardening starts</div>
+          <div class="task-line"><span class="owner me">Me</span> CORS fix, rate limiting on auth/payment routes, RBAC enforcement middleware, currency-flexible pricing, Sentry wiring, ToS/Privacy drafts</div>
+          <div class="task-line"><span class="owner you">You</span> Start hosting account signups, confirm Razorpay currency approach, send staff role list</div>
+        </div>
+      </div>
+      <div class="day">
+        <div class="datebox"><div class="dow">Wed</div><div class="dom">26</div></div>
+        <div>
+          <div class="label">RBAC + deploy prep</div>
+          <div class="task-line"><span class="owner me">Me</span> Finish RBAC permission matrix against your role list, deployment configs, production env templates</div>
+          <div class="task-line"><span class="owner you">You</span> Push repo to GitHub, review legal drafts, share hosting credentials once accounts exist</div>
+        </div>
+      </div>
+      <div class="day">
+        <div class="datebox"><div class="dow">Thu</div><div class="dom">27</div></div>
+        <div>
+          <div class="label">First real boot &mdash; the highest-risk day</div>
+          <div class="task-line"><span class="owner me">Me</span> First-ever real deploy of the API against real Postgres (never confirmed working outside a type-checker), fix whatever breaks, run the first real Razorpay test-mode transaction</div>
+        </div>
+      </div>
+      <div class="day">
+        <div class="datebox"><div class="dow">Fri</div><div class="dom">28</div></div>
+        <div>
+          <div class="label">Frontends live + full QA</div>
+          <div class="task-line"><span class="owner me">Me</span> Deploy admin-web + user-mobile web build, point both at the real API, full click-through pass on real (not mocked) infrastructure &mdash; signup through payment, plus a scoped non-super_admin login</div>
+        </div>
+      </div>
+      <div class="day milestone">
+        <div class="datebox"><div class="dow">Sat</div><div class="dom">29</div></div>
+        <div>
+          <div class="label">Launch</div>
+          <div class="task-line"><span class="owner me">Me</span> Flip to live Razorpay keys once Thursday's test transaction is clean, final CORS/security pass</div>
+          <div class="task-line"><span class="owner you">You</span> Invite the first real users</div>
+        </div>
+      </div>
+      <div class="day">
+        <div class="datebox"><div class="dow">Sun</div><div class="dom">30</div></div>
+        <div>
+          <div class="label">Stabilize</div>
+          <div class="task-line"><span class="owner me">Me</span> Watch error monitoring, fix anything real users surface</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Launch blockers</h2>
+    <p style="margin-bottom:16px;">Check these off as they close &mdash; this list is yours to track against all week.</p>
+    <div class="checklist" id="blockers">
+      <label class="check-item"><input type="checkbox" data-id="b1"><span class="body"><span class="title">API has never booted against a real database<span class="sev blocker">blocker</span></span><span class="desc">Prisma's engine binary download is blocked in every sandbox I have access to &mdash; never a code problem, just never proven on real infra. Thursday's deploy is the actual test.</span></span></label>
+      <label class="check-item"><input type="checkbox" data-id="b2"><span class="body"><span class="title">Razorpay currency mismatch<span class="sev blocker">blocker</span></span><span class="desc">USD-priced catalog against an INR-native account would undercharge ~80x. Waiting on your call (ask #1).</span></span></label>
+      <label class="check-item"><input type="checkbox" data-id="b3"><span class="body"><span class="title">No production CORS / secrets / seeded admin password<span class="sev progress">in progress</span></span><span class="desc">Dev-only origins and placeholder JWT secrets would either block the real frontend or leave things wide open. I'm fixing this today.</span></span></label>
+      <label class="check-item"><input type="checkbox" data-id="b4"><span class="body"><span class="title">No rate limiting on login/payment routes<span class="sev progress">in progress</span></span><span class="desc">Login and payment endpoints are currently unthrottled. Adding today.</span></span></label>
+      <label class="check-item"><input type="checkbox" data-id="b5"><span class="body"><span class="title">RBAC not enforced for non-super_admin roles<span class="sev input">needs your input</span></span><span class="desc">Every admin account currently has full access regardless of role. Need your staff role list (ask #4) to build the real matrix.</span></span></label>
+      <label class="check-item"><input type="checkbox" data-id="b6"><span class="body"><span class="title">No Terms of Service / Privacy Policy<span class="sev progress">in progress</span></span><span class="desc">Required for a health-data app regardless of app-store status. Drafting today &mdash; have someone qualified glance at it (ask #5).</span></span></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recommended infrastructure</h2>
+    <p>You said you need to set this up from scratch &mdash; here's a specific, low-effort stack sized for a weekend deadline, not a big ops project. Swap anything you already have a preference for; nothing below is load-bearing to the plan itself.</p>
+    <div class="table-scroll">
+      <table class="stack-table">
+        <thead><tr><th>Piece</th><th>Recommendation</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>API + database</td><td>Render.com &mdash; a Node web service plus a managed Postgres instance</td><td>No Dockerfile needed (builds straight from <code>npm run build</code> / <code>npm start</code>), managed Postgres with one connection string, free SSL, deploys from a GitHub push</td></tr>
+          <tr><td>Admin console</td><td>Vercel &mdash; static deploy of the Vite build</td><td>Framework auto-detected, deploys in under a minute, free SSL + custom domain</td></tr>
+          <tr><td>Consumer web app</td><td>Vercel &mdash; static deploy of <code>expo export --platform web</code></td><td>Same platform as admin-web, one less account to manage</td></tr>
+          <tr><td>Error monitoring</td><td>Sentry free tier</td><td>Right now a production crash is invisible until a user complains &mdash; this is a five-minute integration for real visibility</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Shipping with these known gaps</h2>
+    <p>None of this blocks Saturday &mdash; each is a real, deliberate, documented scope cut, not an oversight. Full detail lives in each app's README.</p>
+    <div class="callout">
+      <p><strong>Mobile app stores:</strong> EAS build + submission starts in parallel this week but isn't in the critical path &mdash; web is what's actually live Saturday. Neither app has app icons, an Android target, or store metadata yet; that work begins alongside the web launch.</p>
+      <p style="margin-top:10px;"><strong>Consumer app:</strong> AI Coach, wearable/Recovery integrations, GPS tracking, barcode/photo meal logging, and exercise videos are all infrastructure- or content-blocked, not this weekend's scope. Nutrition "compliance" is measured against a placeholder daily target shared by every user &mdash; worth a fast follow-up, not a blocker. Referral tracking is real; the reward payout isn't defined yet.</p>
+      <p style="margin-top:10px;"><strong>Admin console:</strong> Finance, AI Operations, most of Analytics, Growth/Influencers, and Support escalations stay out of scope &mdash; each needs an entity or a product decision that doesn't exist yet.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The coach marketplace &mdash; the real plan, not a rushed one</h2>
+    <p>This doesn't get a weekend deadline. Two independently-designed Figma flows for coach discovery and booking were never reconciled &mdash; that's a product decision before it's a build. Starting now, in parallel, not gating Saturday:</p>
+    <div class="callout" style="border-left-color: var(--color-accent); background: rgba(18,229,166,0.05);">
+      <p><strong>1. Reconcile the design conflict</strong> &mdash; one real discovery/booking flow, not two competing ones.</p>
+      <p style="margin-top:8px;"><strong>2. Build the real <code>Relationship</code>-creation path</strong> &mdash; today nothing in the entire codebase can create one; that's the actual gap underneath the missing screens.</p>
+      <p style="margin-top:8px;"><strong>3. Build the coach-side client list</strong> &mdash; right now Clients/Calendar/Messages are literal "Coming soon" placeholders with nothing behind them.</p>
+      <p style="margin-top:8px;"><strong>4. Launch it as its own milestone</strong>, tested and real, whenever it's actually ready &mdash; not squeezed into this week.</p>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    Owner key &mdash; <span class="owner me" style="margin-right:6px;">Me</span> tasks I can execute without waiting on you &middot; <span class="owner you">You</span> tasks only you can do (accounts, credentials, decisions). Checkbox state saves locally in this browser only.
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    var STORAGE_KEY = 'primefit-launch-plan-checks';
+    var boxes = document.querySelectorAll('#blockers input[type="checkbox"]');
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    } catch (e) { saved = {}; }
+
+    function applyState(box) {
+      var item = box.closest('.check-item');
+      if (box.checked) { item.classList.add('checked'); }
+      else { item.classList.remove('checked'); }
+    }
+
+    boxes.forEach(function (box) {
+      var id = box.getAttribute('data-id');
+      if (saved[id]) { box.checked = true; }
+      applyState(box);
+      box.addEventListener('change', function () {
+        applyState(box);
+        try {
+          saved[id] = box.checked;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        } catch (e) { /* storage unavailable &mdash; state just won't persist */ }
+      });
+    });
+  })();
+</script>

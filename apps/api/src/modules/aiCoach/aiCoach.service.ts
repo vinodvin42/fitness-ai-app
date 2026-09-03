@@ -1,0 +1,211 @@
+import { prisma } from "../../db/prisma";
+import { ApiHttpError } from "../../middleware/errorHandler";
+import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
+import { isAiCoachEnabledByAdmin } from "../adminAiOps/adminAiOps.service";
+
+/**
+ * AI Coach chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
+ * Phase 2 §H). Closes the feature half of gap §13 — apps/api/src/lib/aiClient.ts
+ * (20 Aug 2026) already had the provider plumbing, but its own doc comment
+ * named four things still missing before a real conversation could be wired
+ * up: conversation persistence, prompt design, rate limiting, and cost
+ * controls. This module is those four:
+ *   - persistence: AiCoachMessage (prisma/schema.prisma) — one flat,
+ *     ordered log per user, both sides of the conversation.
+ *   - prompt design: buildSystemPrompt() below grounds every reply in the
+ *     user's own real onboarding goals, recent training, and latest
+ *     measurement — pulled fresh from Postgres on every message, not
+ *     cached — so this reads as an actual coach who knows the user, not a
+ *     bare LLM passthrough. It's built as one prompt string (not a real
+ *     system+messages array) since aiClient.ts's generateCompletion() is
+ *     deliberately a single-turn `prompt -> string` wrapper — a real
+ *     provider-native message-array shape would be a reasonable next step
+ *     if this grows past a first slice, not required to make this real.
+ *   - rate limiting: aiCoachRateLimit (middleware/rateLimit.ts), applied
+ *     in aiCoach.routes.ts.
+ *   - cost controls: aiCoachRateLimit again (bounds calls/user/window),
+ *     sendAiCoachMessageSchema's 2000-char cap (bounds tokens/call), and
+ *     MAX_HISTORY_MESSAGES below (bounds how much prior conversation gets
+ *     re-sent — and re-billed — on every new turn).
+ *
+ * Deliberately NOT built this pass: streaming responses (the one item
+ * from aiClient.ts's original list still open — this returns a full
+ * completion in one response, same as every other mutation in this app;
+ * a streaming UI is a real, separate frontend+transport undertaking, not
+ * a small addition), and any AI feature besides this chat (a workout
+ * generator, diet-log vision, readiness scoring — see roadmap.md Phase 2
+ * §H's closing note that those should sequence alongside this, not
+ * inside it).
+ *
+ * Same "unconfigured means quietly off" pattern as Razorpay/Sentry: if no
+ * AI_PROVIDER API key is set, sendMessage() returns a real 503 rather
+ * than a fake or canned reply — a scripted response would misrepresent
+ * itself as AI when it isn't, which is exactly what
+ * docs/mobile/07-open-questions-gaps.md §13 warned against.
+ *
+ * **27 Aug 2026 (Module 11 AI Operations):** sendMessage() gained a second,
+ * separate 503 gate — a real admin on/off switch
+ * (`adminAiOps.service.ts`'s `AiCoachSettings` singleton), distinct from
+ * the "not configured" check above. reports/build-plan.html's own
+ * "needs your decision" framing for 11.01–11.03's full Feature Console
+ * named this exact slice as the smaller, genuinely buildable alternative.
+ */
+
+// How many prior messages (both roles combined) get replayed into the
+// prompt as conversation context. Bounds both the token cost of every
+// new turn and how far back the model can "remember" — 20 messages is
+// roughly the last 10 exchanges, generous for a coaching chat's usual
+// back-and-forth without letting a long-lived conversation's cost grow
+// unbounded per turn.
+const MAX_HISTORY_MESSAGES = 20;
+
+// How many messages a GET returns in one call — same "cap it, report the
+// cap honestly" precedent as adminAuditLogs.service.ts's 200-row limit,
+// not silent pagination and not an unbounded query against a table that
+// only ever grows.
+const MAX_RETURNED_MESSAGES = 200;
+
+export interface AiCoachMessageDTO {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: Date;
+}
+
+function toDTO(m: { id: string; role: string; content: string; createdAt: Date }): AiCoachMessageDTO {
+  return { id: m.id, role: m.role as "user" | "assistant", content: m.content, createdAt: m.createdAt };
+}
+
+export async function listMessages(
+  userId: string,
+): Promise<{ messages: AiCoachMessageDTO[]; truncated: boolean }> {
+  const [totalCount, recent] = await Promise.all([
+    prisma.aiCoachMessage.count({ where: { userId } }),
+    prisma.aiCoachMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: MAX_RETURNED_MESSAGES,
+    }),
+  ]);
+
+  return {
+    messages: recent.reverse().map(toDTO),
+    truncated: totalCount > MAX_RETURNED_MESSAGES,
+  };
+}
+
+/**
+ * Pulls a small, real snapshot of this user's data to ground the coach's
+ * replies — not exhaustive (that would bloat every prompt's token cost
+ * for diminishing benefit), just enough that "what are my goals" or "how
+ * has my training been going" get a real, specific answer instead of a
+ * generic one.
+ */
+async function buildSystemPrompt(userId: string): Promise<string> {
+  const [profile, recentSessions, latestMeasurement] = await Promise.all([
+    prisma.onboardingProfile.findUnique({ where: { userId } }),
+    prisma.workoutSession.findMany({
+      where: { userId, status: "completed" },
+      orderBy: { completedAt: "desc" },
+      take: 3,
+      include: { workout: { select: { name: true } } },
+    }),
+    prisma.bodyMeasurement.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+  ]);
+
+  const goals = profile?.goals?.length ? profile.goals.join(", ") : "not specified yet";
+  const level = profile?.trainingLevel ?? "not specified yet";
+  const recentWorkoutsText = recentSessions.length
+    ? recentSessions
+        .map(
+          (s: { workout: { name: string }; completedAt: Date | null }) =>
+            `${s.workout.name}${s.completedAt ? ` (${s.completedAt.toISOString().slice(0, 10)})` : ""}`,
+        )
+        .join("; ")
+    : "no completed workouts logged yet";
+  const weightText = latestMeasurement?.weightKg
+    ? `${latestMeasurement.weightKg} kg, logged ${latestMeasurement.loggedAt.toISOString().slice(0, 10)}`
+    : "not logged yet";
+
+  return [
+    "You are the 23Prime AI Coach inside the PrimeFit fitness app — a supportive, knowledgeable fitness and nutrition coach speaking directly to the user.",
+    "Keep replies short and practical: 2-4 short paragraphs or a brief list, never a wall of text. Be encouraging but honest, never a licensed medical professional.",
+    "If the user's message touches on pain, injury, a medical condition, or anything that sounds like it needs a diagnosis, say so plainly and recommend they speak with a doctor or physical therapist before continuing.",
+    `What you actually know about this user right now — stated goals: ${goals}. Training level: ${level}. Most recent completed workouts: ${recentWorkoutsText}. Latest logged weight: ${weightText}.`,
+    "Use this only when it's actually relevant to what they asked — don't recite it back unprompted, and never invent details beyond what's listed here; ask a clarifying question instead of guessing.",
+  ].join("\n\n");
+}
+
+export async function sendMessage(
+  userId: string,
+  content: string,
+): Promise<{ userMessage: AiCoachMessageDTO; assistantMessage: AiCoachMessageDTO }> {
+  if (!isAiConfigured()) {
+    throw new ApiHttpError(
+      503,
+      "ai_coach_not_configured",
+      "The AI Coach isn't configured on this server yet — set ANTHROPIC_API_KEY or OPENAI_API_KEY",
+    );
+  }
+
+  // Distinct from the check above on purpose (27 Aug 2026, Module 11 AI
+  // Operations) — "not configured" is an infrastructure fact, this is a
+  // product/admin decision layered on top of an otherwise-working
+  // provider. See adminAiOps.service.ts's own doc comment.
+  if (!(await isAiCoachEnabledByAdmin())) {
+    throw new ApiHttpError(
+      503,
+      "ai_coach_disabled",
+      "The AI Coach has been temporarily turned off by an admin — try again later",
+    );
+  }
+
+  // Persisted before the AI call, not after — a slow or failed upstream
+  // call should never silently drop what the user actually typed, same
+  // "the write is real even if a downstream step fails" precedent as the
+  // rest of this app.
+  const userMessage = await prisma.aiCoachMessage.create({
+    data: { userId, role: "user", content },
+  });
+
+  const [systemPrompt, history] = await Promise.all([
+    buildSystemPrompt(userId),
+    prisma.aiCoachMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: MAX_HISTORY_MESSAGES,
+    }),
+  ]);
+
+  const transcript = history
+    .reverse()
+    .map((m: { role: string; content: string }) => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`)
+    .join("\n");
+  const prompt = `${systemPrompt}\n\nConversation so far:\n${transcript}\n\nCoach:`;
+
+  let replyText: string;
+  try {
+    replyText = (await generateCompletion(prompt)).trim();
+  } catch {
+    // The user's message stays saved (see above) — only the reply failed.
+    // A retry re-sends the same conversation, no data lost either way.
+    throw new ApiHttpError(
+      502,
+      "ai_coach_upstream_error",
+      "The AI Coach couldn't respond right now — try again in a moment",
+    );
+  }
+
+  const assistantMessage = await prisma.aiCoachMessage.create({
+    data: {
+      userId,
+      role: "assistant",
+      // A genuinely empty completion is rare but real (e.g. provider-side
+      // content filtering) — this is an honest fallback string, not a
+      // fabricated answer, same spirit as this app's other empty-states.
+      content: replyText || "I don't have a response for that — could you try rephrasing?",
+    },
+  });
+
+  return { userMessage: toDTO(userMessage), assistantMessage: toDTO(assistantMessage) };
+}

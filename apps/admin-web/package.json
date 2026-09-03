@@ -1,0 +1,36 @@
+{
+  "name": "@fitness-ai-app/admin-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Super Admin Console frontend (docs/admin/*.md) — Phase 6. Grew from 20 Aug 2026's first real slice (admin login + Executive Dashboard) to all 12 modules having at least one real screen (38 of 54 spec'd screens real) as of 27 Aug 2026 — see README.md for the full module-by-module breakdown and reports/build-plan.html for what's still genuinely blocked.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@fitness-ai-app/types": "*",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.19.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "^7.18.0",
+    "recharts": "^3.10.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "~18.2.79",
+    "@types/react-dom": "~18.2.25",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "eslint": "^8.57.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.6.2",
+    "vite": "^8.0.0"
+  }
+}

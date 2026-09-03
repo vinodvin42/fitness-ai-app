@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "23PrimeFit",
+    "slug": "23primefit-user-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "primefit",
+    "userInterfaceStyle": "dark",
+    "platforms": ["ios", "android", "web"],
+    "ios": {
+      "bundleIdentifier": "com.primefit.usermobile",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.primefit.usermobile",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "23PrimeFit uses Face ID to unlock the app when Biometric Unlock is turned on in Settings."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "23PrimeFit uses your camera to take a Progress Photo.",
+          "photosPermission": "23PrimeFit uses your photo library so you can upload a Progress Photo.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000"
+    }
+  }
+}

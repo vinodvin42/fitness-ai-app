@@ -1,0 +1,29 @@
+{
+  "name": "fitness-ai-app",
+  "private": true,
+  "description": "PrimeFit / 23PrimeFit — monorepo. apps/api (backend) + apps/user-mobile (Expo/RN, Phases 0-4) + apps/admin-web (Vite/React, Phase 6 start, 20 Aug 2026) + apps/coach-mobile (Expo/RN, Phase 5 start, 20 Aug 2026). See docs/platform/roadmap.md for build order.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:mobile": "npm run start --workspace=apps/user-mobile",
+    "dev:admin": "npm run dev --workspace=apps/admin-web",
+    "dev:coach": "npm run start --workspace=apps/coach-mobile",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:admin": "npm run build --workspace=apps/admin-web",
+    "db:migrate": "npm run db:migrate --workspace=apps/api",
+    "db:seed": "npm run db:seed --workspace=apps/api",
+    "build:mobile": "npm run build:web --workspace=apps/user-mobile",
+    "typecheck": "npm run typecheck --workspace=apps/api && npm run typecheck --workspace=apps/admin-web && npm run typecheck --workspace=apps/user-mobile && npm run typecheck --workspace=apps/coach-mobile",
+    "lint": "npm run lint --workspace=apps/api && npm run lint --workspace=apps/admin-web && npm run lint --workspace=apps/user-mobile && npm run lint --workspace=apps/coach-mobile"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

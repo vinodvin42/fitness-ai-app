@@ -1,0 +1,20 @@
+import type {
+  CreateRazorpayOrderInput,
+  RazorpayOrder,
+  VerifyRazorpayPaymentInput,
+  VerifyRazorpayPaymentResult,
+} from "@fitness-ai-app/types";
+import { apiClient } from "./client";
+
+// Razorpay integration (20 Aug 2026, gap §14) — see
+// apps/api/src/modules/payments's doc comment for the full flow this
+// pairs with, and src/lib/useRazorpayPurchase.ts / RazorpayCheckoutModal.tsx
+// for how the two calls below are actually used from a screen.
+
+export function createRazorpayOrder(input: CreateRazorpayOrderInput) {
+  return apiClient.post<RazorpayOrder>("/payments/razorpay/orders", input).then((r) => r.data);
+}
+
+export function verifyRazorpayPayment(input: VerifyRazorpayPaymentInput) {
+  return apiClient.post<VerifyRazorpayPaymentResult>("/payments/razorpay/verify", input).then((r) => r.data);
+}

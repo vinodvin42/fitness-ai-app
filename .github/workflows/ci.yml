@@ -1,0 +1,121 @@
+name: CI
+
+# Go-live hardening follow-up (25 Aug 2026) — apps/api/README.md's
+# Deployment section used to flag "no Dockerfile/CI pipeline" as a real
+# gap. The Dockerfile half turned out to be unnecessary (Render builds
+# straight from npm run build/start, see render.yaml) — but CI was still
+# a genuine gap, and this closes it for real rather than leaving it noted
+# and unfixed.
+#
+# This is also the one place able to prove something no sandbox this
+# project has been built in ever could: every one of those sandboxes
+# blocks binaries.prisma.sh at the network level, so `prisma generate` —
+# and therefore an actual boot against a real Postgres — has never
+# succeeded anywhere this code has run. A GitHub-hosted runner has normal
+# internet access, so this workflow's "boot and confirm /health" step
+# (below) is the first real, automated confirmation that the API starts
+# and connects to a database at all. See DEPLOY-RUNBOOK.md step 2.4 for
+# why that step still matters even after this exists — a CI runner isn't
+# Render's own build environment, so this narrows the risk, it doesn't
+# fully retire it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fitness_ai_app_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # CI-only values, never real secrets — this database and these keys
+      # exist for the length of one workflow run and are thrown away
+      # after. Real secrets live in Render/Vercel's own env var UI (see
+      # DEPLOY-RUNBOOK.md), never in this file.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fitness_ai_app_ci?schema=public
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential
+      ADMIN_JWT_SECRET: ci-only-admin-secret-not-a-real-credential
+      PROFESSIONAL_JWT_SECRET: ci-only-professional-secret-not-a-real-credential
+      CORS_ORIGINS: http://localhost:5173
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Lint every workspace
+        run: npm run lint
+
+      - name: Typecheck every workspace
+        run: npm run typecheck
+
+      # db push, not migrate deploy — this project has no committed
+      # migration history yet (see render.yaml's own comment for why).
+      # Update this the same day render.yaml switches, so CI keeps
+      # matching how production is actually deployed.
+      - name: Sync database schema
+        run: npx prisma db push --accept-data-loss --schema=apps/api/prisma/schema.prisma
+
+      - name: Build the API
+        run: npm run build --workspace=apps/api
+
+      - name: Boot the API and confirm /health responds
+        run: |
+          node apps/api/dist/index.js &
+          API_PID=$!
+          ok=""
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:4000/health; then
+              echo
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          kill "$API_PID" 2>/dev/null || true
+          if [ -z "$ok" ]; then
+            echo "API never responded on /health — see the job log above for what index.ts printed before this." >&2
+            exit 1
+          fi
+          echo "API booted and connected to Postgres successfully."
+
+      - name: Build admin-web
+        run: npm run build --workspace=apps/admin-web
+
+      - name: Build user-mobile (web export)
+        run: npm run build:mobile

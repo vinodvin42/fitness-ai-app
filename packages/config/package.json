@@ -1,0 +1,10 @@
+{
+  "name": "@fitness-ai-app/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared tsconfig/eslint base config, referenced by apps/* and packages/* — see ../../docs/platform/project-structure.md",
+  "files": [
+    "tsconfig.base.json",
+    ".eslintrc.base.json"
+  ]
+}

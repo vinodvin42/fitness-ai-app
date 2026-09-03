@@ -1,0 +1,512 @@
+<title>PrimeFit Build Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f7f4;
+    --surface: #ffffff;
+    --surface-raised: #fdfdfb;
+    --border: #dfe5dc;
+    --border-strong: #c8d0c4;
+    --text-primary: #12181a;
+    --text-secondary: #4d5951;
+    --text-dim: #838f85;
+    --accent: #0e8f5c;
+    --accent-strong: #086b45;
+    --accent-soft: #e3f3e9;
+    --mono-tint: #eef1ea;
+    --tag-green-fg: #0e8f5c;
+    --tag-green-bg: #e3f3e9;
+    --tag-amber-fg: #a3690f;
+    --tag-amber-bg: #faf1de;
+    --tag-red-fg: #b83d34;
+    --tag-red-bg: #fbe7e4;
+    --shadow: 0 1px 2px rgba(20, 30, 24, 0.04), 0 1px 1px rgba(20, 30, 24, 0.03);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0e0c;
+      --surface: #121613;
+      --surface-raised: #151b17;
+      --border: #232b25;
+      --border-strong: #303a32;
+      --text-primary: #eaf0ea;
+      --text-secondary: #a4b0a4;
+      --text-dim: #6d786f;
+      --accent: #38d69c;
+      --accent-strong: #5fe3b3;
+      --accent-soft: rgba(56, 214, 156, 0.12);
+      --mono-tint: #171d19;
+      --tag-green-fg: #4fdba0;
+      --tag-green-bg: rgba(79, 219, 160, 0.13);
+      --tag-amber-fg: #f0b94d;
+      --tag-amber-bg: rgba(240, 185, 77, 0.13);
+      --tag-red-fg: #f0796f;
+      --tag-red-bg: rgba(240, 121, 111, 0.13);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0a0e0c;
+    --surface: #121613;
+    --surface-raised: #151b17;
+    --border: #232b25;
+    --border-strong: #303a32;
+    --text-primary: #eaf0ea;
+    --text-secondary: #a4b0a4;
+    --text-dim: #6d786f;
+    --accent: #38d69c;
+    --accent-strong: #5fe3b3;
+    --accent-soft: rgba(56, 214, 156, 0.12);
+    --mono-tint: #171d19;
+    --tag-green-fg: #4fdba0;
+    --tag-green-bg: rgba(79, 219, 160, 0.13);
+    --tag-amber-fg: #f0b94d;
+    --tag-amber-bg: rgba(240, 185, 77, 0.13);
+    --tag-red-fg: #f0796f;
+    --tag-red-bg: rgba(240, 121, 111, 0.13);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html { text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--text-primary); }
+  a { color: var(--accent-strong); text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
+  a:hover { text-decoration-color: currentColor; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+
+  .page { max-width: 920px; margin: 0 auto; padding: 4rem 1.75rem 6rem; }
+
+  header.hero { margin-bottom: 2.6rem; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent-strong); font-weight: 500; margin: 0 0 0.9rem;
+  }
+  h1.title {
+    font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: clamp(2rem, 4.2vw, 2.7rem);
+    line-height: 1.08; letter-spacing: -0.015em; margin: 0 0 0.85rem; text-wrap: balance;
+  }
+  .dek { font-size: 1.06rem; color: var(--text-secondary); max-width: 66ch; margin: 0 0 1.5rem; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem; color: var(--text-dim); padding-top: 1.1rem; border-top: 1px solid var(--border);
+  }
+  .meta-row strong { color: var(--text-secondary); font-weight: 500; }
+
+  /* ---- Legend ---- */
+  .legend-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.2rem 1.4rem; margin: 2rem 0 2.6rem; box-shadow: var(--shadow);
+  }
+  .legend-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-dim); margin: 0 0 0.9rem;
+  }
+  .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+  .legend-item { display: flex; gap: 0.7rem; align-items: flex-start; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 0.4rem; flex: none; }
+  .legend-dot.green { background: var(--tag-green-fg); }
+  .legend-dot.amber { background: var(--tag-amber-fg); }
+  .legend-dot.red { background: var(--tag-red-fg); }
+  .legend-item h5 { margin: 0 0 0.15rem; font-family: 'Hanken Grotesk', sans-serif; font-size: 0.92rem; font-weight: 650; }
+  .legend-item p { margin: 0; font-size: 0.82rem; color: var(--text-secondary); }
+
+  /* ---- Stat strip ---- */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 2.6rem; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem 0.95rem; box-shadow: var(--shadow); }
+  .stat-num { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 1.6rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat-num.green { color: var(--tag-green-fg); }
+  .stat-num.amber { color: var(--tag-amber-fg); }
+  .stat-num.red { color: var(--tag-red-fg); }
+  .stat-label { margin-top: 0.4rem; font-size: 0.76rem; color: var(--text-dim); }
+
+  /* ---- TOC ---- */
+  nav.toc { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.4rem; margin-bottom: 3rem; }
+  nav.toc .toc-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 0.7rem; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 2rem; font-size: 0.87rem; }
+  nav.toc li { break-inside: avoid; margin-bottom: 0.4rem; }
+  nav.toc a { color: var(--text-secondary); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent-strong); }
+  nav.toc .n { font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); margin-right: 0.5rem; }
+
+  /* ---- Sections ---- */
+  section.phase { margin-bottom: 3.2rem; scroll-margin-top: 1.5rem; }
+  .phase-head { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.4rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--border); }
+  .phase-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--text-dim); }
+  h2 { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 1.4rem; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  .phase-sub { margin: 0.5rem 0 1.3rem; color: var(--text-secondary); font-size: 0.94rem; max-width: 74ch; }
+
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 0.86em; background: var(--mono-tint); padding: 0.14em 0.4em; border-radius: 4px; color: var(--text-primary); }
+
+  /* ---- Item cards ---- */
+  .item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.15rem 1.3rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 0.9rem; }
+  .item-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.6rem; }
+  .item-name { font-family: 'Hanken Grotesk', sans-serif; font-weight: 650; font-size: 1.02rem; }
+  .item-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--text-dim); margin-right: 0.5rem; }
+
+  .tag { display: inline-flex; align-items: center; gap: 0.4em; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.02em; padding: 0.22em 0.65em; border-radius: 99px; white-space: nowrap; }
+  .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .tag.green { color: var(--tag-green-fg); background: var(--tag-green-bg); }
+  .tag.amber { color: var(--tag-amber-fg); background: var(--tag-amber-bg); }
+  .tag.red { color: var(--tag-red-fg); background: var(--tag-red-bg); }
+
+  .item dl { display: grid; grid-template-columns: 6.4rem 1fr; gap: 0.5rem 0.9rem; margin: 0; font-size: 0.9rem; }
+  .item dt { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); padding-top: 0.15rem; }
+  .item dd { margin: 0; color: var(--text-secondary); }
+  .item dd.next { color: var(--text-primary); }
+
+  /* ---- Order section ---- */
+  .order-list { list-style: none; margin: 0; padding: 0; counter-reset: batch; }
+  .batch { margin-bottom: 1.8rem; }
+  .batch-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.7rem; }
+  .batch-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--accent-strong); font-weight: 600; }
+  .batch h3 { font-family: 'Hanken Grotesk', sans-serif; font-size: 1.05rem; font-weight: 650; margin: 0; }
+  .batch p.batch-desc { margin: 0.25rem 0 0.8rem; font-size: 0.88rem; color: var(--text-secondary); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip { font-size: 0.83rem; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 0.4rem 0.75rem; }
+
+  footer { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--text-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+
+  @media (max-width: 640px) {
+    .page { padding: 2.5rem 1.15rem 4rem; }
+    nav.toc ol { columns: 1; }
+    .item dl { grid-template-columns: 1fr; }
+    .item dt { padding-top: 0.5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <p class="eyebrow">Engineering roadmap · companion to the status report</p>
+    <h1 class="title">Build Plan — every partial and not-started item, phase by phase</h1>
+    <p class="dek">Every "partial" or "not started" row from the status report, expanded into what's actually missing and — more usefully — what unblocks it next: pure engineering time, a decision only you can make, or an account/hardware you need to obtain. A suggested build order sits at the end.</p>
+    <div class="meta-row">
+      <span><strong>Prepared</strong> 25 Aug 2026 · updated 26 Aug 2026</span>
+      <span><strong>Repo</strong> fitness-ai-app</span>
+      <span><strong>Companions</strong> reports/implementation-report.html, reports/finance-architecture-plan.html</span>
+    </div>
+  </header>
+
+  <div class="legend-box">
+    <p class="legend-title">How each item is tagged</p>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="legend-dot green"></div><div><h5>Buildable now</h5><p>Pure engineering follow-up — the data or pattern already exists, no decision or account needed.</p></div></div>
+      <div class="legend-item"><div class="legend-dot amber"></div><div><h5>Needs your decision</h5><p>A scoping, policy, or design call only you can make — then it's buildable.</p></div></div>
+      <div class="legend-item"><div class="legend-dot red"></div><div><h5>Needs an account or hardware</h5><p>Blocked on a vendor account, human staff, or physical device — no decision unlocks it, only acquiring the thing.</p></div></div>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-tile"><div class="stat-num green">0</div><div class="stat-label">buildable now</div></div>
+    <div class="stat-tile"><div class="stat-num amber">15</div><div class="stat-label">need your decision</div></div>
+    <div class="stat-tile"><div class="stat-num red">3</div><div class="stat-label">need an account or hardware</div></div>
+  </div>
+  <p class="phase-sub" style="margin-top:-1.8rem;margin-bottom:2.6rem;"><strong>0 is correct, not an error:</strong> every item that was ever tagged "buildable now" (Batch 1, 13 items across Modules 09/10/12) has shipped as of 26 Aug 2026. Everything remaining below needs either a decision or an external account/hardware — see the Suggested build order section for the current groupings.</p>
+
+  <nav class="toc" aria-label="Table of contents">
+    <p class="toc-label">Contents</p>
+    <ol>
+      <li><a href="#mobile"><span class="n">01</span>Consumer app — remaining gaps</a></li>
+      <li><a href="#coach"><span class="n">02</span>Coach app — remaining gaps</a></li>
+      <li><a href="#m02"><span class="n">03</span>Admin 02 — Users</a></li>
+      <li><a href="#m05"><span class="n">04</span>Admin 05 — Programs</a></li>
+      <li><a href="#m06"><span class="n">05</span>Admin 06 — Commerce</a></li>
+      <li><a href="#m07"><span class="n">06</span>Admin 07 — Growth</a></li>
+      <li><a href="#m08"><span class="n">07</span>Admin 08 — Support &amp; Safety</a></li>
+      <li><a href="#m09"><span class="n">08</span>Admin 09 — Analytics</a></li>
+      <li><a href="#m10"><span class="n">09</span>Admin 10 — Finance</a></li>
+      <li><a href="#m11"><span class="n">10</span>Admin 11 — AI Operations</a></li>
+      <li><a href="#m12"><span class="n">11</span>Admin 12 — Admin &amp; System</a></li>
+      <li><a href="#order"><span class="n">12</span>Suggested build order</a></li>
+    </ol>
+  </nav>
+
+  <section class="phase" id="mobile">
+    <div class="phase-head"><span class="phase-num">01</span><h2>Consumer app (user-mobile) — remaining gaps</h2></div>
+    <p class="phase-sub">Everything else in the 5-phase mobile build is real. Two items remain, both genuinely outside engineering's control.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">Phase 2</span>Recovery &amp; Devices</div><span class="tag red">needs hardware</span></div>
+      <dl>
+        <dt>Missing</dt><dd>Wearable/BLE pairing, HealthKit/Google Fit sync, the Readiness Score card, and any recovery-trend chart. No Bluetooth or health-platform integration exists anywhere in this build.</dd>
+        <dt>Why stuck</dt><dd>Needs a real device to pair against and an Apple/Google developer account for HealthKit/Google Fit entitlements — there's no honest way to fake this with mock data that would still prove the integration works.</dd>
+        <dt class="next">Next step</dt><dd class="next">Get an Apple Developer and/or Google Play Console account, plus a physical device with a wearable to test pairing against. Nothing to plan beyond that — this is acquisition, not a design question.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">Phase 4</span>Live chat support</div><span class="tag red">needs a vendor or staff</span></div>
+      <dl>
+        <dt>Missing</dt><dd>Real-time chat with a support agent, from Settings → Support.</dd>
+        <dt>Why stuck</dt><dd>Needs either real human agents on the other end, or a support-platform account (Intercom/Zendesk-style). Building an AI-powered chat that presented itself as "live chat" would misrepresent what it is.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide staffing model first (in-house agents vs. a vendor), then create that vendor's account if applicable. Support Tickets (admin 08.01) already covers async support in the meantime.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="coach">
+    <div class="phase-head"><span class="phase-num">02</span><h2>Coach app (coach-mobile) — remaining gaps</h2></div>
+    <p class="phase-sub">Auth, onboarding, dashboard, discovery/booking, and — as of 26 Aug 2026 — Calendar are all real. Two tabs remain with no design source at all.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">Messages / More tabs</div><span class="tag amber">needs a design decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>Both tabs render honest "Coming soon" placeholders. Messages needs both a design and a message data model that exists nowhere in this build; More has zero frames anywhere, on either app or role. (Calendar, previously listed here alongside these two, shipped 26 Aug 2026 as a real sectioned <code>Booking</code> list — see the Coach app README.)</dd>
+        <dt>Why stuck</dt><dd>Not a hardware or account blocker — there's simply no design to build against. Messages additionally needs a real-time delivery decision (polling vs. WebSocket vs. a vendor) once a design exists.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide scope for each tab: Messages (design + delivery mechanism), More (what belongs here that isn't already in the other 5 tabs). Neither has an obvious real data source to build against the way Calendar's <code>Booking</code> rows did.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m02">
+    <div class="phase-head"><span class="phase-num">03</span><h2>Admin 02 — Users</h2></div>
+    <p class="phase-sub">Directory, Profile, and the Sensitive Data Access Request workflow are all real. <strong>26 Aug 2026: Bulk-select + suspend/reactivate shipped too</strong> — re-investigated directly against the schema rather than trusting this section's own prior framing, and found it didn't actually need a product decision: it's the exact same account-operations pattern already shipped for <code>Professional</code>/<code>AdminUser</code>, not the trust-and-safety moderation call 08.04 Safety/Abuse Reports still needs. <code>User</code> gained a real <code>status</code> field; the Directory gained a real checkbox column and bulk-action bar (one real suspend/reactivate call per selected row). One spec'd primary action remains.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">Auto-renew toggle</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A toggle on the User Profile's Subscription card. <code>Subscription</code> has no <code>autoRenew</code> column, and no billing/renewal engine exists to make a real toggle meaningful even if the field existed.</dd>
+        <dt>Why stuck</dt><dd>This is bigger than a field — it implies a scheduled renewal job (charge the saved payment method on the billing date) that doesn't exist anywhere in this build. Building the field without the engine would be a switch that does nothing.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide whether subscriptions should auto-renew at all in v1, or stay manual-renewal-only. If yes, this is really a Commerce/billing-engine project, not a one-screen admin feature.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m05">
+    <div class="phase-head"><span class="phase-num">04</span><h2>Admin 05 — Programs (Content CMS)</h2></div>
+    <p class="phase-sub">Create/edit/publish for Programs, Exercises, and Recipes, plus the Review/Approval queue, are all real. One content type remains unmodeled.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">05.04 Educational Content</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>An entirely new content type — no <code>EducationalContent</code> entity, no admin screen, no mobile surface to read it.</dd>
+        <dt>Why stuck</dt><dd>Not fundamentally infra-blocked like Recovery &amp; Devices, but genuinely <em>two</em> stacked decisions, not one — re-investigated 26 Aug 2026 and this line's earlier "one small decision" framing turned out to be wrong. Even granting a content-taxonomy call (articles? video? both?), there's still no mobile IA slot to attach it to anywhere in <code>user-mobile</code>'s navigation — unlike Calendar or Geographic below, which both had a clear, already-designed destination waiting, this would need an invented nav placement with zero design precedent in either Figma file.</dd>
+        <dt class="next">Next step</dt><dd class="next">Scope the content shape <strong>and</strong> pick (or design) a consumer-app nav slot for it — a new tab, a new section under an existing tab, whatever fits. Once both are decided, this follows the exact <code>Program</code>/<code>Exercise</code>/<code>Recipe</code> pattern already built — a fourth <code>ContentReview.contentType</code> value slots in for free.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m06">
+    <div class="phase-head"><span class="phase-num">05</span><h2>Admin 06 — Commerce</h2></div>
+    <p class="phase-sub">Payments directory/detail and Plans CRUD are real. Re-investigated this session — the remaining gaps are genuine, not stale, and each is a money-policy question before it's an engineering one.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">06.01 Subscriptions revenue waterfall</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A Gross → Discounts → Gateway fees → Refunds → Settlements → Net chart. 3 of 6 stages have no backing entity.</dd>
+        <dt>Why stuck</dt><dd>Rendering a waterfall with half its stages fabricated would misrepresent real revenue — worse than an honest gap. Genuinely blocked on 06.04/06.05 below existing first.</dd>
+        <dt class="next">Next step</dt><dd class="next">Build after Refunds and Coupons below exist for real — this becomes a straightforward aggregation once they do.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">06.04 Refunds</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A <code>Refund</code> entity, a refund-request flow (mobile or admin-initiated), and a real Razorpay refund-API call.</dd>
+        <dt>Why stuck</dt><dd>A refund is a real money-movement event — marking a <code>Payment</code> "refunded" internally without an actual gateway call would misrepresent a financial record. Needs a refund policy first: who can request one, what's the approval flow, what's the eligibility window.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide the refund policy, then wire <code>razorpayClient.ts</code>'s missing refund-API wrapper against it — same "real action or nothing" bar every other financial screen in this build already holds to.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">06.05 Coupons</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A <code>Coupon</code> entity and a discount-code field anywhere in the checkout flow. Nothing to apply one against exists today.</dd>
+        <dt>Why stuck</dt><dd>Needs a discount policy — percentage vs. flat, single-use vs. reusable, expiry rules — before the entity shape can be designed.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide discount structure, then this follows the same real-CRUD pattern <code>adminPlans</code> already established for <code>SubscriptionPlan</code>.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m07">
+    <div class="phase-head"><span class="phase-num">06</span><h2>Admin 07 — Growth</h2></div>
+    <p class="phase-sub">Referrals directory and leaderboard are real, read-only. Re-investigated this session — confirmed genuinely blocked, not stale.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">07.01/07.02 Influencers</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>An <code>Influencer</code> partner entity (code, discount, commission, status) plus click-tracking and a discount-code checkout flow — 5 of 9 spec'd table columns have zero backing data anywhere.</dd>
+        <dt>Why stuck</dt><dd>This is a whole affiliate/partner-program decision, not just a schema gap: commission structure, discount terms, and how a partner's code actually gets tracked through checkout all need answers first.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide whether an influencer/affiliate program is in scope for v1 at all. If yes, it shares infrastructure with Coupons above (both need a real discount-code-at-checkout mechanism) — worth designing together.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">07.04 Campaigns &amp; Attribution</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A <code>Campaign</code> entity, an attribution model, and any UTM/campaign-tracking mechanism.</dd>
+        <dt>Why stuck</dt><dd>Needs a decision on which attribution model to support (last-touch is the simplest) before the tracking mechanism can be designed.</dd>
+        <dt class="next">Next step</dt><dd class="next">Lower priority than Influencers above — revisit once marketing actually runs campaigns worth attributing.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m08">
+    <div class="phase-head"><span class="phase-num">07</span><h2>Admin 08 — Support &amp; Safety</h2></div>
+    <p class="phase-sub">Support Tickets and (this session) Escalations are real. Two items remain, each needing its own filing flow.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">08.03 Complaints</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A formal complaint-filing flow (neither mobile app has one) and a <code>Complaint</code> entity with a "dossier" of facts.</dd>
+        <dt>Why stuck</dt><dd>Unlike Escalations, there's no existing action a "resolution" could safely reuse, and it's unclear who a complaint is even against — a <code>User</code>? a <code>Professional</code>? Both are plausible.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide who can be complained about and what a resolution actually does. Once scoped, the shape mirrors Escalations closely — a workflow record with a real filing action and a real resolve action.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">08.04 Safety / Abuse Reports</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>An abuse-report flow, a <code>SafetyReport</code> entity, and any real moderation action to back it.</dd>
+        <dt>Why stuck</dt><dd>A safety queue with no real moderation action behind it would misrepresent trust &amp; safety capability this build doesn't have — a sharper version of the reasoning that kept Refunds and Complaints unbuilt too. <strong>26 Aug 2026:</strong> <code>User</code> did gain a real <code>status</code> field, but for Module 02.01's account-operations use (suspend/reactivate, no reason code, no appeal) — a genuinely narrower thing than what this item needs (ban/appeal/severity, who can flip it and on what grounds). Still needs a real moderation-policy decision, not just a schema field.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide moderation capability: does a report actually lead to a ban/restriction, and who can impose one? Module 02.01's <code>status</code> field and suspend/reactivate endpoint shape could be reused as the mechanism once that's decided — the schema follow-up would be small.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m09">
+    <div class="phase-head"><span class="phase-num">08</span><h2>Admin 09 — Analytics</h2></div>
+    <p class="phase-sub">09.01 User Analytics (its home tab, plus Training/Nutrition) was already real. <strong>26 Aug 2026:</strong> every item that was tagged "buildable now" in this module has now shipped — 09.01's AI tab and compare toggle, two brand-new screens (09.02 Engagement, 09.03 Fitness &amp; Nutrition), and, in a later pass the same day, the Geographic tab (folding in 09.05). See <code>adminAnalytics.service.ts</code>'s own doc comment and <code>apps/api/README.md</code>'s Phase 6 paragraph for the full breakdown; the short version: the AI tab now reads real <code>AiCoachMessage</code> data, the compare toggle surfaces each KPI's already-computed <code>previousValue</code>, 09.02 answers "do new users convert and stick" via a real signup→onboarding→first-workout→retention funnel (genuinely distinct from 09.01, not a near-duplicate as this plan originally scoped it), 09.03 is a real drill-down (top exercises, per-program completion %, top meals) below 09.01's plain totals, and Geographic groups a new <code>User.countryCode</code> field into a country breakdown table — not the phone-inference approach this plan originally suggested (phone turned out to be optional, unvalidated free text, never actually collected at signup) — see Module 05's Educational Content item above for the same "re-investigated and the doc's own framing was wrong" pattern. <strong>27 Aug 2026:</strong> 09.06 Unit Economics/Cohorts shipped too — this section's own "Next step" text below used to say the CAC blocker just needed "an admin-entered monthly spend figure"; re-checking directly (not trusting that framing at face value) found that figure had already shipped a day earlier as Finance's <code>Expense.category: "marketing"</code> (10.03). <code>getUnitEconomics</code> now returns real New Users/Marketing Spend/CAC KPIs (CAC <code>null</code>, not a fabricated $0, whenever spend or new users is zero), an all-time Average LTV (generalizing Module 02's per-user figure, not a second definition), an LTV:CAC ratio with deliberately no fabricated benchmark tag, and a Cohort Economics table pairing each 09.01 signup cohort with that month's real spend/CAC — see <code>adminAnalytics.service.ts</code>'s <code>getUnitEconomics</code> doc comment for the full accounting, including what's still honestly not built (acquisition-channel split, a waterfall chart — no channel dimension or unambiguous cost breakdown exists anywhere for either). One item remains genuinely blocked, on a decision rather than missing infrastructure.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">09.01/09.04 Business (tab + own screen)</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A take-rate/commission entity — this build has never modeled a platform commission on coaching or program revenue.</dd>
+        <dt>Why stuck</dt><dd>Needs a pricing-model decision (does PrimeFit take a cut of coach earnings, and how much) before there's a real number to chart. Finance's "one ledger or two" question is now resolved (<code>reports/finance-architecture-plan.html</code>) — that resolves <em>where</em> this data would live (alongside <code>Payment</code>, not a separate ledger), but not the commission % itself, so this stays blocked.</dd>
+        <dt class="next">Next step</dt><dd class="next">Same decision as Finance's 10.06/10.07 and 07.01 Influencers — worth resolving once, together, not three times.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m10">
+    <div class="phase-head"><span class="phase-num">09</span><h2>Admin 10 — Finance</h2></div>
+    <p class="phase-sub">Its real blocker — one ledger or two — was decided 26 Aug 2026: one ledger. Finance is a deeper reporting/operations layer over the same <code>Payment</code>/<code>Subscription</code> data Commerce already owns, extended with 3 new entities (<code>Expense</code>, <code>Invoice</code>, <code>TaxConfig</code>), not a parallel bookkeeping system — full reasoning and schema in <code>reports/finance-architecture-plan.html</code>. <strong>That decision has since shipped:</strong> 7 of the 10 Finance screens are real — 10.01 Dashboard, 10.02 Revenue, 10.03's Expenses half, 10.04 Invoices, 10.05's Receivables half, 10.08 Taxes &amp; Compliance (a real admin-entered jurisdiction/rate settings screen, not an automated tax-rule engine), and 10.10 Reports — see <code>adminFinance.service.ts</code>'s own doc comment for the full endpoint-by-endpoint breakdown. Two items remain genuinely blocked.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">10.06 / 10.07</span>Coach Settlements &amp; Influencer Payouts</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd><code>CoachSettlement</code>/<code>InfluencerPayout</code> entities and the commission structure that would populate them.</dd>
+        <dt>Why stuck</dt><dd>Not resolved by the ledger decision — this is Module 07's blocker (commission/take-rate structure), and even once decided there's no real coaching-payment data yet (<code>Relationship</code> has no pricing, <code>Payment</code> has no coaching purpose).</dd>
+        <dt class="next">Next step</dt><dd class="next">Same decision as 07.01 Influencers and 09.04 Business Analytics below — worth resolving once, together.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">10.09</span>Bank / Payment Accounts</div><span class="tag red">needs a vendor account</span></div>
+      <dl>
+        <dt>Missing</dt><dd>Live-synced bank account cards with real balances and a refresh action.</dd>
+        <dt>Why stuck</dt><dd>The spec's own "sync"/"refresh" language describes real bank connectivity — a stored record with a sync button wired to nothing would misrepresent an integration that doesn't exist.</dd>
+        <dt class="next">Next step</dt><dd class="next">Acquire a banking-aggregation vendor account (Plaid-equivalent) or use Razorpay's own settlement/virtual-account APIs. Nothing to plan beyond that.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="m11">
+    <div class="phase-head"><span class="phase-num">10</span><h2>Admin 11 — AI Operations</h2></div>
+    <p class="phase-sub"><strong>27 Aug 2026: the smaller slice shipped, no item left to list here.</strong> Re-checked this section's own "not worth building as a full console yet" framing directly against the schema/code rather than trusting it at face value — the next-step text this section used to carry had already named a genuinely buildable alternative: a real, audit-logged on/off switch for AI Coach chat (the one real AI capability in this build), backed by a new <code>AiCoachSettings</code> singleton row and enforced in <code>aiCoach.service.ts</code>'s <code>sendMessage()</code>. What's left — the full 4-capability Feature Console, richer usage metrics, and a Safety/Overrides log — isn't blocked on a decision or an account/hardware either; it just needs the other 3 AI capabilities (workout generator, diet-log vision, readiness scoring — <code>docs/platform/roadmap.md</code>'s Phase 2 §H) to actually exist first, so there's nothing to list as an item in this report until then.</p>
+  </section>
+
+  <section class="phase" id="m12">
+    <div class="phase-head"><span class="phase-num">11</span><h2>Admin 12 — Admin &amp; System</h2></div>
+    <p class="phase-sub">Admin Users, Audit Logs, Integrations, and Security are real. <strong>26 Aug 2026:</strong> 12.02 Roles &amp; Permissions also shipped — <code>adminRoles.service.ts</code> serves a real, read-only view of the RBAC matrix already living in code (<code>adminPermissions.ts</code>'s <code>PERMISSION_MATRIX</code>) plus real per-role member counts, matching the Figma's own footnote that UI visibility is supplementary, not authoritative. "Create New Role"/"Edit Role Schemas" are deliberately still not built — that needs the matrix to become database-backed instead of code-defined, a bigger decision worth making deliberately. 12.04 is now partially shipped too — see below.</p>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">12.04 Privacy &amp; Data Governance</div><span class="tag amber">partially shipped</span></div>
+      <dl>
+        <dt>Shipped 26 Aug 2026</dt><dd>The DSAR (data-subject-access-request) half is real — <code>adminPrivacy.service.ts</code> surfaces every self-service data export / account deletion a user has made from <code>user-mobile</code>'s Security screen, via the real <code>user.data_exported</code>/<code>user.account_deleted</code> <code>AuditLog</code> trail, console-wide for the first time. Worth flagging honestly: this module's first draft wrongly modeled the DSAR card around the ADMIN-initiated <code>SensitiveDataAccessRequest</code> flow instead of the real self-service one — caught before shipping by re-reading this plan's own Module 02 notes and verified against <code>users.service.ts</code>. The Sensitive Data Access Log (the admin-initiated flow) is real too, kept as a clearly-labeled second, genuinely different section.</dd>
+        <dt>Still missing</dt><dd>Consent management and data-retention config. Neither has any backing concept anywhere in this build and both need real decisions (what counts as consent, what's the retention window per data type) before they're anything but a form that saves nowhere.</dd>
+        <dt class="next">Next step</dt><dd class="next">Scope consent-management and retention policy whenever there's a real compliance requirement driving it — nothing today is blocked on this not existing.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">12.07 Notifications</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A notification-templates card and a notification-gateways list (email/SMS/push providers).</dd>
+        <dt>Why stuck</dt><dd>No email/SMS/push infrastructure exists anywhere in this build — there's nothing to configure yet.</dd>
+        <dt class="next">Next step</dt><dd class="next">Decide on a transactional-email/SMS/push provider first (this is also what Phone+OTP auth and Live Chat above are separately waiting on) — worth a single infrastructure decision covering all three.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name">12.08 Platform Settings</div><span class="tag amber">needs your decision</span></div>
+      <dl>
+        <dt>Missing</dt><dd>A general settings screen — platform config fields, subscription defaults, professional/coaching toggles.</dd>
+        <dt>Why stuck</dt><dd>No settings-storage concept exists anywhere (every configurable value in this build today is an env var, not admin-editable). Needs a decision on which values should actually move from env vars to an editable settings table.</dd>
+        <dt class="next">Next step</dt><dd class="next">Lowest priority in this plan — nothing today is blocked on this not existing.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="phase" id="order">
+    <div class="phase-head"><span class="phase-num">12</span><h2>Suggested build order</h2></div>
+    <p class="phase-sub">Grouped by what unblocks each batch, not by module number — clearing a batch is what lets the next one start.</p>
+
+    <div class="order-list">
+      <div class="batch">
+        <div class="batch-head"><span class="batch-num">Batch 1</span><h3>Buildable immediately, no decisions needed</h3></div>
+        <p class="batch-desc"><strong>Complete as of 26 Aug 2026.</strong> All 13 items that were once listed here have shipped — 7 Finance screens (10.01, 10.02, 10.03's Expenses half, 10.04, 10.05's Receivables half, 10.08, 10.10), 09.01's AI tab and compare toggle, 09.02 Engagement, 09.03 Fitness &amp; Nutrition, 12.02 Roles &amp; Permissions, and 12.04's DSAR log — see Modules 09/10/12 above for the real-vs-not breakdown on each. Nothing left in this plan is buildable without either a decision (Batch 2–4) or an external account/hardware (Batch 5).</p>
+      </div>
+
+      <div class="batch">
+        <div class="batch-head"><span class="batch-num">Batch 2</span><h3>One small, contained decision, then buildable</h3></div>
+        <p class="batch-desc"><strong>Complete as of 26 Aug 2026 — with one correction.</strong> 09.05/09.01 Geographic and Coach app Calendar both shipped: Geographic as a real <code>User.countryCode</code> field (user-entered via a new Country Selection screen, not phone-inference as this line originally suggested) folded into 09.01's tab, Calendar as a real sectioned <code>Booking</code> list. <strong>05.04 Educational Content, the third item here, turned out not to belong in this batch</strong> — investigating it directly (rather than trusting this line's "one small decision" framing) found it needs two stacked decisions, not one: a content-taxonomy call, and a mobile nav slot that doesn't exist anywhere and would have to be invented. It's been moved to Batch 4 below.</p>
+      </div>
+
+      <div class="batch">
+        <div class="batch-head"><span class="batch-num">Batch 3</span><h3>Cross-cutting decisions worth making once</h3></div>
+        <p class="batch-desc">One decision here unblocks multiple line items above. ("User moderation/status field," previously listed here as unblocking both 02 bulk-select and 08.04 Safety Reports, turned out to be two separable things — 02's bulk-select shipped 26 Aug 2026 using a narrower account-operations <code>status</code>, not a moderation one, so only 08.04 is still waiting on a real moderation-policy decision; see that item above. "One ledger or two" — the other cross-cutting decision this batch used to list — is also resolved; see <code>reports/finance-architecture-plan.html</code>.)</p>
+        <div class="chip-row">
+          <span class="chip">Transactional email/SMS/push provider (unblocks 12.07, Phone+OTP, and informs Live Chat)</span>
+        </div>
+      </div>
+
+      <div class="batch">
+        <div class="batch-head"><span class="batch-num">Batch 4</span><h3>Standalone product/policy decisions</h3></div>
+        <p class="batch-desc">Each is self-contained — doesn't block or get blocked by the others.</p>
+        <div class="chip-row">
+          <span class="chip">06.04 Refund policy</span>
+          <span class="chip">06.05 / 07.01 / 10.06 / 10.07 / 09.04 Discount &amp; commission structure (one decision, five blocked items)</span>
+          <span class="chip">08.03 Complaints — who, and what resolution means</span>
+          <span class="chip">08.04 Safety/Abuse Reports — real moderation policy (ban/appeal), not just an account-ops status field</span>
+          <span class="chip">02 Auto-renew — decide if in scope for v1 at all</span>
+          <span class="chip">Coach app Messages/More — scope + delivery mechanism</span>
+          <span class="chip">05.04 Educational Content — content taxonomy <em>and</em> an invented mobile nav slot (moved from Batch 2, see above)</span>
+        </div>
+      </div>
+
+      <div class="batch">
+        <div class="batch-head"><span class="batch-num">Batch 5</span><h3>Acquire, don't decide</h3></div>
+        <p class="batch-desc">Nothing to plan — these need an account, staff, or hardware in hand before anything gets built.</p>
+        <div class="chip-row">
+          <span class="chip">Recovery &amp; Devices — dev accounts + a physical wearable</span>
+          <span class="chip">Live chat — support-platform account or human agents</span>
+          <span class="chip">10.09 Bank / Payment Accounts — banking-aggregation vendor account</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>PrimeFit / 23PrimeFit — fitness-ai-app monorepo</span>
+    <span>Companion to <code>reports/implementation-report.html</code></span>
+  </footer>
+
+</div>

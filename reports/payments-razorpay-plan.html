@@ -1,0 +1,404 @@
+<title>Payments (Razorpay) — Pending &amp; Partial Work</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f7f4;
+    --surface: #ffffff;
+    --surface-raised: #fdfdfb;
+    --border: #dfe5dc;
+    --border-strong: #c8d0c4;
+    --text-primary: #12181a;
+    --text-secondary: #4d5951;
+    --text-dim: #838f85;
+    --accent: #0e8f5c;
+    --accent-strong: #086b45;
+    --accent-soft: #e3f3e9;
+    --mono-tint: #eef1ea;
+    --tag-green-fg: #0e8f5c;
+    --tag-green-bg: #e3f3e9;
+    --tag-amber-fg: #a3690f;
+    --tag-amber-bg: #faf1de;
+    --tag-red-fg: #b83d34;
+    --tag-red-bg: #fbe7e4;
+    --shadow: 0 1px 2px rgba(20, 30, 24, 0.04), 0 1px 1px rgba(20, 30, 24, 0.03);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0e0c;
+      --surface: #121613;
+      --surface-raised: #151b17;
+      --border: #232b25;
+      --border-strong: #303a32;
+      --text-primary: #eaf0ea;
+      --text-secondary: #a4b0a4;
+      --text-dim: #6d786f;
+      --accent: #38d69c;
+      --accent-strong: #5fe3b3;
+      --accent-soft: rgba(56, 214, 156, 0.12);
+      --mono-tint: #171d19;
+      --tag-green-fg: #4fdba0;
+      --tag-green-bg: rgba(79, 219, 160, 0.13);
+      --tag-amber-fg: #f0b94d;
+      --tag-amber-bg: rgba(240, 185, 77, 0.13);
+      --tag-red-fg: #f0796f;
+      --tag-red-bg: rgba(240, 121, 111, 0.13);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0a0e0c;
+    --surface: #121613;
+    --surface-raised: #151b17;
+    --border: #232b25;
+    --border-strong: #303a32;
+    --text-primary: #eaf0ea;
+    --text-secondary: #a4b0a4;
+    --text-dim: #6d786f;
+    --accent: #38d69c;
+    --accent-strong: #5fe3b3;
+    --accent-soft: rgba(56, 214, 156, 0.12);
+    --mono-tint: #171d19;
+    --tag-green-fg: #4fdba0;
+    --tag-green-bg: rgba(79, 219, 160, 0.13);
+    --tag-amber-fg: #f0b94d;
+    --tag-amber-bg: rgba(240, 185, 77, 0.13);
+    --tag-red-fg: #f0796f;
+    --tag-red-bg: rgba(240, 121, 111, 0.13);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html { text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--text-primary); }
+  a { color: var(--accent-strong); text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
+  a:hover { text-decoration-color: currentColor; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+
+  .page { max-width: 920px; margin: 0 auto; padding: 4rem 1.75rem 6rem; }
+
+  header.hero { margin-bottom: 2.6rem; }
+  .eyebrow-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent-strong); font-weight: 500; margin: 0;
+  }
+  .badge-open {
+    display: inline-flex; align-items: center; gap: 0.4em; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--tag-amber-fg); background: var(--tag-amber-bg); padding: 0.22em 0.7em; border-radius: 99px;
+  }
+  .badge-open::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  h1.title {
+    font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 0.85rem; text-wrap: balance;
+  }
+  .dek { font-size: 1.06rem; color: var(--text-secondary); max-width: 68ch; margin: 0 0 1.5rem; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem; color: var(--text-dim); padding-top: 1.1rem; border-top: 1px solid var(--border);
+  }
+  .meta-row strong { color: var(--text-secondary); font-weight: 500; }
+
+  h2 { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 1.35rem; letter-spacing: -0.01em; margin: 0 0 0.3rem; text-wrap: balance; }
+  h3 { font-family: 'Hanken Grotesk', sans-serif; font-weight: 650; font-size: 1.05rem; margin: 1.4rem 0 0.6rem; }
+  section.block { margin-bottom: 3rem; scroll-margin-top: 1.5rem; }
+  .block-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--text-dim); display: block; margin-bottom: 0.35rem; }
+  .block-sub { margin: 0.5rem 0 1.3rem; color: var(--text-secondary); font-size: 0.96rem; max-width: 72ch; }
+  p { margin: 0 0 1rem; }
+  section.block > p:last-child { margin-bottom: 0; }
+
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 0.86em; background: var(--mono-tint); padding: 0.14em 0.4em; border-radius: 4px; color: var(--text-primary); }
+
+  blockquote.cite {
+    margin: 0 0 1.3rem; padding: 0.9rem 1.2rem; border-left: 3px solid var(--border-strong);
+    background: var(--surface-raised); border-radius: 0 8px 8px 0; color: var(--text-secondary);
+    font-size: 0.93rem; font-style: italic;
+  }
+  blockquote.cite footer { margin-top: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 0.76rem; color: var(--text-dim); }
+
+  /* ---- ADR (reused for the one open decision this doc surfaces but doesn't make) ---- */
+  .adr { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem 1.6rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+  .adr-row { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0.4rem 1.2rem; padding: 1rem 0; border-top: 1px solid var(--border); }
+  .adr-row:first-child { border-top: none; padding-top: 0; }
+  .adr-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); padding-top: 0.2rem; }
+  .adr-row .adr-value p:last-child { margin-bottom: 0; }
+  .adr-row.decision .adr-value { font-family: 'Hanken Grotesk', sans-serif; font-weight: 650; font-size: 1.05rem; color: var(--tag-amber-fg); }
+  .adr-value ol, .adr-value ul { margin: 0; padding-left: 1.2rem; }
+  .adr-value li { margin-bottom: 0.55rem; }
+  .adr-value li:last-child { margin-bottom: 0; }
+
+  @media (max-width: 640px) {
+    .adr-row { grid-template-columns: 1fr; }
+    .adr-label { padding-top: 0; }
+  }
+
+  /* ---- Code blocks ---- */
+  pre.code-block {
+    background: var(--mono-tint); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem 1.15rem; overflow-x: auto; margin: 0 0 1.3rem;
+  }
+  pre.code-block code { background: none; padding: 0; font-size: 0.83rem; line-height: 1.65; color: var(--text-primary); white-space: pre; }
+  .code-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); margin: 1.6rem 0 0.5rem; }
+  .code-label:first-child { margin-top: 0; }
+
+  /* ---- Callout ---- */
+  .callout { background: var(--surface-raised); border: 1px solid var(--border); border-left: 3px solid var(--tag-red-fg); border-radius: 0 10px 10px 0; padding: 1.1rem 1.3rem; margin-bottom: 1.3rem; }
+  .callout h4 { margin: 0 0 0.4rem; font-family: 'Hanken Grotesk', sans-serif; font-size: 0.95rem; font-weight: 650; color: var(--tag-red-fg); }
+  .callout p { color: var(--text-secondary); font-size: 0.92rem; margin: 0 0 0.6rem; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ---- Item cards (shared with build-plan.html / finance-architecture-plan.html) ---- */
+  .item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem 1.2rem; box-shadow: var(--shadow); margin-bottom: 0.85rem; }
+  .item-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.5rem; }
+  .item-name { font-family: 'Hanken Grotesk', sans-serif; font-weight: 650; font-size: 1rem; }
+  .item-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--text-dim); margin-right: 0.5rem; }
+  .item p.resolution { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
+
+  .tag { display: inline-flex; align-items: center; gap: 0.4em; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.02em; padding: 0.22em 0.65em; border-radius: 99px; white-space: nowrap; }
+  .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .tag.green { color: var(--tag-green-fg); background: var(--tag-green-bg); }
+  .tag.amber { color: var(--tag-amber-fg); background: var(--tag-amber-bg); }
+  .tag.red { color: var(--tag-red-fg); background: var(--tag-red-bg); }
+
+  /* ---- Phase steps ---- */
+  .phase-list { list-style: none; margin: 0; padding: 0; }
+  .phase-step { display: grid; grid-template-columns: 2.6rem 1fr; gap: 0 1.1rem; margin-bottom: 1.6rem; }
+  .phase-step:last-child { margin-bottom: 0; }
+  .phase-dot { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent-strong); background: var(--accent-soft); width: 2.6rem; height: 2.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .phase-dot.amber { color: var(--tag-amber-fg); background: var(--tag-amber-bg); }
+  .phase-step h4 { margin: 0.15rem 0 0.4rem; font-family: 'Hanken Grotesk', sans-serif; font-size: 1.02rem; font-weight: 650; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .phase-step .desc { color: var(--text-secondary); font-size: 0.92rem; margin: 0 0 0.5rem; }
+  .phase-step ul.files { margin: 0; padding-left: 1.15rem; font-size: 0.87rem; color: var(--text-secondary); }
+  .phase-step ul.files li { margin-bottom: 0.3rem; }
+  .phase-step ul.files li:last-child { margin-bottom: 0; }
+
+  @media (max-width: 640px) {
+    .phase-step { grid-template-columns: 1fr; }
+    .phase-dot { margin-bottom: 0.5rem; }
+  }
+
+  /* ---- Inventory legend ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 1.1rem; margin: 0 0 1.4rem; font-size: 0.84rem; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: 0.5em; }
+
+  footer.page-footer { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--text-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="eyebrow-row">
+      <p class="eyebrow">Implementation plan · Payments &amp; Commerce</p>
+      <span class="badge-open">1 launch-blocking decision open</span>
+    </div>
+    <h1 class="title">Payments (Razorpay) — everything still pending or partial</h1>
+    <p class="dek">The order/verify/webhook core is real and working. This is a ground-truth inventory of the fourteen things built on top of it that aren't finished yet — four buildable today with no product call needed, seven waiting on a real decision, two waiting on a vendor account — sequenced into a plan ready to execute against.</p>
+    <div class="meta-row">
+      <span><strong>Prepared</strong> 28 Aug 2026</span>
+      <span><strong>Repo</strong> fitness-ai-app</span>
+      <span><strong>Companions</strong> reports/finance-architecture-plan.html, reports/build-plan.html</span>
+      <span><strong>Inventory</strong> 14 items — 5 buildable now, 7 decision-gated, 2 vendor-blocked</span>
+    </div>
+  </header>
+
+  <section class="block" id="foundation">
+    <span class="block-num">01</span>
+    <h2>What's already real</h2>
+    <p class="block-sub">Not this doc's subject, but the ground everything below stands on — verify it before trusting anything after this section.</p>
+    <p><code>apps/api/src/modules/payments</code> (20 Aug 2026, hardened 25 Aug 2026) is a genuine order/verify/webhook flow shared by Subscribe (§M) and Program Purchase (§I): <code>POST /payments/razorpay/orders</code> resolves the real server-side price and creates a Razorpay Order; <code>POST /payments/razorpay/verify</code> recomputes the HMAC signature with a timing-safe comparison — the actual security boundary, never the client's say-so; <code>POST /payments/razorpay/webhook</code> is an independent second path to the same idempotent <code>activatePayment()</code>, so a client crash after a real charge still ends in a granted purchase. A <code>Payment</code> reaching <code>paid</code> auto-generates one real <code>Invoice</code> (Module 10 Finance). Admin has a real, read-only Payments Directory + Transaction Detail (06.02/06.03) and a real Integrations-screen status tile for the gateway. A boot-time guard already refuses to start with a <em>live</em> Razorpay key unless <code>PRICE_CURRENCY_CONFIRMED=true</code> — see §02, this is the safety net for the decision below, not the decision itself. None of this needed re-verifying for this pass; re-confirmed by direct read of <code>payments.service.ts</code>, <code>razorpayClient.ts</code>, <code>payments.routes.ts</code>, <code>subscriptions.service.ts</code>, <code>programPurchases.service.ts</code>, <code>adminPayments.service.ts</code>, and <code>config/env.ts</code> for this doc.</p>
+  </section>
+
+  <section class="block" id="decision">
+    <span class="block-num">02</span>
+    <h2>The one decision that blocks real money moving at all</h2>
+    <p class="block-sub">A pricing call, not an engineering one — laid out here, not made here. Nothing else in this plan matters until this is resolved.</p>
+    <div class="adr">
+      <div class="adr-row">
+        <div class="adr-label">The problem</div>
+        <div class="adr-value"><p>Every seeded <code>SubscriptionPlan</code>/<code>Program</code> <code>priceCents</code> value was chosen and is displayed as <strong>USD cents</strong> (Pro plan <code>priceCents=1499</code> renders as <code>$14.99</code> on <code>SubscriptionScreen.tsx</code>). Razorpay's native currency is INR, and <code>RAZORPAY_CURRENCY</code> defaults to <code>"INR"</code>. Passing <code>1499</code> straight through as paisa charges <strong>₹14.99</strong> — real ~₹1,200 worth of product for about 1.2¢ on the dollar, roughly an 80x undercharge on every single transaction.</p></div>
+      </div>
+      <div class="adr-row decision">
+        <div class="adr-label">Status</div>
+        <div class="adr-value"><p>Not decided. <code>config/env.ts</code> refuses to boot with a live key (<code>rzp_live_...</code>) unless <code>PRICE_CURRENCY_CONFIRMED=true</code> is explicitly set — so this can't fail silently in production — but that guard is a seatbelt, not a steering decision. Test keys (<code>rzp_test_...</code>) boot freely today, so the full flow is already exercisable end to end in test mode without this being resolved first.</p></div>
+      </div>
+      <div class="adr-row">
+        <div class="adr-label">The two real options</div>
+        <div class="adr-value">
+          <ol>
+            <li><strong>Reprice everything in real INR.</strong> Replace every seeded <code>priceCents</code> with an actual India-market list price (paisa), and change every price-displaying screen's currency formatting from <code>$X.XX</code> to <code>₹X</code> — <code>SubscriptionScreen.tsx</code>, <code>ProgramDetailScreen.tsx</code>, <code>WorkoutDetailScreen.tsx</code>, plus every admin Commerce/Finance screen that renders <code>amountCents</code>. A content/pricing task (real numbers to choose), not a hard engineering one.</li>
+            <li><strong>Keep USD list prices, settle in USD.</strong> Configure a Razorpay account for international/USD settlement and set <code>RAZORPAY_CURRENCY=USD</code> — no seed-data or screen changes needed, but this is a Razorpay account-configuration and compliance question (international settlement isn't every merchant account's default), not something this build can verify from here.</li>
+          </ol>
+          <p>Either is genuinely buildable. Neither is a call this pass can make on your behalf — see this session's standing caution around money-movement functionality.</p>
+        </div>
+      </div>
+      <div class="adr-row">
+        <div class="adr-label">Once decided</div>
+        <div class="adr-value"><p>Set <code>PRICE_CURRENCY_CONFIRMED=true</code> only after one of the two options above is actually implemented, get real (even just test-mode) Razorpay credentials into <code>.env</code> — see §04's callout — and the core flow in §01 is ready for real transactions.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="inventory">
+    <span class="block-num">03</span>
+    <h2>Full inventory — 14 items</h2>
+    <p class="block-sub">Every pending or partial piece of the Payments/Commerce surface found by direct inspection, ordered by what unlocks the most next. Tag color is the same convention as <code>build-plan.html</code>: green builds now with no call needed, amber needs a real decision first, red needs an account this environment can't provision.</p>
+    <div class="legend">
+      <span class="tag green">buildable now</span><span>— no product decision, no vendor account, just code</span>
+      <span class="tag amber">needs a decision</span><span>— a real policy/pricing/commission call</span>
+      <span class="tag red">needs an account</span><span>— a vendor or merchant credential this sandbox has no way to obtain</span>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-01</span>Coach booking payments never charge — a booking activates for free</div><span class="tag green">buildable now</span></div>
+      <p class="resolution"><code>coaching.service.ts</code>'s <code>createBooking()</code> confirms a session and copies a real <code>priceCents</code> onto the <code>Booking</code> row, but never creates a <code>Payment</code> — no checkout step exists anywhere in either coach or user app for a session booking. This is the exact same simplification Subscribe/Program Purchase shipped with before Razorpay closed that gap for them, and the code's own doc comment already calls it out as "a natural, contained follow-up": add <code>booking</code> to <code>PaymentPurpose</code>, extend <code>resolveAmountCents()</code> to resolve a <code>ProfessionalServiceOffering</code>'s price, and gate <code>createBooking()</code> behind <code>verifiedPayment: true</code> exactly like <code>subscribe()</code>/<code>purchaseProgram()</code> already are. See §05 Phase 3.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-02</span>Currency / list-price decision</div><span class="tag red">launch-blocking decision</span></div>
+      <p class="resolution">The ~80x undercharge risk above — see §02 in full. Listed here too so it isn't lost inside a flat scan of this inventory: this is the single highest-priority item on this page.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-03</span>No real Razorpay merchant credentials in this build environment</div><span class="tag red">needs an account</span></div>
+      <p class="resolution"><code>RAZORPAY_KEY_ID</code>/<code>RAZORPAY_KEY_SECRET</code>/<code>RAZORPAY_WEBHOOK_SECRET</code> are all unset here — every payment route correctly 503s with <code>payment_gateway_not_configured</code> rather than crashing, but nothing in this integration has ever been exercised against a real Razorpay sandbox in this sandbox. Even just test-mode keys (<code>rzp_test_...</code>) from a real Razorpay dashboard signup would let the full order → checkout → verify → webhook loop run for real for the first time.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-07</span>Razorpay's own fee/tax fields are received and discarded</div><span class="tag green">buildable now</span></div>
+      <p class="resolution">Razorpay's <code>payment.captured</code> webhook payload carries the gateway's own <code>fee</code>/<code>tax</code> figures on the payment entity (its cut of the transaction, in paisa) — <code>handleWebhook()</code> already destructures that exact object (<code>event.payload.payment.entity</code>) but only ever reads <code>.id</code>/<code>.order_id</code> off it today. Persisting the two fields is a small, real, decision-free improvement: it's the one piece <code>Payment</code> is missing to show a genuine Gross → Fee → Net breakdown, not the fabricated multi-row ledger PAY-08 below flags as still out of reach. See §05 Phase 1.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-09</span>06.03's "gateway health" indicator has nothing real behind it</div><span class="tag green">buildable now</span></div>
+      <p class="resolution"><code>adminPayments.service.ts</code> lists <code>gatewayHealth</code> in <code>notAvailable</code> today because no uptime/incident tracking exists for Razorpay — correctly not faked as "healthy." A real, honestly-labeled proxy needs zero new infrastructure: the most recent webhook-touched <code>Payment.updatedAt</code> already tells you how long it's been since Razorpay last reached this app. Ship it as "last gateway event received Xh ago," not an invented uptime percentage. See §05 Phase 2.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-14</span>Abandoned checkout orders never expire or get reconciled</div><span class="tag green">buildable now</span></div>
+      <p class="resolution">A user who opens checkout and never completes it leaves a <code>Payment</code> row stuck at <code>status: "created"</code> forever — no cron/cleanup job, no TTL, nothing marks it stale. Low-stakes today (an unpaid order grants nothing), but it'll clutter the Payments Directory and skew "success rate" once real volume shows up. A scheduled job flipping any <code>created</code> row older than, say, 24h to a new <code>expired</code> status is contained, low-risk cleanup — no product decision required, just an enum value and a job.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-08</span>06.02's ledger-flow card shows one line item, not a real breakdown</div><span class="tag amber">partially unlocked by PAY-07, rest needs PAY-05</span></div>
+      <p class="resolution">Today it renders the one real number this build tracks — gross <code>amountCents</code> — rather than a fabricated discounts/fees/tax breakdown. PAY-07 lands the fee/tax half for real with no decision needed. The discount line still needs PAY-05's Coupon decision, and the tax line needs <code>TaxConfig</code> (already real, Module 10) actually linked per-transaction, which nothing does yet.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-04</span>No refund flow anywhere — mobile, backend, or admin</div><span class="tag amber">needs a refund policy</span></div>
+      <p class="resolution">No <code>Refund</code> entity exists (sketched but never built — <code>docs/admin/06-data-model.md</code> §2: "linked to a transaction, with reason/approver/status"). <code>cancelSubscription()</code> just flips status to <code>canceled</code> with no refund; <code>programPurchases</code> has no cancel path at all; the Razorpay Node SDK already installed here exposes a real <code>payments.refund()</code> call that's never invoked anywhere in this codebase. Admin's 06.04 Refunds screen is deferred whole — "empty by construction," no submission path exists to populate it. <strong>Decision needed:</strong> a refund window/policy (full refund within N hours? prorated? case-by-case admin approval only?) — once picked, the entity, the real API call, and the screen are all straightforwardly buildable. See §05 Phase 4.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-05</span>No discount/coupon mechanism anywhere in checkout</div><span class="tag amber">needs a discount-program decision</span></div>
+      <p class="resolution">No <code>Coupon</code> entity, no discount-code field on <code>createOrderSchema</code>, nothing in <code>resolveAmountCents()</code> that could apply one. Blocks 06.05 Pricing's Coupons half (the Plans half already shipped 25 Aug 2026) and is one of the three missing stages in PAY-06 below. <strong>Decision needed:</strong> whether a discount program exists at all for launch, and if so its shape (percentage-off, flat amount, first-month-only, referral-tied) — see also the Refer &amp; Invite reward gap already flagged in <code>docs/mobile/07-open-questions-gaps.md</code> §20, which is the same missing-mechanism problem from the referral side.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-06</span>06.01 Commerce Revenue Dashboard ("waterfall") — deferred whole</div><span class="tag amber">compound blocker — 3 upstream gaps</span></div>
+      <p class="resolution">Needs a real Gross → Discounts → Gateway fees → Refunds → Settlements → Net chain. Discounts needs PAY-05, Refunds needs PAY-04, Settlements needs PAY-10 below — three separate open decisions, not one. Rendering it with half the stages real and half invented would misrepresent actual revenue, worse than the usual honest gap — correctly deferred whole rather than built as a partial chart. Gateway fees (PAY-07) is the one stage of six that's genuinely unblocked today.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-10</span>Coach Settlements &amp; Influencer Payouts (10.06/10.07)</div><span class="tag amber">needs a commission decision, then PAY-01</span></div>
+      <p class="resolution">Already fully investigated and documented in <code>reports/finance-architecture-plan.html</code> §04 — not re-litigated here, only cross-referenced. Two stacked blockers: no commission/take-rate has been decided anywhere in this build, and even once one is, there's still no real coaching-payment data to settle against until PAY-01 (booking payments) is real. <code>CoachSettlement</code>/<code>InfluencerPayout</code> are deliberately not modeled yet — see that doc for the full reasoning and the "one ledger" architecture they'll join once unblocked.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-11</span>Bank/Payment Accounts live sync (10.09)</div><span class="tag red">needs a banking vendor account</span></div>
+      <p class="resolution">Also already covered in <code>reports/finance-architecture-plan.html</code> §04 — a "sync"/live-balance screen describes real bank connectivity (a Plaid-equivalent, or Razorpay's own settlement/virtual-account APIs), not a stored record. No schema proposed there or here; genuinely needs an account to acquire, not a decision to make.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-12</span>Subscription plan switches have no proration</div><span class="tag amber">low-priority policy decision</span></div>
+      <p class="resolution"><code>subscribe()</code>'s own doc comment already calls this out: switching plans while one is active/trialing cancels the old one and starts the new one at full price, no partial-period credit. Explicitly framed as "a real simplification... but an honest one — nothing here claims to charge money it doesn't." Worth a real decision once billing volume matters, not urgent before then.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><div class="item-name"><span class="item-id">PAY-13</span>Checkout is a WebView, not the native Razorpay SDK</div><span class="tag amber">low-priority UX decision</span></div>
+      <p class="resolution"><code>RazorpayCheckoutModal.tsx</code> loads Razorpay's hosted <code>checkout.js</code> inside a <code>react-native-webview</code> — a real, working integration, deliberately chosen because the native SDK needs native module linking (a custom dev client/EAS build), which this app's plain Expo managed workflow doesn't have. Functionally complete; the only gap is UX polish the native SDK would add (saved cards, deeper UPI-app handoff). Not blocking real transactions, worth revisiting only if a native build is ever produced for other reasons.</p>
+    </div>
+  </section>
+
+  <div class="callout">
+    <h4>Nothing above is buildable without real credentials to test against</h4>
+    <p>Every "buildable now" item in §03 can be written and type-checked in this sandbox exactly like the rest of this build, but — per this environment's own standing limitation — none of it can be live-verified against an actual Razorpay account, because none exists here (PAY-03). Test-mode keys are enough; a live account isn't needed until PAY-02 is actually resolved.</p>
+  </div>
+
+  <section class="block" id="plan">
+    <span class="block-num">04</span>
+    <h2>Phase-wise plan</h2>
+    <p class="block-sub">Phases 1–3 need no decision from you and can run back-to-back. Phases 4–6 are sequenced so each is ready to execute the moment its decision lands — nothing about them needs re-planning later, just a "go."</p>
+
+    <ol class="phase-list">
+      <li class="phase-step">
+        <span class="phase-dot">1</span>
+        <div>
+          <h4>Capture Razorpay's real fee/tax fields <span class="tag green">no decision needed</span></h4>
+          <p class="desc">Add nullable <code>gatewayFeeCents</code>/<code>gatewayTaxCents</code> to <code>Payment</code>; persist them in <code>handleWebhook()</code> from <code>event.payload.payment.entity.fee</code>/<code>.tax</code>; surface a real Gross → Fee → Net line on the admin Transaction Detail screen (closes half of PAY-08).</p>
+          <ul class="files"><li><code>apps/api/prisma/schema.prisma</code></li><li><code>apps/api/src/modules/payments/payments.service.ts</code></li><li><code>apps/api/src/modules/adminPayments/adminPayments.service.ts</code>, <code>apps/admin-web/src/screens/commerce/TransactionDetailScreen.tsx</code></li></ul>
+        </div>
+      </li>
+      <li class="phase-step">
+        <span class="phase-dot">2</span>
+        <div>
+          <h4>Replace the fabricated gateway-health gap with a real proxy <span class="tag green">no decision needed</span></h4>
+          <p class="desc">Query the most recent webhook-touched <code>Payment.updatedAt</code> in <code>adminPayments.service.ts</code>; drop <code>gatewayHealth</code> out of <code>notAvailable</code> and render "last gateway event received Xh ago" on 06.03 and the Integrations screen instead of nothing.</p>
+          <ul class="files"><li><code>apps/api/src/modules/adminPayments/adminPayments.service.ts</code></li><li><code>apps/admin-web/src/screens/commerce/PaymentsDirectoryScreen.tsx</code>, <code>IntegrationsScreen.tsx</code></li></ul>
+        </div>
+      </li>
+      <li class="phase-step">
+        <span class="phase-dot">3</span>
+        <div>
+          <h4>Wire coach booking payments through the existing rails <span class="tag green">no decision needed</span></h4>
+          <p class="desc">Add <code>booking</code> to <code>PaymentPurpose</code>; teach <code>resolveAmountCents()</code> to resolve a <code>ProfessionalServiceOffering</code> price; gate <code>createBooking()</code> behind <code>verifiedPayment: true</code>, mirroring <code>subscribe()</code>/<code>purchaseProgram()</code> exactly. Mobile reuses the existing <code>useRazorpayPurchase()</code>/<code>RazorpayCheckoutModal</code> pair unchanged — no new checkout UI to design. This is also the real prerequisite for PAY-10 (Coach Settlements) ever having data to settle against.</p>
+          <ul class="files"><li><code>apps/api/prisma/schema.prisma</code>, <code>payments.schema.ts</code>, <code>payments.service.ts</code></li><li><code>apps/api/src/modules/coaching/coaching.service.ts</code>, <code>coaching.routes.ts</code></li><li><code>packages/types/src/index.ts</code></li><li><code>apps/user-mobile/src/screens/coaching/BookingServiceSelectionScreen.tsx</code> and the booking confirmation screen</li></ul>
+        </div>
+      </li>
+      <li class="phase-step">
+        <span class="phase-dot amber">4</span>
+        <div>
+          <h4>Refunds <span class="tag amber">once a refund policy is decided (PAY-04)</span></h4>
+          <p class="desc">New <code>Refund</code> model linked to <code>Payment</code> (per <code>docs/admin/06-data-model.md</code> §2's own sketch: reason/approver/status); a real call to the Razorpay SDK's already-installed <code>payments.refund()</code>; a cancel-with-refund path on <code>cancelSubscription()</code> and (once Phase 3 lands) booking cancellation; the 06.04 admin Refunds screen, finally with a real submission path to show.</p>
+        </div>
+      </li>
+      <li class="phase-step">
+        <span class="phase-dot amber">5</span>
+        <div>
+          <h4>Coupons <span class="tag amber">once a discount program is decided (PAY-05)</span></h4>
+          <p class="desc"><code>Coupon</code> entity; apply-at-checkout logic inside <code>resolveAmountCents()</code>; 06.05's Coupons half; feeds PAY-06's Discounts waterfall stage.</p>
+        </div>
+      </li>
+      <li class="phase-step">
+        <span class="phase-dot amber">6</span>
+        <div>
+          <h4>Coach Settlements &amp; the Revenue Dashboard <span class="tag amber">once a commission rate is decided</span></h4>
+          <p class="desc">Once Phase 3 has produced real booking-payment data and a commission % exists, build <code>CoachSettlement</code>/<code>InfluencerPayout</code> per <code>reports/finance-architecture-plan.html</code>'s already-decided "one ledger" architecture. With Phases 4–6 all landed, PAY-06's Revenue Dashboard waterfall has every real stage it needs and stops being deferred.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <footer class="page-footer">
+    <span>PrimeFit / 23PrimeFit — fitness-ai-app monorepo</span>
+    <span>Companions: <code>reports/finance-architecture-plan.html</code>, <code>reports/build-plan.html</code></span>
+  </footer>
+
+</div>

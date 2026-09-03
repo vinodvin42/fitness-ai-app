@@ -1,0 +1,1865 @@
+// Phase 0/1/2/3/4 data model — see docs/admin/06-data-model.md and docs/mobile/05-data-model.md.
+// Scope: auth, Onboarding, the core Training loop (Program -> Workout ->
+// logged WorkoutSession/ExerciseSetLog, added 18 Aug 2026), the core
+// Nutrition loop (Recipe -> logged MealLog, added 18 Aug 2026), the
+// start of Progress & Body (BodyMeasurement, added 19 Aug 2026 — Personal
+// Records are computed from ExerciseSetLog, not a separate table),
+// monetization (SubscriptionPlan/Subscription, then ProgramPurchase, both
+// added 19 Aug 2026), Reminders (added 19 Aug 2026, pulled forward from
+// Phase 4), the start of Settings (`User.notificationsEnabled`, plus
+// account-management endpoints — change password, active sessions,
+// data export, delete account — that reuse the existing `User`/
+// `RefreshToken` models rather than adding new ones, added 19 Aug 2026),
+// Support (`SupportTicket`, added 19 Aug 2026 — mobile-writable subset
+// only, no assignee/message-thread until Phase 6's admin console exists
+// to use them), and Referral (`User.referralCode` + `Referral`, added
+// 19 Aug 2026 — the mechanical signup-attribution link only, no reward
+// field; see the Referral model's own comment) — see
+// docs/platform/roadmap.md Phase 1 §C/§D, Phase 2 §F, Phase 3 §M/§I, and
+// Phase 4 §K/§L/§O. Timeline (§G) is also live but has no table of its
+// own — it's computed from the models above, see
+// apps/api/src/modules/timeline/timeline.service.ts.
+// 20 Aug 2026: Payment (Razorpay integration) added, closing gap §14's
+// "no payment gateway" note for real — see the Payment model's own
+// comment below and apps/api/src/modules/payments.
+// 20 Aug 2026: AdminUser/AdminRole/AdminUserStatus added (Phase 6 start) —
+// see docs/admin/06-data-model.md and the AdminUser model's own comment
+// below and apps/api/src/modules/adminAuth + adminDashboard.
+// 20 Aug 2026: Professional/ProfessionalCredential/Relationship added
+// (Phase 5 start) — see docs/coach/07-open-questions-gaps.md's "Phase 5
+// started" entry and the Professional model's own comment below and
+// apps/api/src/modules/professionalAuth + professionalOnboarding +
+// professionalDashboard. Booking/ProfessionalServiceOffering/
+// ProfessionalChangeRequest are NOT modeled yet — they belong to the
+// discovery/booking flow, still an open product decision.
+// 21 Aug 2026: Professional.adminNotes / ProfessionalCredential.adminNotes
+// added — backs the admin console's Module 03 (Professionals: Directory,
+// Profile, Credential Verification), see apps/api/src/modules/
+// adminProfessionals and docs/admin/03-screen-inventory.md §03. This is
+// the first thing that can actually move a ProfessionalCredential past
+// `pending` to `verified`/`rejected` — see that module's own comment for
+// which Figma-spec'd fields (Region, Languages, Rating, Earnings, Sessions,
+// Reviews) still have no backing entity and are honestly omitted, not
+// fabricated. `RelationshipChangeRequest` (Module 04.03) is still NOT
+// modeled — that queue needs a real submission flow, which lives in the
+// still-unbuilt discovery/booking feature.
+// 25 Aug 2026: AiCoachMessage added (Phase 2 §H) — closes gap §13's
+// feature half now that apps/api/src/lib/aiClient.ts's provider plumbing
+// (20 Aug 2026) has something real calling it — see the model's own
+// comment below and apps/api/src/modules/aiCoach. AIInsight (a distinct,
+// still-unbuilt concept — a surfaced insight card, not a chat message)
+// stays on the NOT-modeled list below; AI Coach chat and AI Insights are
+// two different features that happen to share gap §13's infra.
+// NOT modeled yet (add when the phase that needs them starts):
+//   FoodItem (barcode catalog), MealPlan, RecoveryMetric,
+//   AIInsight, Coach/CoachBooking — see
+//   docs/mobile/05-data-model.md §2 for the full list.
+//
+// `User`, `Subscription`, `Program`, `Exercise`, `Recipe` are shared 1:1 with
+// the future admin console (docs/mobile/06-cross-app-integration.md) — this
+// is intentionally the ONE schema both apps will read/write against later,
+// not a mobile-only model.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UnitSystem {
+  metric
+  imperial
+}
+
+enum AccentColor {
+  blue
+  green
+  yellow
+  red
+}
+
+enum TrainingLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum ProgramType {
+  fitness
+  nutrition
+  combined
+}
+
+enum Difficulty {
+  beginner
+  intermediate
+  advanced
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
+enum SubscriptionTier {
+  basic
+  pro
+  elite
+}
+
+enum BillingCycle {
+  monthly
+  annual
+}
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+}
+
+enum WorkoutPhase {
+  warmup
+  main
+  cooldown
+}
+
+enum WorkoutSessionStatus {
+  in_progress
+  completed
+  abandoned
+}
+
+enum MealLogSource {
+  recipe
+  manual
+}
+
+enum ReminderCategory {
+  workout
+  meal
+  water
+  measurement
+  general
+}
+
+enum PaymentProvider {
+  razorpay
+}
+
+enum PaymentPurpose {
+  subscription
+  program_purchase
+}
+
+enum PaymentStatus {
+  created
+  paid
+  failed
+}
+
+enum AiCoachMessageRole {
+  user
+  assistant
+}
+
+// Module 02.01 bulk-select/suspend, added 26 Aug 2026 — mirrors
+// ProfessionalStatus exactly, not a richer moderation taxonomy
+// (no "banned"/"under review" states — those belong to 08.04 Safety/
+// Abuse Reports, a genuinely separate, still-open policy decision this
+// pass didn't make). See User.status's own comment for how it's enforced.
+enum UserStatus {
+  active
+  suspended
+}
+
+model User {
+  id                String        @id @default(uuid())
+  email             String        @unique
+  passwordHash      String
+  fullName          String
+  phone             String?
+  // Module 09.05 Geographic (added 26 Aug 2026) — ISO 3166-1 alpha-2 (e.g.
+  // "US", "IN"), format-validated by users.schema.ts's updateProfileSchema,
+  // NOT restricted to a fixed country list server-side (the mobile picker's
+  // curated COMMON_COUNTRIES list in packages/types is a UI convenience
+  // only). Null for every user who signed up before this field existed and
+  // for anyone who hasn't opened Edit Profile since — real coverage grows
+  // over time, not backfilled or inferred. Deliberately NOT derived from
+  // `phone`: phone is optional, free-text, unvalidated, and not collected
+  // at signup, so parsing a country code out of it would be guessing, not
+  // capturing — see adminAnalytics.service.ts's Geographic doc comment for
+  // the full reasoning behind capturing this explicitly instead.
+  countryCode       String?
+  // Module 02.01 Bulk-select + suspend/reactivate (added 26 Aug 2026) —
+  // the exact same mutable-status precedent as Professional.status/
+  // AdminUser.status: login is blocked while suspended (see
+  // users.service.ts's login()), not just a directory label with no
+  // teeth. Deliberately NOT a moderation/trust-and-safety feature — no
+  // reason code, no appeal flow, no distinct "banned" state — this is
+  // account-operations only ("this account shouldn't sign in right
+  // now"), the smallest real slice of 02.01's spec that doesn't require
+  // 08.04 Safety/Abuse Reports' still-open moderation-policy decision.
+  status            UserStatus    @default(active)
+  // Same "one latest note, full trail lives in AuditLog" convention as
+  // Professional.adminNotes — set optionally on suspend/reactivate.
+  adminNotes        String?
+  languagePreference String       @default("en")
+  unitSystem        UnitSystem    @default(metric)
+  accentColor       AccentColor   @default(blue)
+  // §L "Notification Settings"' master toggle — gates whether the client
+  // schedules ANY local reminder notifications at all (see
+  // apps/user-mobile's src/lib/reminderNotifications.ts). Per-category /
+  // per-reminder control already lives on the Reminders screen itself
+  // (each Reminder has its own `isEnabled`), so this is deliberately just
+  // the one master switch, not a second parallel category-toggle system.
+  notificationsEnabled Boolean    @default(true)
+  // §O "Refer & Invite" — generated once at signup (see auth.service.ts's
+  // generateReferralCode()), never user-editable. Just an identifier for
+  // sharing/redeeming; the reward value it can now earn lives on
+  // `referralCreditMonths` below and in the ReferralReward model.
+  referralCode      String        @unique
+  // §O reward (added 31 Aug 2026) — accrued months of subscription credit
+  // earned from successful referrals. Incremented when a referee first
+  // subscribes to a paid plan (see subscriptions.service.ts + the
+  // ReferralReward model's own doc comment). A real balance, not yet auto-
+  // consumed at renewal (no billing engine runs renewals in this build) —
+  // surfaced honestly on the mobile Refer & Invite screen as credit earned.
+  referralCreditMonths Int        @default(0)
+  // §L "Security" — Two-Factor Authentication, added 25 Aug 2026 (Phase 4,
+  // closing gap §17). TOTP (RFC 6238, authenticator-app style — Google
+  // Authenticator/Authy/1Password), not SMS: unlike gap §9's phone+OTP,
+  // this needs no third-party SMS gateway account/provider decision, only
+  // a server-side secret to encrypt with (TWO_FACTOR_ENCRYPTION_KEY) —
+  // gap §17's older "needs an SMS/TOTP provider decision" framing
+  // conflated the two; see lib/twoFactor.ts's own doc comment.
+  // `twoFactorSecret` is ENCRYPTED (AES-256-GCM), not hashed like
+  // `passwordHash` — verifying a live 6-digit code requires the raw
+  // secret back, so it must be reversible. Null until enrollment starts;
+  // `twoFactorEnabled` only flips true after a real code from the
+  // authenticator app is verified (see users.service.ts's
+  // enableTwoFactor), so a half-finished setup never silently protects
+  // (or fails to protect) a login.
+  twoFactorEnabled  Boolean       @default(false)
+  twoFactorSecret   String?
+  // Bcrypt-hashed one-time recovery codes (same hashing as passwordHash),
+  // shown to the user ONCE in plaintext at enable time, regenerated every
+  // time 2FA is (re-)enabled. Each is single-use — consumed and removed
+  // from this array the moment it's used to complete a login, same
+  // "can't be replayed" property a TOTP code already has by expiring.
+  twoFactorRecoveryCodes String[] @default([])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  onboardingProfile OnboardingProfile?
+  subscriptions     Subscription[]
+  refreshTokens     RefreshToken[]
+  auditLogEntries   AuditLog[]
+  workoutSessions   WorkoutSession[]
+  mealLogs          MealLog[]
+  waterLogs         WaterLog[]
+  bodyMeasurements  BodyMeasurement[]
+  progressPhotos    ProgressPhoto[]
+  programPurchases  ProgramPurchase[]
+  reminders         Reminder[]
+  supportTickets    SupportTicket[]
+  referralsMade     Referral[]        @relation("ReferralsMade")
+  referredBy        Referral?         @relation("ReferralReceived")
+  payments          Payment[]
+  relationships     Relationship[]
+  aiCoachMessages   AiCoachMessage[]
+  // Coach Discovery & Booking, added 25 Aug 2026 — see the Booking/
+  // RelationshipChangeRequest models' own doc comments below.
+  bookings          Booking[]
+  changeRequests    RelationshipChangeRequest[]
+  // Sensitive Data Access Requests, added 25 Aug 2026 — see that model's
+  // own doc comment below. This user is the SUBJECT of each request, never
+  // the requester (only an AdminUser can request/review).
+  sensitiveDataAccessRequests SensitiveDataAccessRequest[]
+  // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
+  // model's own doc comment below.
+  coachMessages     CoachMessage[]
+  // Coupons / Referral rewards / Recovery, added 31 Aug 2026 — see each
+  // model's own doc comment below.
+  couponRedemptions CouponRedemption[]
+  referralRewardsEarned ReferralReward[] @relation("ReferralRewardsEarned")
+  recoveryLogs      RecoveryLog[]
+
+  @@map("users")
+}
+
+model OnboardingProfile {
+  userId             String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender              String?
+  age                 Int?
+  weightKg            Float?
+  heightCm            Float?
+  goals               String[] @default([])
+  trainingLevel       TrainingLevel?
+  dietType            String?
+  allergens           String[] @default([])
+  medicalConditions   String[] @default([])
+  injuries            String[] @default([])
+  completedAt         DateTime?
+
+  @@map("onboarding_profiles")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---- Content (shared with the future admin CMS, Phase 6) ------------------
+// 22 Aug 2026: that CMS is now real for Program/Exercise/Recipe — see
+// apps/api/src/modules/adminPrograms. `ContentStatus` stays a deliberately
+// simple 2-state (draft/published) rather than folding the Figma's 4-state
+// moderation pipeline (draft/pending review/approved/rejected, docs/admin/
+// 03-screen-inventory.md 05.05) directly into it — draft/published is still
+// the one real, honest distinction this field needs to enforce: "visible to
+// consumers or not". `@default(published)` (not `draft`) is deliberate too
+// — it's the backward-compatible default for scripts/seed.ts's existing
+// insert path, so pre-existing seeded content stays visible exactly as it
+// always has; adminPrograms.service.ts's create functions explicitly pass
+// `status: "draft"` to override this default for admin-authored content,
+// which is the actual "starts hidden until published" behavior a CMS needs.
+//
+// **25 Aug 2026: the review/approval half is real now too** — see
+// `ContentReview` below, added once `apps/api/src/middleware/
+// adminPermissions.ts` closed the "only super_admin is enforced" half of
+// gap §7 that used to block it (docs/coach/07-open-questions-gaps.md's
+// counterpart doesn't apply here; see docs/admin/07-open-questions-gaps.md
+// gap §7's own 25 Aug update). It's a separate entity rather than new
+// `ContentStatus` values on purpose — review status ("did someone sign off
+// on this draft") and publish status ("is this visible to consumers") are
+// different questions, and collapsing them would mean a rejected draft and
+// a never-submitted draft look identical, which they aren't. See
+// `ContentReview`'s own doc comment for the full reasoning, including why
+// Educational Content isn't part of it.
+enum ContentStatus {
+  draft
+  published
+}
+
+model Program {
+  id             String        @id @default(uuid())
+  name           String
+  type           ProgramType
+  description    String
+  durationWeeks  Int
+  isAiOnly       Boolean       @default(true)
+  priceCents     Int           @default(0)
+  status         ContentStatus @default(published)
+  createdByAdminId String?
+  createdByAdmin AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  workouts       Workout[]
+  purchases      ProgramPurchase[]
+
+  @@index([createdByAdminId])
+  @@map("programs")
+}
+
+model Exercise {
+  id           String        @id @default(uuid())
+  name         String
+  muscleGroup  String
+  equipment    String
+  difficulty   Difficulty
+  mediaUrl     String?
+  // Exercise Detail's "scrollable instructions" (docs/mobile/03-screen-
+  // inventory.md §C trn-06), added 19 Aug 2026. String[] follows the same
+  // precedent as OnboardingProfile's goals/allergens/injuries above.
+  instructions String[]      @default([])
+  // 22 Aug 2026 — see Program's own doc comment just above for why
+  // ContentStatus is draft/published only and why the default is
+  // `published`, not `draft`.
+  status         ContentStatus @default(published)
+  createdByAdminId String?
+  createdByAdmin AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  workoutExercises WorkoutExercise[]
+  setLogs          ExerciseSetLog[]
+
+  @@index([createdByAdminId])
+  @@map("exercises")
+}
+
+// ---- Training: Program -> Workout -> logged WorkoutSession ----------------
+// docs/mobile/03-screen-inventory.md §C: Program Detail -> Workout Detail ->
+// Active Workout -> Workout Complete. A Workout is a reusable template
+// (belongs to a Program); a WorkoutSession is one user's logged attempt at
+// it, containing per-exercise ExerciseSetLog rows.
+
+model Workout {
+  id            String       @id @default(uuid())
+  programId     String
+  program       Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name          String
+  order         Int          @default(0)
+  durationMinutes Int
+  intensity     Difficulty   @default(beginner)
+
+  exercises     WorkoutExercise[]
+  sessions      WorkoutSession[]
+
+  @@index([programId])
+  @@map("workouts")
+}
+
+model WorkoutExercise {
+  id          String       @id @default(uuid())
+  workoutId   String
+  workout     Workout      @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise     @relation(fields: [exerciseId], references: [id])
+  phase       WorkoutPhase @default(main)
+  order       Int          @default(0)
+  targetSets  Int          @default(3)
+  targetReps  Int          @default(10)
+
+  @@index([workoutId])
+  @@map("workout_exercises")
+}
+
+model WorkoutSession {
+  id           String                @id @default(uuid())
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId    String
+  workout      Workout               @relation(fields: [workoutId], references: [id])
+  status       WorkoutSessionStatus  @default(in_progress)
+  startedAt    DateTime              @default(now())
+  completedAt  DateTime?
+
+  setLogs      ExerciseSetLog[]
+
+  @@index([userId])
+  @@index([workoutId])
+  @@map("workout_sessions")
+}
+
+model ExerciseSetLog {
+  id               String         @id @default(uuid())
+  sessionId        String
+  session          WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId       String
+  exercise         Exercise       @relation(fields: [exerciseId], references: [id])
+  setNumber        Int
+  weightKg         Float?
+  reps             Int
+  rpe              Float?
+  // Added for the Set/Rest Tracker screen (docs/mobile/03-screen-inventory.md
+  // §C trn-08, Phase 1). isWarmup/isDropSet mirror that screen's "warm-up/
+  // drop-set toggles"; note mirrors its free-text "note field". All three are
+  // optional/defaulted so existing rows and the plain Active Workout log-set
+  // flow (which doesn't set them) are unaffected.
+  isWarmup         Boolean        @default(false)
+  isDropSet        Boolean        @default(false)
+  note             String?
+  loggedAt         DateTime       @default(now())
+
+  @@index([sessionId])
+  @@map("exercise_set_logs")
+}
+
+// ---- Programs Commerce: one-off Program purchases --------------------
+// docs/mobile/03-screen-inventory.md §I. A ProgramPurchase grants a user
+// access to a priced Program's workouts (free Programs, priceCents == 0,
+// need no purchase at all — see programPurchases.service.ts hasAccess()).
+// priceCents is snapshotted at purchase time (a receipt of what was paid,
+// not a live join to Program.priceCents, so a later price change doesn't
+// rewrite someone's purchase history — same pattern as MealLog snapshotting
+// Recipe macros above). Deliberately single-tier: the Figma design's
+// "AI Program vs AI + Coach" add-on choice isn't modeled here — AI + Coach
+// needs the Coach/CoachBooking entities that don't exist until Phase 5, see
+// docs/mobile/07-open-questions-gaps.md §15.
+
+model ProgramPurchase {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId  String
+  program    Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  priceCents Int
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@map("program_purchases")
+}
+
+model Recipe {
+  id               String        @id @default(uuid())
+  name             String
+  mealType         MealType
+  calories         Int
+  proteinG         Int           @default(0)
+  carbsG           Int           @default(0)
+  fatG             Int           @default(0)
+  prepTimeMinutes  Int
+  tags             String[]      @default([])
+  // 22 Aug 2026 — see Program's own doc comment above for why
+  // ContentStatus is draft/published only and why the default is
+  // `published`, not `draft`.
+  status           ContentStatus @default(published)
+  createdByAdminId String?
+  createdByAdmin   AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  mealLogs         MealLog[]
+
+  @@index([createdByAdminId])
+  @@map("recipes")
+}
+
+// 05.05 Review / Approval, added 25 Aug 2026. Polymorphic on purpose —
+// `contentType` + `contentId` (an unenforced reference, same precedent as
+// `AuditLog.entityType`/`entityId` just below in this file) rather than
+// three separate nullable FK columns, so one queue can span Program/
+// Exercise/Recipe without a union of mostly-null fields. Educational
+// Content is deliberately NOT a fourth `ContentReviewContentType` value —
+// that entity doesn't exist anywhere in this build (no producer or
+// consumer screen, in either admin or mobile app), so there's nothing for
+// `contentId` to ever point at; adding the enum value now would be exactly
+// the "model it before anything can use it" mistake `ContentStatus`'s own
+// comment already flags for that gap. See adminPrograms.service.ts's doc
+// comment for the full "why now, why not the whole Figma spec" reasoning.
+//
+// Deliberately does NOT gate the existing Publish/Unpublish actions —
+// "Submit for Review" is an additive, optional path a content creator can
+// use to get a second pair of eyes, sitting alongside the direct-publish
+// flow every role with `programs:approve` already had. Making review
+// mandatory would be a real behavior change to already-shipped, already-
+// audited functionality that nothing in this pass's scope asked for.
+//
+// Only 3 states, not the Figma's 4 (`pending`, no `in_review`/"claimed by
+// a reviewer" state) — same "model what's real, not what's merely a UI tab"
+// precedent as RelationshipChangeStatus. Two named relations on AdminUser
+// (submitted/reviewed), same precedent as SensitiveDataAccessRequest —
+// the guard against an admin approving their own submission
+// (`cannot_approve_own_content_review`) lives in adminPrograms.service.ts.
+enum ContentReviewContentType {
+  program
+  exercise
+  recipe
+}
+
+enum ContentReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+model ContentReview {
+  id                  String                    @id @default(uuid())
+  contentType         ContentReviewContentType
+  contentId           String
+  submittedByAdminId  String
+  submittedByAdmin    AdminUser                 @relation("ContentReviewSubmittedBy", fields: [submittedByAdminId], references: [id], onDelete: Cascade)
+  reviewedByAdminId   String?
+  reviewedByAdmin     AdminUser?                @relation("ContentReviewReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  status              ContentReviewStatus       @default(pending)
+  reviewNotes         String?
+  reviewedAt          DateTime?
+  createdAt           DateTime                  @default(now())
+
+  @@index([contentType, contentId])
+  @@index([submittedByAdminId])
+  @@index([reviewedByAdminId])
+  @@map("content_reviews")
+}
+
+// ---- Nutrition: Recipe -> logged MealLog -----------------------------
+// docs/mobile/03-screen-inventory.md §D: Nutrition Dashboard's meal
+// timeline, Recipe Detail's "Log" action, and Log Meal's manual-entry
+// card all write here. A MealLog snapshots the macros at logging time
+// (not a live join to Recipe) so editing a recipe later doesn't rewrite
+// someone's food history — recipeId is kept only for traceability.
+
+model MealLog {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId   String?
+  recipe     Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  mealType   MealType
+  name       String
+  calories   Int
+  proteinG   Int           @default(0)
+  carbsG     Int           @default(0)
+  fatG       Int           @default(0)
+  source     MealLogSource @default(manual)
+  loggedAt   DateTime      @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("meal_logs")
+}
+
+// ---- Nutrition: WaterLog ------------------------------------------------
+// docs/mobile/03-screen-inventory.md §D: Nutrition Dashboard's "water-intake
+// tracker (glasses toward a goal)" and Today's hydration snapshot's
+// "quick-add-glass control" — anticipated in docs/mobile/05-data-model.md
+// ("WaterLog — daily water intake vs. a goal") but not modeled until now
+// (19 Aug 2026). Append-only, same precedent as MealLog/ExerciseSetLog —
+// each tap of "+1 Glass" (or a multi-glass quick-add) is its own row, no
+// edit/delete. The "goal" itself is a hardcoded client-side placeholder,
+// same simplification as the calorie/macro target right above it on the
+// same screen — see gap §10, extended by gap §25 to cover this too.
+model WaterLog {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  glasses  Int      @default(1)
+  loggedAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("water_logs")
+}
+
+// ---- Progress & Body: logged BodyMeasurement -------------------------
+// docs/mobile/03-screen-inventory.md §F: Progress Overview's weight
+// sparkline + measurements grid, Body Measurements' history, and Log
+// Measurements' entry form all read/write here. Personal Records (also §F)
+// are deliberately NOT a separate table — they're computed on read from
+// ExerciseSetLog (heaviest logged weight per exercise), which is real data
+// this app already has, rather than duplicating it into a second store
+// that could drift out of sync. NOTE: this is the *heaviest set actually
+// logged*, not a calculated 1RM (Epley/Brzycki) — see
+// docs/mobile/07-open-questions-gaps.md for that flagged simplification.
+
+model BodyMeasurement {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg   Float?
+  chestCm    Float?
+  waistCm    Float?
+  hipsCm     Float?
+  armsCm     Float?
+  thighsCm   Float?
+  loggedAt   DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("body_measurements")
+}
+
+// ---- Progress Photos (§F, added 19 Aug 2026) --------------------------
+// docs/mobile/03-screen-inventory.md §F: "before/after slider comparison,
+// take-photo and upload actions, and a photo grid/gallery." No object
+// storage (S3 or similar) is configured anywhere in this build, so
+// `imageData` stores the photo as a base64-encoded data URI directly in
+// Postgres — a real, honest, working simplification (every other photo/
+// avatar-type feature in this app is unbuilt specifically because no
+// storage backend exists; this is the one place that gap is closed, by
+// choosing the smallest real implementation rather than waiting on
+// infra that isn't available in this environment). The mobile client
+// compresses to JPEG quality 0.5 before upload to keep rows reasonably
+// sized — see gap §34 for the full tradeoff (no thumbnails, no CDN, a
+// real row-size ceiling) and why this wasn't built as device-local-only
+// storage instead (this app's own established precedent is server-backed
+// data, not local-only, for anything that isn't literally a device
+// capability like a notification schedule).
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageData String   @db.Text
+  note      String?
+  takenAt   DateTime @default(now())
+
+  @@index([userId, takenAt])
+  @@map("progress_photos")
+}
+
+// ---- AI Coach (§H, added 25 Aug 2026) ----------------------------------
+// Closes the feature half of gap §13 — apps/api/src/lib/aiClient.ts (20
+// Aug 2026) already had the provider plumbing (AI_PROVIDER/API key,
+// generateCompletion()), but nothing called it; that doc comment named
+// four things still missing before a real conversation could be wired
+// up: conversation persistence (this model), prompt design, rate
+// limiting, and cost controls (see aiCoach.service.ts/aiCoach.routes.ts).
+// Streaming responses is the one item from that list still NOT built
+// this pass — request/response completions are a real, working first
+// slice; see apps/api/src/modules/aiCoach's own doc comment.
+//
+// One flat, ordered message log per user, not a multi-conversation-
+// thread inbox — docs/mobile/01-product-requirements.md and
+// 03-screen-inventory.md §H both describe a single ongoing "23Prime AI"
+// chat (one FAB, one thread), not a list of separate conversations, so
+// modeling a `Conversation` parent would invent structure nothing in
+// the spec asks for. Stores both the user's turns and the assistant's
+// replies so a real thread redisplays on next open, same "history is
+// real, not just the current turn" precedent as WorkoutSession/MealLog.
+model AiCoachMessage {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      AiCoachMessageRole
+  content   String             @db.Text
+  createdAt DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@map("ai_coach_messages")
+}
+
+// Module 11 AI Operations, added 27 Aug 2026 — reports/build-plan.html's own
+// "needs your decision" framing for 11.01–11.03 (a full Feature Console
+// listing 4 AI capabilities, usage metrics, a safety/overrides log) named
+// its own smaller alternative: "a single boolean gating isAiConfigured()"
+// for the one AI capability that's actually real (AI Coach chat), rather
+// than a console with 3 fabricated rows next to 1 real one. This is that
+// single boolean — a fixed-id singleton row (`id` always "singleton", see
+// `getOrCreate()` in adminAiOps.service.ts), not a per-feature flags table,
+// since inventing a generic multi-row feature-flag system is exactly the
+// "console" shape the doc said not to build yet.
+//
+// Deliberately separate from `isAiConfigured()` (aiClient.ts) — that's an
+// infrastructure check (is an API key set at all), this is a product/admin
+// decision layered on top (should the feature be reachable right now, even
+// if configured). aiCoach.service.ts's sendMessage() checks both, in that
+// order, with distinct honest error messages — "not configured" vs.
+// "turned off by an admin" are different facts and shouldn't be conflated.
+//
+// `isEnabled` defaults true: this flag is new, but AI Coach chat itself
+// shipped 25 Aug 2026 with no admin gate at all, so introducing this must
+// not silently turn a already-live feature off — the row only starts
+// mattering once an admin explicitly flips it.
+model AiCoachSettings {
+  id               String     @id @default("singleton")
+  isEnabled        Boolean    @default(true)
+  updatedByAdminId String?
+  updatedByAdmin   AdminUser? @relation(fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  updatedAt        DateTime   @updatedAt
+
+  @@map("ai_coach_settings")
+}
+
+// ---- Reminders (Phase 4 §K, pulled forward) --------------------------
+// docs/mobile/03-screen-inventory.md §K: "Add Reminder" — category chips,
+// meal-timing presets, a time picker, repeat-preset options, a day-of-week
+// selector, and an alarm-sound toggle. `hour`/`minute` are stored as plain
+// local-clock numbers (not a DateTime) since a reminder means "every day
+// this selected weekday at this clock time," not a specific instant —
+// there's no timezone conversion to do because the schedule only ever
+// makes sense in the device's own local time, which is where it's actually
+// fired (see apps/user-mobile's src/lib/reminderNotifications.ts). Not
+// built: custom alarm sounds (only default-sound on/off — no bundled audio
+// assets) and server-triggered push notifications (these are purely local,
+// on-device notifications; there's no push infrastructure anywhere in this
+// app yet).
+
+model Reminder {
+  id         String           @id @default(uuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   ReminderCategory @default(general)
+  label      String
+  hour       Int
+  minute     Int
+  daysOfWeek Int[]            @default([0, 1, 2, 3, 4, 5, 6])
+  playSound  Boolean          @default(true)
+  isEnabled  Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+
+  @@index([userId])
+  @@map("reminders")
+}
+
+// ---- Support ----------------------------------------------------------
+// §L "Support" (docs/mobile/03-screen-inventory.md), added 19 Aug 2026.
+// docs/admin/06-data-model.md §SupportTicket also lists `priority`,
+// `assignee`, and a message thread — `assignee` and the thread are
+// admin-console/Phase 6 concerns (there's no admin console to assign a
+// ticket to or reply from yet), so this is the mobile-writable subset:
+// one message per ticket, `priority` present with a default but not
+// user-settable (triage is an admin action), `status` always `open`
+// until Phase 6 gives an admin a way to change it — see the code comment
+// on apps/user-mobile's SupportScreen.tsx.
+
+enum SupportTicketCategory {
+  bug
+  feature_request
+  billing
+  account
+  other
+}
+
+enum SupportTicketPriority {
+  low
+  normal
+  high
+}
+
+enum SupportTicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+model SupportTicket {
+  id        String                 @id @default(uuid())
+  userId    String
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  SupportTicketCategory  @default(other)
+  subject   String
+  message   String
+  priority  SupportTicketPriority  @default(normal)
+  status    SupportTicketStatus    @default(open)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  escalations Escalation[]
+
+  @@index([userId])
+  @@map("support_tickets")
+}
+
+// 25 Aug 2026 — Module 08.02 Escalations (docs/admin/03-screen-inventory.md
+// §08.02). docs/admin/06-data-model.md §2 used to list this as "still
+// entirely unmodeled — no escalate action exists anywhere to produce one",
+// same as `Complaint`/`SafetyReport` below it. Unlike those two, this
+// turned out to be a targeted, honestly-scoped gap rather than a genuine
+// product-decision blocker: an escalation is just "this ticket needs
+// attention beyond first-line support," a workflow annotation *on* the
+// `SupportTicket` an admin is already looking at — not a new business
+// concept needing its own filing flow or resolution taxonomy the way a
+// formal Complaint or a Safety/Abuse Report does (see those entities' own
+// comments for why they stay blocked). A direct, non-polymorphic FK to
+// `SupportTicket` is enough — there's exactly one thing an escalation is
+// ever about, unlike `ContentReview`'s `contentType`/`contentId` pair.
+//
+// Deliberately no `resolvedBy`-can't-equal-`escalatedBy` guard, unlike
+// `ContentReview`'s `cannot_approve_own_content_review` or
+// `SensitiveDataAccessRequest`'s `cannot_approve_own_request`: those exist
+// because approving your own submission is a real conflict of interest
+// (validating your own work). Resolving your own escalation isn't the
+// same shape of problem — "I flagged this, and now it's been handled" is
+// a legitimate single-admin workflow, not self-review — see
+// `adminSupport.service.ts`'s doc comment for the full reasoning.
+enum EscalationStatus {
+  open
+  resolved
+}
+
+model Escalation {
+  id                 String            @id @default(uuid())
+  supportTicketId    String
+  supportTicket      SupportTicket     @relation(fields: [supportTicketId], references: [id], onDelete: Cascade)
+  escalatedByAdminId String
+  escalatedByAdmin   AdminUser         @relation("EscalationEscalatedBy", fields: [escalatedByAdminId], references: [id], onDelete: Cascade)
+  reason             String
+  status             EscalationStatus  @default(open)
+  resolvedByAdminId  String?
+  resolvedByAdmin    AdminUser?        @relation("EscalationResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  resolutionNotes    String?
+  resolvedAt         DateTime?
+  createdAt          DateTime          @default(now())
+
+  @@index([supportTicketId])
+  @@index([status])
+  @@map("escalations")
+}
+
+// ---- Finance (Module 10, added 26 Aug 2026) --------------------------
+// docs/admin/07-open-questions-gaps.md gap §4 asked whether Finance is a
+// deeper accounting view over the same transactions Commerce (Module 06)
+// manages, or a separate ledger fed by its own process. Decided: one
+// ledger — see reports/finance-architecture-plan.html for the full
+// decision record. These three entities are new operational data
+// Commerce never needed, not a parallel bookkeeping system; every one of
+// them sits alongside `Payment` the same way `Escalation` above sits
+// alongside `SupportTicket`.
+//
+// `CoachSettlement`/`InfluencerPayout` are deliberately NOT modeled this
+// pass — no commission/take-rate structure has been decided anywhere in
+// this build (Module 07's blocker, shared with 09.04 Business Analytics),
+// and even once one is, there's no real coaching-payment data to settle
+// against yet (`Relationship` carries no pricing — see
+// docs/coach/05-data-model.md §3). A `BankAccount` with live "sync" is
+// also not modeled — that needs a real banking-aggregation vendor
+// account, not a schema.
+
+enum ExpenseCategory {
+  coach_settlement
+  influencer_payout
+  gateway_fee
+  ops
+  marketing
+  refund
+  other
+}
+
+enum ExpenseStatus {
+  pending
+  paid
+}
+
+// 10.03 Expenses & Payouts / 10.01 Dashboard / 10.05 Receivables &
+// Payables' Payables half / 10.10 Financial Reports — a real, admin-
+// entered business cost. Unlike the still-unmodeled CoachSettlement/
+// InfluencerPayout above, this is a legitimate manual fact ("we spent $X
+// on Y"), not a reconciliation claim with nothing real to reconcile
+// against — the category taxonomy is lifted directly from 10.03's own
+// spec'd expense-waterfall categories (docs/admin/03-screen-inventory.md
+// §10.03), not invented.
+model Expense {
+  id                String          @id @default(uuid())
+  category          ExpenseCategory
+  description       String
+  amountCents       Int
+  currency          String          @default("INR")
+  status            ExpenseStatus   @default(pending)
+  incurredAt        DateTime
+  recordedByAdminId String
+  recordedByAdmin   AdminUser       @relation(fields: [recordedByAdminId], references: [id], onDelete: Cascade)
+  paidAt            DateTime?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@map("expenses")
+}
+
+// 10.04 Invoices — one real row generated the moment a Payment's status
+// flips to "paid" (see payments.service.ts's `activatePayment()` and
+// adminFinance.service.ts's `ensureInvoiceForPayment()`), not a separate
+// manual billing concept — this is a consumer subscription app, not a
+// B2B biller, so every invoice traces back to exactly one real Payment.
+model Invoice {
+  id        String   @id @default(uuid())
+  number    String   @unique
+  paymentId String   @unique
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  issuedAt  DateTime @default(now())
+
+  @@map("invoices")
+}
+
+// 10.08 Taxes & Compliance — an admin-entered setting, not an automated
+// tax-rule engine. Reframed during planning (reports/finance-architecture-
+// plan.html §05): this screen doesn't need engineering — or the product
+// owner — to decide real tax law; it needs a real form so whoever manages
+// Finance can enter their own jurisdiction and rate. `isActive` defaults
+// false so an unconfigured jurisdiction renders as an honest "not
+// configured" empty state rather than a fabricated 0% rate.
+model TaxConfig {
+  id               String    @id @default(uuid())
+  jurisdiction     String
+  ratePercent      Decimal?  @db.Decimal(5, 2)
+  isActive         Boolean   @default(false)
+  updatedByAdminId String
+  updatedByAdmin   AdminUser @relation(fields: [updatedByAdminId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("tax_configs")
+}
+
+// ---- Referral -----------------------------------------------------------
+// §O "Refer & Invite" (docs/mobile/03-screen-inventory.md), added 19 Aug
+// 2026. docs/mobile/05-data-model.md §2 calls this "the per-user-initiated
+// version of" the admin console's Referral entity (docs/admin/06-data-model.md,
+// attributable to an Influencer and/or Campaign — that's the Growth
+// module's marketing-partnership flavor, a different concept from a
+// user's own share link, and still Phase 6/unbuilt). This model is
+// deliberately just the mechanical link between a referrer and the
+// person who signed up with their code — no reward field. The design's
+// "you get / friend gets" rewards grid needs a real referral-bonus
+// decision (subscription credit? free program access? something else?)
+// this pass can't make — see docs/mobile/07-open-questions-gaps.md.
+// Building an invented reward amount here would misrepresent a feature
+// that doesn't exist yet, same reasoning as gap §14's no-payment-gateway
+// note.
+
+model Referral {
+  id         String   @id @default(uuid())
+  referrerId String
+  referrer   User     @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId  String   @unique
+  referee    User     @relation("ReferralReceived", fields: [refereeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  // §O reward (added 31 Aug 2026) — at most one reward grant per referral;
+  // see the ReferralReward model's own doc comment.
+  reward     ReferralReward?
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+// ---- Monetization (shared with the future admin console) ------------------
+
+// 25 Aug 2026: `isActive`/`createdAt`/`updatedAt` added for Module 06.05 —
+// Pricing (`apps/api/src/modules/adminPlans`), the first code anywhere in
+// this build that can create or edit a `SubscriptionPlan` row (before this,
+// every plan was `scripts/seed.ts`-only, same gap `ContentStatus`'s own
+// comment above closed for Program/Exercise/Recipe). `isActive` is a
+// reversible archive, not a delete — deleting a plan referenced by real
+// `Subscription`/`Payment` rows would break historical data, the same "no
+// delete, a reversible state flip instead" precedent `adminPrograms`
+// established for Program/Exercise/Recipe. `apps/api/src/modules/
+// subscriptions`'s `listPlans()` (the mobile-facing discovery endpoint) was
+// updated in the same pass to only return `isActive: true` rows, so an
+// archived plan stops being purchasable by new users without touching
+// anyone already subscribed to it. `@default(true)` is the same
+// backward-compatible-default reasoning as `ContentStatus`'s `@default
+// (published)` above — every pre-existing seeded plan stays purchasable
+// exactly as it always was.
+model SubscriptionPlan {
+  id            String           @id @default(uuid())
+  tier          SubscriptionTier
+  name          String
+  priceCents    Int
+  billingCycle  BillingCycle
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId     String
+  plan       SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status     SubscriptionStatus @default(trialing)
+  renewsAt   DateTime?
+  createdAt  DateTime           @default(now())
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+// ---- Payments (Razorpay integration, added 20 Aug 2026) -------------------
+// Closes gap §14's "no payment gateway wired up" note for real, for both
+// Subscription & Payments (§M) and Programs Commerce (§I) — both routed
+// through this one order/verify flow rather than duplicating payment logic
+// per feature. apps/api/src/modules/payments creates a Razorpay Order,
+// the mobile client opens Razorpay's hosted Checkout inside a WebView (no
+// native module linking needed, see RazorpayCheckoutModal.tsx's own
+// comment), and this row is the durable record of that attempt regardless
+// of whether the client's own /verify call ever completes — a webhook
+// independently reconciles status too, so a payment that succeeds but
+// whose client crashed before calling /verify still gets recorded and
+// still grants access. `referenceId` is a SubscriptionPlan.id when
+// purpose is "subscription" or a Program.id when purpose is
+// "program_purchase" — resolved into a real Subscription/ProgramPurchase
+// row only after the signature is verified (or the webhook confirms it),
+// via the exact same subscribe()/purchaseProgram() functions the old
+// direct-activate flow used, just now gated behind a real payment (see
+// those services' own `verifiedPayment` option). Real caveat this pass
+// deliberately did not silently paper over: every seeded priceCents value
+// in this app was chosen and is displayed as USD cents (`$14.99`); INR is
+// Razorpay's native currency, and passing those same integers through
+// as-is would functionally undercharge by roughly 80x if RAZORPAY_CURRENCY
+// stays "INR" — see docs/mobile/07-open-questions-gaps.md for the full
+// note. This needs either real INR list prices or a Razorpay account
+// configured for international/USD settlement before real money should
+// flow through it.
+
+model Payment {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          PaymentProvider @default(razorpay)
+  purpose           PaymentPurpose
+  referenceId       String
+  amountCents       Int
+  currency          String          @default("INR")
+  providerOrderId   String          @unique
+  providerPaymentId String?
+  status            PaymentStatus   @default(created)
+  // Module 06.05 Coupons (added 31 Aug 2026) — the code applied at order
+  // creation and the discount it produced, stashed here so the redemption
+  // can be recorded only once the payment is actually captured (see
+  // payments.service.ts's activatePayment + coupons.service.ts's
+  // recordRedemptionForPayment). Null when no coupon was used. `amountCents`
+  // above is the ALREADY-discounted amount actually charged.
+  couponCode        String?
+  discountCents     Int?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Module 10 Finance, added 26 Aug 2026 — one real Invoice generated the
+  // moment this Payment's status flips to "paid" (see payments.service.ts's
+  // `activatePayment()` and adminFinance.service.ts's
+  // `ensureInvoiceForPayment()`), not a separate manual billing concept.
+  invoice Invoice?
+  // Module 06.04 Refunds, added 31 Aug 2026 — a Payment can have partial
+  // refunds over time; see the Refund model's own doc comment.
+  refunds Refund[]
+
+  @@index([userId])
+  @@map("payments")
+}
+
+// ---- Admin console (Phase 6, added 20 Aug 2026) ---------------------------
+// A genuinely separate identity from `User` — an AdminUser is PrimeFit
+// internal staff operating the Super Admin Console
+// (docs/admin/01-product-requirements.md), not a customer. Kept as its own
+// table (not a `role` flag on `User`) so a compromised/leaked consumer
+// session can never carry admin privileges, and so admin auth
+// (apps/api/src/modules/adminAuth) can use its own JWT secret
+// (`ADMIN_JWT_SECRET`, see config/env.ts) — a token signed for one can
+// never verify as the other, even if a route handler had a bug.
+//
+// `AdminRole` lists all 8 roles named in docs/admin/05-roles-permissions.md
+// (real names read from the Figma "Roles & Permissions" screen, not
+// invented). Per gap §7, only Super Admin's full permission matrix is
+// design-sourced and confirmed; the other seven roles' matrices are
+// explicitly unconfirmed. **25 Aug 2026: enforcement is real for all 8
+// roles anyway** (`middleware/adminPermissions.ts`'s `requirePermission()`,
+// applied to every admin route) — the unconfirmed part is the *data*, not
+// whether it's checked: the other 7 roles run on a derived starter matrix
+// (each role's stated scope text mapped onto Super Admin's action set for
+// the matching module), a working default rather than fabricated
+// behavior, but still not a confirmed spec. `scripts/seed.ts` still only
+// creates a `super_admin` account, so in practice only that role can log
+// in until a real Admin Users creation flow is used for the others (see
+// Module 12.01, `adminAccounts.service.ts`).
+enum AdminRole {
+  super_admin
+  user_operations
+  coach_operations
+  finance
+  content
+  growth
+  analytics
+  support
+}
+
+enum AdminUserStatus {
+  active
+  disabled
+}
+
+model AdminUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  fullName     String
+  role         AdminRole       @default(super_admin)
+  status       AdminUserStatus @default(active)
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  auditLogEntries AuditLog[]
+  // 22 Aug 2026 (Module 05 — Programs CMS) — the reverse side of
+  // Program/Exercise/Recipe's `createdByAdmin` relation; see those models'
+  // own doc comments.
+  createdPrograms  Program[]
+  createdExercises Exercise[]
+  createdRecipes   Recipe[]
+  // Sensitive Data Access Requests, added 25 Aug 2026 — two distinct
+  // relations since one AdminUser can both request access to a user's
+  // panel and separately review other admins' requests (never their own,
+  // see that model's own doc comment).
+  sensitiveAccessRequestsMade     SensitiveDataAccessRequest[] @relation("SensitiveAccessRequestedBy")
+  sensitiveAccessRequestsReviewed SensitiveDataAccessRequest[] @relation("SensitiveAccessReviewedBy")
+  // Module 04's Change/Intervention Queue, added 25 Aug 2026 — only one
+  // relation needed here (unlike the two above): the requester on a
+  // RelationshipChangeRequest is always a consumer User, never an
+  // AdminUser, so there's no "requested by admin" side to also model.
+  reviewedChangeRequests RelationshipChangeRequest[]
+  // Module 05.05 Review/Approval, added 25 Aug 2026 — two relations again
+  // (like Sensitive Data Access, unlike the Change/Intervention Queue just
+  // above): the submitter on a ContentReview is always an AdminUser too
+  // (whoever wrote the draft), so both sides need modeling.
+  contentReviewsSubmitted ContentReview[] @relation("ContentReviewSubmittedBy")
+  contentReviewsReviewed  ContentReview[] @relation("ContentReviewReviewedBy")
+  // Module 08.02 Escalations, added 25 Aug 2026 — two relations, same
+  // shape as Sensitive Data Access / Content Review above: the admin who
+  // raises an escalation and the admin who resolves it are both always
+  // AdminUsers, and (unlike those two) can legitimately be the same one —
+  // see `Escalation`'s own comment for why no self-guard applies here.
+  escalationsRaised   Escalation[] @relation("EscalationEscalatedBy")
+  escalationsResolved Escalation[] @relation("EscalationResolvedBy")
+  // Module 10 Finance, added 26 Aug 2026 — one relation each, unlike
+  // Escalation/ContentReview/Sensitive Data Access above: an Expense is
+  // recorded once by whoever entered it, a TaxConfig is updated by
+  // whoever last saved it, and neither has a second "reviewed by" side
+  // the way an approval workflow would.
+  expensesRecorded  Expense[]
+  taxConfigsUpdated TaxConfig[]
+  // Module 11 AI Operations, added 27 Aug 2026 — see AiCoachSettings's own
+  // comment. Always 0 or 1 rows in practice (the singleton), modeled as a
+  // list only because that's how every other "who last touched this
+  // config row" relation above is shaped.
+  aiCoachSettingsUpdated AiCoachSettings[]
+
+  @@map("admin_users")
+}
+
+// ---- Coach marketplace (Phase 5, started 20 Aug 2026) ---------------------
+// A third separate identity — `Professional` — alongside the consumer `User`
+// and staff `AdminUser`. See docs/coach/07-open-questions-gaps.md's "Phase 5
+// started" entry for the full decision record: this schema follows
+// `v1-coach`'s (docs/coach/) taxonomy and structure, adopted per
+// docs/coach/06-cross-app-integration.md §2's own recommendation, to unblock
+// coach auth/onboarding/verification/dashboard — NOT as a resolution of
+// which discovery/booking UI screens get built (still an open product
+// decision; no code path here creates a Relationship yet, since that would
+// need the discovery/booking flow this pass deliberately did not build).
+//
+// AdminRole lists all 8 role names even though only super_admin's
+// permission matrix is design-confirmed — the rest run on a derived
+// starter set (see that enum's own comment) — the same discipline applies
+// here: modeling the real shape (per-service credentials, a shared KYC
+// record, Relationship-as-parent/Booking-as-child) without building every
+// consumer of it yet.
+
+enum ProfessionalServiceType {
+  fitness
+  nutrition
+}
+
+enum CredentialStatus {
+  not_verified
+  pending
+  verified
+  rejected
+}
+
+enum ProfessionalStatus {
+  active
+  suspended
+}
+
+enum RelationshipStatus {
+  active
+  ended
+}
+
+model Professional {
+  id           String              @id @default(uuid())
+  email        String              @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  bio          String?
+  specializationTags String[]      @default([])
+  yearsExperience Int?
+  status       ProfessionalStatus  @default(active)
+  // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
+  // take on this coach's booking value, admin-editable (Module 03 Profile /
+  // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
+  // model's doc comment for how it's applied.
+  commissionPct Int                @default(20)
+  // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
+  // service, unlike ProfessionalCredential below. Same base64-in-Postgres
+  // storage precedent as ProgressPhoto.imageData (no object storage exists
+  // in this build) — but this is a materially more sensitive document than
+  // a progress photo. Explicitly flagged, not silently treated as solved:
+  // docs/coach/07-open-questions-gaps.md gap §7 calls for a real
+  // security/privacy review (encryption-at-rest, redaction, scoped access)
+  // before this should ever hold a real government ID — this build has
+  // none of that, only the same storage mechanism as everything else here.
+  kycDocumentData String?
+  kycStatus    CredentialStatus    @default(not_verified)
+  // Admin review notes for the KYC check (docs/admin/03-screen-inventory.md
+  // 03.03's "admin review notes/log" field) — added 21 Aug 2026 for the
+  // Credential Verification screen. A single current-notes field, not a
+  // full threaded log; each verify/reject/suspend action is separately
+  // captured in AuditLog (recordAudit()) for the actual audit trail.
+  adminNotes   String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  credentials   ProfessionalCredential[]
+  refreshTokens ProfessionalRefreshToken[]
+  relationships Relationship[]
+  auditLogEntries AuditLog[]
+  // Coach Discovery & Booking, added 25 Aug 2026 — see the
+  // ProfessionalServiceOffering/Booking models' own doc comments below.
+  serviceOfferings ProfessionalServiceOffering[]
+  bookings         Booking[]
+  // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
+  // model's own doc comment below.
+  coachMessages    CoachMessage[]
+  // Coach Settlements, added 31 Aug 2026 — see the CoachSettlement model.
+  settlements      CoachSettlement[]
+
+  @@map("professionals")
+}
+
+// One row per (professional, serviceType) pair, per docs/coach/05-data-model.md
+// §2's correction to the admin console's original one-per-professional
+// assumption — a coach can be verified for Fitness while Nutrition is still
+// pending, per docs/coach/01-product-requirements.md §4.
+model ProfessionalCredential {
+  id                   String                  @id @default(uuid())
+  professionalId       String
+  professional         Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType          ProfessionalServiceType
+  certificationName    String?
+  certifyingBody       String?
+  yearObtained         Int?
+  certificationDocData String?
+  qualificationDocData String?
+  status               CredentialStatus        @default(not_verified)
+  // Admin review notes (added 21 Aug 2026, Credential Verification screen,
+  // docs/admin/03-screen-inventory.md 03.03) — same "single current-notes
+  // field, full trail lives in AuditLog" convention as Professional.adminNotes.
+  adminNotes           String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@unique([professionalId, serviceType])
+  @@map("professional_credentials")
+}
+
+model ProfessionalRefreshToken {
+  id             String       @id @default(uuid())
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  tokenHash      String       @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([professionalId])
+  @@map("professional_refresh_tokens")
+}
+
+// The parent object (per docs/coach/05-data-model.md §3's recommendation).
+// 25 Aug 2026: real Discovery & Booking (docs/coach/06-cross-app-integration.md
+// §2, gap §1) now populates this for real — apps.api's `coaching` module
+// creates (or reuses) the matching Relationship row(s) the moment a
+// Booking is confirmed. Before this date nothing ever created one, so
+// this table, and everything downstream that counts it (this admin
+// dashboard's activeCoachingRelationships, professionalDashboard's
+// activeClients, adminRelationships' Directory), read as permanently
+// empty — that's no longer the case.
+model Relationship {
+  id             String                  @id @default(uuid())
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType    ProfessionalServiceType
+  status         RelationshipStatus      @default(active)
+  createdAt      DateTime                @default(now())
+  endedAt        DateTime?
+
+  changeRequests RelationshipChangeRequest[]
+
+  @@index([userId])
+  @@index([professionalId])
+  @@map("relationships")
+}
+
+// ---- Coach Discovery & Booking (added 25 Aug 2026) --------------------
+// Resolves docs/coach/07-open-questions-gaps.md gap §1 — the "designed
+// twice, inconsistently" flow between the consumer app (v1-user, 4
+// screens, Fitness/Nutrition/Yoga/Sports categories) and this coach app's
+// own file (v1-coach, 7 screens incl. relationship management, Fitness/
+// Nutrition/Fitness+Nutrition categories). Per an explicit product
+// decision (not an engineering guess — see that gap entry's own
+// insistence on this point), v1-coach's version is adopted as
+// authoritative for both apps: its taxonomy (no Yoga/Sports — nothing
+// else in the product supports those), its 7-screen flow, and its
+// Relationship-as-parent modeling (docs/coach/05-data-model.md §3),
+// already used for the Relationship model above since 20 Aug 2026.
+//
+// A `ProfessionalServiceOffering` is a priced, timed session a
+// professional sells — no screen in EITHER Figma file designs a coach
+// setting their own rates (apps/coach-mobile's Dashboard quick actions
+// are still inert, gap §6), so offerings are seeded, not
+// coach-authored, same "seeded not admin/coach-authored yet" precedent
+// Programs/Exercises/Recipes started under before Module 05's CMS
+// existed — see scripts/seed.ts.
+//
+// `serviceType: null` means a combined offering (spans both services) —
+// deliberately not a third ProfessionalServiceType enum value, since
+// credentials and relationships are always genuinely single-service;
+// "combined" only ever describes what one priced session bundles, never
+// what a professional is verified for or a relationship tracks.
+model ProfessionalServiceOffering {
+  id                String                   @id @default(uuid())
+  professionalId    String
+  professional      Professional             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType       ProfessionalServiceType?
+  label             String
+  durationMinutes   Int
+  priceCents        Int
+  isActive          Boolean                  @default(true)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  bookings          Booking[]
+
+  @@index([professionalId])
+  @@map("professional_service_offerings")
+}
+
+enum BookingStatus {
+  confirmed
+  cancelled
+}
+
+// A single booked session. Deliberately references `userId`/
+// `professionalId` directly rather than a single `relationshipId` FK:
+// docs/coach/05-data-model.md §3 recommends "Relationship as the parent
+// object, Booking as a child," but a combined offering's one session
+// naturally spans two Relationship rows (fitness + nutrition), which a
+// single required FK can't represent cleanly. Instead,
+// `coaching.service.ts`'s `createBooking()` upserts the matching
+// Relationship row(s) for whichever service(s) the offering covers as a
+// side effect of confirming a Booking — "parent/child" as a real
+// consequence of booking, not a literal foreign key. `durationMinutes`/
+// `priceCents` are copied from the offering at booking time (not
+// re-read live) so a later price change never rewrites booking history —
+// same "copy the value at write time" precedent MealLog uses for a
+// Recipe's macros.
+model Booking {
+  id                String                      @id @default(uuid())
+  userId            String
+  user              User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId    String
+  professional      Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  offeringId        String
+  offering          ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  scheduledAt       DateTime
+  durationMinutes   Int
+  priceCents        Int
+  status            BookingStatus               @default(confirmed)
+  createdAt         DateTime                    @default(now())
+
+  @@index([userId])
+  @@index([professionalId])
+  @@index([professionalId, scheduledAt])
+  @@map("bookings")
+}
+
+enum ChangeReasonCategory {
+  schedule_conflict
+  different_specialization
+  other
+}
+
+// **25 Aug 2026: `approved`/`rejected` are real now** — the admin
+// Change/Intervention Queue (04.03, adminRelationships.service.ts's
+// `approveChangeRequest`/`denyChangeRequest`) can move a request off
+// `pending`. Until this update these were pre-declared but never set,
+// same "model the real shape without building every consumer of it yet"
+// precedent as `AdminRole` — closing docs/coach/07-open-questions-gaps.md's
+// Change/Intervention Queue gap (04.03) needed an admin review screen
+// this build didn't have yet; it does now.
+enum RelationshipChangeStatus {
+  pending
+  approved
+  rejected
+}
+
+// `reviewedByAdmin`/`reviewedAt`/`reviewNotes` added 25 Aug 2026 alongside
+// the review screen itself — no reason to model them earlier when nothing
+// could ever set them. No self-review guard is needed here (unlike
+// SensitiveDataAccessRequest's `cannot_approve_own_request`): the
+// requester is always a consumer `User`, never an `AdminUser`, so an
+// admin can never be reviewing their own request.
+model RelationshipChangeRequest {
+  id                String                    @id @default(uuid())
+  relationshipId    String
+  relationship      Relationship              @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason            ChangeReasonCategory
+  note              String?
+  status            RelationshipChangeStatus  @default(pending)
+  reviewedByAdminId String?
+  reviewedByAdmin   AdminUser?                @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  reviewedAt        DateTime?
+  reviewNotes       String?
+  createdAt         DateTime                  @default(now())
+
+  @@index([relationshipId])
+  @@index([userId])
+  @@map("relationship_change_requests")
+}
+
+// ---- Sensitive Data Access Requests (Module 02 — Users, added 25 Aug
+// 2026) ------------------------------------------------------------------
+// docs/admin/03-screen-inventory.md 02.02's locked "Sensitive Health
+// Metrics" panel + docs/admin/05-roles-permissions.md §4's own instruction
+// that this "should map directly to the Sensitive Data row" of
+// PERMISSION_MATRIX (adminPermissions.ts): "requires supervisor approval"
+// and "is logged". Real `OnboardingProfile` data has always existed here
+// (medicalConditions/injuries/allergens/gender/age/weightKg/heightCm) —
+// this was the one deliberate omission in adminUsers.service.ts, not just
+// an honest gap, because exposing it without this gate would be a real
+// privacy regression.
+//
+// Holding the module-level `sensitiveData: view` permission (today: only
+// super_admin, see AdminRole's comment) is a PRECONDITION to create a
+// request, not a substitute for one — the spec describes a specific,
+// per-user, timestamped grant, not just an ambient role check. A
+// super_admin still can't see a given user's panel until a DIFFERENT
+// super_admin (`reviewedByAdmin`) approves a request for that user
+// specifically (`cannot_approve_own_request`, mirroring
+// adminAccounts.service.ts's `cannot_disable_self`) — a real design
+// decision, not a guess: docs/admin/05-roles-permissions.md's own sample
+// data lists two distinct Super Admin accounts (Siddharth Mehta, Ananya
+// Roy), exactly what a non-self-approval flow needs to be usable at all.
+//
+// One row per (user, requesting admin) is the live one at a time — a new
+// request can't be created while the latest for that pair is `pending` or
+// `approved` (see sensitiveAccess functions in adminUsers.service.ts);
+// after a `denied` request, a fresh one can be submitted. Approval grants
+// that admin indefinite access to that user's panel — no expiry/revoke
+// concept exists anywhere else in this schema to model one against (same
+// "don't invent a field with no precedent" discipline as Subscription
+// having no `autoRenew` column), so this is a scoping decision, not an
+// oversight.
+enum SensitiveAccessStatus {
+  pending
+  approved
+  denied
+}
+
+model SensitiveDataAccessRequest {
+  id                 String                @id @default(uuid())
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestedByAdminId String
+  requestedByAdmin   AdminUser             @relation("SensitiveAccessRequestedBy", fields: [requestedByAdminId], references: [id], onDelete: Cascade)
+  reason             String
+  status             SensitiveAccessStatus @default(pending)
+  reviewedByAdminId  String?
+  reviewedByAdmin    AdminUser?            @relation("SensitiveAccessReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  reviewNotes        String?
+  createdAt          DateTime              @default(now())
+  reviewedAt         DateTime?
+
+  @@index([userId])
+  @@index([requestedByAdminId])
+  @@map("sensitive_data_access_requests")
+}
+
+// ---- Audit log --------------------------------------------------------
+// Write-once log per docs/admin/06-data-model.md / project-structure.md §2
+// audit-logging middleware note — mirrored here from day one since every
+// mutating request across all future apps should write through this table.
+//
+// 20 Aug 2026: added `actorAdminId` alongside the original `actorId` so an
+// entry can be attributed to either a consumer `User` action or a staff
+// `AdminUser` action — a single row is never both (recordAudit() takes one
+// or the other, see middleware/auditLog.ts), kept as two nullable columns
+// rather than a polymorphic actor because Prisma has no clean native
+// polymorphic-relation support and this keeps both FKs real/enforced
+// instead of a loose untyped "actorType" string. `actorProfessionalId`
+// added the same day for the same reason, for `Professional` actions.
+
+model AuditLog {
+  id            String        @id @default(uuid())
+  actorId       String?
+  actor         User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorAdminId  String?
+  actorAdmin    AdminUser?    @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
+  actorProfessionalId String?
+  actorProfessional   Professional? @relation(fields: [actorProfessionalId], references: [id], onDelete: SetNull)
+  action        String
+  entityType    String
+  entityId      String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+
+  @@index([actorId])
+  @@index([actorAdminId])
+  @@index([actorProfessionalId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ---- Coach ↔ Client Messaging (added 31 Aug 2026) ---------------------
+// docs/coach/03-screen-inventory.md — the Messages tab both apps' nav has
+// always rendered as an honest "Coming soon" (no Figma frames exist — see
+// apps/coach-mobile's MainTabs.tsx). This is the honest minimum real
+// messaging: one flat thread per (User, Professional) pair, gated on an
+// ACTIVE Relationship between them (a coach and a client can only message
+// each other while actually engaged — enforced in coachMessages.service.ts,
+// not just filtered in the UI). Deliberately NOT real-time: this build has
+// no websocket/push infrastructure anywhere (the same honest limit local
+// reminders and the AI Coach already live under), so both clients poll via
+// react-query refetch, documented as such rather than faking live delivery.
+// `readAt` backs a simple per-side unread count, nothing more — no typing
+// indicators, no delivery receipts, no attachments (no file/media upload
+// path exists anywhere in this build).
+enum CoachMessageSender {
+  user
+  professional
+}
+
+model CoachMessage {
+  id             String             @id @default(uuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  sender         CoachMessageSender
+  content        String             @db.Text
+  // Set when the OTHER party opens the thread — a message the user sent is
+  // marked read once the professional loads the thread, and vice versa.
+  readAt         DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([userId, professionalId, createdAt])
+  @@index([professionalId, userId, createdAt])
+  @@map("coach_messages")
+}
+
+// ---- Coach Settlements & Influencer Payouts (added 31 Aug 2026) --------
+// docs/admin/03-screen-inventory.md 10.06/10.07 + docs/coach — the "money
+// out" modules the roadmap left blocked on a take-rate/commission decision.
+// That decision is now made: **configurable per-coach commission**, stored
+// as `Professional.commissionPct` (a whole percent, admin-editable). A
+// settlement is computed from the real `Booking` value a coach delivered in
+// a period (bookings carry a real `priceCents`; note coaching bookings
+// don't run through Razorpay yet — see coaching.service.ts — so "gross" is
+// booking value delivered, honestly labelled as such, not funds actually
+// collected). Marking one paid records an `Expense` row (category
+// `coach_settlement`) so it flows into Module 10 Finance's real ledger,
+// rather than being a parallel money concept. Shared `PayoutStatus` with
+// influencer payouts — both are a simple pending → paid lifecycle.
+enum PayoutStatus {
+  pending
+  paid
+}
+
+model CoachSettlement {
+  id              String       @id @default(uuid())
+  professionalId  String
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  // UTC month boundaries the settlement covers — periodStart is the 1st of
+  // the month at 00:00 UTC, one settlement per coach per month (the unique
+  // below), same UTC-calendar convention as every other date-bucketed
+  // computation in this build (analytics, availability grid).
+  periodStart     DateTime
+  periodEnd       DateTime
+  grossCents      Int
+  commissionPct   Int
+  commissionCents Int
+  netCents        Int
+  status          PayoutStatus @default(pending)
+  paidAt          DateTime?
+  note            String?
+  createdAt       DateTime     @default(now())
+
+  @@unique([professionalId, periodStart])
+  @@index([professionalId])
+  @@map("coach_settlements")
+}
+
+enum InfluencerStatus {
+  active
+  inactive
+}
+
+model Influencer {
+  id            String             @id @default(uuid())
+  name          String
+  email         String?
+  handle        String?
+  platform      String?
+  // Per-influencer commission/revenue-share %, same admin-editable pattern
+  // as Professional.commissionPct. Recorded but NOT auto-applied to any
+  // revenue: this build has no campaign/attribution tracking (no way to
+  // know which signups or purchases an influencer drove — see gap notes on
+  // Module 07), so payouts are admin-entered amounts, not computed from a
+  // real attributed-revenue × rate. The field is honest metadata for when
+  // an attribution pipeline exists, not a live calculation input.
+  commissionPct Int                @default(20)
+  status        InfluencerStatus   @default(active)
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  payouts       InfluencerPayout[]
+
+  @@map("influencers")
+}
+
+model InfluencerPayout {
+  id           String       @id @default(uuid())
+  influencerId String
+  influencer   Influencer   @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  amountCents  Int
+  // Free-text period label (e.g. "Aug 2026") — deliberately not a computed
+  // date range, since there's no attributed-revenue period to derive one
+  // from (see Influencer.commissionPct's comment).
+  periodLabel  String
+  status       PayoutStatus @default(pending)
+  paidAt       DateTime?
+  note         String?
+  createdAt    DateTime     @default(now())
+
+  @@index([influencerId])
+  @@map("influencer_payouts")
+}
+
+// ---- Coupons (added 31 Aug 2026) --------------------------------------
+// docs/admin/03-screen-inventory.md 06.05 Pricing's Coupons half — the gap
+// adminPlans.service.ts flagged as "no Coupon entity exists anywhere". This
+// is that entity: an admin-created discount code, applied at checkout
+// (payments.service.ts) against a real order amount. `discountValue` is a
+// whole percent (1–100) when `discountType` is `percent`, or a cent amount
+// when `fixed`. One redemption per user per coupon (the unique on
+// CouponRedemption), capped by an optional `maxRedemptions` total.
+enum CouponDiscountType {
+  percent
+  fixed
+}
+
+model Coupon {
+  id             String             @id @default(uuid())
+  code           String             @unique
+  description    String?
+  discountType   CouponDiscountType
+  discountValue  Int
+  maxRedemptions Int?
+  timesRedeemed  Int                @default(0)
+  isActive       Boolean            @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  redemptions    CouponRedemption[]
+
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id            String   @id @default(uuid())
+  couponId      String
+  coupon        Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Loose reference to the Payment the discount was applied to — a plain
+  // scalar, not an FK relation, to avoid widening the Payment model for a
+  // cross-cutting concern (same "id without a back-relation" restraint the
+  // AuditLog actor columns already use for attribution).
+  paymentId     String?
+  discountCents Int
+  createdAt     DateTime @default(now())
+
+  @@unique([couponId, userId])
+  @@index([userId])
+  @@map("coupon_redemptions")
+}
+
+// ---- Refunds (added 31 Aug 2026) --------------------------------------
+// docs/admin/03-screen-inventory.md 06.04 Refunds — an admin-initiated
+// refund against a real `Payment`. When Razorpay is configured
+// (isRazorpayConfigured()) and the payment has a provider payment id, the
+// refund is issued through Razorpay's real refund API and lands `processed`
+// with a `providerRefundId`; otherwise it's recorded `pending` (honest —
+// no funds move without a live gateway), same "unconfigured means quietly
+// degraded, never faked" pattern as the rest of the payments integration.
+enum RefundStatus {
+  pending
+  processed
+  failed
+}
+
+model Refund {
+  id               String       @id @default(uuid())
+  paymentId        String
+  payment          Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amountCents      Int
+  reason           String?
+  status           RefundStatus @default(pending)
+  providerRefundId String?
+  note             String?
+  createdAt        DateTime     @default(now())
+  processedAt      DateTime?
+
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+// ---- Referral Rewards (added 31 Aug 2026) -----------------------------
+// docs/mobile/03-screen-inventory.md §O — the reward half of Refer & Invite,
+// left unbuilt because "what a referral reward actually is" was an open
+// product decision. Decision made: **one month of subscription credit to
+// the referrer** when their referee first subscribes to a PAID plan. The
+// credit accrues on `User.referralCreditMonths` (a real integer balance),
+// and each grant is recorded as a ReferralReward row (one per Referral, the
+// unique) so the mobile screen can show a real earned-rewards history, not
+// just a running number. Granted from subscriptions.service.ts's subscribe()
+// at the moment a paid subscription activates.
+enum ReferralRewardStatus {
+  pending
+  granted
+}
+
+model ReferralReward {
+  id           String               @id @default(uuid())
+  referralId   String               @unique
+  referral     Referral             @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  referrerId   String
+  referrer     User                 @relation("ReferralRewardsEarned", fields: [referrerId], references: [id], onDelete: Cascade)
+  type         String               @default("subscription_credit")
+  creditMonths Int                  @default(1)
+  status       ReferralRewardStatus @default(granted)
+  grantedAt    DateTime?
+  createdAt    DateTime             @default(now())
+
+  @@index([referrerId])
+  @@map("referral_rewards")
+}
+
+// ---- Recovery & Devices — manual-entry stopgap (added 31 Aug 2026) -----
+// docs/mobile Phase 2 §E — Recovery & Devices was blocked because no honest
+// device data source (HealthKit/Google Fit) exists in this build. Decision:
+// a manual-entry stopgap — the user types their own resting HR / sleep /
+// HRV / soreness / energy, real user-provided data honestly labelled as
+// self-reported, exactly the same "real stopgap, not a faked device feed"
+// precedent as ProgressPhoto's base64-in-Postgres. One row per day per user
+// (the unique), upserted. A future native-wearable integration can populate
+// the same fields without a schema change.
+model RecoveryLog {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             DateTime
+  restingHeartRate Int?
+  sleepHours       Float?
+  hrvMs            Int?
+  soreness         Int?
+  energyLevel      Int?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("recovery_logs")
+}

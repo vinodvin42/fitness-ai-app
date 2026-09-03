@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Env
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Build output
+dist/
+build/
+
+# Prisma
+apps/api/prisma/migrations/dev.db
+
+# Expo / React Native
+apps/*/.expo/
+apps/*/.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Logs
+npm-debug.log*
+*.log
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Scratch/staging artifacts from iterative development — never real source.
+# See _to_delete/ itself for contents; kept out of git rather than deleted
+# so nothing is lost, but none of it belongs in repo history.
+_to_delete/

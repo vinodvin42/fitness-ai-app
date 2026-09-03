@@ -1,0 +1,7 @@
+{
+  "extends": ["../../packages/config/.eslintrc.base.json"],
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module"
+  }
+}

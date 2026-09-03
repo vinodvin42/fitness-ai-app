@@ -1,0 +1,62 @@
+# Open Questions & Gaps Found in the Figma Review
+
+Read this before writing any code — these affect architecture and sequencing decisions, not just polish.
+
+## 1. No authentication screens exist
+The file starts at the authenticated Executive Dashboard. There is no login, MFA, SSO, password-reset, or session-expiry screen anywhere in the 54 frames. **Decision needed:** who designs these — is it expected that Figma will be extended, or should engineering build a plain/functional auth flow without a matching design pass?
+
+## 2. Two (arguably three) different sidebar navigation patterns coexist
+Most modules use a primary icon+label rail plus a collapsible "System & Operations" flyout at the bottom. Finance (10.x) and AI Operations (11.x) instead show a plain-text primary rail with **no** flyout, replaced by a "SYSTEM STATUS" pill, and add a second full sidebar panel (`finance-sub-nav` / AI sub-nav) with its own header. This looks like the newer of two design iterations rather than an intentional dual pattern. **Decision needed:** pick one sidebar pattern (recommend the two-tier: primary rail + contextual sub-panel, since it scales better to Finance's 12 destinations) and have design reconcile the older screens (03–09, 12) to match, or confirm the split is intentional.
+
+## 3. Finance sub-nav lists two destinations with no matching screen
+The Finance sidebar consistently links to **12** pages, but only **10** numbered Finance frames (10.01–10.10) exist. Missing: **"Bills & Vendors"** and **"Refunds & Adjustments"** (the latter is distinct from Commerce's "Refunds" screen, 06.04, which is customer-refund-facing, not the internal-adjustments version implied here). **Decision needed:** design these two screens, or drop them from the nav if they're not actually planned features.
+
+## 4. Commerce (06) vs. Finance (10) — is there one ledger or two?
+Commerce has its own Subscriptions/Transactions/Payments/Refunds/Pricing screens, and Finance independently has Revenue/Expenses/Invoices/Receivables-Payables/etc. Both clearly touch money, but it's not evident from the design alone whether Finance is simply a deeper accounting view over the same transactions Commerce manages, or a separate system fed by a different process (e.g. manual bookkeeping, a separate accounting tool integration). This materially affects the data model (see [06-data-model.md](06-data-model.md) §3) and needs a product/finance-team answer before schema design.
+
+## 5. No empty, loading, or error states anywhere
+Every screen is designed "happy path, fully populated." Tables, dashboards, and detail panels all assume data exists. **Decision needed:** who designs empty/loading/error/skeleton states — reusing the [04-design-system.md](04-design-system.md) component inventory, a consistent pattern could be defined once (e.g., one empty-state component, one skeleton-loader pattern) rather than per-screen, but it still needs a design pass or at minimum sign-off on an engineering-led approach.
+
+## 6. Desktop-only, fixed 1440px canvas
+No tablet or mobile frames exist for any of the 54 screens, and no responsive behavior (breakpoints, collapsible sidebar, stacked layouts) is implied by the layer structure. **Decision needed:** is the Super Admin Console explicitly desktop-only (reasonable for an internal ops tool), or does it need a responsive pass before/after initial launch? This changes CSS architecture from day one if responsive is required.
+
+## 7. Permission matrix only fully visible for one role
+The Roles & Permissions screen (12.02) only shows the selected role's (Super Admin's) full matrix in the reviewed export; the other seven roles' cell-level grants weren't visible without interacting with the file. **Action needed:** either re-review the file with each role selected, or get the permission matrix as structured data (e.g. a spreadsheet) directly from product/design rather than re-deriving it screen-by-screen — this is exactly the kind of data that shouldn't be reverse-engineered from a screenshot for something as sensitive as access control.
+
+**26 Aug 2026:** the read-only 12.02 screen itself is now real (`apps/admin-web/src/screens/adminSystem/RolesPermissionsScreen.tsx`) — it displays exactly `adminPermissions.ts`'s `PERMISSION_MATRIX`, live member counts included. This doesn't close the gap above; if anything it makes the caveat more visible: whoever reviews it in the console sees the same "derived starter set, not confirmed" matrix this doc has been describing since gap §2's 20 Aug update, just as a real screen instead of a code file.
+
+## 8. Even "Super Admin" doesn't have blanket permissions
+Worth explicit product confirmation (see [05-roles-permissions.md](05-roles-permissions.md) §2) that Super Admin intentionally lacks Delete on Dashboard/Commerce/Analytics/Audit Logs and Approve on most modules — this looks deliberate (segregation of duties) but should not be assumed silently by engineering.
+
+## 9. No Figma variables/design tokens published
+`get_variable_defs` returned an empty set for this file — every color, spacing, and type value is a hard-coded/local style rather than a shared token. All colors in [04-design-system.md](04-design-system.md) are eyeballed approximations from rendered screenshots. **Action needed:** either have design publish real variables, or run a proper token-extraction pass (Figma dev mode inspector) on a representative screen per module before locking a Tailwind/CSS variable config.
+
+## 10. Icon library not confirmed
+Icon layer names strongly resemble the [Lucide](https://lucide.dev) icon set (`layout-grid`, `git-merge`, `shield-check`, `refresh-cw`, etc.) but this hasn't been confirmed with design. Worth locking down before implementation to avoid a mismatched icon set creeping in screen-by-screen.
+
+## 11. Two different naming schemes for "Finance" sub-nav items across screens
+Earlier Finance frames (10.01–10.03) list "Receivables" and "Payables" as separate sub-nav items; later frames (10.08–10.10) list a combined "Receivables & Payables" — consistent with the single 10.05 screen that already combines them. This is a minor design-file cleanup item (delete the stale separate entries) rather than a product decision, but worth reporting back to design.
+
+## 20 Aug 2026 — `apps/admin-web` scaffolded (Phase 6, first slice): decisions made, not blocking
+
+Scaffolding this app required a real answer for several of the gaps above rather than leaving them open indefinitely. These are documented defaults, made the same way `apps/user-mobile`'s equivalent gaps were resolved — reasonable, working choices that can be revisited once a real design/product pass happens, not silent guesses.
+
+- **Gap §1 (no auth screens):** resolved — built a plain, functional, undesigned login screen (`apps/admin-web/src/screens/LoginScreen.tsx`). No signup, MFA, SSO, or password-reset; `AdminUser` accounts are provisioned by `apps/api/scripts/seed.ts` only. A real Admin Users management screen (12.01) is still unbuilt — that's the actual answer to "how do I create a second admin account," not a self-service flow.
+- **Gap §2 (inconsistent sidebar patterns):** resolved per the doc's own recommendation — standardized on primary icon+label rail + contextual sub-panel. No sub-panel is built yet (only Dashboard is real); it'll appear once a module ships more than one screen. The older rail+flyout and newer rail+status-pill patterns from the Figma file were not carried forward as-is.
+- **Gap §6 (desktop-only ambiguity):** resolved — built desktop-only, no responsive breakpoints, per the doc's own suggested default for an internal ops tool. Revisit if the console needs to run on a laptop below ~1280px or on a tablet.
+- **Gap §7 (permission matrix only known for one role):** partially resolved, not fully — `AdminRole` in `apps/api/prisma/schema.prisma` lists all 8 real role names from the Figma review, but only `super_admin` is enforced anywhere (`requireAdminAuth` just checks for *a* valid admin session, not a role-specific permission). Building real per-role checks for the other 7 roles still needs their permission matrices from product/design — this gap is NOT closed, just given a safe default (only one role can log in in practice, since `scripts/seed.ts` only creates a `super_admin`).
+  - **Update, 25 Aug 2026 (go-live hardening):** the enforcement half of this gap is now closed — `apps/api/src/middleware/adminPermissions.ts` gates every one of the 8 roles, not just `super_admin`, and every admin route that maps to a real module/action now calls `requirePermission()`. The documentation-completeness half described above is still open: only Super Admin's matrix ever came from a real, design-sourced source (this doc's own §2 table); the other 7 roles' grants are a *derived* starter matrix — each role's stated scope text (e.g. Finance = "Revenue, transactions, settlements") mapped onto Super Admin's action set for the matching module row, nothing more. `adminPermissions.ts`'s own doc comment carries the per-role reasoning, and `AdminUsersScreen.tsx` now surfaces this to whoever creates a non-Super-Admin account. Treat these 7 rows as a working default to review against a real staff roster before real accounts rely on them, not as confirmed final spec.
+- **Gap §9 (no design tokens):** resolved with a caveat — `apps/admin-web/src/styles/index.css` hardcodes eyeballed approximations of the colors described in [04-design-system.md](04-design-system.md) as Tailwind v4 `@theme` variables. Still not authoritative; still needs a real token-extraction pass or a published Figma Variables set before these values should be treated as final.
+- **Gap §10 (icon library unconfirmed):** resolved — skipped icons entirely, using plain text/monogram glyphs in the sidebar instead (same precedent as `apps/user-mobile`'s repeated plain-shape substitution). Swapping in a real icon library (Lucide is still the strongest visual match) is a small, self-contained follow-up once confirmed with design.
+
+Gaps §3, §5, §8, §11 remain genuinely open — none of them were touched by this slice, since none of them blocked building a login screen and one dashboard.
+
+## 26 Aug 2026 — Gap §4 resolved: one ledger
+
+**Decision: one ledger.** Finance (Module 10) is architected as a deeper reporting/operations layer over the same `Payment`/`Subscription` data Commerce (Module 06) already owns, extended with 3 new entities (`Expense`, `Invoice`, `TaxConfig`) — not a second ledger, not a parallel bookkeeping system fed by manual entry or an external accounting tool. Full decision record, reasoning, and the phase-wise plan it was built from: [reports/finance-architecture-plan.html](../../reports/finance-architecture-plan.html).
+
+Corroboration found while investigating this, not assumed going in: [05-roles-permissions.md](05-roles-permissions.md) already states the permission matrix "collapses Finance into Commerce" as a single governance scope — the design source itself never treated these as two separate systems. `apps/api/src/middleware/adminPermissions.ts`'s `AdminModule` enum has no `finance` key for exactly that reason.
+
+This unblocked 7 of Finance's 10 screens (10.01, 10.02, 10.03's Expenses half, 10.04, 10.05, 10.08, 10.10) — see `apps/api/src/modules/adminFinance/adminFinance.service.ts`'s own doc comment for the full real-vs-not breakdown. It did **not** unblock 10.06 Coach Settlements or 10.07 Influencer Payouts (still need a commission/take-rate decision, shared with Module 07 and 09.04 Business Analytics, plus real coaching-payment data that doesn't exist yet), or 10.09 Bank/Payment Accounts (needs a real banking-aggregation vendor account — the spec's own "sync"/"refresh" language implies live connectivity). Gap §3's nav/screen mismatch (2 undesigned destinations) is unaffected by this decision and remains open.
+
+**Gap §3 remains genuinely open** — untouched by this pass.
