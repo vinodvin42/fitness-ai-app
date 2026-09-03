@@ -90,12 +90,27 @@ jobs:
       - name: Typecheck every workspace
         run: npm run typecheck
 
-      # db push, not migrate deploy — this project has no committed
-      # migration history yet (see render.yaml's own comment for why).
-      # Update this the same day render.yaml switches, so CI keeps
-      # matching how production is actually deployed.
+      # migrate deploy, not db push — apps/api/prisma/migrations/ is now a
+      # real, committed migration history (the first migration was
+      # 20260831081213_init; deploy-azure-api.yml, the actual deploy path,
+      # already made this same switch for the same reason). db push would
+      # silently sync the database straight from schema.prisma instead,
+      # which papers over a missing/wrong migration file rather than
+      # failing on it — migrate deploy is what actually proves this repo's
+      # migrations apply cleanly to a fresh database.
       - name: Sync database schema
-        run: npx prisma db push --accept-data-loss --schema=apps/api/prisma/schema.prisma
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      # Real, Postgres-backed integration tests (apps/api/tests/) — run
+      # here, right after the database is migrated and before the build/
+      # boot steps below, since Vitest transpiles and executes the
+      # TypeScript source directly (no prior `npm run build` needed) and a
+      # real logic regression is cheaper to catch now than after spending
+      # time on a production build + boot smoke test that mostly checks a
+      # different thing (that the compiled output starts up and can reach
+      # Postgres at all, not that its business logic is correct).
+      - name: Run tests
+        run: npm run test --workspace=apps/api
 
       - name: Build the API
         run: npm run build --workspace=apps/api
