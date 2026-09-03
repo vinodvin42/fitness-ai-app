@@ -28,7 +28,14 @@ jobs:
           action: "upload"
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
-          app_location: "C:/Program Files/Git/apps/landing" # App source code path
+          # Go-live hardening (3 Sep 2026) — app_location got written as an
+          # absolute Windows path by the same Git-Bash/MSYS path-mangling
+          # artifact documented on admin-web's/user-mobile's identical
+          # workflows. apps/landing has no build step (plain static HTML/
+          # CSS/JS, no framework, no dependencies) — skip_app_build avoids
+          # Oryx trying to auto-detect and build one anyway.
+          skip_app_build: true
+          app_location: "apps/landing" # already-built static site — no dist/ output to point at
           api_location: "" # Api source code path - optional
           output_location: "" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
