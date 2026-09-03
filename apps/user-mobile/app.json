@@ -6,14 +6,22 @@
     "orientation": "portrait",
     "scheme": "primefit",
     "userInterfaceStyle": "dark",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
       "bundleIdentifier": "com.primefit.usermobile",
       "supportsTablet": false
     },
     "android": {
       "package": "com.primefit.usermobile",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       "expo-notifications",
@@ -33,7 +41,11 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:4000"
-    }
+      "apiBaseUrl": "http://localhost:4000",
+      "eas": {
+        "projectId": "7a954e3d-e225-4ed0-8e01-02cbe63f59e4"
+      }
+    },
+    "owner": "vinodvin42"
   }
 }
