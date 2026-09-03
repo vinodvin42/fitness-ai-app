@@ -11,6 +11,7 @@ node_modules/
 # Build output
 dist/
 build/
+combined-web-deploy/
 
 # Prisma
 apps/api/prisma/migrations/dev.db

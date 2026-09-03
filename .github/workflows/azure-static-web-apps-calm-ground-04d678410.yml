@@ -27,6 +27,14 @@ jobs:
       # and EXPO_PUBLIC_API_BASE_URL (not VITE_API_BASE_URL) is what
       # actually gets inlined into the exported web bundle, confirmed
       # against src/api/client.ts.
+      #
+      # 4 Sep 2026 — this site now also serves apps/landing at its root,
+      # merged with this app under /app/, per scripts/merge-web-deploy.js's
+      # own top comment for the full reasoning (why the two don't collide,
+      # why only index.html needs to move). primefit-landing's own
+      # standalone Static Web App is being decommissioned in favor of this
+      # single, unified site — a visitor lands on the marketing page first
+      # and reaches this real app via its "Log In" link.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -35,6 +43,7 @@ jobs:
       - run: npm run build:mobile
         env:
           EXPO_PUBLIC_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      - run: node scripts/merge-web-deploy.js combined-web-deploy
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -45,7 +54,7 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           skip_app_build: true # already built above — see the comment on this job's build step
-          app_location: "apps/user-mobile/dist" # the already-built output, not the source folder
+          app_location: "combined-web-deploy" # landing (root) + this app (under /app/) merged by scripts/merge-web-deploy.js
           api_location: "" # Api source code path - optional
           output_location: "" # left blank — app_location above already points at the built output
           ###### End of Repository/Build Configurations ######

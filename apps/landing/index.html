@@ -35,6 +35,12 @@
       <nav class="nav" aria-label="Primary">
         <a class="nav__link" href="#features">Features</a>
         <a class="nav__link" href="#download">Download</a>
+        <!-- Go-live hardening (4 Sep 2026) — this landing page is now
+             merged onto the same site as the real web app (apps/user-mobile's
+             Expo web export), served at /app/. This link is a real,
+             functioning entry into that app's own sign-in flow, not a
+             placeholder — see the deploy workflow's merge step. -->
+        <a class="nav__link" href="/app/">Log In</a>
         <a class="btn btn--primary btn--sm" href="#download">Get the app</a>
       </nav>
     </div>
