@@ -63,6 +63,12 @@ jobs:
       ADMIN_JWT_SECRET: ci-only-admin-secret-not-a-real-credential
       PROFESSIONAL_JWT_SECRET: ci-only-professional-secret-not-a-real-credential
       CORS_ORIGINS: http://localhost:5173
+      # Two-Factor Authentication (25 Aug 2026, gap §17) — env.ts requires
+      # exactly 64 hex chars (32 bytes, AES-256-GCM's fixed key size), so
+      # unlike the JWT secrets above this can't be a descriptive placeholder
+      # string. Generated once with `openssl rand -hex 32` for CI only —
+      # thrown away after every run, same as everything else in this block.
+      TWO_FACTOR_ENCRYPTION_KEY: 8cd1aec52e2f286867dbd56ed3d8e61f11bb5557a9f86abe38d0b43e40563597
 
     steps:
       - uses: actions/checkout@v4
