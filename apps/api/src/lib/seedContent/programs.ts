@@ -63,7 +63,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 6,
     isAiOnly: true,
     priceCents: 0,
-    imageUrl: unsplash("photo-1758798458635-f01402b40919"),
+    imageUrl: unsplash("photo-1764173040171-57f79264b358"),
   },
   {
     id: "prog-desk-reset",
@@ -98,7 +98,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 5,
     isAiOnly: true,
     priceCents: 1399,
-    imageUrl: unsplash("photo-1601422407692-ec4eeec1d9b3"),
+    imageUrl: unsplash("photo-1758875570600-8daf8d2f05f3"),
   },
   {
     id: "prog-hiit-shred",
@@ -120,7 +120,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 6,
     isAiOnly: true,
     priceCents: 1699,
-    imageUrl: unsplash("photo-1546483875-ad9014c88eba"),
+    imageUrl: unsplash("photo-1784819482932-893a2b63df45"),
   },
   {
     id: "prog-upper-sculpt",
@@ -152,7 +152,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 10,
     isAiOnly: true,
     priceCents: 2199,
-    imageUrl: unsplash("photo-1759674861540-afed9f86f94a"),
+    imageUrl: unsplash("photo-1745790289741-12a211a8325d"),
   },
   {
     id: "prog-athlete-performance",
@@ -163,7 +163,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 8,
     isAiOnly: true,
     priceCents: 2499,
-    imageUrl: unsplash("photo-1526676317768-d9b14f15615a"),
+    imageUrl: unsplash("photo-1698671823406-035c77ff6fcd"),
   },
   {
     id: "prog-powerlifting",
@@ -174,7 +174,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 10,
     isAiOnly: true,
     priceCents: 2799,
-    imageUrl: unsplash("photo-1532029837206-abbe2b7620e3"),
+    imageUrl: unsplash("photo-1694023536590-60d02108b323"),
   },
   {
     id: "prog-lean-muscle",
@@ -208,7 +208,7 @@ export const seedPrograms: SeedProgram[] = [
     durationWeeks: 4,
     isAiOnly: true,
     priceCents: 1299,
-    imageUrl: unsplash("photo-1636647511729-6703539ba71f"),
+    imageUrl: unsplash("photo-1771762211132-2f0598b44dbb"),
   },
   {
     id: "prog-plant-based",
