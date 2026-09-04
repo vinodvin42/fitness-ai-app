@@ -247,29 +247,11 @@
         </div>
 
         <div class="download-grid">
-          <!-- ============================================================
-               ANDROID — PLACEHOLDER, REPLACE BEFORE REAL TESTERS GET THIS LINK
-               ============================================================
-               No .apk has been built yet. Per DEPLOY-RUNBOOK.md §7, run from
-               the repo root once an Expo (eas-cli) account is set up:
-
-                 eas build --platform android --profile preview -e apps/user-mobile
-
-               That finishes with a real, direct .apk download URL hosted by
-               Expo (looks like https://expo.dev/artifacts/eas/<id>.apk).
-
-               Once that URL exists, update the <a> tag below in THREE steps:
-                 1. href="#android-apk-pending"  ->  href="<the real .apk URL>"
-                 2. Delete the `is-pending` class and `aria-disabled="true"`
-                    from that <a> (leave the other classes as they are).
-                 3. Change the two text nodes inside it from "Coming Soon" /
-                    "Direct APK download" to "Download APK" (add a version
-                    number or file size next to it if you have one handy).
-
-               Also remove the <span class="pill pill--pending"> badge below
-               and the "why this isn't live yet" note that <a> currently
-               scrolls to (#android-apk-pending), then delete this comment.
-               ============================================================ -->
+          <!-- Android APK live as of 4 Sep 2026 — built via
+               `eas build --platform android --profile preview`, real
+               artifact confirmed (200, application/octet-stream, ~65MB)
+               before wiring this link in. Update this href again whenever
+               a new preview build replaces it. -->
           <article class="platform-card">
             <div class="platform-card__top">
               <span class="platform-card__icon" aria-hidden="true">
@@ -278,27 +260,25 @@
                   <path d="M10 19h4"></path>
                 </svg>
               </span>
-              <span class="pill pill--pending"><span class="pill__dot"></span>Coming soon</span>
+              <span class="pill pill--live"><span class="pill__dot"></span>Live</span>
             </div>
             <div>
               <h3 class="platform-card__title">Android</h3>
               <p class="platform-card__subtitle">Direct APK download</p>
             </div>
             <p class="platform-card__body">
-              A direct <code>.apk</code> install — no Google Play listing, no review wait. You'll
-              get a real download link the moment the pilot build is ready.
+              A direct <code>.apk</code> install — no Google Play listing, no review wait.
+              ~65MB.
             </p>
             <a
-              class="btn btn--primary btn--block is-pending"
-              href="#android-apk-pending"
-              aria-disabled="true"
-              role="button"
+              class="btn btn--primary btn--block"
+              href="https://expo.dev/artifacts/eas/a4iDJ2AJE63k3vIXHca1t5o3zk4iSZ9ySUiwJlqssKY.apk"
             >
-              Coming Soon
+              Download APK
             </a>
-            <p class="platform-card__footnote" id="android-apk-pending">
-              Once it's live: Android will ask permission to "install from this source" the first
-              time you open the link — that's expected for a direct install, not a warning sign.
+            <p class="platform-card__footnote">
+              Android will ask permission to "install from this source" the first time you open
+              the file — that's expected for a direct install, not a warning sign.
             </p>
           </article>
 
