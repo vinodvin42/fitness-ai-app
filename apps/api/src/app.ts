@@ -101,6 +101,42 @@ export function createApp() {
 
   app.get("/health", (_req, res) => res.json({ status: "ok", env: env.NODE_ENV }));
 
+  // ============================================================
+  // TEMPORARY — go-live hardening, 4 Sep 2026. DELETE THIS ROUTE (and the
+  // SEED_TRIGGER_SECRET app setting) once it's been called successfully
+  // once against the live Azure database.
+  //
+  // Why this exists: seedDatabase() (src/lib/seedDatabase.ts) needs to run
+  // once against the real deployed Postgres, but Azure App Service Linux's
+  // Kudu/SCM console runs commands in a separate, unprivileged sandbox
+  // container from the actual running app — it doesn't share the app's
+  // working node_modules (a root-absolute /node_modules the real app
+  // container extracts at its own startup, invisible to Kudu), has no
+  // real shell interpreting compound commands, and times out (504) well
+  // before a fresh `npm install` can finish. This runs the exact same
+  // idempotent, upsert-only logic (see that file's own doc comment) from
+  // inside the one process that's actually proven to work — this app
+  // itself, already serving /health successfully.
+  //
+  // Protected by a dedicated one-time secret (not reused from any other
+  // app setting) precisely so it's easy to fully revoke: delete the
+  // SEED_TRIGGER_SECRET app setting and this route stops accepting
+  // requests even before the code deploy removing it lands.
+  app.post("/internal/seed-once", async (req, res, next) => {
+    try {
+      if (!env.SEED_TRIGGER_SECRET || req.header("X-Seed-Secret") !== env.SEED_TRIGGER_SECRET) {
+        res.status(404).json({ error: { code: "not_found", message: "No route for POST /internal/seed-once" } });
+        return;
+      }
+      const { seedDatabase } = await import("./lib/seedDatabase");
+      const summary = await seedDatabase();
+      res.json({ summary });
+    } catch (err) {
+      next(err);
+    }
+  });
+  // ============================================================
+
   app.use("/auth", authRouter);
   app.use("/users", usersRouter);
   // programPurchasesRouter must be mounted before programsRouter: its

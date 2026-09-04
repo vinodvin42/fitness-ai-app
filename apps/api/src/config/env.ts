@@ -80,13 +80,53 @@ const envSchema = z.object({
   // "unconfigured means quietly off, never blocks boot" pattern as
   // Razorpay/AI above. See lib/sentry.ts.
   SENTRY_DSN: z.string().optional(),
+  // TEMPORARY — go-live hardening, 4 Sep 2026. Gates POST
+  // /internal/seed-once (see app.ts's own comment on that route for the
+  // full why). Optional/no fail-fast, same pattern as the vars above —
+  // unset means the route always 404s. Delete this line along with the
+  // route once it's been used.
+  SEED_TRIGGER_SECRET: z.string().optional(),
   // AI provider configuration (gap §13's infrastructure half only — see
   // lib/aiClient.ts's doc comment for what this does and doesn't cover).
   // Also optional/no fail-fast, same reasoning as Razorpay above.
-  AI_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
+  //
+  // "azure-openai" (4 Sep 2026) — Azure OpenAI Service, added alongside
+  // the existing Anthropic/OpenAI direct-API providers rather than
+  // replacing them, since both of those already work and some deployments
+  // (this one included — see infra/azure/*.bicep) run the rest of the
+  // stack on Azure and want the AI calls billed through the same
+  // subscription/resource group instead of a separate Anthropic/OpenAI
+  // account. Azure OpenAI's request/response JSON shape is the same
+  // Chat Completions shape OpenAI's own API uses (generateWithAzureOpenAi
+  // in aiClient.ts reuses that parsing) — what's different is the URL
+  // (a per-resource endpoint + "deployment name" instead of a bare model
+  // name, since Azure OpenAI deploys a chosen base model under a name you
+  // pick yourself) and auth (`api-key` header, not `Authorization: Bearer`).
+  AI_PROVIDER: z.enum(["anthropic", "openai", "azure-openai"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().optional(),
+  // Azure OpenAI — all four required together when AI_PROVIDER=azure-openai
+  // (checked below, past what Zod's per-field .optional() can express, same
+  // pattern as the CORS_ORIGINS/Razorpay checks further down this file).
+  // AZURE_OPENAI_ENDPOINT is the resource's own base URL, e.g.
+  // https://<resource-name>.openai.azure.com — no path or trailing slash.
+  // AZURE_OPENAI_DEPLOYMENT is the deployment name you chose in Azure AI
+  // Foundry / the Azure OpenAI resource when deploying a base model (e.g.
+  // "gpt-4o-mini") — NOT the base model name itself; Azure OpenAI routes
+  // by deployment name, not model name, since one resource can host several
+  // differently-configured deployments of the same or different base models.
+  AZURE_OPENAI_API_KEY: z.string().optional(),
+  AZURE_OPENAI_ENDPOINT: z.string().optional(),
+  AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
+  // Pinned rather than defaulted-and-hidden — Azure OpenAI's REST API is
+  // versioned independently of the base model, and a stale hardcoded
+  // default would silently start failing (or silently miss newer request
+  // fields) whenever Azure retires an old api-version. 2024-10-21 is the
+  // current stable (non-preview) GA api-version as of this pass — confirmed
+  // against Microsoft Learn's Azure OpenAI REST API reference. Override via
+  // env if Azure moves the stable line before this comment is updated.
+  AZURE_OPENAI_API_VERSION: z.string().default("2024-10-21"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -111,6 +151,26 @@ if (parsed.data.NODE_ENV === "production" && parsed.data.CORS_ORIGINS.length ===
   // fallback (see app.ts) since that's genuinely convenient locally.
   console.error(
     "CORS_ORIGINS must be set in production — set it to your real deployed frontend origin(s), comma-separated.",
+  );
+  process.exit(1);
+}
+
+if (
+  parsed.data.AI_PROVIDER === "azure-openai" &&
+  (!parsed.data.AZURE_OPENAI_API_KEY || !parsed.data.AZURE_OPENAI_ENDPOINT || !parsed.data.AZURE_OPENAI_DEPLOYMENT)
+) {
+  // AI_PROVIDER itself stays optional/never blocks boot (see its own
+  // comment above) — but *choosing* azure-openai and then leaving it half
+  // configured is a real misconfiguration, not "feature quietly off": the
+  // other two providers only need one key each to work, so a bare
+  // AI_PROVIDER=azure-openai with nothing else set would otherwise boot
+  // clean and then fail every single AI Coach message at request time
+  // instead of at startup. Unset AI_PROVIDER entirely (or set it to
+  // "anthropic"/"openai") to run with AI features off instead.
+  console.error(
+    "AI_PROVIDER=azure-openai requires AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and " +
+      "AZURE_OPENAI_DEPLOYMENT all set. Set all three, or switch AI_PROVIDER to \"anthropic\"/\"openai\" " +
+      "(or unset it) to run without Azure OpenAI.",
   );
   process.exit(1);
 }
