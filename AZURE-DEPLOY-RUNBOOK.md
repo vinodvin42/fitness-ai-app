@@ -43,16 +43,32 @@ references it.)
   `azure/webapps-deploy@v3`) and inputs (confirmed `azure/webapps-deploy`'s
   `resource-group-name` input is optional, `app-name` alone is enough)
   were checked against their current published docs on 3 Sep 2026.
-- **What has never actually happened, at all:** `az login` was never run
-  against a real subscription — this pass deliberately never provisioned
-  anything real (see this repo's own constraints for why). No resource
-  group, Postgres server, App Service, or Static Web App from this runbook
-  has ever actually been created. No GitHub secret from step 3 exists yet.
-  This workflow has never executed. **Your first real run of step 1 below
-  is the actual first test of this entire file** — the same "expected to
-  work, not yet confirmed" category `render.yaml`'s Postgres step was
-  before Render's own first run, just with more of the surrounding detail
-  cross-checked against live docs than that pass had time for.
+- **4 Sep 2026: all of this is now real, and the paragraph that used to
+  sit here is gone.** It said `az login` had never been run, that no
+  resource in this runbook had ever been created, that no GitHub secret
+  from step 3 existed, and that the deploy workflow had never executed.
+  All four became untrue on 3–4 Sep 2026. What actually exists now, in
+  resource group `rg-primefit-prod`:
+
+  | What | Resource | Reachable at |
+  |---|---|---|
+  | API | App Service `primefit-api-zjcprljmiu7mq` | `https://primefit-api-zjcprljmiu7mq.azurewebsites.net` |
+  | Database | Postgres Flexible Server `primefit-pg-zjcprljmiu7mq` | (private, via the firewall rule in step 3) |
+  | Landing + admin | Static Web App `primefit-admin-web` | `https://purple-sea-0edcdc910.6.azurestaticapps.net` (landing at `/`, admin at `/app/`) |
+  | Coach app | Static Web App `primefit-user-mobile` | `https://calm-ground-04d678410.3.azurestaticapps.net` |
+
+  Note the second Static Web App's name is a leftover: it is called
+  `primefit-user-mobile` but serves **coach-mobile**. Renaming it would
+  mean re-linking the resource and rotating its deploy token for a purely
+  cosmetic gain, so it was left alone — see that workflow's own comment.
+  Consumers get `apps/user-mobile` as an Android APK from the landing
+  page, not as a website.
+
+  `deploy-azure-api.yml` has run to green repeatedly, including its
+  `prisma migrate deploy` step and its post-deploy `/health` check, and
+  every step-3 secret exists. **Step 1 is therefore no longer the first
+  test of this file** — it is now a rebuild-from-scratch procedure, and
+  the parts of it that were only ever reasoned about have since been run.
 - One thing genuinely *more* certain here than the Render path ever was:
   `apps/api/prisma/migrations/` now has real, committed migration history
   (it didn't yet when `render.yaml`/`DEPLOY-RUNBOOK.md` were written) — see
@@ -490,19 +506,55 @@ way to see what `config/env.ts` printed before exiting — a missing or
 malformed app setting from step 2 is the most likely cause, since that
 file fails fast and loud on purpose.
 
-**Seed the database** once the deploy is green — same command as local
-dev, run from the App Service's SSH console (Azure Portal → the Web App →
-Development Tools → SSH, or `az webapp ssh --resource-group
-rg-primefit-prod --name <webAppName>`) since that's where the deployed
-code and `node_modules` actually live:
+**Seed the database** once the deploy is green.
+
+> **4 Sep 2026 — this step was rewritten because what it used to say did
+> not work.** It previously told you to run `npm run db:seed
+> --workspace=apps/api` from the App Service's SSH/Kudu console. Three
+> separate things make that impossible, all confirmed by hand: the Kudu
+> console runs in a *different, unprivileged container* from the app, so
+> the deployed `node_modules` are not there; it has no real shell to
+> interpret a compound command; and it enforces a hard ~230s server-side
+> timeout, too short for even a scoped `npm install`. See commit 856d003.
+> Do not spend time on that path again.
+
+**First seed (accounts + content), one time only.** This is the one seed
+that must create the bootstrap admin, and it must read the
+`SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` app settings from step 2.3 —
+which live on the Web App and are deliberately not in GitHub. Run it from
+a machine that has the repo, with `DATABASE_URL` pointed at the live
+Postgres and those two values passed in explicitly:
 
 ```bash
+SEED_ADMIN_EMAIL="<the same value you set in step 2.3>" \
+SEED_ADMIN_PASSWORD="<the same value you set in step 2.3>" \
+DATABASE_URL="<the live connection string>" \
 npm run db:seed --workspace=apps/api
 ```
 
-This reads the `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` app settings from
-step 2.3 — confirm the log line it prints shows your real email, not
-`admin@23primefit.com`, before moving on.
+Confirm the log line it prints shows your real email, not
+`admin@23primefit.com`, before moving on. The seed never overwrites an
+existing account's password, so a second run cannot reset it.
+
+**Every seed after that: the `Seed content to Azure` workflow.** Actions
+tab → *Seed content to Azure* → Run workflow. It re-seeds Programs,
+Exercises, Workouts and Recipes from
+`apps/api/src/lib/seedDatabase.ts` against `secrets.AZURE_DATABASE_URL`,
+using the same runner-to-Postgres path `deploy-azure-api.yml`'s migrate
+step already proves works on every deploy. Every write is a stable-id
+upsert, so it is safe to run repeatedly.
+
+It runs `--content-only`, and that is not a detail — **never remove that
+flag from the workflow.** A full seed finds the admin account by
+`SEED_ADMIN_EMAIL`, which a GitHub runner cannot see, so it would fall
+back to the code default, fail to match your real admin's address, and
+create a *second* super_admin with a publicly-known default password.
+
+Two things it deliberately does not do: it does not migrate (that belongs
+to `deploy-azure-api.yml` — if a seed fails on a missing column, run that
+first), and it does not run on push, because seeding upserts content and
+would quietly revert any edit an admin had made through the CMS to a
+seeded Program, Exercise or Recipe.
 
 ---
 
