@@ -32,6 +32,17 @@ jobs:
       # to a Git-Bash/MSYS path-mangling artifact on the machine that ran
       # `az staticwebapp create` — never a valid path on this ubuntu-latest
       # runner.
+      #
+      # 4 Sep 2026, later the same day — this site now also serves
+      # apps/landing at its root, merged with admin-web under /app/, per
+      # scripts/merge-web-deploy.js's own top comment for the full
+      # reasoning. Explicit direction: landing had been merged with
+      # apps/coach-mobile's site instead for a few hours; moved here so
+      # landing doesn't get its own separate hosting, on this site instead
+      # of that one. The coach-mobile site (calm-ground-04d678410) reverted
+      # to serving just that app standalone — see that workflow's own
+      # comment. Admin login is reachable from the landing page's own
+      # "Admin Login" link.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -40,6 +51,7 @@ jobs:
       - run: npm run build --workspace=apps/admin-web
         env:
           VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      - run: node scripts/merge-web-deploy.js combined-web-deploy apps/admin-web/dist
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -50,7 +62,7 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           skip_app_build: true # already built above — see the comment on this job's build step
-          app_location: "apps/admin-web/dist" # the already-built output, not the source folder
+          app_location: "combined-web-deploy" # landing (root) + admin-web (under /app/) merged by scripts/merge-web-deploy.js
           api_location: "" # Api source code path - optional
           output_location: "" # left blank — app_location above already points at the built output
           ###### End of Repository/Build Configurations ######

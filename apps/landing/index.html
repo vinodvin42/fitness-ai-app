@@ -36,12 +36,16 @@
         <a class="nav__link" href="#features">Features</a>
         <a class="nav__link" href="#download">Download</a>
         <!-- Go-live hardening (4 Sep 2026) — this landing page is merged
-             onto the same site as the real coach web console
-             (apps/coach-mobile's Expo web export), served at /app/. This
-             is deliberately coach-only, not a general "Log In" — regular
-             users get the mobile app via the Download section above,
-             not a web login; see the deploy workflow's merge step. -->
-        <a class="nav__link" href="/app/">Coach Login</a>
+             onto the SAME site as the admin console (apps/admin-web),
+             served at /app/, hence the relative link. The coach web
+             console (apps/coach-mobile) briefly lived here too but moved
+             to its own separate site per explicit direction — that link
+             is a real cross-origin URL, not a typo. Regular users get the
+             mobile app via the Download section above, not a web login;
+             see each deploy workflow's own comment for the current
+             hosting split. -->
+        <a class="nav__link" href="/app/">Admin Login</a>
+        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
         <a class="btn btn--primary btn--sm" href="#download">Get the app</a>
       </nav>
     </div>

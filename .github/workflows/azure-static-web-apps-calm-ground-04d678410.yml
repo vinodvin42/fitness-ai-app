@@ -28,23 +28,21 @@ jobs:
       # and mirrored in apps/coach-mobile's (4 Sep 2026 fix — it only read
       # a static app.json field before that).
       #
-      # 4 Sep 2026 — this site now also serves apps/landing at its root,
-      # merged with this app under /app/, per scripts/merge-web-deploy.js's
-      # own top comment for the full reasoning (why the two don't collide,
-      # why only index.html needs to move). primefit-landing's own
-      # standalone Static Web App is being decommissioned in favor of this
-      # single, unified site — a visitor lands on the marketing page first
-      # and reaches this app via its "Coach Login" link.
+      # 4 Sep 2026 — this now builds apps/coach-mobile, not apps/user-mobile
+      # as it did for the first few hours of this file's existence.
+      # Explicit product decision, not a guess: regular users install the
+      # real mobile app from the landing page's download section (Android
+      # APK); only coaches get a web login. This job's name/workflow
+      # filename still says "calm-ground" (its original auto-generated
+      # identity tied to this Static Web App resource) — harmless,
+      # cosmetic, not worth renaming and re-linking a resource over.
       #
-      # 4 Sep 2026, same day — this now builds apps/coach-mobile, not
-      # apps/user-mobile as it did for the first few hours of this file's
-      # existence. Explicit product decision, not a guess: regular users
-      # install the real mobile app from the landing page's download
-      # section (Android APK); only coaches get a web login. This job's
-      # name/workflow filename still says "calm-ground" (its original
-      # auto-generated identity tied to this Static Web App resource) —
-      # harmless, cosmetic, not worth renaming and re-linking a resource
-      # over.
+      # 4 Sep 2026, later the same day — this site briefly also served
+      # apps/landing merged at its root (same reasoning as admin-web's
+      # identical merge step now has); moved to admin-web's site instead
+      # per explicit direction, so this reverted to serving just
+      # coach-mobile standalone, directly at its own root — no /app/
+      # prefix needed once there's no landing page competing for the root.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -53,7 +51,6 @@ jobs:
       - run: npm run build:coach
         env:
           EXPO_PUBLIC_API_BASE_URL: ${{ secrets.API_BASE_URL }}
-      - run: node scripts/merge-web-deploy.js combined-web-deploy
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -64,7 +61,7 @@ jobs:
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           skip_app_build: true # already built above — see the comment on this job's build step
-          app_location: "combined-web-deploy" # landing (root) + this app (under /app/) merged by scripts/merge-web-deploy.js
+          app_location: "apps/coach-mobile/dist" # the already-built output, not the source folder
           api_location: "" # Api source code path - optional
           output_location: "" # left blank — app_location above already points at the built output
           ###### End of Repository/Build Configurations ######
