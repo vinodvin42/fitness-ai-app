@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "scheme": "primefit",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0B0C10"
+    },
     "platforms": [
       "ios",
       "android",
