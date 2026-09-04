@@ -16,8 +16,16 @@ import * as SecureStore from "../lib/secureStore";
 const ACCESS_TOKEN_KEY = "primefitcoach.accessToken";
 const REFRESH_TOKEN_KEY = "primefitcoach.refreshToken";
 
+// Go-live hardening (4 Sep 2026) — was reading only Constants.expoConfig's
+// static extra.apiBaseUrl (hardcoded to localhost), so a production web
+// build had no way to point at a real deployed API. Now mirrors
+// apps/user-mobile/src/api/client.ts's own fix exactly:
+// EXPO_PUBLIC_API_BASE_URL is a build-time env var Expo actually inlines
+// into the bundle (confirmed for this exact mechanism on the sibling app).
 const apiBaseUrl =
-  (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? "http://localhost:4000";
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
+  "http://localhost:4000";
 
 export const apiClient = axios.create({ baseURL: apiBaseUrl });
 

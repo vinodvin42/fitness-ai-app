@@ -22,11 +22,11 @@ jobs:
       # Go-live hardening (3 Sep 2026) — same npm-workspaces build issue and
       # the same MSYS-mangled app_location fix as admin-web's identical
       # workflow — see that file's comment and AZURE-DEPLOY-RUNBOOK.md step
-      # 5 for the full writeup. `build:mobile` is the root-level script
-      # (`expo export --platform web`) — see root package.json —
-      # and EXPO_PUBLIC_API_BASE_URL (not VITE_API_BASE_URL) is what
-      # actually gets inlined into the exported web bundle, confirmed
-      # against src/api/client.ts.
+      # 5 for the full writeup. EXPO_PUBLIC_API_BASE_URL (not
+      # VITE_API_BASE_URL) is what actually gets inlined into the exported
+      # web bundle, confirmed against apps/user-mobile's src/api/client.ts
+      # and mirrored in apps/coach-mobile's (4 Sep 2026 fix — it only read
+      # a static app.json field before that).
       #
       # 4 Sep 2026 — this site now also serves apps/landing at its root,
       # merged with this app under /app/, per scripts/merge-web-deploy.js's
@@ -34,13 +34,23 @@ jobs:
       # why only index.html needs to move). primefit-landing's own
       # standalone Static Web App is being decommissioned in favor of this
       # single, unified site — a visitor lands on the marketing page first
-      # and reaches this real app via its "Log In" link.
+      # and reaches this app via its "Coach Login" link.
+      #
+      # 4 Sep 2026, same day — this now builds apps/coach-mobile, not
+      # apps/user-mobile as it did for the first few hours of this file's
+      # existence. Explicit product decision, not a guess: regular users
+      # install the real mobile app from the landing page's download
+      # section (Android APK); only coaches get a web login. This job's
+      # name/workflow filename still says "calm-ground" (its original
+      # auto-generated identity tied to this Static Web App resource) —
+      # harmless, cosmetic, not worth renaming and re-linking a resource
+      # over.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build:mobile
+      - run: npm run build:coach
         env:
           EXPO_PUBLIC_API_BASE_URL: ${{ secrets.API_BASE_URL }}
       - run: node scripts/merge-web-deploy.js combined-web-deploy

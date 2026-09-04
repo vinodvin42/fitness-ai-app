@@ -3,16 +3,22 @@
  * Go-live hardening (4 Sep 2026) — combines two independently-built static
  * sites into one deployable folder for a single Azure Static Web App:
  *   - apps/landing (plain static HTML/CSS/JS, no build step) at the site
- *     ROOT — this is what visitors see first.
- *   - apps/user-mobile's Expo web export (apps/user-mobile/dist/) under
- *     /app/ — the real, working web app, reachable via the landing page's
- *     "Log In" link.
+ *     ROOT — this is what visitors see first. Its own "Download the app"
+ *     section is the consumer path (Android APK); this merge is the
+ *     coach path.
+ *   - apps/coach-mobile's Expo web export (apps/coach-mobile/dist/) under
+ *     /app/ — the real, working coach web console, reachable via the
+ *     landing page's "Coach Login" link. (4 Sep 2026 update: this was
+ *     apps/user-mobile at first — the product decision is that regular
+ *     users install the mobile app from the download section, and only
+ *     coaches get a web login; swapped per explicit direction, not a
+ *     guess.)
  *
  * Why this is safe to flatten together rather than needing real subpath
  * config on the Expo side: Expo's web build already references its own
  * assets via root-absolute paths (`/_expo/...`), which resolve correctly
  * from the domain root regardless of what page requested them — so
- * `apps/user-mobile/dist`'s _expo/, assets/, and metadata.json can sit at
+ * `apps/coach-mobile/dist`'s _expo/, assets/, and metadata.json can sit at
  * the combined site's root exactly as they already do standalone; only
  * its index.html needs to move to a real /app/index.html so it doesn't
  * collide with the landing page's own root index.html. The one thing that
@@ -27,7 +33,7 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const landingDir = path.join(repoRoot, "apps/landing");
-const mobileDistDir = path.join(repoRoot, "apps/user-mobile/dist");
+const mobileDistDir = path.join(repoRoot, "apps/coach-mobile/dist");
 const outputDir = path.resolve(repoRoot, process.argv[2] || "combined-web-deploy");
 
 function copyRecursive(src, dest) {
@@ -58,7 +64,7 @@ function mergeRecursive(src, dest, relPath = "") {
     } else {
       if (fs.existsSync(destPath)) {
         throw new Error(
-          `Refusing to overwrite: ${entryRel} exists in both apps/landing and apps/user-mobile/dist. ` +
+          `Refusing to overwrite: ${entryRel} exists in both apps/landing and apps/coach-mobile/dist. ` +
             `Rename one side to resolve the collision — this script deliberately fails loudly instead of silently picking one.`,
         );
       }
