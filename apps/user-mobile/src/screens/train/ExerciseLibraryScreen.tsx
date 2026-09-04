@@ -25,6 +25,10 @@ const ALL = "All";
  * generated from whatever this build's exercises actually have (no fixed
  * enum exists for either), so the filter options grow automatically as
  * more exercises get seeded/authored. Leads into Exercise Detail (trn-06).
+ *
+ * 4 Sep 2026: rows show the exercise's demonstration photo
+ * (`Exercise.mediaUrl`, populated for the first time in the same pass),
+ * falling back to the dumbbell icon tile for exercises without one.
  */
 export function ExerciseLibraryScreen({ navigation }: Props) {
   const { data: exercises, isLoading, isError, refetch } = useQuery({
@@ -92,6 +96,7 @@ export function ExerciseLibraryScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <ListRow
             icon="dumbbell"
+            imageUrl={item.mediaUrl}
             title={item.name}
             subtitle={`${item.muscleGroup} · ${item.equipment} · ${item.difficulty}`}
             onPress={() => navigation.navigate("ExerciseDetail", { exerciseId: item.id })}

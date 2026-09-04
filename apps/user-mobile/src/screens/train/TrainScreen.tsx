@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { Program } from "@fitness-ai-app/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -20,6 +20,11 @@ type Props = NativeStackScreenProps<TrainStackParamList, "TrainDashboard">;
  * 2026 design polish: iconized entry-point rows (ListRow) and richer program
  * cards. Data/navigation wiring (Programs list → Program Detail, My Programs,
  * Exercise Library, Workout History) is unchanged from the functional build.
+ *
+ * 4 Sep 2026: a program card now leads with the program's own cover photo
+ * (`Program.imageUrl`) instead of a generic dumbbell tile. The tile is
+ * still the fallback — `imageUrl` is nullable and an admin-authored
+ * program may not have one — so the card layout is identical either way.
  */
 export function TrainScreen({ navigation }: Props) {
   const programsQuery = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
@@ -65,18 +70,31 @@ export function TrainScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <Pressable onPress={() => navigation.navigate("ProgramDetail", { programId: item.id })}>
               <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.accentSoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Icon name="dumbbell" size={22} color={colors.accent} />
-                </View>
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.accentSoft,
+                    }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.accentSoft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name="dumbbell" size={22} color={colors.accent} />
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{item.name}</Text>
                   <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>

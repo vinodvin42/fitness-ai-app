@@ -1,0 +1,70 @@
+name: Seed content to Azure
+
+# Content re-seed for the live Azure database, added 4 Sep 2026 alongside the
+# content pass that grew apps/api/src/lib/seedDatabase.ts (3 -> 8 programs,
+# 7 -> 43 exercises, 2 -> 17 workouts, 4 -> 13 recipes, all with imagery).
+#
+# Why a workflow at all, rather than a shell on the server: Azure App
+# Service's Kudu/SCM console runs in a separate, unprivileged container from
+# the app, with no node_modules and a hard ~230s timeout — three separate
+# dead ends documented in commit 856d003. That commit's workaround was a
+# temporary secret-protected HTTP route inside the app itself, removed again
+# in 54ef204 once it had been used. This is the durable replacement, and it
+# reuses the one path already proven to reach the production database:
+# deploy-azure-api.yml's own `prisma migrate deploy` step runs from a
+# GitHub-hosted runner against secrets.AZURE_DATABASE_URL, so the network
+# path and the firewall rule it needs are already in place and already
+# exercised on every API deploy.
+#
+# workflow_dispatch ONLY, deliberately — the same reasoning as
+# deploy-azure-api.yml, plus one specific to this job: seeding is an upsert
+# over content rows, so running it automatically on every push would quietly
+# revert any edit an admin had made through the CMS to a seeded Program,
+# Exercise or Recipe. Re-seeding should be a decision someone makes, not a
+# side effect of merging.
+#
+# --content-only is not optional here, it is the entire safety story of this
+# workflow. A full seed also upserts the demo coaches and the bootstrap admin
+# account, and it finds the admin by SEED_ADMIN_EMAIL — which lives in the
+# Web App's app settings, NOT in GitHub, so this runner would fall back to
+# the code default, fail to match the live admin's actual address, and create
+# a second super_admin with a publicly-known default password. See
+# seedDatabase()'s own doc comment. Content is all this needs to touch.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # Same reasoning as deploy-azure-api.yml's: two overlapping seeds writing
+  # the same rows should queue, not race.
+  group: seed-azure-content
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      # Deliberately does NOT run `prisma migrate deploy` — that belongs to
+      # deploy-azure-api.yml, which owns schema changes. If a seed here fails
+      # on a missing column, the fix is to run that workflow first, not to
+      # add a second thing that migrates production.
+      - name: Seed content
+        env:
+          DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+        run: npm run db:seed --workspace=apps/api -- --content-only

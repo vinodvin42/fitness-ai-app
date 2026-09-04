@@ -151,6 +151,7 @@ type ProgramRow = {
   durationWeeks: number;
   isAiOnly: boolean;
   priceCents: number;
+  imageUrl: string | null;
   status: string;
   createdByAdminId: string | null;
   createdByAdmin: { fullName: string } | null;
@@ -174,6 +175,7 @@ function toProgramListItem(p: ProgramRow) {
     durationWeeks: p.durationWeeks,
     isAiOnly: p.isAiOnly,
     priceCents: p.priceCents,
+    imageUrl: p.imageUrl,
     exerciseCount: exerciseIds.size,
     subscriberCount: p._count.purchases,
     creatorName: p.createdByAdmin?.fullName ?? null,
@@ -410,6 +412,7 @@ type RecipeRow = {
   fatG: number;
   prepTimeMinutes: number;
   tags: string[];
+  imageUrl: string | null;
   status: string;
   createdByAdminId: string | null;
   createdByAdmin: { fullName: string } | null;
@@ -433,6 +436,7 @@ function toRecipeListItem(r: RecipeRow) {
     fatG: r.fatG,
     prepTimeMinutes: r.prepTimeMinutes,
     tags: r.tags,
+    imageUrl: r.imageUrl,
     status: r.status,
     timesLogged: r._count.mealLogs,
     creatorName: r.createdByAdmin?.fullName ?? null,

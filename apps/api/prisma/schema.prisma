@@ -369,6 +369,13 @@ model Program {
   durationWeeks  Int
   isAiOnly       Boolean       @default(true)
   priceCents     Int           @default(0)
+  // 4 Sep 2026 — cover image for the Train tab's program cards and Program
+  // Detail's hero. A plain URL to an already-hosted image (this build has
+  // no object storage — see ProgressPhoto's doc comment further down for
+  // why), same shape as Exercise.mediaUrl below. Nullable so every
+  // pre-existing row and every admin-authored program without artwork
+  // keeps working; the apps fall back to their icon tile when it's null.
+  imageUrl       String?
   status         ContentStatus @default(published)
   createdByAdminId String?
   createdByAdmin AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
@@ -523,6 +530,10 @@ model Recipe {
   fatG             Int           @default(0)
   prepTimeMinutes  Int
   tags             String[]      @default([])
+  // 4 Sep 2026 — Recipe Detail's spec'd "hero image" (docs/mobile/03-screen-
+  // inventory.md §D), finally modeled. Same plain-URL shape and same
+  // nullable/fallback reasoning as Program.imageUrl above.
+  imageUrl         String?
   // 22 Aug 2026 — see Program's own doc comment above for why
   // ContentStatus is draft/published only and why the default is
   // `published`, not `draft`.

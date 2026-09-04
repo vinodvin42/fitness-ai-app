@@ -273,6 +273,8 @@ export interface Program {
   durationWeeks: number;
   isAiOnly: boolean;
   priceCents: number;
+  /** Cover image URL, added 4 Sep 2026. Null for a program with no artwork — clients fall back to their icon tile. */
+  imageUrl: string | null;
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   /** Null for content seeded via `scripts/seed.ts` before the admin CMS existed, or created before this field was added. */
@@ -488,6 +490,8 @@ export interface Recipe {
   fatG: number;
   prepTimeMinutes: number;
   tags: string[];
+  /** Hero image URL, added 4 Sep 2026 — Recipe Detail specified one from the start and never had it. Null falls back to the icon tile. */
+  imageUrl: string | null;
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   createdByAdminId: string | null;
@@ -1778,6 +1782,8 @@ export interface AdminProgramListItem {
   durationWeeks: number;
   isAiOnly: boolean;
   priceCents: number;
+  /** Cover image URL — see `Program.imageUrl`. */
+  imageUrl: string | null;
   /** Real count of distinct Exercises used across this program's Workouts. */
   exerciseCount: number;
   /** Real count of ProgramPurchase rows for this program. */
@@ -1801,6 +1807,7 @@ export interface CreateAdminProgramInput {
   durationWeeks: number;
   isAiOnly?: boolean;
   priceCents?: number;
+  imageUrl?: string;
 }
 
 /** Matches apps/api's updateProgramSchema (Zod) — all fields optional, at least one required. */
@@ -1862,6 +1869,8 @@ export interface AdminRecipeListItem {
   fatG: number;
   prepTimeMinutes: number;
   tags: string[];
+  /** Hero image URL — see `Recipe.imageUrl`. */
+  imageUrl: string | null;
   status: ContentStatus;
   timesLogged: number;
   creatorName: string | null;
@@ -1886,6 +1895,7 @@ export interface CreateAdminRecipeInput {
   fatG?: number;
   prepTimeMinutes: number;
   tags?: string[];
+  imageUrl?: string;
 }
 
 export type UpdateAdminRecipeInput = Partial<CreateAdminRecipeInput>;

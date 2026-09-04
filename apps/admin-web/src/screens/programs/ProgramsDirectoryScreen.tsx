@@ -30,6 +30,7 @@ interface FormState {
   durationWeeks: string;
   isAiOnly: boolean;
   priceDisplay: string;
+  imageUrl: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -39,6 +40,7 @@ const EMPTY_FORM: FormState = {
   durationWeeks: "4",
   isAiOnly: true,
   priceDisplay: "0.00",
+  imageUrl: "",
 };
 
 async function fetchDirectory(filters: Filters): Promise<AdminProgramDirectoryResponse> {
@@ -62,6 +64,10 @@ function formToPayload(form: FormState) {
     durationWeeks: Number(form.durationWeeks),
     isAiOnly: form.isAiOnly,
     priceCents: Math.round(Number(form.priceDisplay || "0") * 100),
+    // Omitted rather than sent empty when blank — the API validates this
+    // with Zod's `.url()`, which an empty string fails. Same handling as
+    // the Exercises directory's own Media URL field.
+    imageUrl: form.imageUrl || undefined,
   };
 }
 
@@ -153,6 +159,7 @@ export function ProgramsDirectoryScreen() {
       durationWeeks: String(p.durationWeeks),
       isAiOnly: p.isAiOnly,
       priceDisplay: (p.priceCents / 100).toFixed(2),
+      imageUrl: p.imageUrl ?? "",
     });
     setShowForm(true);
   }
@@ -305,6 +312,16 @@ export function ProgramsDirectoryScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
+            <label className="flex flex-col gap-1 text-xs text-text-dim">
+              Cover image URL (optional)
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://…"
+                className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+              />
+            </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
                 Duration (weeks)
@@ -377,6 +394,7 @@ export function ProgramsDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-4 py-3 font-normal">Cover</th>
                   <th className="px-4 py-3 font-normal">Name</th>
                   <th className="px-4 py-3 font-normal">Creator</th>
                   <th className="px-4 py-3 font-normal">Type</th>
@@ -391,6 +409,18 @@ export function ProgramsDirectoryScreen() {
               <tbody>
                 {data.programs.map((p) => (
                   <tr key={p.id} className="border-b border-border-subtle last:border-0">
+                    <td className="px-4 py-3">
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt=""
+                          className="h-10 w-16 rounded object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-text-primary">{p.name}</div>
                       <div className="text-xs text-text-dim">{money(p.priceCents)}{p.isAiOnly ? " · AI-only" : ""}</div>
@@ -448,7 +478,7 @@ export function ProgramsDirectoryScreen() {
                 ))}
                 {data.programs.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={10} className="px-4 py-8 text-center text-text-dim">
                       No programs match these filters.
                     </td>
                   </tr>

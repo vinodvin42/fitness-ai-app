@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Image, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -28,7 +28,10 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ProgramDetail">;
  * signature verification (`useRazorpayPurchase`/`RazorpayCheckoutModal`),
  * closing gap §14 — the server itself also enforces this (POST
  * /programs/:id/purchase 402s without a verified payment), this screen's
- * flow is just the honest client-side path to satisfy that.
+ * flow is just the honest client-side path to satisfy that. **4 Sep 2026:**
+ * a program with a cover photo (`Program.imageUrl`) leads with it as a hero
+ * above the summary card; programs without one render exactly as before,
+ * starting at the icon tile.
  */
 export function ProgramDetailScreen({ route, navigation }: Props) {
   const { programId } = route.params;
@@ -71,6 +74,19 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer title={program.name}>
+      {program.imageUrl ? (
+        <Image
+          source={{ uri: program.imageUrl }}
+          style={{
+            width: "100%",
+            height: 180,
+            borderRadius: radius.card,
+            backgroundColor: colors.surfaceRaised,
+            marginBottom: spacing.md,
+          }}
+          resizeMode="cover"
+        />
+      ) : null}
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View

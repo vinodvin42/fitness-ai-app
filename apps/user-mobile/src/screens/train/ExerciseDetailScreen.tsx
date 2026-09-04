@@ -1,12 +1,12 @@
 import React from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchExerciseDetail } from "../../api/programs";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "ExerciseDetail">;
@@ -17,14 +17,15 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ExerciseDetail">;
  * Shipped 19 Aug 2026. Instructions and alternatives are real (see
  * `Exercise.instructions` and `GET /exercises/:id`'s computed
  * `alternatives`, apps/api/src/modules/programs/programs.service.ts).
- * The video player is deliberately NOT built: `Exercise.mediaUrl` exists
- * as a field but is never populated by this build's seed data, and no
- * video-playback library (`expo-av` or similar) is a dependency here
- * either — building a player with nothing to ever play, on top of a
- * library that isn't even installed, would be exactly the kind of fake UI
- * this project avoids. Instead this screen shows an honest placeholder
- * when `mediaUrl` is empty, and would render nothing to change here once a
- * real video-content pipeline exists — see gap §26.
+ * **4 Sep 2026:** `Exercise.mediaUrl` is populated for the first time —
+ * with a still demonstration *photo*, not a video (see
+ * apps/api/src/lib/seedDatabase.ts for the public-domain source), so this
+ * screen now renders it as an image. A video player is still deliberately
+ * NOT built: no video-playback library (`expo-av` or similar) is a
+ * dependency here, and there is still no video content anywhere in this
+ * build to play — gap §26 stays open. Exercises with no photo (the source
+ * has no match for "Jog in Place" or "Full Body Stretch") keep the honest
+ * empty state below rather than getting an approximately-right picture.
  */
 export function ExerciseDetailScreen({ route, navigation }: Props) {
   const { exerciseId } = route.params;
@@ -53,10 +54,19 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
     <ScreenContainer title={exercise.name}>
       <Card>
         {exercise.mediaUrl ? (
-          <Text style={{ color: colors.textSecondary }}>Video not playable in this build — see gap §26.</Text>
+          <Image
+            source={{ uri: exercise.mediaUrl }}
+            style={{
+              width: "100%",
+              height: 200,
+              borderRadius: radius.md,
+              backgroundColor: colors.surfaceRaised,
+            }}
+            resizeMode="cover"
+          />
         ) : (
           <View style={{ alignItems: "center", paddingVertical: spacing.lg }}>
-            <Text style={{ color: colors.textMuted }}>No video for this exercise yet.</Text>
+            <Text style={{ color: colors.textMuted }}>No demonstration photo for this exercise yet.</Text>
           </View>
         )}
         <Text style={{ color: colors.textSecondary, marginTop: spacing.sm }}>

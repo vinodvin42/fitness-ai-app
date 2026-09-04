@@ -33,6 +33,7 @@ interface FormState {
   fatG: string;
   prepTimeMinutes: string;
   tagsText: string;
+  imageUrl: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -44,6 +45,7 @@ const EMPTY_FORM: FormState = {
   fatG: "0",
   prepTimeMinutes: "",
   tagsText: "",
+  imageUrl: "",
 };
 
 async function fetchDirectory(filters: Filters): Promise<AdminRecipeDirectoryResponse> {
@@ -70,6 +72,10 @@ function formToPayload(form: FormState) {
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean),
+    // Omitted rather than sent empty when blank — the API validates this
+    // with Zod's `.url()`, which an empty string fails. Same handling as
+    // the Exercises directory's own Media URL field.
+    imageUrl: form.imageUrl || undefined,
   };
 }
 
@@ -155,6 +161,7 @@ export function RecipesDirectoryScreen() {
       fatG: String(r.fatG),
       prepTimeMinutes: String(r.prepTimeMinutes),
       tagsText: r.tags.join(", "),
+      imageUrl: r.imageUrl ?? "",
     });
     setShowForm(true);
   }
@@ -338,6 +345,16 @@ export function RecipesDirectoryScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
+            <label className="flex flex-col gap-1 text-xs text-text-dim">
+              Hero image URL (optional)
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://…"
+                className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+              />
+            </label>
             {saveError && (
               <p className="text-xs text-danger">{extractErrorMessage(saveError, "Couldn't save this recipe.")}</p>
             )}
@@ -376,6 +393,7 @@ export function RecipesDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                  <th className="px-4 py-3 font-normal">Image</th>
                   <th className="px-4 py-3 font-normal">Name</th>
                   <th className="px-4 py-3 font-normal">Meal Type</th>
                   <th className="px-4 py-3 font-normal">Calories</th>
@@ -390,6 +408,13 @@ export function RecipesDirectoryScreen() {
               <tbody>
                 {data.recipes.map((r) => (
                   <tr key={r.id} className="border-b border-border-subtle last:border-0">
+                    <td className="px-4 py-3">
+                      {r.imageUrl ? (
+                        <img src={r.imageUrl} alt="" className="h-10 w-16 rounded object-cover" loading="lazy" />
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-medium text-text-primary">{r.name}</td>
                     <td className="px-4 py-3 text-text-secondary">{MEAL_TYPE_LABELS[r.mealType]}</td>
                     <td className="px-4 py-3 text-text-secondary">{r.calories}</td>
@@ -453,7 +478,7 @@ export function RecipesDirectoryScreen() {
                 ))}
                 {data.recipes.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={10} className="px-4 py-8 text-center text-text-dim">
                       No recipes match these filters.
                     </td>
                   </tr>

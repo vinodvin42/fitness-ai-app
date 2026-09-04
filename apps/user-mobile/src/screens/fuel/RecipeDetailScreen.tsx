@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -19,9 +19,11 @@ type Props = NativeStackScreenProps<FuelStackParamList, "RecipeDetail">;
 /**
  * Recipe Detail (fuel-05) — docs/mobile/03-screen-inventory.md §D: "hero
  * image, macro chips, a checkable ingredients list, numbered steps, and a
- * Log action." Phase 1 scope: macro chips + Log action only — no hero
- * image, ingredients, or steps, since those aren't modeled on Recipe yet
- * (Recipe only has name/mealType/calories/macros/prepTime/tags — see
+ * Log action." **4 Sep 2026: the hero image is real** — `Recipe.imageUrl`
+ * was added to the schema and populated for every seeded recipe in the
+ * same pass. Still not modeled, and so still not shown: the ingredients
+ * list and numbered steps, which have no backing field on Recipe at all
+ * (it carries name/mealType/calories/macros/prepTime/tags/imageUrl — see
  * apps/api/prisma/schema.prisma). Logging copies the recipe's macros into
  * a new MealLog server-side (POST /meal-logs with recipeId).
  */
@@ -66,6 +68,19 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer title={recipe.name}>
+      {recipe.imageUrl ? (
+        <Image
+          source={{ uri: recipe.imageUrl }}
+          style={{
+            width: "100%",
+            height: 180,
+            borderRadius: radius.card,
+            backgroundColor: colors.surfaceRaised,
+            marginBottom: spacing.md,
+          }}
+          resizeMode="cover"
+        />
+      ) : null}
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View

@@ -1,11 +1,19 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { Icon, IconName } from "./Icon";
 import { Card } from "./Card";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 interface ListRowProps {
   icon?: IconName;
+  /**
+   * Content artwork (Recipe.imageUrl / Exercise.mediaUrl), added 4 Sep 2026.
+   * Takes the icon tile's exact slot and size when present, so a row with a
+   * picture and a row without still line up in the same list. `icon` stays
+   * the fallback for rows whose content has no image — and for the many
+   * navigation rows that never had one.
+   */
+  imageUrl?: string | null;
   title: string;
   subtitle?: string;
   tint?: string;
@@ -22,6 +30,7 @@ interface ListRowProps {
  */
 export function ListRow({
   icon,
+  imageUrl,
   title,
   subtitle,
   tint = colors.accent,
@@ -32,7 +41,13 @@ export function ListRow({
 }: ListRowProps) {
   const body = (
     <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, ...(style ?? {}) }}>
-      {icon ? (
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: tintSoft }}
+          resizeMode="cover"
+        />
+      ) : icon ? (
         <View
           style={{
             width: 40,

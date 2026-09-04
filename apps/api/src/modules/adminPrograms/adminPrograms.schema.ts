@@ -24,6 +24,11 @@ export const createProgramSchema = z.object({
   durationWeeks: z.number().int().min(1).max(104),
   isAiOnly: z.boolean().optional(),
   priceCents: z.number().int().min(0).optional(),
+  // 4 Sep 2026 — same `.url()` validation and same optionality as
+  // createExerciseSchema.mediaUrl just below: an image is a URL to an
+  // already-hosted file (no object storage in this build), and content
+  // without artwork stays valid.
+  imageUrl: z.string().trim().url().optional(),
 });
 
 export const updateProgramSchema = createProgramSchema.partial().refine((v) => Object.keys(v).length > 0, {
@@ -70,6 +75,8 @@ export const createRecipeSchema = z.object({
   fatG: z.number().int().min(0).max(1000).optional(),
   prepTimeMinutes: z.number().int().min(0).max(1440),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  // 4 Sep 2026 — see createProgramSchema.imageUrl above.
+  imageUrl: z.string().trim().url().optional(),
 });
 
 export const updateRecipeSchema = createRecipeSchema.partial().refine((v) => Object.keys(v).length > 0, {

@@ -18,6 +18,10 @@ type Props = NativeStackScreenProps<FuelStackParamList, "Recipes">;
  * Recipes (fuel-04) — docs/mobile/03-screen-inventory.md §D. 31 Aug 2026
  * design polish: iconized rows with a calorie pill. Data/navigation
  * unchanged (flat list → Recipe Detail; no rating data modeled).
+ *
+ * 4 Sep 2026: rows show the recipe's own photo (`Recipe.imageUrl`) where
+ * there is one, falling back to the apple icon tile otherwise — see
+ * ListRow's `imageUrl` prop.
  */
 export function RecipesScreen({ navigation }: Props) {
   const recipesQuery = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes });
@@ -37,6 +41,7 @@ export function RecipesScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <ListRow
               icon="apple"
+              imageUrl={item.imageUrl}
               tint={colors.pink}
               tintSoft="rgba(236,72,153,0.16)"
               title={item.name}
