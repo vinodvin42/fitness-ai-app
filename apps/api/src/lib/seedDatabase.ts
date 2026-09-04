@@ -71,6 +71,30 @@ import { seedRecipes } from "./seedContent/recipes";
  * remember. The CLI (`npm run db:seed`) still defaults to a full seed, so
  * local setup is unchanged.
  */
+/**
+ * Runs `write` over `items` a few at a time, awaiting each batch.
+ *
+ * Added 4 Sep 2026 after the first live re-seed of the grown catalogue failed
+ * with Prisma P2024 ("Timed out fetching a new connection from the connection
+ * pool", pool size 3, timeout 10s). The seed had been firing one
+ * `Promise.all` across every row of a table at once, which is 167 concurrent
+ * upserts for exercises alone. That is fine against a local Postgres over a
+ * loopback socket, which is why it passed locally and only failed against
+ * Azure -- but pointed at a real network, ~160 of those queries sit in the
+ * pool queue and the ones at the back exceed the timeout before a connection
+ * frees up.
+ *
+ * A batch size of 5 stays comfortably under any realistic pool while keeping
+ * the whole seed to a few seconds. Deliberately not `Promise.all` with a
+ * bigger pool instead: the seed should not need special connection settings
+ * to run against whatever DATABASE_URL it is handed.
+ */
+async function writeInBatches<T>(items: T[], write: (item: T) => Promise<unknown>, batchSize = 5) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    await Promise.all(items.slice(i, i + batchSize).map(write));
+  }
+}
+
 export async function seedDatabase({ includeAccounts = true }: { includeAccounts?: boolean } = {}) {
   // Annual variants (added 19 Aug 2026, docs/mobile/03-screen-inventory.md
   // §M's Monthly/Annual switch) are priced at 10× the monthly price — a
@@ -102,13 +126,9 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // comes from. It moved out of here on 4 Sep 2026, when programs went 8 -> 18,
   // exercises 43 -> 167, workouts 17 -> 42 and recipes 13 -> 42: at that size
   // the data was burying the twenty lines of logic below that actually write it.
-  await Promise.all(
-    seedPrograms.map((p) => prisma.program.upsert({ where: { id: p.id }, create: p, update: p })),
-  );
+  await writeInBatches(seedPrograms, (p) => prisma.program.upsert({ where: { id: p.id }, create: p, update: p }));
 
-  await Promise.all(
-    seedExercises.map((e) => prisma.exercise.upsert({ where: { id: e.id }, create: e, update: e })),
-  );
+  await writeInBatches(seedExercises, (e) => prisma.exercise.upsert({ where: { id: e.id }, create: e, update: e }));
 
   // Fail loudly, before writing a single workout, if a workout references an
   // exercise that does not exist. 42 workouts reference ~250 exercise ids by
@@ -149,10 +169,8 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       targetSets,
       targetReps,
     }));
-    await Promise.all(
-      workoutExercises.map((row) =>
-        prisma.workoutExercise.upsert({ where: { id: row.id }, create: row, update: row }),
-      ),
+    await writeInBatches(workoutExercises, (row) =>
+      prisma.workoutExercise.upsert({ where: { id: row.id }, create: row, update: row }),
     );
     // Drop any WorkoutExercise this seed no longer lists for this workout.
     // Without it, shortening or re-ordering a list would leave the old rows
@@ -167,9 +185,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     });
   }
 
-  await Promise.all(
-    seedRecipes.map((r) => prisma.recipe.upsert({ where: { id: r.id }, create: r, update: r })),
-  );
+  await writeInBatches(seedRecipes, (r) => prisma.recipe.upsert({ where: { id: r.id }, create: r, update: r }));
 
   const summary: string[] = [
     `Seeded ${plans.length} plans, ${seedPrograms.length} programs, ${seedWorkouts.length} workouts, ${seedExercises.length} exercises, ${seedRecipes.length} recipes.`,
