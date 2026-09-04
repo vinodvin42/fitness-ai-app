@@ -75,8 +75,17 @@ param databaseUrl string
 @description('Initial CORS_ORIGINS value. Deliberately a harmless, already-used-elsewhere placeholder (the same localhost origin ci.yml uses for its own CORS_ORIGINS) rather than empty string — env.ts refuses to boot at all in production with an empty CORS_ORIGINS, so shipping a real (if temporary) value here means the very first deploy actually boots instead of crash-looping. Replace with the two real Static Web App URLs once they exist — see AZURE-DEPLOY-RUNBOOK.md\'s "close the CORS loop" step.')
 param corsOriginsPlaceholder string = 'http://localhost:5173'
 
-@description('AI_PROVIDER default — matches .env.example\'s own default. Optional feature either way; ANTHROPIC_API_KEY/OPENAI_API_KEY being unset just means GET /ai/status reports configured:false.')
+@description('AI_PROVIDER default — matches .env.example\'s own default. Optional feature either way; ANTHROPIC_API_KEY/OPENAI_API_KEY/AZURE_OPENAI_* being unset just means GET /ai/status reports configured:false. Set to "azure-openai" (and the three azureOpenAi* params below, plus the AZURE_OPENAI_API_KEY secret via the runbook) to route AI Coach through an Azure OpenAI resource instead.')
 param aiProvider string = 'anthropic'
+
+@description('Azure OpenAI resource base URL, e.g. https://<resource-name>.openai.azure.com — no trailing slash. Not a secret; the API key is (see this file\'s "deliberately NOT set here" note below). Only meaningful when aiProvider is "azure-openai".')
+param azureOpenAiEndpoint string = ''
+
+@description('Azure OpenAI deployment name (the name you chose when deploying a base model in Azure AI Foundry, not the base model\'s own name). Only meaningful when aiProvider is "azure-openai".')
+param azureOpenAiDeployment string = ''
+
+@description('Azure OpenAI REST API version — matches .env.example\'s default. See config/env.ts\'s own comment on why this is pinned rather than left to Azure\'s current default.')
+param azureOpenAiApiVersion string = '2024-10-21'
 
 @description('RAZORPAY_CURRENCY default — matches .env.example. Meaningless until real Razorpay keys are set (parked intentionally, see AZURE-DEPLOY-RUNBOOK.md).')
 param razorpayCurrency string = 'INR'
@@ -140,6 +149,18 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
           value: aiProvider
         }
         {
+          name: 'AZURE_OPENAI_ENDPOINT'
+          value: azureOpenAiEndpoint
+        }
+        {
+          name: 'AZURE_OPENAI_DEPLOYMENT'
+          value: azureOpenAiDeployment
+        }
+        {
+          name: 'AZURE_OPENAI_API_VERSION'
+          value: azureOpenAiApiVersion
+        }
+        {
           name: 'RAZORPAY_CURRENCY'
           value: razorpayCurrency
         }
@@ -179,8 +200,8 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
         // TWO_FACTOR_ENCRYPTION_KEY (all fail-fast/required — the API
         // will not boot without real values), and the fully-optional
         // RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET/RAZORPAY_WEBHOOK_SECRET/
-        // ANTHROPIC_API_KEY/OPENAI_API_KEY/AI_MODEL/SENTRY_DSN/
-        // SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD. None of these belong in a
+        // ANTHROPIC_API_KEY/OPENAI_API_KEY/AI_MODEL/AZURE_OPENAI_API_KEY/
+        // SENTRY_DSN/SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD. None of these belong in a
         // committed Bicep file. AZURE-DEPLOY-RUNBOOK.md's next step sets
         // all of them via `az webapp config appsettings set` — do that
         // BEFORE the first GitHub Actions deploy so the app boots clean

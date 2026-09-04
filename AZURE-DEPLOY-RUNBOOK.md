@@ -277,6 +277,45 @@ az webapp config appsettings set \
 (or `OPENAI_API_KEY` + `AI_MODEL` + setting `AI_PROVIDER=openai` if you'd
 rather use OpenAI — see `apps/api/src/lib/aiClient.ts`.)
 
+**Using Azure OpenAI instead (recommended for this deployment path)** —
+keeps AI billing on the same Azure subscription/resource group as
+everything else here, instead of a separate Anthropic/OpenAI account.
+
+1. In the Azure Portal (or `az cognitiveservices account create --kind
+   OpenAI`), create an **Azure OpenAI** resource in a region that supports
+   it (not every region does — check
+   [Azure OpenAI's region availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models)
+   before picking one; `centralindia`, this template's own default
+   `location`, may not be one of them — `eastus`/`swedencentral` reliably
+   are as of this writing).
+2. In that resource (via **Azure AI Foundry** → **Deployments**), deploy a
+   chat model — e.g. `gpt-4o-mini` — and note the **deployment name** you
+   give it (not necessarily the same as the base model name).
+3. From the resource's **Keys and Endpoint** page, grab Key 1 and the
+   endpoint URL (`https://<resource-name>.openai.azure.com`).
+4. Set the non-secret pieces via the Bicep params (re-run `az deployment
+   group create` with these added, or set them the same
+   `appsettings set` way as the secret below — either works, but a
+   redeploy of the template will overwrite ad-hoc `appsettings set` values
+   for anything the template itself defines, per this file's own note in
+   `appService.bicep`):
+   - `aiProvider = 'azure-openai'`
+   - `azureOpenAiEndpoint = 'https://<resource-name>.openai.azure.com'`
+   - `azureOpenAiDeployment = '<your deployment name>'`
+5. Set the one real secret, same pattern as `ANTHROPIC_API_KEY` above —
+   this one is deliberately never in the Bicep template:
+
+```bash
+az webapp config appsettings set \
+  --resource-group rg-primefit-prod \
+  --name <webAppName> \
+  --settings AZURE_OPENAI_API_KEY="<key 1 from the resource>"
+```
+
+6. Confirm with `GET /ai/status` (any authenticated request) — it should
+   report `provider: "azure-openai"`, `configured: true`, and `model:
+   "<your deployment name>"`.
+
 **2.7 Error monitoring (optional).** Create a free Sentry project first if
 you want error monitoring from day one:
 
