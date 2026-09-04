@@ -48,3 +48,10 @@ npm-debug.log*
 # See _to_delete/ itself for contents; kept out of git rather than deleted
 # so nothing is lost, but none of it belongs in repo history.
 _to_delete/
+
+# Generated review page for the 4 Sep 2026 seed content pass. ~1MB, because
+# every catalog image is inlined as a base64 data URI (the viewer it is
+# published to admits no external image hosts). It is a published artifact,
+# not source, and regenerating it would add another megabyte of blob to the
+# history each time — so it is deliberately not tracked.
+reports/seed-catalog.html
