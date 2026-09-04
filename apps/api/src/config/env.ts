@@ -80,12 +80,6 @@ const envSchema = z.object({
   // "unconfigured means quietly off, never blocks boot" pattern as
   // Razorpay/AI above. See lib/sentry.ts.
   SENTRY_DSN: z.string().optional(),
-  // TEMPORARY — go-live hardening, 4 Sep 2026. Gates POST
-  // /internal/seed-once (see app.ts's own comment on that route for the
-  // full why). Optional/no fail-fast, same pattern as the vars above —
-  // unset means the route always 404s. Delete this line along with the
-  // route once it's been used.
-  SEED_TRIGGER_SECRET: z.string().optional(),
   // AI provider configuration (gap §13's infrastructure half only — see
   // lib/aiClient.ts's doc comment for what this does and doesn't cover).
   // Also optional/no fail-fast, same reasoning as Razorpay above.
