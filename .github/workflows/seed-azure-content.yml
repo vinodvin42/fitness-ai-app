@@ -64,7 +64,31 @@ jobs:
       # deploy-azure-api.yml, which owns schema changes. If a seed here fails
       # on a missing column, the fix is to run that workflow first, not to
       # add a second thing that migrates production.
+      # DATABASE_URL is the only value here that does anything. The five
+      # below it exist purely to get past config/env.ts, which fail-fast
+      # validates the whole schema the moment anything imports the Prisma
+      # singleton — and this script does import it, by design, so that
+      # `npm run db:seed` behaves identically here and locally. A content
+      # seed signs no tokens and encrypts nothing, so these are never used
+      # for anything; they are placeholders shaped to satisfy the validator.
+      # (TWO_FACTOR_ENCRYPTION_KEY has to be exactly 64 hex chars, so unlike
+      # the others it cannot be a descriptive string — generated once with
+      # `openssl rand -hex 32` for this file and never used to encrypt
+      # anything.) The real production values live in the Web App's own app
+      # settings, where they belong, and are neither needed nor wanted on a
+      # GitHub runner. Same convention, and the same reasoning, as ci.yml's
+      # own env block.
+      #
+      # NODE_ENV is deliberately left unset (so it defaults to development):
+      # env.ts's production branch additionally refuses to boot on an empty
+      # CORS_ORIGINS, which is meaningless for a CLI script that serves no
+      # HTTP requests.
       - name: Seed content
         env:
           DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+          JWT_ACCESS_SECRET: seed-job-placeholder-not-a-real-credential
+          JWT_REFRESH_SECRET: seed-job-placeholder-not-a-real-credential
+          ADMIN_JWT_SECRET: seed-job-placeholder-not-a-real-credential
+          PROFESSIONAL_JWT_SECRET: seed-job-placeholder-not-a-real-credential
+          TWO_FACTOR_ENCRYPTION_KEY: d934205050767c571ac1d980091b6f50ab5a0bfd3490ade4e5b3df136dec0ee7
         run: npm run db:seed --workspace=apps/api -- --content-only
