@@ -17,8 +17,8 @@
  * without this. Replace with the real CMS-authored content once that ships
  * — don't grow this file into a permanent content pipeline.
  *
- * **4 Sep 2026 content pass.** Programs 3 -> 18, exercises 7 -> 167,
- * workouts 2 -> 42, recipes 4 -> 42, and all three content types now carry
+ * **4 Sep 2026 content pass.** Programs 3 -> 18, exercises 7 -> 396,
+ * workouts 2 -> 42, recipes 4 -> 80, and all three content types now carry
  * real imagery (`Program.imageUrl` and `Recipe.imageUrl` were added to the
  * schema for this; `Exercise.mediaUrl` already existed and had never been
  * populated). Images are hotlinked, not stored — there is no object
@@ -124,7 +124,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // The catalogue itself lives in ./seedContent — see that directory's
   // modules for the content and this file's doc comment for where the imagery
   // comes from. It moved out of here on 4 Sep 2026, when programs went 8 -> 18,
-  // exercises 43 -> 167, workouts 17 -> 42 and recipes 13 -> 42: at that size
+  // exercises 43 -> 396, workouts 17 -> 42 and recipes 13 -> 80: at that size
   // the data was burying the twenty lines of logic below that actually write it.
   await writeInBatches(seedPrograms, (p) => prisma.program.upsert({ where: { id: p.id }, create: p, update: p }));
 

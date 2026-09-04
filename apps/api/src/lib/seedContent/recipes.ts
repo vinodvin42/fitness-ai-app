@@ -1,9 +1,9 @@
 /**
  * Seed recipes — see ../seedDatabase.ts for how these are written.
  *
- * Grew from 4 to 13 and then to 42 on 4 Sep 2026, spread across the four meal
- * slots a MealLog can be filed under so that Nutrition's per-meal views are
- * never empty. The four original ids and macros are unchanged.
+ * Grew from 4 to 13, then 42, then 80 on 4 Sep 2026, spread across the four
+ * meal slots a MealLog can be filed under so that Nutrition's per-meal views
+ * are never empty. The four original ids and macros are unchanged.
  *
  * Macros are realistic per-serving figures for the dish named, and are
  * internally consistent (protein and carbs at 4 kcal/g, fat at 9, summing to
@@ -40,6 +40,13 @@ export const seedRecipes: SeedRecipe[] = [
   { id: "rec-muesli", name: "Muesli & Milk", mealType: "breakfast", calories: 340, proteinG: 13, carbsG: 55, fatG: 8, prepTimeMinutes: 3, tags: ["vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1658402218013-18ccf3336bb5") },
   { id: "rec-cottage-cheese-bowl", name: "Cottage Cheese & Fruit Bowl", mealType: "breakfast", calories: 280, proteinG: 26, carbsG: 26, fatG: 7, prepTimeMinutes: 5, tags: ["vegetarian", "high-protein", "quick", "gluten-free"], imageUrl: unsplash("photo-1753173301157-8136a70b4178") },
   { id: "rec-pb-banana-smoothie", name: "Peanut Butter Banana Smoothie", mealType: "breakfast", calories: 420, proteinG: 24, carbsG: 48, fatG: 15, prepTimeMinutes: 5, tags: ["vegetarian", "high-protein", "quick"], imageUrl: unsplash("photo-1685967836529-b0e8d6938227") },
+  { id: "rec-shakshuka", name: "Shakshuka", mealType: "breakfast", calories: 380, proteinG: 22, carbsG: 24, fatG: 22, prepTimeMinutes: 25, tags: ["vegetarian", "high-protein", "gluten-free"], imageUrl: unsplash("photo-1759493785939-0bd3e3d60682") },
+  { id: "rec-french-toast", name: "French Toast & Berries", mealType: "breakfast", calories: 420, proteinG: 16, carbsG: 52, fatG: 16, prepTimeMinutes: 15, tags: ["vegetarian"], imageUrl: unsplash("photo-1676037150606-ce6df635189e") },
+  { id: "rec-bagel-salmon", name: "Smoked Salmon Bagel", mealType: "breakfast", calories: 470, proteinG: 28, carbsG: 48, fatG: 18, prepTimeMinutes: 10, tags: ["pescatarian", "high-protein", "omega-3", "quick"], imageUrl: unsplash("photo-1643049441000-3249ab096f2b") },
+  { id: "rec-smoothie-bowl", name: "Acai Smoothie Bowl", mealType: "breakfast", calories: 390, proteinG: 12, carbsG: 62, fatG: 11, prepTimeMinutes: 10, tags: ["vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1627308594190-a057cd4bfac8") },
+  { id: "rec-waffles", name: "Protein Waffles", mealType: "breakfast", calories: 400, proteinG: 26, carbsG: 48, fatG: 12, prepTimeMinutes: 15, tags: ["vegetarian", "high-protein"], imageUrl: unsplash("photo-1568051243851-f9b136146e97") },
+  { id: "rec-porridge", name: "Cinnamon Porridge", mealType: "breakfast", calories: 330, proteinG: 12, carbsG: 54, fatG: 8, prepTimeMinutes: 10, tags: ["vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1654171569419-68baf12fc6cd") },
+  { id: "rec-baked-beans-toast", name: "Beans on Wholegrain Toast", mealType: "breakfast", calories: 350, proteinG: 16, carbsG: 58, fatG: 6, prepTimeMinutes: 8, tags: ["vegan", "vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1708509360422-5e8d4499e375") },
 
   // ---- Lunch -------------------------------------------------------------
   { id: "rec-chicken-bowl", name: "Grilled Chicken Bowl", mealType: "lunch", calories: 520, proteinG: 45, carbsG: 48, fatG: 15, prepTimeMinutes: 20, tags: ["high-protein", "meal-prep"], imageUrl: unsplash("photo-1788227372897-49ec292a9406") },
@@ -54,6 +61,17 @@ export const seedRecipes: SeedRecipe[] = [
   { id: "rec-shrimp-rice-bowl", name: "Shrimp Rice Bowl", mealType: "lunch", calories: 480, proteinG: 36, carbsG: 62, fatG: 9, prepTimeMinutes: 20, tags: ["pescatarian", "high-protein", "gluten-free"], imageUrl: unsplash("photo-1761314025611-957a20e3e8a3") },
   { id: "rec-mezze-plate", name: "Mediterranean Mezze Plate", mealType: "lunch", calories: 460, proteinG: 16, carbsG: 48, fatG: 23, prepTimeMinutes: 15, tags: ["vegetarian", "high-fiber"], imageUrl: unsplash("photo-1786174045057-89e6449f47d9") },
   { id: "rec-chicken-pesto-pasta", name: "Chicken Pesto Pasta", mealType: "lunch", calories: 620, proteinG: 42, carbsG: 62, fatG: 22, prepTimeMinutes: 25, tags: ["high-protein", "meal-prep"], imageUrl: unsplash("photo-1743615242147-017a3d712696") },
+  { id: "rec-sushi-bowl", name: "Salmon Sushi Bowl", mealType: "lunch", calories: 520, proteinG: 34, carbsG: 62, fatG: 14, prepTimeMinutes: 20, tags: ["pescatarian", "high-protein", "omega-3"], imageUrl: unsplash("photo-1775889184907-36742cafb945") },
+  { id: "rec-buddha-bowl", name: "Buddha Bowl", mealType: "lunch", calories: 480, proteinG: 18, carbsG: 64, fatG: 17, prepTimeMinutes: 20, tags: ["vegan", "vegetarian", "high-fiber", "meal-prep"], imageUrl: unsplash("photo-1675092789086-4bd2b93ffc69") },
+  { id: "rec-club-sandwich", name: "Turkey Club Sandwich", mealType: "lunch", calories: 540, proteinG: 36, carbsG: 46, fatG: 22, prepTimeMinutes: 15, tags: ["high-protein"], imageUrl: unsplash("photo-1553909489-cd47e0907980") },
+  { id: "rec-pho", name: "Chicken Pho", mealType: "lunch", calories: 450, proteinG: 32, carbsG: 58, fatG: 8, prepTimeMinutes: 30, tags: ["high-protein"], imageUrl: unsplash("photo-1631709497146-a239ef373cf1") },
+  { id: "rec-greek-salad", name: "Greek Salad", mealType: "lunch", calories: 340, proteinG: 12, carbsG: 18, fatG: 25, prepTimeMinutes: 10, tags: ["vegetarian", "low-carb", "gluten-free", "quick"], imageUrl: unsplash("photo-1778449532114-430396ada55b") },
+  { id: "rec-banh-mi", name: "Banh Mi", mealType: "lunch", calories: 520, proteinG: 28, carbsG: 60, fatG: 18, prepTimeMinutes: 20, tags: ["high-protein"], imageUrl: unsplash("photo-1779939855561-c187d7b6e254") },
+  { id: "rec-minestrone", name: "Minestrone", mealType: "lunch", calories: 320, proteinG: 14, carbsG: 48, fatG: 8, prepTimeMinutes: 35, tags: ["vegan", "vegetarian", "high-fiber", "meal-prep"], imageUrl: unsplash("photo-1672667509988-baade9ade083") },
+  { id: "rec-caprese", name: "Caprese Salad", mealType: "lunch", calories: 330, proteinG: 18, carbsG: 10, fatG: 24, prepTimeMinutes: 10, tags: ["vegetarian", "low-carb", "gluten-free", "quick"], imageUrl: unsplash("photo-1769458313937-b5ad8f84942e") },
+  { id: "rec-ramen", name: "Miso Ramen", mealType: "lunch", calories: 560, proteinG: 30, carbsG: 72, fatG: 16, prepTimeMinutes: 30, tags: ["high-protein"], imageUrl: unsplash("photo-1612927601601-6638404737ce") },
+  { id: "rec-soba", name: "Cold Soba Noodles", mealType: "lunch", calories: 420, proteinG: 16, carbsG: 68, fatG: 9, prepTimeMinutes: 15, tags: ["vegan", "vegetarian", "high-fiber"], imageUrl: unsplash("photo-1780191846226-9607dd1abee5") },
+  { id: "rec-tomato-soup", name: "Roasted Tomato Soup", mealType: "lunch", calories: 240, proteinG: 8, carbsG: 30, fatG: 10, prepTimeMinutes: 30, tags: ["vegan", "vegetarian", "gluten-free", "meal-prep"], imageUrl: unsplash("photo-1673021889619-0677506b56ac") },
 
   // ---- Dinner ------------------------------------------------------------
   { id: "rec-salmon", name: "Baked Salmon & Greens", mealType: "dinner", calories: 480, proteinG: 38, carbsG: 20, fatG: 26, prepTimeMinutes: 25, tags: ["pescatarian", "high-protein", "omega-3", "gluten-free"], imageUrl: unsplash("photo-1539136788836-5699e78bfc75") },
@@ -68,6 +86,18 @@ export const seedRecipes: SeedRecipe[] = [
   { id: "rec-shrimp-pasta", name: "Garlic Shrimp Pasta", mealType: "dinner", calories: 580, proteinG: 36, carbsG: 68, fatG: 18, prepTimeMinutes: 25, tags: ["pescatarian", "high-protein"], imageUrl: unsplash("photo-1764925563135-3d461e72345d") },
   { id: "rec-roast-chicken", name: "Roast Chicken & Vegetables", mealType: "dinner", calories: 540, proteinG: 46, carbsG: 34, fatG: 24, prepTimeMinutes: 50, tags: ["high-protein", "meal-prep", "gluten-free"], imageUrl: unsplash("photo-1778996525694-e87e5eff7a76") },
   { id: "rec-black-bean-tacos", name: "Black Bean Tacos", mealType: "dinner", calories: 460, proteinG: 18, carbsG: 64, fatG: 15, prepTimeMinutes: 20, tags: ["vegan", "vegetarian", "high-fiber"], imageUrl: unsplash("photo-1644085128237-9ba593123ac3") },
+  { id: "rec-butter-chicken", name: "Butter Chicken & Naan", mealType: "dinner", calories: 680, proteinG: 42, carbsG: 58, fatG: 30, prepTimeMinutes: 40, tags: ["high-protein"], imageUrl: unsplash("photo-1772730065344-4cf131b39951") },
+  { id: "rec-lasagna", name: "Beef Lasagna", mealType: "dinner", calories: 620, proteinG: 36, carbsG: 54, fatG: 28, prepTimeMinutes: 60, tags: ["high-protein", "meal-prep"], imageUrl: unsplash("photo-1713802611143-d14c927e2217") },
+  { id: "rec-fish-tacos", name: "Fish Tacos", mealType: "dinner", calories: 470, proteinG: 32, carbsG: 46, fatG: 16, prepTimeMinutes: 25, tags: ["pescatarian", "high-protein"], imageUrl: unsplash("photo-1640868899985-d778a86752a7") },
+  { id: "rec-paella", name: "Seafood Paella", mealType: "dinner", calories: 580, proteinG: 38, carbsG: 66, fatG: 17, prepTimeMinutes: 45, tags: ["pescatarian", "high-protein", "gluten-free"], imageUrl: unsplash("photo-1786550479355-6106b39c4856") },
+  { id: "rec-risotto", name: "Mushroom Risotto", mealType: "dinner", calories: 520, proteinG: 14, carbsG: 72, fatG: 19, prepTimeMinutes: 35, tags: ["vegetarian", "gluten-free"], imageUrl: unsplash("photo-1680420574628-225def8eea0a") },
+  { id: "rec-stuffed-peppers", name: "Stuffed Peppers", mealType: "dinner", calories: 410, proteinG: 26, carbsG: 38, fatG: 17, prepTimeMinutes: 45, tags: ["high-protein", "high-fiber", "gluten-free"], imageUrl: unsplash("photo-1649434150059-13fee33e1de4") },
+  { id: "rec-pizza", name: "Wholemeal Margherita Pizza", mealType: "dinner", calories: 600, proteinG: 26, carbsG: 78, fatG: 21, prepTimeMinutes: 30, tags: ["vegetarian"], imageUrl: unsplash("photo-1574071318508-1cdbab80d002") },
+  { id: "rec-satay", name: "Chicken Satay Skewers", mealType: "dinner", calories: 480, proteinG: 40, carbsG: 20, fatG: 27, prepTimeMinutes: 25, tags: ["high-protein", "gluten-free"], imageUrl: unsplash("photo-1772855386828-a18ff9a12584") },
+  { id: "rec-gnocchi", name: "Tomato Gnocchi", mealType: "dinner", calories: 520, proteinG: 16, carbsG: 76, fatG: 16, prepTimeMinutes: 20, tags: ["vegetarian"], imageUrl: unsplash("photo-1778837224436-82a8f1fa8bb1") },
+  { id: "rec-burger", name: "Lean Beef Burger", mealType: "dinner", calories: 590, proteinG: 38, carbsG: 46, fatG: 27, prepTimeMinutes: 20, tags: ["high-protein"], imageUrl: unsplash("photo-1600891964751-dc0cc8611e47") },
+  { id: "rec-katsu", name: "Chicken Katsu Curry", mealType: "dinner", calories: 700, proteinG: 40, carbsG: 80, fatG: 25, prepTimeMinutes: 40, tags: ["high-protein"], imageUrl: unsplash("photo-1785757955736-def634e28ad1") },
+  { id: "rec-dumplings", name: "Steamed Dumplings", mealType: "dinner", calories: 420, proteinG: 22, carbsG: 54, fatG: 13, prepTimeMinutes: 30, tags: ["high-protein"], imageUrl: unsplash("photo-1523905330026-b8bd1f5f320e") },
 
   // ---- Snacks ------------------------------------------------------------
   { id: "rec-smoothie", name: "Berry Protein Smoothie", mealType: "snack", calories: 220, proteinG: 20, carbsG: 28, fatG: 4, prepTimeMinutes: 5, tags: ["vegetarian", "high-protein", "quick"], imageUrl: unsplash("photo-1766232584434-caccfb0fcf14") },
@@ -78,4 +108,12 @@ export const seedRecipes: SeedRecipe[] = [
   { id: "rec-boiled-eggs", name: "Boiled Eggs & Fruit", mealType: "snack", calories: 210, proteinG: 14, carbsG: 16, fatG: 10, prepTimeMinutes: 12, tags: ["vegetarian", "high-protein", "gluten-free"], imageUrl: unsplash("photo-1557965983-5b9fc9ab9014") },
   { id: "rec-edamame", name: "Sea Salt Edamame", mealType: "snack", calories: 190, proteinG: 17, carbsG: 15, fatG: 8, prepTimeMinutes: 8, tags: ["vegan", "vegetarian", "high-protein", "high-fiber", "gluten-free"], imageUrl: unsplash("photo-1557621956-ce58555aa0ce") },
   { id: "rec-cheese-crackers", name: "Cheese & Wholegrain Crackers", mealType: "snack", calories: 270, proteinG: 12, carbsG: 24, fatG: 15, prepTimeMinutes: 3, tags: ["vegetarian", "quick"], imageUrl: unsplash("photo-1631505507238-ac1325b817e9") },
+  { id: "rec-popcorn", name: "Air-Popped Popcorn", mealType: "snack", calories: 130, proteinG: 4, carbsG: 26, fatG: 2, prepTimeMinutes: 5, tags: ["vegan", "vegetarian", "high-fiber", "gluten-free", "quick"], imageUrl: unsplash("photo-1642520075943-b5ca77921357") },
+  { id: "rec-dark-chocolate", name: "Dark Chocolate & Almonds", mealType: "snack", calories: 250, proteinG: 6, carbsG: 18, fatG: 18, prepTimeMinutes: 2, tags: ["vegetarian", "gluten-free", "quick"], imageUrl: unsplash("photo-1781773339842-556a35478dd2") },
+  { id: "rec-fruit-salad", name: "Fresh Fruit Salad", mealType: "snack", calories: 160, proteinG: 2, carbsG: 38, fatG: 1, prepTimeMinutes: 10, tags: ["vegan", "vegetarian", "high-fiber", "gluten-free"], imageUrl: unsplash("photo-1519996529931-28324d5a630e") },
+  { id: "rec-protein-shake", name: "Chocolate Protein Shake", mealType: "snack", calories: 230, proteinG: 28, carbsG: 18, fatG: 4, prepTimeMinutes: 3, tags: ["vegetarian", "high-protein", "quick"], imageUrl: unsplash("photo-1726039468346-2f3e0f1f5b52") },
+  { id: "rec-tzatziki", name: "Tzatziki & Pita", mealType: "snack", calories: 220, proteinG: 9, carbsG: 28, fatG: 8, prepTimeMinutes: 10, tags: ["vegetarian", "quick"], imageUrl: unsplash("photo-1777199264017-84af9308a41f") },
+  { id: "rec-olives-cheese", name: "Olives & Feta", mealType: "snack", calories: 210, proteinG: 9, carbsG: 4, fatG: 18, prepTimeMinutes: 3, tags: ["vegetarian", "low-carb", "gluten-free", "quick"], imageUrl: unsplash("photo-1706378398576-57a21244ef7a") },
+  { id: "rec-granola-bar", name: "Oat Granola Bar", mealType: "snack", calories: 240, proteinG: 6, carbsG: 34, fatG: 9, prepTimeMinutes: 5, tags: ["vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1763080348919-0a4969e31afc") },
+  { id: "rec-guacamole", name: "Guacamole & Chips", mealType: "snack", calories: 290, proteinG: 5, carbsG: 28, fatG: 19, prepTimeMinutes: 10, tags: ["vegan", "vegetarian", "gluten-free", "quick"], imageUrl: unsplash("photo-1680992071073-cb1696ba8d3e") },
 ];
