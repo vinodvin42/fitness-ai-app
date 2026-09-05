@@ -57,19 +57,21 @@ import { seedRecipes } from "./seedContent/recipes";
 
 /**
  * `includeAccounts: false` seeds content only — plans, programs, exercises,
- * workouts and recipes — and skips the demo-coach and bootstrap-admin
- * sections at the bottom of this file entirely.
+ * workouts, recipes, and (5 Sep 2026 — see the comment above the coach
+ * block further down for why this changed) the demo-coach accounts and
+ * their `ProfessionalServiceOffering` prices too. It skips only the
+ * bootstrap-admin section at the very bottom of this file.
  *
  * Added 4 Sep 2026 for `.github/workflows/seed-azure-content.yml`, which
  * re-seeds the live database from a GitHub runner. That runner has no
  * access to the App Service's own SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD
  * settings, so a full seed there would not find the live admin account by
  * email and would helpfully create a *second* super_admin at this file's
- * default address with its known default password. Content is the only
- * thing that re-seed needs to touch, so this makes "don't touch accounts"
- * an explicit, enforced mode rather than a convention someone has to
- * remember. The CLI (`npm run db:seed`) still defaults to a full seed, so
- * local setup is unchanged.
+ * default address with its known default password — that's the one real
+ * risk this flag guards against, and it's specific to the admin bootstrap,
+ * not to the coach accounts (fixed literal ids/emails, no environment
+ * dependency). The CLI (`npm run db:seed`) still defaults to a full seed,
+ * so local setup is unchanged.
  */
 /**
  * Runs `write` over `items` a few at a time, awaiting each batch.
@@ -204,10 +206,20 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     `Content imagery: ${seedPrograms.filter((p) => p.imageUrl).length}/${seedPrograms.length} programs, ${seedRecipes.filter((r) => r.imageUrl).length}/${seedRecipes.length} recipes, ${seedExercises.filter((e) => e.mediaUrl).length}/${seedExercises.length} exercises have an image.`,
   ];
 
-  if (!includeAccounts) {
-    summary.push("Skipped the demo-coach and bootstrap-admin accounts (content-only seed).");
-    return summary;
-  }
+  // 5 Sep 2026 — the `includeAccounts` gate below used to sit HERE,
+  // skipping the coach block along with the admin bootstrap for any
+  // content-only seed. That was too broad: the actual risk `--content-only`
+  // exists to avoid (see below) is specific to the admin bootstrap's
+  // env-driven email, and doesn't apply to the coach accounts/offerings at
+  // all — their ids/emails are fixed literals, not environment-driven, so
+  // re-running this block is exactly as safe as re-running the
+  // plans/programs/etc. upserts above. Skipping it meant a content-only
+  // reseed (e.g. after a pricing fix — PAY-02) never actually touched
+  // ProfessionalServiceOffering.priceCents in a real deployment, silently
+  // leaving coach session prices stale while programs/plans got fixed.
+  // The `includeAccounts` check has moved to just before the admin
+  // bootstrap section, the one part that's genuinely unsafe to run blind
+  // from a GitHub Actions runner (see that check's own comment).
 
   // Admin console (Phase 6, 20 Aug 2026) — one bootstrap super_admin
   // account, since there's no Admin Users management screen yet
@@ -314,6 +326,22 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     );
   }
   summary.push(`Seeded ${coaches.length} demo verified coaches with real service offerings.`);
+
+  if (!includeAccounts) {
+    // Admin bootstrap only, now — see the comment above the coach block
+    // for why that block itself already ran regardless of this flag.
+    // `SEED_ADMIN_EMAIL` below is read directly from `process.env` (not
+    // validated by config/env.ts), which is exactly the risk this flag
+    // guards against: a GitHub Actions runner has no visibility into the
+    // real App Service's app settings, so a full seed run from CI would
+    // silently fall back to the "admin@23primefit.com" default below —
+    // a DIFFERENT address from whatever the real deployment's
+    // SEED_ADMIN_EMAIL actually is — and upsert a second super_admin
+    // rather than updating the real one. content-only mode exists so a
+    // CI-triggered reseed can never do that.
+    summary.push("Skipped the bootstrap-admin account (content-only seed).");
+    return summary;
+  }
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@23primefit.com";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
