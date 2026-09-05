@@ -1740,12 +1740,14 @@ model CoachMessage {
 // That decision is now made: **configurable per-coach commission**, stored
 // as `Professional.commissionPct` (a whole percent, admin-editable). A
 // settlement is computed from the real `Booking` value a coach delivered in
-// a period (bookings carry a real `priceCents`; note coaching bookings
-// don't run through Razorpay yet — see coaching.service.ts — so "gross" is
-// booking value delivered, honestly labelled as such, not funds actually
-// collected). Marking one paid records an `Expense` row (category
-// `coach_settlement`) so it flows into Module 10 Finance's real ledger,
-// rather than being a parallel money concept. Shared `PayoutStatus` with
+// a period (bookings carry a real `priceCents`). Update, 6 Sep 2026: this
+// used to note that coaching bookings didn't run through Razorpay, so
+// "gross" was delivered value rather than collected funds — that changed
+// with PAY-01 (5 Sep 2026, see coaching.service.ts): a confirmed Booking
+// with a non-zero price now requires a verified payment first, so gross
+// generally IS real collected money. Marking one paid records an `Expense`
+// row (category `coach_settlement`) so it flows into Module 10 Finance's
+// real ledger, rather than being a parallel money concept. Shared `PayoutStatus` with
 // influencer payouts — both are a simple pending → paid lifecycle.
 enum PayoutStatus {
   pending

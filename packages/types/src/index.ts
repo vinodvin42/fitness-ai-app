@@ -992,6 +992,8 @@ export interface AdminDashboardStats {
     openSupportTickets: number;
     inProgressSupportTickets: number;
     failedPayments: number;
+    /** Real as of 6 Sep 2026 — was notAvailable before the Refund model was wired up to this KPI. */
+    openRefundRequests: number;
   };
   /** Real as of 20 Aug 2026 (Phase 5) — see adminDashboard.service.ts's doc comment. */
   marketplaceStatus: {
@@ -2641,8 +2643,9 @@ export interface AdminFinanceDashboardResponse {
   burnRateCents: number | null;
   /** Null when there's no positive burn rate to divide the cash balance by. */
   runwayMonths: number | null;
-  requiredActions: { overdueReceivables: { count: number; amountCents: number } };
-  /** Always ["pendingSettlements", "pendingPayouts", "openRefundRequests"]. */
+  /** `openRefundRequests` added 6 Sep 2026 — real since this pass, previously notAvailable. */
+  requiredActions: { overdueReceivables: { count: number; amountCents: number }; openRefundRequests: number };
+  /** Always ["pendingSettlements", "pendingPayouts"] as of 6 Sep 2026 (openRefundRequests moved into requiredActions). */
   notAvailable: string[];
 }
 
@@ -2748,7 +2751,7 @@ export interface AdminFinancialReportsResponse {
   revenue: { byPurpose: { subscriptionCents: number; programPurchaseCents: number; bookingCents: number }; byPlan: AdminRevenueByPlanItem[]; trend: Array<{ month: string; revenueCents: number }> };
   expense: { byCategory: Record<string, number>; totalCents: number };
   ratios: { netMarginPct: number | null; expenseToRevenuePct: number | null };
-  /** Always ["pendingSettlements", "pendingPayouts", "openRefundRequests", "regionalBreakdown"]. */
+  /** Always ["pendingSettlements", "pendingPayouts", "regionalBreakdown"] as of 6 Sep 2026. */
   notAvailable: string[];
 }
 

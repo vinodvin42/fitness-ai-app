@@ -362,11 +362,12 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-      {/* Module 07 — Growth, 07.03 Referrals only (added 25 Aug 2026) — a
-          single top-level screen, no subNav (07.01/07.02/07.04 all still
-          need new entities) — see adminReferrals.service.ts's own doc
-          comment for why this was the one remaining genuinely unblocked
-          slice in the console. */}
+      {/* Module 07 — Growth. 07.03 Referrals (added 25 Aug 2026) was the
+          first real slice here — see adminReferrals.service.ts's own doc
+          comment. 07.01/07.02 Influencers joined 31 Aug 2026 (routed below,
+          under Growth's own subNav — see growth/subNav.ts); 07.04 Campaigns
+          & Attribution still needs a new Campaign entity + attribution
+          pipeline. */}
       <Route
         path="/growth"
         element={
@@ -441,13 +442,15 @@ function AppRoutes() {
         }
       />
       {/* Module 10 — Finance (added 26 Aug 2026), built directly from the
-          "one ledger" architecture decision — see
-          reports/finance-architecture-plan.html. 7 of the Figma's 10
-          screens are real, sharing FINANCE_SUB_NAV; 10.06 Coach
-          Settlements, 10.07 Influencer Payouts, and 10.09 Bank/Payment
-          Accounts have no route here at all — same "no dead links, omit
-          rather than stub" convention SUPPORT_SUB_NAV set for 08.03/08.04.
-          See adminFinance.service.ts's own doc comment for the full
+          "one ledger" architecture decision. 8 of the Figma's 10 screens
+          are real now (10.06 Coach Settlements joined 31 Aug 2026, routed
+          below at /finance/settlements; the Revenue Waterfall at
+          /finance/waterfall shipped 5 Sep 2026, sharing FINANCE_SUB_NAV
+          too). 10.07 Influencer Payouts lives under Growth instead (see
+          the Growth route block above), and 10.09 Bank/Payment Accounts
+          still has no route at all — same "no dead links, omit rather
+          than stub" convention SUPPORT_SUB_NAV set for 08.03/08.04. See
+          adminFinance.service.ts's own doc comment for the full
           real-vs-not breakdown. */}
       <Route
         path="/finance"

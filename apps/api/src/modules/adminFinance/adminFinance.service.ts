@@ -352,6 +352,12 @@ export async function getFinanceDashboard(query: FinanceDateRangeQuery) {
     overdueReceivables: { count: receivables.count, amountCents: receivables.totalCents },
   };
 
+  // 6 Sep 2026 — a real Refund model has existed since 31 Aug 2026; this
+  // was still listed in notAvailable below only because nothing had wired
+  // it up yet (same gap adminDashboard.service.ts's Executive Dashboard
+  // had, fixed there this same pass).
+  const openRefundRequests = await prisma.refund.count({ where: { status: "pending" } });
+
   return {
     range: { startDate: mtdStart, endDate: mtdEnd },
     kpis: {
@@ -365,12 +371,16 @@ export async function getFinanceDashboard(query: FinanceDateRangeQuery) {
     cashFlow,
     burnRateCents,
     runwayMonths,
-    requiredActions,
-    // "pendingSettlements"/"pendingPayouts" — Coach Settlements/Influencer
-    // Payouts aren't modeled (see this file's top comment).
-    // "openRefundRequests" — same gap adminDashboard.service.ts already
-    // names for 06.04 Refunds, reused here rather than a new key.
-    notAvailable: ["pendingSettlements", "pendingPayouts", "openRefundRequests"],
+    requiredActions: { ...requiredActions, openRefundRequests },
+    // "pendingPayouts" (Influencer) stays notAvailable — still admin-entered,
+    // not computed from real attributed revenue (see getRevenueWaterfall's
+    // own comment). "pendingSettlements" (Coach) is a real, buildable-now
+    // gap this pass didn't close: adminSettlements.service.ts computes
+    // unsettled net per-coach-per-month, but nothing aggregates "pending
+    // across every coach, right now" into one number yet — a genuine
+    // follow-up, not the same "no entity to compute from" blocker
+    // Influencer Payouts still has.
+    notAvailable: ["pendingSettlements", "pendingPayouts"],
   };
 }
 
@@ -823,6 +833,10 @@ export async function financialReports(query: FinanceDateRangeQuery) {
       netMarginPct: revenueCents > 0 ? Math.round((dashboard.kpis.netProfitMtdCents / revenueCents) * 1000) / 10 : null,
       expenseToRevenuePct: revenueCents > 0 ? Math.round((expensesCents / revenueCents) * 1000) / 10 : null,
     },
-    notAvailable: ["pendingSettlements", "pendingPayouts", "openRefundRequests", "regionalBreakdown"],
+    // 6 Sep 2026 — "openRefundRequests" dropped, matching getFinanceDashboard's
+    // own notAvailable above (real since this same pass); see that
+    // function's comment for why "pendingSettlements"/"pendingPayouts"
+    // still belong here.
+    notAvailable: ["pendingSettlements", "pendingPayouts", "regionalBreakdown"],
   };
 }

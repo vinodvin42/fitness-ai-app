@@ -28,17 +28,20 @@ import { prisma } from "../../db/prisma";
  * there is still no "pending request awaiting review" concept anywhere in
  * this schema for this KPI to count. "Expiring credentials" is also still
  * cut (no expiry-date field exists on `ProfessionalCredential` — the
- * reviewed coach-app screens didn't show one). "Open refund requests" is
- * also still cut: no `Refund` model exists yet (see
- * docs/admin/06-data-model.md §2's `Refund` entity, still unbuilt —
- * Commerce's refund flow is a Phase 6+ follow-up, not this slice).
+ * reviewed coach-app screens didn't show one).
+ *
+ * **6 Sep 2026:** "Open refund requests" is real now, not `notAvailable`
+ * — a real `Refund` model has existed since 31 Aug 2026 (`adminRefunds`
+ * module), this specific KPI just hadn't been wired up to it until this
+ * pass (`requiresAttention.openRefundRequests`, a plain
+ * `prisma.refund.count({ where: { status: "pending" } })`).
  *
  * The revenue/conversion-funnel numbers ARE computed from real data
- * (Payment, Subscription), but note this build's own documented currency
- * mismatch (docs/mobile/07-open-questions-gaps.md §38): seeded prices are
- * USD-labeled cents while Razorpay's native currency is INR, so
- * `totalRevenueCents` should be read as "cents in whatever currency the
- * underlying Payment rows were actually recorded in," not assumed USD.
+ * (Payment, Subscription). **Update, 6 Sep 2026:** the currency-mismatch
+ * caveat that used to sit here (docs/mobile/07-open-questions-gaps.md
+ * §38) is resolved — every seeded price is real INR paise now (PAY-02,
+ * 5 Sep 2026), so `totalRevenueCents` reads as real INR, not an
+ * ambiguous "whatever currency it happened to be recorded in."
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -59,6 +62,7 @@ export async function getExecutiveDashboardStats() {
     openSupportTickets,
     inProgressSupportTickets,
     failedPayments,
+    openRefundRequests,
     revenueAgg,
     recentSignups,
     activeProfessionals,
@@ -95,6 +99,10 @@ export async function getExecutiveDashboardStats() {
     prisma.supportTicket.count({ where: { status: "open" } }),
     prisma.supportTicket.count({ where: { status: "in_progress" } }),
     prisma.payment.count({ where: { status: "failed" } }),
+    // Added 6 Sep 2026 — see this file's top comment for why this used to
+    // be `notAvailable` and no longer is (the `Refund` model has existed
+    // since 31 Aug 2026; this KPI just hadn't been wired up to it yet).
+    prisma.refund.count({ where: { status: "pending" } }),
     prisma.payment.aggregate({ where: { status: "paid" }, _sum: { amountCents: true } }),
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -186,6 +194,7 @@ export async function getExecutiveDashboardStats() {
       openSupportTickets,
       inProgressSupportTickets,
       failedPayments,
+      openRefundRequests,
     },
     marketplaceStatus: {
       activeProfessionals,
@@ -202,6 +211,6 @@ export async function getExecutiveDashboardStats() {
     // Named exactly so the frontend can render "Not available yet" for
     // these specific spec'd KPIs instead of a fabricated number — see this
     // file's top comment for why each one is cut from this slice.
-    notAvailable: ["pendingCoachingRequests", "expiringCredentials", "openRefundRequests"],
+    notAvailable: ["pendingCoachingRequests", "expiringCredentials"],
   };
 }

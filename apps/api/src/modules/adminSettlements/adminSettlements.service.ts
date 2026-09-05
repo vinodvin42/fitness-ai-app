@@ -13,12 +13,28 @@ import { ListSettlementsQuery, SetCommissionInput, SettleCoachInput } from "./ad
  * A settlement is computed from the real `Booking` value a coach delivered
  * in a UTC calendar month: gross = Σ priceCents of that coach's confirmed,
  * already-delivered (scheduledAt ≤ now) bookings in the period; commission =
- * gross × commissionPct%; net payable = gross − commission. Coaching
- * bookings don't run through Razorpay yet (see coaching.service.ts), so
- * "gross" is booking value delivered, honestly labelled — not funds
- * actually collected. Marking a settlement paid records a real `Expense`
- * row (category `coach_settlement`) so the payout flows into Module 10
- * Finance's ledger rather than being a parallel money concept.
+ * gross × commissionPct%; net payable = gross − commission. **Update, 6 Sep
+ * 2026:** this used to say coaching bookings don't run through Razorpay, so
+ * "gross" was booking value delivered, not funds actually collected — that
+ * changed with PAY-01 (5 Sep 2026, see coaching.service.ts): a `confirmed`
+ * Booking with a non-zero price now requires a verified Razorpay payment
+ * before it's created, so gross generally IS real collected money now.
+ * Marking a settlement paid records a real `Expense` row (category
+ * `coach_settlement`) so the payout flows into Module 10 Finance's ledger
+ * rather than being a parallel money concept.
+ *
+ * **Known, undecided edge case (flagged 6 Sep 2026, not fixed — a real
+ * business-policy call, not a bug this file should silently pick one side
+ * of):** gross here sums `Booking.priceCents`, the offering's full list
+ * price at booking time — NOT `Payment.amountCents`, the amount actually
+ * charged after a coupon discount (coupons on bookings shipped 5 Sep 2026
+ * alongside PAY-01). So a coach is currently settled on the full list
+ * price even when the platform collected less via a coupon — implicitly
+ * treating the discount as a cost the platform absorbs, not one the coach
+ * shares in. That may be exactly the right policy, but it was never an
+ * explicit decision; worth a deliberate call (settle on list price, or on
+ * actually-collected `Payment.amountCents`) rather than leaving it as an
+ * accident of which field this query happened to read.
  *
  * Deliberately does NOT import Prisma model types — the un-generated
  * `@prisma/client` stub has no real model exports in this sandbox.

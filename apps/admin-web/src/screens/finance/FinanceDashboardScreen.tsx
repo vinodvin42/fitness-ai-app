@@ -29,9 +29,10 @@ async function fetchDashboard(): Promise<AdminFinanceDashboardResponse> {
  * architecture decision recorded in reports/finance-architecture-plan.html.
  * KPI row and the 6-month cash flow snapshot are real aggregation over
  * `Payment`/`Expense` (MTD = calendar month to date). Of the spec'd
- * "Required Financial Actions" list, only overdue receivables are real —
- * see adminFinance.service.ts's own doc comment for the full breakdown of
- * why pending settlements/payouts/refunds stay `notAvailable`.
+ * "Required Financial Actions" list, overdue receivables and (as of 6 Sep
+ * 2026) open refund requests are real — pending coach settlements/
+ * influencer payouts still stay `notAvailable`, see adminFinance.service.ts's
+ * own doc comment for why.
  */
 export function FinanceDashboardScreen() {
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -104,6 +105,10 @@ export function FinanceDashboardScreen() {
                 <span className="text-text-primary">
                   {data.requiredActions.overdueReceivables.count} · {money(data.requiredActions.overdueReceivables.amountCents)}
                 </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
+                <span className="text-text-secondary">Open refund requests</span>
+                <span className="text-text-primary">{data.requiredActions.openRefundRequests}</span>
               </div>
             </div>
 

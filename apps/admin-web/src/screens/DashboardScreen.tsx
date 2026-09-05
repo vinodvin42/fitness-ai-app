@@ -116,6 +116,7 @@ export function DashboardScreen() {
                   count={data.requiresAttention.inProgressSupportTickets}
                 />
                 <AttentionRow label="Failed payments" count={data.requiresAttention.failedPayments} />
+                <AttentionRow label="Open refund requests" count={data.requiresAttention.openRefundRequests} />
               </div>
             </div>
           </div>

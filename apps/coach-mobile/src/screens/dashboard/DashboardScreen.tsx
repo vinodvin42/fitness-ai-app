@@ -39,7 +39,8 @@ function EarningsCard() {
         </View>
       </View>
       <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.sm }}>
-        Based on delivered booking value — not funds collected (bookings aren't charged through the gateway yet).
+        Gross is booking value for confirmed sessions this month — a priced session is charged through Razorpay
+        before it's ever booked, so this is real collected revenue, not just delivered value.
       </Text>
     </Card>
   );

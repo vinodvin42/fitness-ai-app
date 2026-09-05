@@ -94,9 +94,14 @@ type SettlementHistoryRow = {
  * Coach Earnings (31 Aug 2026) — the coach-facing view of the admin
  * Settlements module (adminSettlements.service.ts). Shows this coach's own
  * current-month booking value net of their configured commission, lifetime
- * paid settlements, and the settlement history. "Gross" is delivered
- * booking value, not funds collected — coaching bookings don't run through
- * Razorpay yet (see coaching.service.ts); labelled honestly on the client.
+ * paid settlements, and the settlement history. **Update, 6 Sep 2026:**
+ * "Gross" here used to mean delivered booking value, not funds actually
+ * collected, because coaching bookings didn't run through Razorpay — that
+ * changed with PAY-01 (5 Sep 2026, see coaching.service.ts): a `confirmed`
+ * Booking with a non-zero price now implies a real captured payment, so
+ * gross generally IS collected money now (barring the still-theoretical
+ * $0 offering). Any "not funds collected yet" copy on the client should
+ * be updated to match — see DashboardScreen.tsx.
  */
 export async function getEarnings(professionalId: string) {
   const now = new Date();
