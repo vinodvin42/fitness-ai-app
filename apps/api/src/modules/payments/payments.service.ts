@@ -35,15 +35,15 @@ import { CreateOrderInput } from "./payments.schema";
  *      through the same activatePayment() so a Payment can only ever be
  *      activated once.
  *
- * REAL CAVEAT this pass deliberately did not silently paper over: every
- * seeded priceCents value in this app was chosen and is displayed as USD
- * cents (`$14.99`) — see SubscriptionScreen.tsx, ProgramDetailScreen.tsx.
- * Razorpay's native currency is INR, and passing those same integers
- * through as-is with RAZORPAY_CURRENCY=INR would functionally undercharge
- * by roughly 80x (₹14.99 instead of a real ~₹1,200). This needs either
- * real INR list prices seeded, or a Razorpay account specifically
- * configured for international/USD settlement, before real money should
- * flow through it — see docs/mobile/07-open-questions-gaps.md.
+ * RESOLVED 5 Sep 2026 (PAY-02) — every seeded priceCents value used to be
+ * chosen and displayed as USD cents (`$14.99`) while Razorpay's native
+ * currency is INR, which would have undercharged real money by roughly
+ * 80x. Every seeded price is real INR paise now (see seedDatabase.ts and
+ * seedContent/programs.ts) and every display site across all three
+ * frontends shows ₹, not $ — see docs/mobile/07-open-questions-gaps.md
+ * gap §14 for the full before/after. config/env.ts's PRICE_CURRENCY_CONFIRMED
+ * guard stays in place regardless, as a general go-live confirmation
+ * rather than a sign this specific bug is still open.
  */
 
 // Go-live hardening (25 Aug 2026) — both signature checks below used to

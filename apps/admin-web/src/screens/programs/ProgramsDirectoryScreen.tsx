@@ -12,7 +12,7 @@ const TYPE_LABELS: Record<ProgramType, string> = { fitness: "Fitness", nutrition
 const TYPE_OPTIONS: ProgramType[] = ["fitness", "nutrition", "combined"];
 
 function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 interface Filters {

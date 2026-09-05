@@ -13,7 +13,17 @@
  *
  * Pricing is deliberately coherent rather than arbitrary — the free tier is
  * the three programs a new member can start on day one, and paid programs
- * scale roughly with duration ($12.99 for 2–4 weeks up to $27.99 for 10–12).
+ * scale roughly with duration (₹999 for 2–4 weeks up to ₹2,999 for 10–12).
+ * priceCents is INR paise (Razorpay's own smallest-unit convention for
+ * INR, same as USD cents for that currency) — these were USD cents until
+ * 5 Sep 2026's currency-mismatch fix (PAY-02; see config/env.ts's own
+ * comment and docs/mobile/07-open-questions-gaps.md gap §14); every
+ * value here is the old number × 100, since the raw numbers already
+ * matched the original Figma design's real INR list prices
+ * (docs/mobile/01-product-requirements.md §5 names ₹1,299/₹1,799 for a
+ * sampled program's two purchase options, both of which already appear
+ * verbatim in this file) — the bug was in the $ label and the implicit
+ * USD-cents unit, not in the numbers themselves.
  * `isAiOnly` is true throughout: coach-led programs need the coach-matching
  * work that is still deferred, so claiming one here would be a fake.
  */
@@ -86,7 +96,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 4-week core program focused on real trunk stability — anti-rotation and anti-extension work, not just crunches.",
     durationWeeks: 4,
     isAiOnly: true,
-    priceCents: 1299,
+    priceCents: 129900,
     imageUrl: unsplash("photo-1765302741884-e846c7a178df"),
   },
   {
@@ -97,7 +107,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 5-week program built around a single kettlebell — swings, cleans and presses that train strength and conditioning together.",
     durationWeeks: 5,
     isAiOnly: true,
-    priceCents: 1399,
+    priceCents: 139900,
     imageUrl: unsplash("photo-1758875570600-8daf8d2f05f3"),
   },
   {
@@ -108,7 +118,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 6-week high-intensity interval program built around short, hard circuits you can finish in under half an hour.",
     durationWeeks: 6,
     isAiOnly: true,
-    priceCents: 1499,
+    priceCents: 149900,
     imageUrl: unsplash("photo-1536922246289-88c42f957773"),
   },
   {
@@ -119,7 +129,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 6-week lower-body program centred on hip thrusts, bridges and posterior-chain work for glutes that actually do their job.",
     durationWeeks: 6,
     isAiOnly: true,
-    priceCents: 1699,
+    priceCents: 169900,
     imageUrl: unsplash("photo-1784819482932-893a2b63df45"),
   },
   {
@@ -130,7 +140,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 6-week upper-body program of presses, rows and raises that balances pushing and pulling instead of over-training the mirror muscles.",
     durationWeeks: 6,
     isAiOnly: true,
-    priceCents: 1799,
+    priceCents: 179900,
     imageUrl: unsplash("photo-1532384816664-01b8b7238c8d"),
   },
   {
@@ -140,7 +150,7 @@ export const seedPrograms: SeedProgram[] = [
     description: "An 8-week strength-focused program with progressive overload.",
     durationWeeks: 8,
     isAiOnly: true,
-    priceCents: 1999,
+    priceCents: 199900,
     imageUrl: unsplash("photo-1521804906057-1df8fdb718b7"),
   },
   {
@@ -151,7 +161,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 10-week running program that takes a comfortable 5K up to half-marathon distance, with the strength work that keeps you uninjured.",
     durationWeeks: 10,
     isAiOnly: true,
-    priceCents: 2199,
+    priceCents: 219900,
     imageUrl: unsplash("photo-1745790289741-12a211a8325d"),
   },
   {
@@ -162,7 +172,7 @@ export const seedPrograms: SeedProgram[] = [
       "An 8-week program pairing power, speed and Olympic-style lifting with the nutrition to support it — built for sport, not the mirror.",
     durationWeeks: 8,
     isAiOnly: true,
-    priceCents: 2499,
+    priceCents: 249900,
     imageUrl: unsplash("photo-1698671823406-035c77ff6fcd"),
   },
   {
@@ -173,7 +183,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 10-week introduction to the squat, bench and deadlift as trained lifts — heavy, low-rep, and organised around the three competition movements.",
     durationWeeks: 10,
     isAiOnly: true,
-    priceCents: 2799,
+    priceCents: 279900,
     imageUrl: unsplash("photo-1694023536590-60d02108b323"),
   },
   {
@@ -184,7 +194,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 12-week push/pull/legs hypertrophy split paired with a matching nutrition plan for a steady, controlled gaining phase.",
     durationWeeks: 12,
     isAiOnly: true,
-    priceCents: 2999,
+    priceCents: 299900,
     imageUrl: unsplash("photo-1583454110551-21f2fa2afe61"),
   },
 
@@ -196,7 +206,7 @@ export const seedPrograms: SeedProgram[] = [
     description: "A 2-week guided nutrition reset with daily meal plans.",
     durationWeeks: 2,
     isAiOnly: true,
-    priceCents: 999,
+    priceCents: 99900,
     imageUrl: unsplash("photo-1590779033100-9f60a05a013d"),
   },
   {
@@ -207,7 +217,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 4-week nutrition program built on high-protein, high-volume meals that keep you full through a calorie deficit.",
     durationWeeks: 4,
     isAiOnly: true,
-    priceCents: 1299,
+    priceCents: 129900,
     imageUrl: unsplash("photo-1771762211132-2f0598b44dbb"),
   },
   {
@@ -218,7 +228,7 @@ export const seedPrograms: SeedProgram[] = [
       "A 4-week fully plant-based nutrition program that still hits real protein targets, for training on no animal products at all.",
     durationWeeks: 4,
     isAiOnly: true,
-    priceCents: 1299,
+    priceCents: 129900,
     imageUrl: unsplash("photo-1512621776951-a57141f2eefd"),
   },
 ];

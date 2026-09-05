@@ -15,7 +15,7 @@ const CHART_TOOLTIP = {
 } as const;
 
 function money(cents: number): string {
-  return `${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 async function fetchDashboard(): Promise<AdminFinanceDashboardResponse> {

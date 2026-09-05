@@ -105,13 +105,22 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // exactly as they were — an existing `Subscription.planId` foreign key
   // must keep resolving — the new annual rows get their own new ids
   // rather than reusing/renaming anything.
+  //
+  // priceCents is INR paise (5 Sep 2026, PAY-02 currency fix — see
+  // config/env.ts's own comment). Elite's ₹2,999/mo matches
+  // docs/mobile/01-product-requirements.md §5's own sampled screen
+  // exactly (this file's old value, 2999, was that same number
+  // mislabeled as USD cents — ×100 fixes it without changing the intended
+  // price). Pro's real design value (₹299/mo) is a genuine number change,
+  // not just a relabeling — the old 1499 ($14.99) was never actually
+  // Pro's designed price, just an unrelated placeholder guess.
   const plans = await Promise.all(
     [
       { id: "basic", tier: "basic" as const, name: "Basic", priceCents: 0, billingCycle: "monthly" as const },
-      { id: "pro", tier: "pro" as const, name: "Pro", priceCents: 1499, billingCycle: "monthly" as const },
-      { id: "pro-annual", tier: "pro" as const, name: "Pro", priceCents: 14990, billingCycle: "annual" as const },
-      { id: "elite", tier: "elite" as const, name: "Elite", priceCents: 2999, billingCycle: "monthly" as const },
-      { id: "elite-annual", tier: "elite" as const, name: "Elite", priceCents: 29990, billingCycle: "annual" as const },
+      { id: "pro", tier: "pro" as const, name: "Pro", priceCents: 29900, billingCycle: "monthly" as const },
+      { id: "pro-annual", tier: "pro" as const, name: "Pro", priceCents: 299000, billingCycle: "annual" as const },
+      { id: "elite", tier: "elite" as const, name: "Elite", priceCents: 299900, billingCycle: "monthly" as const },
+      { id: "elite-annual", tier: "elite" as const, name: "Elite", priceCents: 2999000, billingCycle: "annual" as const },
     ].map(({ id, ...plan }) =>
       prisma.subscriptionPlan.upsert({
         where: { id }, // stable id keeps seeding idempotent
@@ -222,6 +231,10 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // environment. Password is a fixed dev-only value, same convention as
   // the admin bootstrap account below — not meant for anything beyond
   // local dev/demo.
+  // Offering priceCents below are INR paise too (5 Sep 2026, PAY-02 —
+  // same ×100 fix as the subscription plans above: e.g. Alex's old 1800
+  // "$18.00" becomes ₹1,800, a realistic per-session Indian coaching
+  // price rather than an artifact of the currency mismatch).
   const coachPasswordHash = await bcrypt.hash("Coach123!", 12);
   const coaches = [
     {
@@ -233,7 +246,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       yearsExperience: 6,
       services: ["fitness"] as const,
       offerings: [
-        { id: "offer-alex-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 1800 },
+        { id: "offer-alex-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 180000 },
       ],
     },
     {
@@ -245,7 +258,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       yearsExperience: 4,
       services: ["nutrition"] as const,
       offerings: [
-        { id: "offer-priya-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 1200 },
+        { id: "offer-priya-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 120000 },
       ],
     },
     {
@@ -257,9 +270,9 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       yearsExperience: 8,
       services: ["fitness", "nutrition"] as const,
       offerings: [
-        { id: "offer-jordan-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 2000 },
-        { id: "offer-jordan-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 1500 },
-        { id: "offer-jordan-combined", serviceType: null, label: "Combined Session", durationMinutes: 60, priceCents: 3000 },
+        { id: "offer-jordan-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 200000 },
+        { id: "offer-jordan-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 150000 },
+        { id: "offer-jordan-combined", serviceType: null, label: "Combined Session", durationMinutes: 60, priceCents: 300000 },
       ],
     },
   ];

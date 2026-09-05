@@ -94,7 +94,7 @@ export function DashboardScreen() {
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary">Total paid (all-time)</span>
-                  <span className="font-medium">{(data.revenue.totalPaidCents / 100).toFixed(2)}</span>
+                  <span className="font-medium">₹{(data.revenue.totalPaidCents / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary">Failed payments</span>

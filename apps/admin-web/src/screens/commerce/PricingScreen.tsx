@@ -14,7 +14,7 @@ const TIER_OPTIONS: SubscriptionTier[] = ["basic", "pro", "elite"];
 const CYCLE_LABELS: Record<BillingCycle, string> = { monthly: "Monthly", annual: "Annual" };
 
 function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 interface Filters {

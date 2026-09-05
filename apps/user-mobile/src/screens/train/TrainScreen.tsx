@@ -116,7 +116,7 @@ export function TrainScreen({ navigation }: Props) {
                       fontFamily: fonts.bodyBold,
                     }}
                   >
-                    {item.priceCents === 0 ? "FREE" : `$${(item.priceCents / 100).toFixed(0)}`}
+                    {item.priceCents === 0 ? "FREE" : `₹${(item.priceCents / 100).toFixed(0)}`}
                   </Text>
                 </View>
               </Card>

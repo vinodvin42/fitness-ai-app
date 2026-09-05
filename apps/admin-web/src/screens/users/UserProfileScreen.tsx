@@ -28,7 +28,7 @@ async function fetchDetail(id: string): Promise<AdminUserDetailResponse> {
 }
 
 function money(cents: number) {
-  return (cents / 100).toFixed(2);
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 function Row({ label, value }: { label: string; value: string | number }) {

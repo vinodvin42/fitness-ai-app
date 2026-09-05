@@ -2,6 +2,8 @@
 
 **Written 20 Aug 2026.** This is a delivery plan, not a new roadmap — it reuses `docs/platform/roadmap.md`'s phases and `docs/mobile/07-open-questions-gaps.md`'s gap numbers rather than re-deriving them, and narrows down to one question: what actually has to happen, in what order, to get this app in front of real users.
 
+**Update, 5 Sep 2026:** two items this section originally listed as open have since closed — AI Coach shipped as a real feature (not just provider plumbing) and gained an Azure OpenAI provider option, and the Razorpay currency-mismatch decision below (§3's "real INR list prices, or USD settlement") was resolved as real INR list prices. Both are superseded by `docs/mobile/07-open-questions-gaps.md` gap §39; the paragraphs below are left as-written rather than edited, per this plan's own point-in-time framing.
+
 ## 1. What "MVP" means here
 
 `docs/platform/roadmap.md` already made this call on 18 Aug 2026: the consumer mobile app ships first, on its own, ahead of the admin console and the coach app. Phase 4 is where the roadmap itself says "the mobile app is a complete, monetizable, solo-use product" — no coach, no admin back office required. This plan adopts that as the MVP boundary rather than inventing a new one.

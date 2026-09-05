@@ -14,7 +14,7 @@ interface Filters {
 }
 
 function money(cents: number | null): string {
-  return cents === null ? "—" : `$${(cents / 100).toFixed(2)}`;
+  return cents === null ? "—" : `₹${(cents / 100).toFixed(2)}`;
 }
 
 async function fetchUnitEconomics(filters: Filters): Promise<AdminUnitEconomicsResponse> {

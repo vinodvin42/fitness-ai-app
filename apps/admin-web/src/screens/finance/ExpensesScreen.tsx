@@ -21,7 +21,7 @@ const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as ExpenseCategory[];
 
 function money(cents: number): string {
-  return `${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 interface Filters {

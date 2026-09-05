@@ -14,7 +14,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 async function fetchIntegrations(): Promise<AdminIntegrationDirectoryResponse> {

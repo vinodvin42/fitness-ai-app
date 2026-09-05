@@ -28,7 +28,7 @@ const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
 
 function formatPrice(cents: number | null) {
   if (cents == null) return "Price varies";
-  return `From $${(cents / 100).toFixed(2)}`;
+  return `From ₹${(cents / 100).toFixed(2)}`;
 }
 
 /**

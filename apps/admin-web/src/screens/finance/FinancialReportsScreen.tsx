@@ -17,7 +17,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 function money(cents: number): string {
-  return `${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {

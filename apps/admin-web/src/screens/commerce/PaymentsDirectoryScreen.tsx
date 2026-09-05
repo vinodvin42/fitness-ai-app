@@ -13,7 +13,7 @@ import { COMMERCE_SUB_NAV } from "./subNav";
 const PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase" };
 
 function money(cents: number): string {
-  return (cents / 100).toFixed(2);
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 interface Filters {

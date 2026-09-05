@@ -60,18 +60,23 @@ const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_CURRENCY: z.string().default("INR"),
-  // Go-live hardening (25 Aug 2026) — every seeded SubscriptionPlan/
-  // Program price is USD-cent-denominated (e.g. Pro plan priceCents=1499
-  // means $14.99), but RAZORPAY_CURRENCY defaults to INR — passing those
-  // integers straight through as paisa would charge ₹14.99, undercharging
-  // by roughly 80x. Rather than ship that silently, a *live* Razorpay key
-  // (rzp_live_...) is refused at boot unless this is explicitly "true" —
-  // see the check below. Test keys (rzp_test_...) boot freely, so a real
-  // test-mode transaction can still be run before the pricing/currency
-  // decision is finalized. Set this once that decision is actually made
-  // (real INR list prices, or a USD-settling Razorpay account) — see
-  // RUN-LOCALLY.md / the go-live plan's "Razorpay live keys + the
-  // currency call" item.
+  // Go-live hardening (25 Aug 2026), fixed 5 Sep 2026 (PAY-02) — every
+  // seeded SubscriptionPlan/Program/ProfessionalServiceOffering price used
+  // to be USD-cent-denominated (e.g. Pro plan priceCents=1499 meant
+  // $14.99) while RAZORPAY_CURRENCY defaults to INR, which would have
+  // charged ₹14.99 for a $14.99 product — undercharging by roughly 80x.
+  // That's resolved: every seeded priceCents value is real INR paise now
+  // (see seedDatabase.ts's and seedContent/programs.ts's own comments),
+  // chosen to match docs/mobile/01-product-requirements.md §5's actual
+  // design prices where the design specified one (Pro ₹299/mo, Elite
+  // ₹2,999/mo) and otherwise the existing numeric ladder reinterpreted as
+  // real rupees (×100 to paise) rather than invented from scratch.
+  // PRICE_CURRENCY_CONFIRMED stays as a general go-live gate rather than
+  // being removed now that the specific bug is fixed — a live Razorpay key
+  // (rzp_live_...) is still refused at boot unless this is explicitly
+  // "true" (see the check below), so a *future* pricing change still gets
+  // a deliberate go-live confirmation instead of silently reaching real
+  // money. Test keys (rzp_test_...) boot freely either way.
   PRICE_CURRENCY_CONFIRMED: z
     .string()
     .default("false")
@@ -172,9 +177,9 @@ if (
 if (parsed.data.RAZORPAY_KEY_ID?.startsWith("rzp_live_") && !parsed.data.PRICE_CURRENCY_CONFIRMED) {
   console.error(
     "A live Razorpay key (rzp_live_...) is set, but PRICE_CURRENCY_CONFIRMED is not \"true\". " +
-      "Every seeded price is USD-cent-denominated while Razorpay's native currency is INR — " +
-      "booting like this would undercharge real customers by roughly 80x. Resolve the pricing/" +
-      "currency decision first (real INR list prices, or a USD-settling account), then set " +
+      "Seeded prices are real INR paise as of 5 Sep 2026 (PAY-02) — this gate is a deliberate " +
+      "go-live confirmation, not a sign anything is still broken. Review the live SubscriptionPlan/" +
+      "Program/ProfessionalServiceOffering prices in the database, then set " +
       "PRICE_CURRENCY_CONFIRMED=true. Test keys (rzp_test_...) are not blocked by this check.",
   );
   process.exit(1);

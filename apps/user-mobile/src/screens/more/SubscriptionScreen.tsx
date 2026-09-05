@@ -29,7 +29,7 @@ const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string 
 
 function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billingCycle"]) {
   if (priceCents === 0) return "Free";
-  return `$${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : "mo"}`;
+  return `₹${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : "mo"}`;
 }
 
 /**

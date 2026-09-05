@@ -1153,15 +1153,13 @@ model Subscription {
 // row only after the signature is verified (or the webhook confirms it),
 // via the exact same subscribe()/purchaseProgram() functions the old
 // direct-activate flow used, just now gated behind a real payment (see
-// those services' own `verifiedPayment` option). Real caveat this pass
-// deliberately did not silently paper over: every seeded priceCents value
-// in this app was chosen and is displayed as USD cents (`$14.99`); INR is
-// Razorpay's native currency, and passing those same integers through
-// as-is would functionally undercharge by roughly 80x if RAZORPAY_CURRENCY
-// stays "INR" — see docs/mobile/07-open-questions-gaps.md for the full
-// note. This needs either real INR list prices or a Razorpay account
-// configured for international/USD settlement before real money should
-// flow through it.
+// those services' own `verifiedPayment` option). RESOLVED 5 Sep 2026
+// (PAY-02): every seeded priceCents value used to be chosen and displayed
+// as USD cents (`$14.99`) while Razorpay's native currency is INR, which
+// would have undercharged real money by roughly 80x. Every seeded price
+// is real INR paise now (see apps/api/src/lib/seedDatabase.ts and
+// seedContent/programs.ts) — see docs/mobile/07-open-questions-gaps.md
+// gap §14 for the full before/after.
 
 model Payment {
   id                String          @id @default(uuid())

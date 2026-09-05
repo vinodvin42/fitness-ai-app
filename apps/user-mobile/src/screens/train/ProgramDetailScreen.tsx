@@ -109,7 +109,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
             ) : program.purchased ? (
               <Pill label="Purchased" tone="success" icon="check" />
             ) : (
-              <Pill label={`$${(program.priceCents / 100).toFixed(0)}`} tone="accent" />
+              <Pill label={`₹${(program.priceCents / 100).toFixed(0)}`} tone="accent" />
             )}
           </View>
         </View>
@@ -127,7 +127,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
               : "Purchases aren't open yet during this pilot — check back soon."}
           </Text>
           <Button
-            label={paymentsConfigured ? `Purchase — $${(program.priceCents / 100).toFixed(2)}` : "Coming soon"}
+            label={paymentsConfigured ? `Purchase — ₹${(program.priceCents / 100).toFixed(2)}` : "Coming soon"}
             onPress={onPurchase}
             loading={isPurchasing}
             disabled={!paymentsConfigured}

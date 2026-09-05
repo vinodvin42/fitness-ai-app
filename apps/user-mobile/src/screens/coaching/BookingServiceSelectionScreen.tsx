@@ -31,7 +31,7 @@ function timeLabel(iso: string): string {
 }
 
 function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 function serviceLabel(serviceType: string | null) {

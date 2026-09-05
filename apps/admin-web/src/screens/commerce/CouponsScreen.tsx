@@ -32,7 +32,7 @@ async function fetchCoupons(): Promise<AdminCouponListResponse> {
 }
 
 function describeDiscount(type: CouponDiscountType, value: number): string {
-  return type === "percent" ? `${value}% off` : `${(value / 100).toFixed(2)} off`;
+  return type === "percent" ? `${value}% off` : `₹${(value / 100).toFixed(2)} off`;
 }
 
 /**

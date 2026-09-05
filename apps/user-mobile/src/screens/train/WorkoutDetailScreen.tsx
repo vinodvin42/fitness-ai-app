@@ -149,7 +149,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
         <Button
           label={
             paymentsConfigured
-              ? `Purchase ${workout.program.name} — $${(workout.program.priceCents / 100).toFixed(2)}`
+              ? `Purchase ${workout.program.name} — ₹${(workout.program.priceCents / 100).toFixed(2)}`
               : "Coming soon"
           }
           onPress={onPurchase}

@@ -9,7 +9,7 @@ import { extractErrorMessage } from "../../lib/apiError";
 import { GROWTH_SUB_NAV } from "./subNav";
 
 function money(cents: number): string {
-  return (cents / 100).toFixed(2);
+  return `₹${(cents / 100).toFixed(2)}`;
 }
 
 async function fetchInfluencers(): Promise<AdminInfluencerListResponse> {
