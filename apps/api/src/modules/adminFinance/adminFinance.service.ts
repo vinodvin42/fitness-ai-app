@@ -10,6 +10,20 @@ import {
 } from "./adminFinance.schema";
 
 /**
+ * **Update, 5 Sep 2026** — two things below are stale as of this pass and
+ * left as-originally-written rather than rewritten in place (this repo's
+ * own convention — see docs/mobile/07-open-questions-gaps.md's
+ * append-don't-rewrite pattern): (1) Coach Settlements now IS modeled —
+ * `adminSettlements.service.ts` shipped 31 Aug 2026 with a real
+ * commission decision and, since PAY-01 (5 Sep 2026), real
+ * coaching-payment data to settle against; only Influencer Payouts and
+ * Bank/Payment Accounts remain genuinely unmodeled, for the reasons the
+ * original bullet below still correctly gives for THOSE two. (2) The
+ * revenue waterfall this comment calls "deferred whole" is built now —
+ * see `getRevenueWaterfall()` further down, and its own doc comment for
+ * why building it now (not earlier) is the right amount of honesty, not
+ * a lowered bar.
+ *
  * Module 10 — Finance (docs/admin/03-screen-inventory.md §10), added
  * 26 Aug 2026. Built directly from the architecture decision recorded in
  * reports/finance-architecture-plan.html — "one ledger": Finance reads
@@ -382,10 +396,16 @@ export async function listRevenue(query: FinanceDateRangeQuery) {
 
   const totalCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
 
-  // Revenue-source donut — by purpose.
+  // Revenue-source donut — by purpose. bookingCents added 5 Sep 2026
+  // (PAY-01) — before that, "subscription"/"program_purchase" were the
+  // only two purposes that existed, so summing just those two equaled
+  // totalCents; a booking payment would otherwise count in totalCents but
+  // silently vanish from this breakdown, making the three slices not add
+  // up to the whole.
   const byPurpose = {
     subscriptionCents: payments.filter((p) => p.purpose === "subscription").reduce((s, p) => s + p.amountCents, 0),
     programPurchaseCents: payments.filter((p) => p.purpose === "program_purchase").reduce((s, p) => s + p.amountCents, 0),
+    bookingCents: payments.filter((p) => p.purpose === "booking").reduce((s, p) => s + p.amountCents, 0),
   };
 
   // Plan-performance table — subscription revenue grouped by plan.
@@ -446,6 +466,101 @@ export async function listRevenue(query: FinanceDateRangeQuery) {
     // "regionalBreakdown" — no User.region field exists, same gap 09.05
     // Geographic is blocked on.
     notAvailable: ["regionalBreakdown"],
+  };
+}
+
+/**
+ * Revenue waterfall (PAY-06 / 06.01), added 5 Sep 2026 — deliberately
+ * deferred whole when this file was first written (see this file's top
+ * comment) because 3 of the 6 stages a waterfall implies (Discounts,
+ * Refunds, Coach Settlements) didn't have real backing data yet, and
+ * "rendering a waterfall with half its stages fabricated would
+ * misrepresent real revenue" — building a partial chart wasn't the
+ * honest failure mode there. All three now do: Coupons (31 Aug 2026),
+ * Refunds (31 Aug 2026, real `razorpay.payments.refund()` call), and
+ * Coach Settlements (31 Aug 2026 commission decision + PAY-01's 5 Sep
+ * 2026 real coaching-payment data). This is that same six-stage waterfall,
+ * built now that every stage is real:
+ *
+ *   Gross (list price before any discount)
+ *     − Discounts (coupon redemptions actually applied to a captured payment)
+ *   = Net of discounts (= the sum of `Payment.amountCents` for "paid" rows —
+ *     already the post-discount charged amount, see schema.prisma's own
+ *     comment on that field)
+ *     − Refunds (processed Razorpay refunds)
+ *     − Coach settlements (commission-net payouts actually paid to coaches)
+ *   = Net revenue
+ *
+ * Gross is derived as `amountCents + (discountCents ?? 0)` per paid
+ * Payment — reusing the exact number `resolveAmountCents()` in
+ * payments.service.ts resolved at checkout time, not re-computed from a
+ * plan/program/offering lookup (which could have since changed price).
+ * Refunds and coach settlements are pulled from `Expense` (categories
+ * "refund" and "coach_settlement") rather than the `Refund`/
+ * `CoachSettlement` tables directly — this file's own "one ledger"
+ * architecture already treats `Expense` as the canonical record the
+ * moment either of those actions is taken (see `adminRefunds.service.ts`'s
+ * and `adminSettlements.service.ts`'s own `ensureInvoiceForPayment`-style
+ * write-through), so summing there is consistent with how 10.01/10.05
+ * already compute Payables, not a second source of truth. This means
+ * "Coach settlements" here is what's actually been PAID OUT in the range,
+ * not gross booking value delivered-but-unsettled — an intentionally
+ * conservative, honest number rather than an optimistic one.
+ */
+export async function getRevenueWaterfall(query: FinanceDateRangeQuery) {
+  const paymentWhere: Record<string, unknown> = { status: "paid" };
+  if (query.startDate || query.endDate) {
+    paymentWhere.createdAt = {
+      ...(query.startDate ? { gte: query.startDate } : {}),
+      ...(query.endDate ? { lte: query.endDate } : {}),
+    };
+  }
+
+  const payments = (await prisma.payment.findMany({
+    where: paymentWhere,
+    select: { amountCents: true, discountCents: true },
+  })) as Array<{ amountCents: number; discountCents: number | null }>;
+
+  const netOfDiscountsCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
+  const discountCents = payments.reduce((sum, p) => sum + (p.discountCents ?? 0), 0);
+  const grossCents = netOfDiscountsCents + discountCents;
+
+  const expenseWhere: Record<string, unknown> = { category: { in: ["refund", "coach_settlement"] } };
+  if (query.startDate || query.endDate) {
+    expenseWhere.incurredAt = {
+      ...(query.startDate ? { gte: query.startDate } : {}),
+      ...(query.endDate ? { lte: query.endDate } : {}),
+    };
+  }
+  const ledgerExpenses = (await prisma.expense.findMany({
+    where: expenseWhere,
+    select: { category: true, amountCents: true },
+  })) as Array<{ category: string; amountCents: number }>;
+
+  const refundCents = ledgerExpenses.filter((e) => e.category === "refund").reduce((s, e) => s + e.amountCents, 0);
+  const coachSettlementCents = ledgerExpenses
+    .filter((e) => e.category === "coach_settlement")
+    .reduce((s, e) => s + e.amountCents, 0);
+
+  const netRevenueCents = netOfDiscountsCents - refundCents - coachSettlementCents;
+
+  return {
+    range: { startDate: query.startDate ?? null, endDate: query.endDate ?? null },
+    stages: {
+      grossCents,
+      discountCents,
+      netOfDiscountsCents,
+      refundCents,
+      coachSettlementCents,
+      netRevenueCents,
+    },
+    // "influencerPayoutCents" — deliberately not a seventh stage: unlike
+    // coach settlements, InfluencerPayout amounts are admin-entered, not
+    // computed from real attributed revenue (no campaign/attribution
+    // pipeline exists — see that model's own schema.prisma comment), so
+    // netting one against Gross here would imply a reconciliation this
+    // build can't actually make.
+    notAvailable: ["influencerPayoutCents"],
   };
 }
 

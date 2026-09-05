@@ -84,6 +84,11 @@ const LABELS: Record<string, string> = {
   coachSettlements: "Coach Settlements",
   influencerPayouts: "Influencer Payouts",
   regionalBreakdown: "Regional Breakdown",
+  // Revenue Waterfall (5 Sep 2026, PAY-06) — influencer payouts aren't
+  // computed from real attributed revenue, so they're not netted against
+  // Gross alongside coach settlements/refunds/discounts. See
+  // adminFinance.service.ts's getRevenueWaterfall().
+  influencerPayoutCents: "Influencer Payouts (in the waterfall)",
   // Module 09.02 (Engagement) addition, 26 Aug 2026 — the per-day funnel
   // breakdown is only computed for date ranges of 31 days or fewer.
   funnelByDay: "Day-by-Day Funnel Breakdown",

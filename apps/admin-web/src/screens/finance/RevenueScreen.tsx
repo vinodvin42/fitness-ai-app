@@ -82,10 +82,11 @@ export function RevenueScreen() {
 
         {data && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <StatCard label="Total Revenue" value={money(data.totalRevenueCents)} />
               <StatCard label="Subscriptions" value={money(data.byPurpose.subscriptionCents)} />
               <StatCard label="Program Purchases" value={money(data.byPurpose.programPurchaseCents)} />
+              <StatCard label="Coach Bookings" value={money(data.byPurpose.bookingCents)} />
               <StatCard
                 label="Payment Success"
                 value={

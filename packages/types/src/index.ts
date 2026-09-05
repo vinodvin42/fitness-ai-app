@@ -2657,11 +2657,27 @@ export interface AdminRevenueByPlanItem {
 export interface AdminRevenueResponse {
   range: { startDate: string | null; endDate: string | null };
   totalRevenueCents: number;
-  byPurpose: { subscriptionCents: number; programPurchaseCents: number };
+  /** `bookingCents` added 5 Sep 2026 (PAY-01) — coach bookings are a real third revenue purpose now. */
+  byPurpose: { subscriptionCents: number; programPurchaseCents: number; bookingCents: number };
   byPlan: AdminRevenueByPlanItem[];
   trend: Array<{ month: string; revenueCents: number }>;
   statusBreakdown: { paid: number; created: number; failed: number };
   /** Always ["regionalBreakdown"] — no User.region field exists, same gap 09.05 Geographic is blocked on. */
+  notAvailable: string[];
+}
+
+/** GET /admin/finance/revenue-waterfall (5 Sep 2026, PAY-06) — see apps/api's adminFinance.service.ts's getRevenueWaterfall() doc comment for how each stage is computed. */
+export interface AdminRevenueWaterfallResponse {
+  range: { startDate: string | null; endDate: string | null };
+  stages: {
+    grossCents: number;
+    discountCents: number;
+    netOfDiscountsCents: number;
+    refundCents: number;
+    coachSettlementCents: number;
+    netRevenueCents: number;
+  };
+  /** Always ["influencerPayoutCents"] — not netted against Gross since influencer payouts aren't computed from real attributed revenue. */
   notAvailable: string[];
 }
 
@@ -2729,7 +2745,7 @@ export interface AdminFinancialReportsResponse {
     netProfitCents: number;
   };
   cashFlow: AdminFinanceCashFlowMonth[];
-  revenue: { byPurpose: { subscriptionCents: number; programPurchaseCents: number }; byPlan: AdminRevenueByPlanItem[]; trend: Array<{ month: string; revenueCents: number }> };
+  revenue: { byPurpose: { subscriptionCents: number; programPurchaseCents: number; bookingCents: number }; byPlan: AdminRevenueByPlanItem[]; trend: Array<{ month: string; revenueCents: number }> };
   expense: { byCategory: Record<string, number>; totalCents: number };
   ratios: { netMarginPct: number | null; expenseToRevenuePct: number | null };
   /** Always ["pendingSettlements", "pendingPayouts", "openRefundRequests", "regionalBreakdown"]. */

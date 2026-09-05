@@ -12,6 +12,7 @@
 export const FINANCE_SUB_NAV = [
   { label: "Dashboard", path: "/finance" },
   { label: "Revenue", path: "/finance/revenue" },
+  { label: "Revenue Waterfall", path: "/finance/waterfall" },
   { label: "Expenses & Payouts", path: "/finance/expenses" },
   { label: "Settlements", path: "/finance/settlements" },
   { label: "Invoices", path: "/finance/invoices" },

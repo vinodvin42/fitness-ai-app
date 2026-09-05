@@ -37,6 +37,7 @@ import { UnitEconomicsScreen } from "./screens/analytics/UnitEconomicsScreen";
 import { BusinessAnalyticsScreen } from "./screens/analytics/BusinessAnalyticsScreen";
 import { FinanceDashboardScreen } from "./screens/finance/FinanceDashboardScreen";
 import { RevenueScreen } from "./screens/finance/RevenueScreen";
+import { RevenueWaterfallScreen } from "./screens/finance/RevenueWaterfallScreen";
 import { ExpensesScreen } from "./screens/finance/ExpensesScreen";
 import { SettlementsScreen } from "./screens/finance/SettlementsScreen";
 import { InvoicesScreen } from "./screens/finance/InvoicesScreen";
@@ -461,6 +462,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <RevenueScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/finance/waterfall"
+        element={
+          <RequireAuth>
+            <RevenueWaterfallScreen />
           </RequireAuth>
         }
       />

@@ -144,6 +144,20 @@ adminFinanceRouter.post(
 );
 
 adminFinanceRouter.get(
+  "/admin/finance/revenue-waterfall",
+  requireAdminAuth,
+  requirePermission("commerce", "view"),
+  async (req, res, next) => {
+    try {
+      const query = financeDateRangeQuerySchema.parse(req.query);
+      res.status(200).json(await adminFinanceService.getRevenueWaterfall(query));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminFinanceRouter.get(
   "/admin/finance/reports",
   requireAdminAuth,
   requirePermission("commerce", "view"),
