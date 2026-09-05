@@ -53,19 +53,21 @@ import {
  *   though: a slot already covered by another confirmed Booking for that
  *   professional is genuinely marked unavailable, computed from real
  *   data, not just cosmetically disabled.
- * - A booking activates immediately, with no payment-collection step —
- *   the exact same simplification Subscribe/Program Purchase originally
- *   shipped with (Phase 0/3) before Razorpay closed that gap in a later,
- *   separately-scoped pass (gap §14, 20 Aug 2026). This isn't a corner
- *   cut to hit scope: neither Figma file's Discovery & Booking flow
- *   shows a separate payment/checkout screen either (Booking: Service
- *   Selection goes straight to Booking Confirmation) — unlike
- *   Subscription/Program Purchase, which never had one in their own
- *   design either, before Razorpay was bolted on. `priceCents` is a
- *   real, honestly-displayed number on every Booking; wiring this
- *   through the existing Razorpay rails (payments.service.ts, adding a
- *   third `purpose: "booking"`) is a natural, contained follow-up, not
- *   something this pass needs to fake to be honest about what's built.
+ * - **RESOLVED 5 Sep 2026 (PAY-01).** A booking used to activate
+ *   immediately with no payment-collection step, the same simplification
+ *   Subscribe/Program Purchase originally shipped with before Razorpay
+ *   closed that gap for them (gap §14, 20 Aug 2026). It's wired through
+ *   the same Razorpay rails now, as a third `purpose: "booking"` on
+ *   payments.service.ts's order/verify flow: `createBooking()` below
+ *   requires `opts.verifiedPayment` for any offering with `priceCents >
+ *   0` (same gate `subscribe()`/`purchaseProgram()` already use), and
+ *   `payments.service.ts`'s `activatePayment()` calls back into this
+ *   exact function once a payment is captured. Neither Figma file's
+ *   Discovery & Booking flow shows a separate payment/checkout screen
+ *   (Booking: Service Selection goes straight to Booking Confirmation),
+ *   same as Subscription/Program Purchase's own design before Razorpay —
+ *   `BookingServiceSelectionScreen.tsx` now opens Razorpay's hosted
+ *   Checkout in between, exactly like `ProgramDetailScreen.tsx` does.
  * - A confirmed Booking implies (and creates, if missing) the
  *   Relationship row(s) for whichever service(s) its offering covers —
  *   see the Booking model's own schema.prisma comment for why this is a
@@ -224,6 +226,25 @@ function overlaps(aStart: Date, aEnd: Date, bookings: BookingOverlapRow[]): bool
   });
 }
 
+/**
+ * Exported so payments.service.ts's resolveAmountCents (PAY-01, 5 Sep
+ * 2026) can price-check a booking's slot before creating a Razorpay
+ * order, without duplicating this query. Same conflict rule createBooking()
+ * itself uses below — only `confirmed` bookings block a slot.
+ */
+export async function hasBookingConflict(
+  professionalId: string,
+  scheduledAt: Date,
+  durationMinutes: number,
+): Promise<boolean> {
+  const scheduledEnd = new Date(scheduledAt.getTime() + durationMinutes * 60 * 1000);
+  const existingBookings = await prisma.booking.findMany({
+    where: { professionalId, status: "confirmed" },
+    select: { scheduledAt: true, durationMinutes: true },
+  });
+  return overlaps(scheduledAt, scheduledEnd, existingBookings as BookingOverlapRow[]);
+}
+
 export async function getAvailability(professionalId: string, query: AvailabilityQuery) {
   const professional = await prisma.professional.findUnique({
     where: { id: professionalId },
@@ -266,7 +287,11 @@ async function ensureRelationship(userId: string, professionalId: string, servic
   return prisma.relationship.create({ data: { userId, professionalId, serviceType, status: "active" } });
 }
 
-export async function createBooking(userId: string, input: CreateBookingInput) {
+export async function createBooking(
+  userId: string,
+  input: CreateBookingInput,
+  opts: { verifiedPayment?: boolean } = {},
+) {
   const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: input.offeringId } });
   const o = offering as {
     id: string;
@@ -302,6 +327,24 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
   });
   if (overlaps(scheduledAt, scheduledEnd, existingBookings as BookingOverlapRow[])) {
     throw new ApiHttpError(409, "slot_unavailable", "This time is no longer available — pick another slot");
+  }
+
+  // PAY-01 (5 Sep 2026) — same gate subscribe()/purchaseProgram() already
+  // use: a priced offering needs a verified Razorpay payment first: create
+  // a Payment via POST /payments/razorpay/orders (purpose "booking",
+  // referenceId the offering id, scheduledAt this slot), which calls back
+  // into this exact function with verifiedPayment: true once captured. No
+  // Booking row is created below until that happens — same "nothing exists
+  // until it's paid for" principle, not a fake reservation that later needs
+  // to be un-created. A $0 offering (none seeded today, but the schema
+  // allows one) skips this and confirms immediately, same as a free plan
+  // or program.
+  if (o.priceCents > 0 && !opts.verifiedPayment) {
+    throw new ApiHttpError(
+      402,
+      "payment_required",
+      "This session requires payment — create a Razorpay order via POST /payments/razorpay/orders first",
+    );
   }
 
   const serviceTypes: Array<"fitness" | "nutrition"> = o.serviceType

@@ -8,7 +8,9 @@ import { Chip } from "../../components/Chip";
 import { SelectCard } from "../../components/SelectCard";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
+import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCoachAvailability, fetchCoachProfile, createBooking } from "../../api/coaching";
+import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -49,10 +51,14 @@ function serviceLabel(serviceType: string | null) {
  * 14-day date strip, and a real hourly slot grid computed from actual
  * `Booking` conflicts (GET /coaching/professionals/:id/availability) —
  * not a coach-configured schedule, see coaching.service.ts's doc comment
- * for why. "Confirm Booking" activates immediately with no payment step —
- * the same simplification Subscribe/Program Purchase originally shipped
- * with before Razorpay closed that gap in a later pass; see this
- * screen's api layer / coaching.service.ts for the full reasoning.
+ * for why. **RESOLVED 5 Sep 2026 (PAY-01):** "Confirm Booking" now opens
+ * Razorpay's hosted Checkout for a priced offering (`useRazorpayPurchase`,
+ * same hook `ProgramDetailScreen.tsx` uses) rather than activating for
+ * free — the server enforces this too (`POST /coaching/bookings` 402s
+ * without a verified payment, see coaching.service.ts's `createBooking`).
+ * A $0 offering (none seeded today, but the schema allows one) still books
+ * directly via the plain `createBooking()` call, same as a free plan or
+ * program elsewhere in this app.
  */
 export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   const { professionalId } = route.params;
@@ -61,7 +67,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(toDateKey(new Date()));
   const [selectedTimeIso, setSelectedTimeIso] = useState<string | null>(null);
-  const [isBooking, setIsBooking] = useState(false);
+  const [isBookingFree, setIsBookingFree] = useState(false);
 
   const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useQuery({
     queryKey: ["coaching", "professional", professionalId],
@@ -72,6 +78,25 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     queryKey: ["coaching", "availability", professionalId, selectedDateKey],
     queryFn: () => fetchCoachAvailability(professionalId, selectedDateKey),
   });
+
+  // A confirmed booking may have just created a new Relationship (or added
+  // a session to an existing one) — refresh both queries so My Professional
+  // Team and this coach's Total Clients stat reflect it immediately rather
+  // than on the next natural refetch. Shared by both the free-booking path
+  // below and the paid one (useRazorpayPurchase's onVerified).
+  const invalidateAfterBooking = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["coaching", "team"] }),
+      queryClient.invalidateQueries({ queryKey: ["coaching", "professional", professionalId] }),
+    ]);
+
+  const { order, purchase, isPurchasing, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
+    onVerified: async (result) => {
+      await invalidateAfterBooking();
+      if (result.booking) navigation.navigate("BookingConfirmation", { booking: result.booking });
+    },
+  });
+  const { configured: paymentsConfigured } = usePaymentsConfigured();
 
   const days = useMemo(() => {
     const today = new Date();
@@ -86,27 +111,30 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   const onConfirm = async () => {
     if (!selectedOffering || !selectedTimeIso) return;
-    setIsBooking(true);
-    try {
-      const booking = await createBooking({
-        professionalId,
-        offeringId: selectedOffering.id,
-        scheduledAt: selectedTimeIso,
-      });
-      // A confirmed booking may have just created a new Relationship (or
-      // added a session to an existing one) — refresh both queries so My
-      // Professional Team and this coach's Total Clients stat reflect it
-      // immediately rather than on the next natural refetch.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["coaching", "team"] }),
-        queryClient.invalidateQueries({ queryKey: ["coaching", "professional", professionalId] }),
-      ]);
-      navigation.navigate("BookingConfirmation", { booking });
-    } catch (err) {
-      Alert.alert("Couldn't confirm booking", extractErrorMessage(err, "Check your connection and try again."));
-    } finally {
-      setIsBooking(false);
+    // Every seeded offering is priced today, but the schema allows a $0
+    // one — same free-vs-paid branch ProgramDetailScreen.tsx uses, and
+    // matching what the server itself enforces (createBooking() only 402s
+    // when priceCents > 0). useRazorpayPurchase's purchase() handles its
+    // own errors internally (shows its own Alert on failure), so only the
+    // free path below needs its own try/catch.
+    if (selectedOffering.priceCents === 0) {
+      setIsBookingFree(true);
+      try {
+        const booking = await createBooking({
+          professionalId,
+          offeringId: selectedOffering.id,
+          scheduledAt: selectedTimeIso,
+        });
+        await invalidateAfterBooking();
+        navigation.navigate("BookingConfirmation", { booking });
+      } catch (err) {
+        Alert.alert("Couldn't confirm booking", extractErrorMessage(err, "Check your connection and try again."));
+      } finally {
+        setIsBookingFree(false);
+      }
+      return;
     }
+    purchase("booking", selectedOffering.id, undefined, selectedTimeIso);
   };
 
   if (profileLoading) {
@@ -190,12 +218,18 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       )}
 
       <Button
-        label="Confirm Booking"
+        label={paymentsConfigured || selectedOffering?.priceCents === 0 ? "Confirm Booking" : "Coming soon"}
         onPress={onConfirm}
-        loading={isBooking}
-        disabled={!selectedOffering || !selectedTimeIso}
+        loading={isBookingFree || isPurchasing}
+        disabled={
+          !selectedOffering ||
+          !selectedTimeIso ||
+          (selectedOffering.priceCents > 0 && !paymentsConfigured)
+        }
         style={{ marginTop: spacing.lg }}
       />
+
+      <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
     </ScreenContainer>
   );
 }

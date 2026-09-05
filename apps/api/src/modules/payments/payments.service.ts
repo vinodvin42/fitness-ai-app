@@ -6,6 +6,7 @@ import { env } from "../../config/env";
 import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
 import { subscribe } from "../subscriptions/subscriptions.service";
 import { purchaseProgram } from "../programPurchases/programPurchases.service";
+import { createBooking, hasBookingConflict } from "../coaching/coaching.service";
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
 import { CreateOrderInput } from "./payments.schema";
@@ -14,7 +15,13 @@ import { CreateOrderInput } from "./payments.schema";
  * Razorpay integration (20 Aug 2026), closing gap §14's "no payment
  * gateway" note for real, for both Subscription & Payments (§M) and
  * Programs Commerce (§I) — both now route through this one order/verify
- * flow rather than duplicating payment logic per feature:
+ * flow rather than duplicating payment logic per feature. **5 Sep 2026
+ * (PAY-01):** Coach Booking (§E) joined as a third purpose, same flow,
+ * same functions below — see resolveAmountCents()'s and activatePayment()'s
+ * own "booking" branches, and coaching.service.ts's own doc comment for
+ * why a booking specifically needs `Payment.scheduledAt` (the other two
+ * purposes don't, since referenceId alone is enough to resolve everything
+ * else about them):
  *
  *   1. Client calls POST /payments/razorpay/orders with what it wants to
  *      buy (a plan or a program) — createOrder() below resolves the real
@@ -75,6 +82,43 @@ async function resolveAmountCents(
     return { amountCents: plan.priceCents, description: `${plan.name} subscription (${plan.billingCycle})` };
   }
 
+  if (input.purpose === "booking") {
+    // referenceId is the ProfessionalServiceOffering being booked, not a
+    // pre-existing Booking — see Payment.scheduledAt's own schema comment
+    // for why the specific slot has to travel alongside referenceId here
+    // instead of being resolvable from it alone, the way plan/program are.
+    const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: input.referenceId } });
+    if (!offering || !offering.isActive) {
+      throw new ApiHttpError(404, "offering_not_found", "This coaching service could not be found");
+    }
+    if (offering.priceCents === 0) {
+      throw new ApiHttpError(400, "offering_is_free", "This session is free — book directly, no payment needed");
+    }
+    const professional = await prisma.professional.findUnique({
+      where: { id: offering.professionalId },
+      select: { status: true, fullName: true },
+    });
+    if (!professional || professional.status !== "active") {
+      throw new ApiHttpError(404, "professional_not_found", "Coach not found");
+    }
+    if (!input.scheduledAt) {
+      throw new ApiHttpError(400, "scheduled_at_required", "scheduledAt is required to book a paid session");
+    }
+    const scheduledAt = new Date(input.scheduledAt);
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+      throw new ApiHttpError(400, "invalid_schedule_time", "scheduledAt must be a real, future date/time");
+    }
+    // Same conflict rule createBooking() itself re-checks at activation
+    // time (see activatePayment's own comment on the narrow race that
+    // check can't fully close) — catching an obviously-taken slot here
+    // means the common case fails before Razorpay Checkout even opens,
+    // rather than after a real charge.
+    if (await hasBookingConflict(offering.professionalId, scheduledAt, offering.durationMinutes)) {
+      throw new ApiHttpError(409, "slot_unavailable", "This time is no longer available — pick another slot");
+    }
+    return { amountCents: offering.priceCents, description: `${offering.label} with ${professional.fullName}` };
+  }
+
   const program = await prisma.program.findUnique({ where: { id: input.referenceId } });
   if (!program) throw new ApiHttpError(404, "program_not_found", "Program not found");
   if (program.priceCents === 0) {
@@ -133,6 +177,9 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       status: "created",
       couponCode,
       discountCents,
+      // PAY-01 — null for subscription/program_purchase, the specific slot
+      // for booking (already validated in resolveAmountCents above).
+      scheduledAt: input.purpose === "booking" ? new Date(input.scheduledAt!) : null,
     },
   });
 
@@ -159,26 +206,73 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
 interface PaymentRecord {
   id: string;
   userId: string;
-  purpose: "subscription" | "program_purchase";
+  purpose: "subscription" | "program_purchase" | "booking";
   referenceId: string;
   status: "created" | "paid" | "failed";
+  // PAY-01 — only set (and only read) when purpose is "booking". See its
+  // own comment on the Payment model in schema.prisma.
+  scheduledAt: Date | null;
 }
 
 /**
  * Shared by both the client's /verify call and the webhook — whichever
  * reaches here first wins; the other is a no-op. Reuses the exact same
- * subscribe()/purchaseProgram() functions the old direct-activate flow
- * used, just now gated behind `verifiedPayment: true`, which those
- * functions require for any non-free plan/program (see their own doc
- * comments).
+ * subscribe()/purchaseProgram()/createBooking() functions the old
+ * direct-activate flow used, just now gated behind `verifiedPayment:
+ * true`, which those functions require for any non-free plan/program/
+ * offering (see their own doc comments). Returns the booking it created,
+ * if any — verifyPayment() needs it to hand the client a real
+ * BookingConfirmation without a second round trip; the webhook path
+ * ignores this return value.
  */
-async function activatePayment(payment: PaymentRecord) {
-  if (payment.status === "paid") return; // already activated — don't double-grant
+async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awaited<ReturnType<typeof createBooking>> }> {
+  if (payment.status === "paid") return {}; // already activated — don't double-grant
 
   await prisma.payment.update({ where: { id: payment.id }, data: { status: "paid" } });
 
+  let booking: Awaited<ReturnType<typeof createBooking>> | undefined;
+
   if (payment.purpose === "subscription") {
     await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true });
+  } else if (payment.purpose === "booking") {
+    const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: payment.referenceId } });
+    if (!offering) {
+      // Should be unreachable — the offering existed at order-creation time
+      // (resolveAmountCents checked it) and nothing in this build deletes a
+      // ProfessionalServiceOffering (same "not deletable anywhere in this
+      // console" note adminPayments.service.ts makes about Plans/Programs).
+      // Treat it as a real failure rather than silently skipping, same as
+      // that file's own precedent.
+      throw new ApiHttpError(500, "offering_missing", "The coaching service for this payment no longer exists");
+    }
+    try {
+      booking = await createBooking(
+        payment.userId,
+        { professionalId: offering.professionalId, offeringId: offering.id, scheduledAt: payment.scheduledAt!.toISOString() },
+        { verifiedPayment: true },
+      );
+    } catch (err) {
+      // Money has already been captured by Razorpay by this point (status
+      // just flipped to "paid" above) — this only throws if the slot
+      // became unavailable in the narrow window between order-creation
+      // (which already checked it) and payment capture. No hold/lock
+      // mechanism exists to fully close that race (the free-booking path
+      // has the exact same unlocked check-then-create gap, just without a
+      // real charge riding on it), so this is rare, not impossible. Rather
+      // than let a paid-but-unfulfilled booking vanish silently, record it
+      // distinctly for manual follow-up (refund or reschedule — no
+      // automated refund flow exists yet, see gap doc's Refunds item) and
+      // re-throw: the client needs to know the booking didn't happen even
+      // though the charge did, not see a false success.
+      await recordAudit({
+        actorId: payment.userId,
+        action: "booking.payment_captured_but_unfulfilled",
+        entityType: "Payment",
+        entityId: payment.id,
+        metadata: { offeringId: offering.id, reason: err instanceof ApiHttpError ? err.code : "unknown_error" },
+      });
+      throw err;
+    }
   } else {
     await purchaseProgram(payment.userId, payment.referenceId, { verifiedPayment: true });
   }
@@ -203,6 +297,8 @@ async function activatePayment(payment: PaymentRecord) {
   // own, but this is the single choke point both the /verify call and the
   // webhook funnel through either way (this function's own guard above).
   await ensureInvoiceForPayment(payment.id);
+
+  return { booking };
 }
 
 export async function verifyPayment(
@@ -219,6 +315,13 @@ export async function verifyPayment(
   }
 
   if (payment.status === "paid") {
+    // Idempotent retry of an already-verified payment — `booking` is
+    // omitted here even for a booking payment: activatePayment()'s return
+    // value (the one place that shapes a real BookingConfirmation DTO) only
+    // exists on the call that actually ran it, and this is deliberately not
+    // re-derived from a raw Booking row (a different, thinner shape). A
+    // client retrying an already-successful /verify call already navigated
+    // on the first response; this is a safety-net path, not the common one.
     return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId };
   }
 
@@ -236,9 +339,9 @@ export async function verifyPayment(
   }
 
   await prisma.payment.update({ where: { id: payment.id }, data: { providerPaymentId: input.razorpayPaymentId } });
-  await activatePayment(payment);
+  const { booking } = await activatePayment(payment);
 
-  return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId };
+  return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
 }
 
 /**

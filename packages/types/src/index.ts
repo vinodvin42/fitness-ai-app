@@ -694,15 +694,19 @@ export interface SubscribeInput {
 // generic (a SubscriptionPlan.id or a Program.id) rather than two
 // separate purpose-specific shapes.
 
-export type PaymentPurpose = "subscription" | "program_purchase";
+/** PAY-01 (5 Sep 2026) added "booking" — a coach session payment, alongside subscriptions and program purchases. */
+export type PaymentPurpose = "subscription" | "program_purchase" | "booking";
 /** `Payment.status` — added 21 Aug 2026 for apps/admin-web's Module 02 (Users), the Payment model itself predates this by a day but had no shared status type yet since nothing outside apps/api read it directly until now. */
 export type PaymentStatus = "created" | "paid" | "failed";
 
 export interface CreateRazorpayOrderInput {
   purpose: PaymentPurpose;
+  /** A SubscriptionPlan.id, a Program.id, or (purpose "booking") a ProfessionalServiceOffering.id. */
   referenceId: string;
   /** Module 06.05 Coupons (31 Aug 2026) — an optional discount code applied server-side; an invalid code fails the order. */
   couponCode?: string;
+  /** PAY-01 (5 Sep 2026) — required when purpose is "booking": the specific session time being paid for. Ignored otherwise. */
+  scheduledAt?: string;
 }
 
 /** What POST /payments/razorpay/orders returns — everything RazorpayCheckoutModal.tsx needs to open a real Razorpay Checkout. */
@@ -733,6 +737,8 @@ export interface VerifyRazorpayPaymentResult {
   verified: boolean;
   purpose: PaymentPurpose;
   referenceId: string;
+  /** PAY-01 (5 Sep 2026) — set only when purpose is "booking" and this specific /verify call is what activated the payment (an idempotent retry of an already-verified one omits it — see payments.service.ts's own comment). The real BookingConfirmation, so the client can go straight to Booking Confirmation without a second request. */
+  booking?: BookingConfirmation;
 }
 
 // ---- Reminders ----------------------------------------------------------

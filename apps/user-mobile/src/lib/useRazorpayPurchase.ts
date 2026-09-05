@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import type { PaymentPurpose, RazorpayOrder } from "@fitness-ai-app/types";
+import type { PaymentPurpose, RazorpayOrder, VerifyRazorpayPaymentResult } from "@fitness-ai-app/types";
 import { createRazorpayOrder, verifyRazorpayPayment, fetchPaymentsConfig } from "../api/payments";
 import { extractErrorMessage } from "./apiError";
 
@@ -28,8 +28,8 @@ export function usePaymentsConfigured() {
 }
 
 interface Options {
-  /** Called after a payment has been verified server-side — invalidate whatever queries this screen needs re-fetched (mirrors the same pattern every other mutation in this app already uses). Return type is unconstrained since callers commonly return `Promise.all([...])` of several invalidations. */
-  onVerified: () => unknown;
+  /** Called after a payment has been verified server-side — invalidate whatever queries this screen needs re-fetched (mirrors the same pattern every other mutation in this app already uses). Receives the full verify result (PAY-01, 5 Sep 2026) — a booking purchase needs `result.booking` to navigate to Booking Confirmation without a second request; Subscribe/Program Purchase ignore the argument, same as before. Return type is unconstrained since callers commonly return `Promise.all([...])` of several invalidations. */
+  onVerified: (result: VerifyRazorpayPaymentResult) => unknown;
   /** Optional (31 Aug 2026) — a screen that wants dedicated Payment Success / Failed screens (§M) passes these; when present they REPLACE the default Alert so the flow isn't shown twice. Screens without them (Program/Workout purchase) keep the original Alert behaviour. */
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -57,10 +57,10 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError }: Options)
   );
 
   const purchase = useCallback(
-    async (purpose: PaymentPurpose, referenceId: string, couponCode?: string) => {
+    async (purpose: PaymentPurpose, referenceId: string, couponCode?: string, scheduledAt?: string) => {
       setIsCreatingOrder(true);
       try {
-        const created = await createRazorpayOrder({ purpose, referenceId, couponCode });
+        const created = await createRazorpayOrder({ purpose, referenceId, couponCode, scheduledAt });
         setOrder(created);
       } catch (err) {
         reportError("Couldn't start checkout", extractErrorMessage(err, "Check your connection and try again."));
@@ -76,8 +76,8 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError }: Options)
       setOrder(null);
       setIsVerifying(true);
       try {
-        await verifyRazorpayPayment(result);
-        await onVerified();
+        const verifyResult = await verifyRazorpayPayment(result);
+        await onVerified(verifyResult);
         onSuccess?.();
       } catch (err) {
         reportError(

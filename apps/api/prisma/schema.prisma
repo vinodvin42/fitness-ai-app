@@ -156,6 +156,11 @@ enum PaymentProvider {
 enum PaymentPurpose {
   subscription
   program_purchase
+  // PAY-01, added 5 Sep 2026 — coach booking payments. referenceId is a
+  // ProfessionalServiceOffering.id (not a Booking.id — nothing is created
+  // until payment is verified, see Payment.scheduledAt's own comment and
+  // coaching.service.ts's createBooking()).
+  booking
 }
 
 enum PaymentStatus {
@@ -1181,6 +1186,18 @@ model Payment {
   // above is the ALREADY-discounted amount actually charged.
   couponCode        String?
   discountCents     Int?
+  // PAY-01, added 5 Sep 2026 — only set (and only meaningful) when purpose
+  // is "booking". Subscription/program purchases resolve their whole
+  // referenceId (a SubscriptionPlan/Program id) at activation time with
+  // nothing else needed, but a coaching booking is really a compound key —
+  // an offering plus a specific time slot the user picked — and there's no
+  // pre-existing row to look the time back up from (unlike the other two
+  // purposes, nothing is created until payment is verified, same "nothing
+  // exists until it's paid for" principle those two already use). This is
+  // the one extra fact createOrder() needs to persist so activatePayment()
+  // can actually create the Booking later. See payments.service.ts's
+  // resolveAmountCents()/activatePayment() for how it's used.
+  scheduledAt       DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

@@ -100,26 +100,36 @@ type PaymentRow = {
 };
 
 /**
- * Batch-resolves every row's `referenceId` (a `SubscriptionPlan.id` or a
- * `Program.id`, per `purpose`) into a human label in two queries total,
- * regardless of how many rows are on the page — never one query per row.
+ * Batch-resolves every row's `referenceId` (a `SubscriptionPlan.id`, a
+ * `Program.id`, or — PAY-01, 5 Sep 2026 — a `ProfessionalServiceOffering.id`
+ * for a booking payment, per `purpose`) into a human label in three
+ * queries total, regardless of how many rows are on the page — never one
+ * query per row.
  */
 async function resolveReferenceLabels(rows: PaymentRow[]): Promise<Map<string, string>> {
   const planIds = [...new Set(rows.filter((r) => r.purpose === "subscription").map((r) => r.referenceId))];
   const programIds = [...new Set(rows.filter((r) => r.purpose === "program_purchase").map((r) => r.referenceId))];
+  // PAY-01 (5 Sep 2026) — a booking Payment's referenceId is a
+  // ProfessionalServiceOffering.id, not a Booking.id (see
+  // schema.prisma's Payment.scheduledAt comment for why).
+  const offeringIds = [...new Set(rows.filter((r) => r.purpose === "booking").map((r) => r.referenceId))];
 
-  const [plans, programs] = await Promise.all([
+  const [plans, programs, offerings] = await Promise.all([
     planIds.length > 0
       ? prisma.subscriptionPlan.findMany({ where: { id: { in: planIds } }, select: { id: true, name: true } })
       : Promise.resolve([]),
     programIds.length > 0
       ? prisma.program.findMany({ where: { id: { in: programIds } }, select: { id: true, name: true } })
       : Promise.resolve([]),
+    offeringIds.length > 0
+      ? prisma.professionalServiceOffering.findMany({ where: { id: { in: offeringIds } }, select: { id: true, label: true } })
+      : Promise.resolve([]),
   ]);
 
   const labels = new Map<string, string>();
   for (const plan of plans as Array<{ id: string; name: string }>) labels.set(plan.id, plan.name);
   for (const program of programs as Array<{ id: string; name: string }>) labels.set(program.id, program.name);
+  for (const offering of offerings as Array<{ id: string; label: string }>) labels.set(offering.id, offering.label);
   return labels;
 }
 

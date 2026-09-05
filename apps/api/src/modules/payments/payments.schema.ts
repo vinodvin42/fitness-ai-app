@@ -4,10 +4,12 @@ import { z } from "zod";
 // doc comment for the full order/verify/webhook flow.
 
 export const createOrderSchema = z.object({
-  purpose: z.enum(["subscription", "program_purchase"]),
+  purpose: z.enum(["subscription", "program_purchase", "booking"]),
   // A SubscriptionPlan.id when purpose is "subscription", a Program.id
-  // when purpose is "program_purchase" — resolved and validated inside
-  // the service, not here (this schema only checks shape).
+  // when purpose is "program_purchase", a ProfessionalServiceOffering.id
+  // when purpose is "booking" (5 Sep 2026, PAY-01) — resolved and
+  // validated inside the service, not here (this schema only checks
+  // shape).
   // String id (uuid is only the default generator) — seed uses readable ids
   // like "pro"/"prog-...", so `.uuid()` rejected all seeded plans/programs
   // (found 31 Aug 2026, first real-DB run). A bad id 404s on lookup.
@@ -17,6 +19,13 @@ export const createOrderSchema = z.object({
   // (see payments.service.ts's createOrder); an invalid code fails the
   // order rather than silently charging full price.
   couponCode: z.string().trim().min(1).max(40).optional(),
+  // PAY-01 (5 Sep 2026) — required when purpose is "booking", the specific
+  // session time being paid for (a coaching booking has no pre-existing
+  // row to resolve a schedule from the way subscription/program purchases
+  // resolve everything from referenceId alone). Ignored for the other two
+  // purposes. Presence/validity checked in the service layer, not here,
+  // matching this schema's existing "shape only" scope.
+  scheduledAt: z.string().datetime({ message: "scheduledAt must be an ISO 8601 date-time" }).optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 

@@ -10,6 +10,13 @@ import { hashPassword } from "../src/lib/password";
  * Professional + ProfessionalServiceOffering fixtures are created directly
  * via Prisma rather than depending on scripts/seed.ts's demo coaches.
  *
+ * The fixture offering is priced at 0 (5 Sep 2026, PAY-01) so POST
+ * /coaching/bookings still confirms directly here — these two tests are
+ * about Relationship creation and slot-conflict rejection, not payment.
+ * The 402 boundary for a *paid* offering (payment_required without a
+ * verified payment) is covered in parkedPayments.test.ts, alongside the
+ * identical boundary for subscriptions/program purchases.
+ *
  * Rate limits: POST /coaching/bookings shares `writeRateLimit`
  * (30/15min) — only 2 calls happen here.
  */
@@ -46,7 +53,7 @@ describe("Coach booking creates a real Relationship", () => {
         serviceType: "fitness",
         label: "Test Fitness Session",
         durationMinutes: 60,
-        priceCents: 2000,
+        priceCents: 0, // see this file's own top comment — PAY-01 gates anything priced above zero
         isActive: true,
       },
     });
