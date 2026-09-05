@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -68,6 +68,10 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   const [selectedDateKey, setSelectedDateKey] = useState<string>(toDateKey(new Date()));
   const [selectedTimeIso, setSelectedTimeIso] = useState<string | null>(null);
   const [isBookingFree, setIsBookingFree] = useState(false);
+  // 5 Sep 2026 — same coupon field SubscriptionScreen.tsx/ProgramDetailScreen.tsx
+  // already have; the backend has always accepted a coupon for any purchase
+  // purpose, this screen was just missing the field.
+  const [couponCode, setCouponCode] = useState("");
 
   const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useQuery({
     queryKey: ["coaching", "professional", professionalId],
@@ -134,7 +138,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       }
       return;
     }
-    purchase("booking", selectedOffering.id, undefined, selectedTimeIso);
+    purchase("booking", selectedOffering.id, couponCode.trim() || undefined, selectedTimeIso);
   };
 
   if (profileLoading) {
@@ -216,6 +220,26 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
           ))}
         </View>
       )}
+
+      {selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
+        <TextInput
+          value={couponCode}
+          onChangeText={(v) => setCouponCode(v.toUpperCase())}
+          placeholder="Have a coupon? Enter code"
+          placeholderTextColor={colors.textMuted}
+          autoCapitalize="characters"
+          style={{
+            color: colors.textPrimary,
+            backgroundColor: colors.background,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.sm,
+            marginTop: spacing.md,
+          }}
+        />
+      ) : null}
 
       <Button
         label={paymentsConfigured || selectedOffering?.priceCents === 0 ? "Confirm Booking" : "Coming soon"}

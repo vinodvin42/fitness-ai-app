@@ -219,6 +219,11 @@
     </div>
   </header>
 
+  <div style="background:var(--tag-green-bg);border:1px solid var(--accent);border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+    <strong style="color:var(--accent-strong);">Update, 5 Sep 2026 — most of this doc is resolved, not "pending or partial."</strong>
+    <p style="margin:8px 0 0;color:var(--text-primary);">This is a point-in-time plan, left as-written below (see docs/mobile/07-open-questions-gaps.md's own append-don't-rewrite convention). Since 28 Aug: <strong>PAY-02</strong> (the currency ADR at §02) was decided — real INR, not USD settlement — and shipped; <strong>PAY-01</strong> (coach booking payments) shipped 5 Sep, wiring bookings through the same Razorpay flow; <strong>Coupons</strong> (discount type, redemption, checkout integration) and <strong>Refunds</strong> (real <code>razorpay.payments.refund()</code> call, ledger integration) are both fully built, not just recorded; <strong>Coach Settlements</strong> now has a real per-coach <code>commissionPct</code> and computes from real Booking data. Still genuinely open: a customer-facing <strong>refund policy</strong> (eligibility/window — refunds are admin-initiated only today), <strong>Influencer payouts</strong> (still manual-entry, no attribution pipeline), and a rebuilt <strong>Revenue waterfall</strong> dashboard. See docs/mobile/07-open-questions-gaps.md gap §39 and git history (commits <code>c01d27c</code>, <code>1ebc8b3</code>) for the actual current state — don't treat the sections below as live status.</p>
+  </div>
+
   <section class="block" id="foundation">
     <span class="block-num">01</span>
     <h2>What's already real</h2>

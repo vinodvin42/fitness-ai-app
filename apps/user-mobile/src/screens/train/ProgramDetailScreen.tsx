@@ -1,5 +1,5 @@
-import React from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, Image, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -31,11 +31,15 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ProgramDetail">;
  * flow is just the honest client-side path to satisfy that. **4 Sep 2026:**
  * a program with a cover photo (`Program.imageUrl`) leads with it as a hero
  * above the summary card; programs without one render exactly as before,
- * starting at the icon tile.
+ * starting at the icon tile. **5 Sep 2026:** a coupon field now ships here
+ * too, same as SubscriptionScreen.tsx's — the backend has always accepted
+ * a coupon for any purchase purpose (`createOrder()`'s `couponCode`), this
+ * was purely a missing field on this particular screen.
  */
 export function ProgramDetailScreen({ route, navigation }: Props) {
   const { programId } = route.params;
   const queryClient = useQueryClient();
+  const [couponCode, setCouponCode] = useState("");
   const { data: program, isLoading, isError, refetch } = useQuery({
     queryKey: ["program", programId],
     queryFn: () => fetchProgramDetail(programId),
@@ -51,7 +55,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
   // useRazorpayPurchase's purchase() handles its own errors internally
   // (shows its own Alert on failure), so there's no try/catch needed here.
-  const onPurchase = () => purchase("program_purchase", programId);
+  const onPurchase = () => purchase("program_purchase", programId, couponCode.trim() || undefined);
   const { configured: paymentsConfigured } = usePaymentsConfigured();
 
   if (isError) {
@@ -126,6 +130,25 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
               ? `One-time purchase — unlocks every workout in ${program.name}.`
               : "Purchases aren't open yet during this pilot — check back soon."}
           </Text>
+          {paymentsConfigured ? (
+            <TextInput
+              value={couponCode}
+              onChangeText={(v) => setCouponCode(v.toUpperCase())}
+              placeholder="Have a coupon? Enter code"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="characters"
+              style={{
+                color: colors.textPrimary,
+                backgroundColor: colors.background,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.sm,
+                marginTop: spacing.sm,
+              }}
+            />
+          ) : null}
           <Button
             label={paymentsConfigured ? `Purchase — ₹${(program.priceCents / 100).toFixed(2)}` : "Coming soon"}
             onPress={onPurchase}
