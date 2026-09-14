@@ -87,7 +87,7 @@ export function TodayScreen({ navigation }: Props) {
         title="Your AI Coach is ready"
         body="Ask 23Prime AI for training, nutrition, or recovery guidance grounded in your real progress."
         ctaLabel="Open chat"
-        onPress={() => navigation.navigate("Recover")}
+        onPress={() => navigation.navigate("More", { screen: "AiCoach" })}
       />
 
       {inProgressToday ? (
@@ -147,7 +147,13 @@ export function TodayScreen({ navigation }: Props) {
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <QuickLink icon="dumbbell" label="Train" onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
           <QuickLink icon="utensils" label="Fuel" onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />
-          <QuickLink icon="heart-pulse" label="Recover" onPress={() => navigation.navigate("Recover")} tint={colors.aiAccent} tintSoft={colors.aiAccentSoft} />
+          <QuickLink
+            icon="heart-pulse"
+            label="Recover"
+            onPress={() => navigation.navigate("More", { screen: "RecoverHub" })}
+            tint={colors.aiAccent}
+            tintSoft={colors.aiAccentSoft}
+          />
         </View>
       </View>
     </ScreenContainer>

@@ -9,9 +9,9 @@ import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchMeasurements } from "../../api/progress";
 import { colors, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "MeasurementHistory">;
+type Props = NativeStackScreenProps<ProgressStackParamList, "MeasurementHistory">;
 
 const ROWS: Array<{ key: keyof BodyMeasurement; label: string; unit: string }> = [
   { key: "weightKg", label: "Weight", unit: "kg" },

@@ -7,9 +7,9 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { AIBanner } from "../../components/AIBanner";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
-import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import type { MoreStackParamList } from "../../navigation/MoreStack";
 
-type Props = NativeStackScreenProps<RecoverStackParamList, "RecoverHub">;
+type Props = NativeStackScreenProps<MoreStackParamList, "RecoverHub">;
 
 /**
  * Recover — docs/mobile/03-screen-inventory.md §E (5 screens) + §H (AI

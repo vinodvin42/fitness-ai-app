@@ -10,9 +10,9 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchRecovery, upsertRecovery } from "../../api/recovery";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import type { MoreStackParamList } from "../../navigation/MoreStack";
 
-type Props = NativeStackScreenProps<RecoverStackParamList, "Recovery">;
+type Props = NativeStackScreenProps<MoreStackParamList, "Recovery">;
 
 interface FormState {
   restingHeartRate: string;

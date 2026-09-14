@@ -10,9 +10,9 @@ import { ListRow } from "../../components/ListRow";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchProgressOverview } from "../../api/progress";
 import { colors, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "Progress">;
+type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
 
 /**
  * Progress Overview (docs/mobile/03-screen-inventory.md §F) — Phase 2

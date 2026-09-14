@@ -21,9 +21,9 @@ import { Chip } from "../../components/Chip";
 import { fetchAiCoachMessages, fetchAiProviderStatus, sendAiCoachMessage } from "../../api/aiCoach";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import type { MoreStackParamList } from "../../navigation/MoreStack";
 
-type Props = NativeStackScreenProps<RecoverStackParamList, "AiCoach">;
+type Props = NativeStackScreenProps<MoreStackParamList, "AiCoach">;
 
 // docs/mobile/03-screen-inventory.md §H: "guidance-topic chips ... quick-
 // reply suggestion chips below the thread". This build ships one set as
@@ -66,17 +66,19 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
  * AI Coach Chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
  * Phase 2 §H) — the screen half of gap §13, now that
  * apps/api/src/modules/aiCoach is real. Branded "23Prime AI" per the
- * design doc. Reachable from Recover (RecoverStack) rather than a
- * cross-tab floating action button — the design's "AI Coach FAB on
- * nearly every screen" would need either a global overlay that reaches
- * across every tab's own stack navigator, or repeating the same button
- * on each of Train/Fuel/Recover/Progress individually; both add real
- * navigation-structure risk for a first slice with no device to test
- * cross-navigator deep-linking against. One clear, always-reachable entry
- * point (Recover, which otherwise has nothing real in it yet — see
- * RecoverStack.tsx) ships now; promoting this to a true global FAB is a
- * reasonable, self-contained follow-up once this slice is confirmed
- * working, not a compromise on whether AI Coach itself is real.
+ * design doc. **R1 Developer 1 U1 (14 Sep 2026):** relocated from its own
+ * former Recover tab into MoreStack (see that file's own comment) — "AI
+ * is global" per the R1 work package's own nav rule, so the real entry
+ * point is now a banner on Today (`TodayScreen.tsx`'s `AIBanner`,
+ * cross-tab deep-linking straight to `More` → `AiCoach`) rather than a
+ * tab of its own. Not yet a true floating action button reachable from
+ * every screen — the design's "AI Coach FAB on nearly every screen" would
+ * need a global overlay reaching across every tab's own stack navigator,
+ * real navigation-structure risk for a slice with no device to test
+ * cross-navigator deep-linking against. Today's banner plus More's
+ * "Recover" row are two real, always-reachable entry points; promoting
+ * this to a true global FAB is a reasonable, self-contained follow-up,
+ * not a compromise on whether AI Coach itself is real.
  *
  * Gated behind a real `GET /ai/status` check — if no provider is
  * configured server-side, this shows an honest "not available yet" panel

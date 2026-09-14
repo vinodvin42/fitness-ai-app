@@ -12,9 +12,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { createProgressPhoto, deleteProgressPhoto, fetchProgressPhotos } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "ProgressPhotos">;
+type Props = NativeStackScreenProps<ProgressStackParamList, "ProgressPhotos">;
 
 const THUMB_SIZE = 104;
 

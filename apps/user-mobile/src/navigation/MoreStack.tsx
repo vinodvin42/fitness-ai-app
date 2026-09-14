@@ -6,11 +6,9 @@ import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
 import { CountrySelectionScreen } from "../screens/more/CountrySelectionScreen";
 import { PreferencesScreen } from "../screens/more/PreferencesScreen";
-import { ProgressOverviewScreen } from "../screens/more/ProgressOverviewScreen";
-import { LogMeasurementScreen } from "../screens/more/LogMeasurementScreen";
-import { MeasurementHistoryScreen } from "../screens/more/MeasurementHistoryScreen";
-import { StreakTrackerScreen } from "../screens/more/StreakTrackerScreen";
-import { ProgressPhotosScreen } from "../screens/more/ProgressPhotosScreen";
+import { RecoverScreen } from "../screens/recover/RecoverScreen";
+import { AiCoachScreen } from "../screens/recover/AiCoachScreen";
+import { RecoveryScreen } from "../screens/recover/RecoveryScreen";
 import { SubscriptionScreen } from "../screens/more/SubscriptionScreen";
 import { SubscriptionHistoryScreen } from "../screens/more/SubscriptionHistoryScreen";
 import { PaymentResultScreen } from "../screens/more/PaymentResultScreen";
@@ -38,9 +36,17 @@ import { ConversationsScreen } from "../screens/coaching/ConversationsScreen";
 import { MessageThreadScreen } from "../screens/coaching/MessageThreadScreen";
 
 // docs/mobile/03-screen-inventory.md §N: More Menu -> Profile -> View/Edit
-// Profile, and Preferences. §F (Phase 2, pulled forward alongside N):
-// More Menu -> Progress -> Log Measurement / Measurement History. §M
-// (Phase 3, pulled forward): More Menu -> Subscription -> Purchase
+// Profile, and Preferences. **R1 Developer 1 U1 (14 Sep 2026):** §F's
+// Progress cluster (Log Measurement/Measurement History/Streak Tracker/
+// Progress Photos) moved OUT of this stack into its own top-level
+// ProgressStack — see that file's own comment for why (BR-USR-001 names
+// Progress as a primary tab, not a More sub-screen). §E+§H (Recover: AI
+// Coach + Recovery & Devices) moved INTO this stack in the same pass,
+// replacing Recover's own former tab — BR-USR-002 requires Recovery be
+// contextual, not a primary tab; RecoverHub/AiCoach/Recovery below are
+// the same real screens, just relocated, reachable from More's "Recover"
+// row and from contextual entry points on Today (see TodayScreen.tsx).
+// §M (Phase 3, pulled forward): More Menu -> Subscription -> Purchase
 // History. §G (Phase 2, continued): More Menu -> Timeline Overview ->
 // Timeline Month / Timeline Event / Timeline Report. §K (Phase 4, started
 // 19 Aug 2026): More Menu -> Reminders -> Add/Edit Reminder — the design
@@ -77,11 +83,11 @@ export type MoreStackParamList = {
   EditProfile: undefined;
   CountrySelection: undefined;
   Preferences: undefined;
-  Progress: undefined;
-  LogMeasurement: undefined;
-  MeasurementHistory: undefined;
-  StreakTracker: undefined;
-  ProgressPhotos: undefined;
+  // R1 Developer 1 U1 (14 Sep 2026) — relocated from the former RecoverStack;
+  // see this file's top comment.
+  RecoverHub: undefined;
+  AiCoach: undefined;
+  Recovery: undefined;
   Subscription: undefined;
   SubscriptionHistory: undefined;
   PaymentResult: { status: "success" | "failed"; message?: string };
@@ -119,11 +125,9 @@ export function MoreStack() {
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
-      <Stack.Screen name="Progress" component={ProgressOverviewScreen} />
-      <Stack.Screen name="LogMeasurement" component={LogMeasurementScreen} />
-      <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} />
-      <Stack.Screen name="StreakTracker" component={StreakTrackerScreen} />
-      <Stack.Screen name="ProgressPhotos" component={ProgressPhotosScreen} />
+      <Stack.Screen name="RecoverHub" component={RecoverScreen} />
+      <Stack.Screen name="AiCoach" component={AiCoachScreen} />
+      <Stack.Screen name="Recovery" component={RecoveryScreen} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} />
       <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />

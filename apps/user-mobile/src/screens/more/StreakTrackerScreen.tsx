@@ -9,9 +9,9 @@ import { Icon, IconName } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchStreaks } from "../../api/progress";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "StreakTracker">;
+type Props = NativeStackScreenProps<ProgressStackParamList, "StreakTracker">;
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",

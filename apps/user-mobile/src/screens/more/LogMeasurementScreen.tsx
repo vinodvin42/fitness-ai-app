@@ -8,9 +8,9 @@ import { Button } from "../../components/Button";
 import { logMeasurement } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "LogMeasurement">;
+type Props = NativeStackScreenProps<ProgressStackParamList, "LogMeasurement">;
 
 const FIELDS: Array<{ key: "weightKg" | "chestCm" | "waistCm" | "hipsCm" | "armsCm" | "thighsCm"; label: string }> = [
   { key: "weightKg", label: "Weight (kg)" },
