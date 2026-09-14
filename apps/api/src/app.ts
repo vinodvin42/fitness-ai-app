@@ -20,6 +20,7 @@ import { paymentsRouter, razorpayWebhookHandler } from "./modules/payments/payme
 import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
+import { plansRouter } from "./modules/plans/plans.routes";
 import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
 import { adminDashboardRouter } from "./modules/adminDashboard/adminDashboard.routes";
 import { adminUsersRouter } from "./modules/adminUsers/adminUsers.routes";
@@ -128,6 +129,10 @@ export function createApp() {
   // real-vs-deferred breakdown (streaming responses is the one piece
   // still not built).
   app.use("/", aiCoachRouter);
+  // Plan-Generation / Recommendation Engine (14 Sep 2026) — see
+  // plans.service.ts's own doc comment for why this exists and who it's
+  // for (shared platform logic, not any one R1 work package's own scope).
+  app.use("/", plansRouter);
   // Admin console (Phase 6) — mounted at "/" like the rest since each
   // router already scopes its own full paths (e.g. "/admin/auth/login"),
   // matching the mounting convention every other router above uses.

@@ -1,0 +1,573 @@
+import { prisma } from "../../db/prisma";
+import { recordAudit } from "../../middleware/auditLog";
+import { ApiHttpError } from "../../middleware/errorHandler";
+import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
+import { DecideRecommendationInput } from "./plans.schema";
+
+/**
+ * Plan-Generation / Recommendation Engine (14 Sep 2026).
+ *
+ * The R1 work-package split (Developer 1: consumer app, Developer 2:
+ * professional app, Developer 3: admin/web/platform — three real Word
+ * documents reviewed this session) each name an "Assessment → Plan" flow
+ * and an ongoing "Recommendation" with real state machines
+ * (Plan: generating/generated/failed/retry; Recommendation: active/
+ * accepted/modified/declined/no_change/superseded), but none of the
+ * three claims ownership of the engine that actually produces one.
+ * Developer 1 owns the Plan/Recommendation screens and states; Developer
+ * 2 owns *reviewing* a recommendation (Accept/Modify/No Change). Neither
+ * generates one. Picked up here as shared platform logic — the same way
+ * `apps/api/src/lib/aiClient.ts`'s `generateCompletion()` already sits
+ * underneath AI Coach without being "owned" by any one screen.
+ *
+ * **Real design decision made, not left implicit:** a Plan is an
+ * AI-driven SELECTION of one real, existing, admin-authored `Program`
+ * from the catalog — grounded in the user's real `OnboardingProfile`
+ * (goals, training level, safety flags) — never AI-authored novel
+ * workouts/sets/reps. Same reasoning `aiCoach.service.ts`'s own doc
+ * comment already establishes for this codebase: an LLM inventing
+ * exercises with no human review is a real safety risk (a contraindicated
+ * movement for a real injury, an unsafe progression); selecting among
+ * real, human-reviewed content and explaining the choice is not. The LLM
+ * is asked to answer in a strict, parseable format and its answer is
+ * validated against the real list of eligible Program ids before being
+ * trusted — an unparseable or out-of-catalog answer is a real, honest
+ * `failed` state, never silently coerced into *some* selection.
+ *
+ * **What this pass deliberately does NOT attempt** (real gaps, not
+ * hidden ones): equipment-aware selection needs Gym Context, Developer
+ * 3's own future work (no `Gym`/equipment model exists yet); this reuses
+ * `OnboardingProfile` as today's assessment source rather than a new
+ * `Assessment` entity with its own resumable/corrected state machine
+ * (Developer 1's own screen work, not this engine's); Recommendation
+ * only ever proposes switching to a different single Program or
+ * confirming "no change" — no multi-program sequencing, no mid-plan
+ * exercise-level substitution (Exercise Swap, a separate deferred gap).
+ * Professional review (Developer 2's Accept/Modify/No Change UI +
+ * Decision Records) is designed to sit on top of the exact same
+ * `decideRecommendation()` this pass builds for self-serve users —
+ * `decidedByRole`/`decidedById` on `Recommendation` are plain strings,
+ * not a FK to `User` alone, specifically so a future professional caller
+ * doesn't need a schema change to use it.
+ */
+
+const MAX_RECENT_SESSIONS = 5;
+
+interface PlanDTO {
+  id: string;
+  version: number;
+  status: "generating" | "generated" | "failed";
+  programId: string | null;
+  programName: string | null;
+  rationale: string | null;
+  failureReason: string | null;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+type PlanRow = {
+  id: string;
+  userId: string;
+  version: number;
+  status: string;
+  programId: string | null;
+  rationale: string | null;
+  failureReason: string | null;
+  isActive: boolean;
+  createdAt: Date;
+};
+
+type EligibleProgram = {
+  id: string;
+  name: string;
+  type: string;
+  durationWeeks: number;
+  description: string;
+};
+
+function toPlanDTO(p: PlanRow, programName: string | null): PlanDTO {
+  return {
+    id: p.id,
+    version: p.version,
+    status: p.status as PlanDTO["status"],
+    programId: p.programId,
+    programName,
+    rationale: p.rationale,
+    failureReason: p.failureReason,
+    isActive: p.isActive,
+    createdAt: p.createdAt,
+  };
+}
+
+async function eligiblePrograms(excludeProgramId?: string): Promise<EligibleProgram[]> {
+  return prisma.program.findMany({
+    where: { status: "published", ...(excludeProgramId ? { id: { not: excludeProgramId } } : {}) },
+    select: { id: true, name: true, type: true, durationWeeks: true, description: true },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+function programCatalogText(programs: EligibleProgram[]): string {
+  return programs
+    .map((p) => `- id: ${p.id} | name: ${p.name} | type: ${p.type} | duration: ${p.durationWeeks} weeks | description: ${p.description}`)
+    .join("\n");
+}
+
+/**
+ * Both prompts below ask for a strict, parseable shape rather than free
+ * prose — the same "ground it, then validate the answer against real
+ * data before trusting it" discipline `aiCoach.service.ts` already uses,
+ * just enforced more strictly here since the output drives what a user
+ * is actually assigned to train on, not a chat reply.
+ */
+function buildSelectionPrompt(profile: {
+  goals: string[];
+  trainingLevel: string | null;
+  medicalConditions: string[];
+  injuries: string[];
+}, programs: EligibleProgram[]): string {
+  const goals = profile.goals.length ? profile.goals.join(", ") : "not specified";
+  const level = profile.trainingLevel ?? "not specified";
+  const safety = [...profile.medicalConditions, ...profile.injuries];
+  const safetyText = safety.length ? safety.join(", ") : "none reported";
+
+  return [
+    "You are selecting ONE real training/nutrition program for a fitness app user from a fixed catalog — you are not designing a new workout.",
+    `User's stated goals: ${goals}. Training level: ${level}. Reported medical conditions/injuries: ${safetyText}.`,
+    "Available programs (choose exactly one id from this list — never invent an id):",
+    programCatalogText(programs),
+    "Pick the single best-fitting program for this user given their goals, level, and any safety context. If a program's description conflicts with a reported injury/condition, avoid it in favor of a safer real option from the list.",
+    "Respond in EXACTLY this format, two lines, nothing else:",
+    "PROGRAM_ID: <the exact id of your chosen program>",
+    "RATIONALE: <2-3 sentences explaining the choice, referencing the user's actual goals/level/safety context above — never a generic template>",
+  ].join("\n\n");
+}
+
+function buildRecommendationPrompt(
+  currentProgramName: string,
+  recentSessions: Array<{ workoutName: string; completedAt: Date | null }>,
+  latestWeightKg: number | null,
+  previousWeightKg: number | null,
+  candidatePrograms: EligibleProgram[],
+): string {
+  const sessionsText = recentSessions.length
+    ? recentSessions.map((s) => `${s.workoutName}${s.completedAt ? ` (${s.completedAt.toISOString().slice(0, 10)})` : ""}`).join("; ")
+    : "no completed workouts logged since this plan started";
+  const weightTrend =
+    latestWeightKg !== null && previousWeightKg !== null
+      ? `${previousWeightKg}kg -> ${latestWeightKg}kg`
+      : latestWeightKg !== null
+        ? `${latestWeightKg}kg (only one measurement logged, no trend yet)`
+        : "no weight measurements logged";
+
+  return [
+    `A fitness app user is currently on the program "${currentProgramName}". Decide, from their REAL recent activity below, whether to recommend continuing it (no change) or switching to a different real program.`,
+    `Recent completed workouts: ${sessionsText}.`,
+    `Weight trend: ${weightTrend}.`,
+    "Do not invent activity or measurements beyond what's stated above — if the evidence is thin (few or no logged workouts, no weight trend), that itself is a valid reason to recommend no change rather than guessing.",
+    candidatePrograms.length
+      ? `If a switch is genuinely warranted, choose exactly one id from this list (never invent an id):\n${programCatalogText(candidatePrograms)}`
+      : "There is no other real program available to switch to right now, so only \"no change\" is a valid answer.",
+    "Respond in EXACTLY this format, two lines, nothing else:",
+    "DECISION: <either NO_CHANGE or the exact id of the program you recommend switching to>",
+    "RATIONALE: <2-3 sentences referencing the actual recent activity/trend above — never a generic template>",
+  ].join("\n\n");
+}
+
+function parseSelection(raw: string, eligibleIds: Set<string>): { programId: string; rationale: string } | null {
+  const idMatch = raw.match(/PROGRAM_ID:\s*(\S+)/i);
+  const rationaleMatch = raw.match(/RATIONALE:\s*([\s\S]+)/i);
+  if (!idMatch || !rationaleMatch) return null;
+  const programId = idMatch[1].trim();
+  const rationale = rationaleMatch[1].trim();
+  if (!eligibleIds.has(programId) || rationale.length === 0) return null;
+  return { programId, rationale };
+}
+
+function parseRecommendationDecision(
+  raw: string,
+  eligibleIds: Set<string>,
+): { decision: "no_change" | "switch_program"; programId: string | null; rationale: string } | null {
+  const decisionMatch = raw.match(/DECISION:\s*(\S+)/i);
+  const rationaleMatch = raw.match(/RATIONALE:\s*([\s\S]+)/i);
+  if (!decisionMatch || !rationaleMatch) return null;
+  const token = decisionMatch[1].trim();
+  const rationale = rationaleMatch[1].trim();
+  if (rationale.length === 0) return null;
+  if (token.toUpperCase() === "NO_CHANGE") return { decision: "no_change", programId: null, rationale };
+  if (eligibleIds.has(token)) return { decision: "switch_program", programId: token, rationale };
+  return null;
+}
+
+/** Generates a brand-new Plan (a new version) for the user, calling the real LLM and validating its answer against the real Program catalog. Requires a completed OnboardingProfile — that's this app's stand-in for a real Assessment entity (Developer 1's own future work). */
+export async function generatePlan(userId: string): Promise<PlanDTO> {
+  if (!isAiConfigured()) {
+    throw new ApiHttpError(
+      503,
+      "plan_generation_not_configured",
+      "Plan generation isn't configured on this server yet — set ANTHROPIC_API_KEY, OPENAI_API_KEY, or the AZURE_OPENAI_* trio",
+    );
+  }
+
+  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  if (!profile || !profile.completedAt) {
+    throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
+  }
+
+  const lastVersion = await prisma.plan.findFirst({
+    where: { userId },
+    orderBy: { version: "desc" },
+    select: { version: true },
+  });
+  const version = (lastVersion?.version ?? 0) + 1;
+
+  const planRow = await prisma.plan.create({ data: { userId, version, status: "generating" } });
+
+  return runSelectionAndPersist(planRow, {
+    goals: profile.goals,
+    trainingLevel: profile.trainingLevel,
+    medicalConditions: profile.medicalConditions,
+    injuries: profile.injuries,
+  });
+}
+
+/** Re-runs generation on an existing `failed` Plan row — the "retry" state Developer 1's spec names — rather than minting a new version, since nothing about it ever succeeded the first time. */
+export async function retryPlanGeneration(userId: string, planId: string): Promise<PlanDTO> {
+  const existing = (await prisma.plan.findUnique({ where: { id: planId } })) as PlanRow | null;
+  if (!existing || existing.userId !== userId) {
+    throw new ApiHttpError(404, "plan_not_found", "Plan not found");
+  }
+  if (existing.status !== "failed") {
+    throw new ApiHttpError(409, "plan_not_failed", "Only a failed plan can be retried");
+  }
+  if (!isAiConfigured()) {
+    throw new ApiHttpError(503, "plan_generation_not_configured", "Plan generation isn't configured on this server yet");
+  }
+
+  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  if (!profile || !profile.completedAt) {
+    throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
+  }
+
+  const reset = await prisma.plan.update({
+    where: { id: planId },
+    data: { status: "generating", failureReason: null },
+  });
+
+  return runSelectionAndPersist(reset, {
+    goals: profile.goals,
+    trainingLevel: profile.trainingLevel,
+    medicalConditions: profile.medicalConditions,
+    injuries: profile.injuries,
+  });
+}
+
+async function runSelectionAndPersist(
+  planRow: PlanRow,
+  profile: { goals: string[]; trainingLevel: string | null; medicalConditions: string[]; injuries: string[] },
+): Promise<PlanDTO> {
+  const programs = await eligiblePrograms();
+  if (programs.length === 0) {
+    const failed = await failPlan(planRow.id, "No published programs are available to select from right now");
+    return toPlanDTO(failed, null);
+  }
+
+  let raw: string;
+  try {
+    raw = await generateCompletion(buildSelectionPrompt(profile, programs));
+  } catch {
+    const failed = await failPlan(planRow.id, "The plan-generation service didn't respond — try again in a moment");
+    await recordAudit({
+      actorId: planRow.userId,
+      action: "plan.generation_failed",
+      entityType: "Plan",
+      entityId: planRow.id,
+      metadata: { reason: "upstream_error" },
+    });
+    return toPlanDTO(failed, null);
+  }
+
+  const eligibleIds = new Set(programs.map((p) => p.id));
+  const parsed = parseSelection(raw, eligibleIds);
+  if (!parsed) {
+    const failed = await failPlan(planRow.id, "The plan-generation service returned an unusable response");
+    await recordAudit({
+      actorId: planRow.userId,
+      action: "plan.generation_failed",
+      entityType: "Plan",
+      entityId: planRow.id,
+      metadata: { reason: "unparseable_response" },
+    });
+    return toPlanDTO(failed, null);
+  }
+
+  const [generated] = await prisma.$transaction([
+    prisma.plan.update({
+      where: { id: planRow.id },
+      data: { status: "generated", programId: parsed.programId, rationale: parsed.rationale, isActive: true },
+    }),
+    // Deactivate every OTHER plan this user has — the one just generated
+    // above is the new current one. Scoped by userId + id-not-equal so
+    // this can run in the same transaction without a write-order race.
+    prisma.plan.updateMany({
+      where: { userId: planRow.userId, id: { not: planRow.id }, isActive: true },
+      data: { isActive: false },
+    }),
+  ]);
+
+  await recordAudit({
+    actorId: planRow.userId,
+    action: "plan.activated",
+    entityType: "Plan",
+    entityId: planRow.id,
+    metadata: { programId: parsed.programId, version: planRow.version },
+  });
+
+  const program = programs.find((p) => p.id === parsed.programId);
+  return toPlanDTO(generated as PlanRow, program?.name ?? null);
+}
+
+async function failPlan(planId: string, failureReason: string): Promise<PlanRow> {
+  return prisma.plan.update({ where: { id: planId }, data: { status: "failed", failureReason } }) as Promise<PlanRow>;
+}
+
+export async function getCurrentPlan(userId: string): Promise<PlanDTO | null> {
+  const plan = (await prisma.plan.findFirst({ where: { userId, isActive: true } })) as PlanRow | null;
+  if (!plan) return null;
+  const program = plan.programId ? await prisma.program.findUnique({ where: { id: plan.programId }, select: { name: true } }) : null;
+  return toPlanDTO(plan, program?.name ?? null);
+}
+
+export async function listPlans(userId: string): Promise<PlanDTO[]> {
+  const plans = (await prisma.plan.findMany({ where: { userId }, orderBy: { version: "desc" } })) as PlanRow[];
+  const programIds = [...new Set(plans.map((p) => p.programId).filter((id): id is string => id !== null))];
+  const programs = programIds.length
+    ? await prisma.program.findMany({ where: { id: { in: programIds } }, select: { id: true, name: true } })
+    : [];
+  const nameById = new Map(programs.map((p) => [p.id, p.name]));
+  return plans.map((p) => toPlanDTO(p, p.programId ? (nameById.get(p.programId) ?? null) : null));
+}
+
+// ---- Recommendation ------------------------------------------------------
+
+interface RecommendationDTO {
+  id: string;
+  planId: string;
+  kind: "no_change" | "switch_program";
+  status: "active" | "accepted" | "modified" | "declined" | "no_change" | "superseded";
+  rationale: string;
+  suggestedProgramId: string | null;
+  suggestedProgramName: string | null;
+  decidedByRole: string | null;
+  decidedAt: Date | null;
+  createdAt: Date;
+}
+
+type RecommendationRow = {
+  id: string;
+  userId: string;
+  planId: string;
+  kind: string;
+  // A precise literal union, not plain `string` — this value round-trips
+  // straight into Prisma's `data.status` on decideRecommendation()'s
+  // update call below, which (when a real generated Prisma client is
+  // present, as it is once `prisma generate` has run) expects its own
+  // `RecommendationStatus` enum type, not an arbitrary string. Matching
+  // literals here satisfies that structurally without importing the
+  // Prisma-generated enum type directly (this codebase's own convention
+  // — see this file's top comment on why Prisma model types aren't
+  // imported elsewhere).
+  status: "active" | "accepted" | "modified" | "declined" | "no_change" | "superseded";
+  rationale: string;
+  suggestedProgramId: string | null;
+  decidedByRole: string | null;
+  decidedById: string | null;
+  decidedAt: Date | null;
+  createdAt: Date;
+};
+
+function toRecommendationDTO(r: RecommendationRow, suggestedProgramName: string | null): RecommendationDTO {
+  return {
+    id: r.id,
+    planId: r.planId,
+    kind: r.kind as RecommendationDTO["kind"],
+    status: r.status as RecommendationDTO["status"],
+    rationale: r.rationale,
+    suggestedProgramId: r.suggestedProgramId,
+    suggestedProgramName,
+    decidedByRole: r.decidedByRole,
+    decidedAt: r.decidedAt,
+    createdAt: r.createdAt,
+  };
+}
+
+/** Generates a fresh Recommendation against the user's active Plan, grounded in real recent WorkoutSession/BodyMeasurement data — never fabricated activity. Supersedes any prior undecided Recommendation for the same Plan first, so there's only ever one live one to act on. */
+export async function generateRecommendation(userId: string): Promise<RecommendationDTO> {
+  if (!isAiConfigured()) {
+    throw new ApiHttpError(503, "plan_generation_not_configured", "Recommendations aren't configured on this server yet");
+  }
+
+  const plan = await prisma.plan.findFirst({ where: { userId, isActive: true, status: "generated" } });
+  if (!plan || !plan.programId) {
+    throw new ApiHttpError(404, "no_active_plan", "Generate a plan before requesting a recommendation");
+  }
+  const currentProgram = await prisma.program.findUnique({ where: { id: plan.programId }, select: { name: true } });
+
+  const [recentSessions, latest, previous] = await Promise.all([
+    prisma.workoutSession.findMany({
+      where: { userId, status: "completed" },
+      orderBy: { completedAt: "desc" },
+      take: MAX_RECENT_SESSIONS,
+      include: { workout: { select: { name: true } } },
+    }),
+    prisma.bodyMeasurement.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+    prisma.bodyMeasurement.findMany({ where: { userId }, orderBy: { loggedAt: "desc" }, skip: 1, take: 1 }),
+  ]);
+
+  const candidates = await eligiblePrograms(plan.programId);
+  const prompt = buildRecommendationPrompt(
+    currentProgram?.name ?? "the current program",
+    (recentSessions as Array<{ workout: { name: string }; completedAt: Date | null }>).map((s) => ({
+      workoutName: s.workout.name,
+      completedAt: s.completedAt,
+    })),
+    latest?.weightKg ?? null,
+    (previous as Array<{ weightKg: number | null }>)[0]?.weightKg ?? null,
+    candidates,
+  );
+
+  let raw: string;
+  try {
+    raw = await generateCompletion(prompt);
+  } catch {
+    throw new ApiHttpError(502, "recommendation_upstream_error", "The recommendation service couldn't respond right now — try again in a moment");
+  }
+
+  const eligibleIds = new Set(candidates.map((p) => p.id));
+  const parsed = parseRecommendationDecision(raw, eligibleIds);
+  if (!parsed) {
+    throw new ApiHttpError(502, "recommendation_unusable_response", "The recommendation service returned an unusable response — try again");
+  }
+
+  // Supersede any prior undecided recommendation for this plan — only one
+  // "active" recommendation should ever be outstanding at a time.
+  await prisma.recommendation.updateMany({
+    where: { planId: plan.id, status: "active" },
+    data: { status: "superseded" },
+  });
+
+  const created = (await prisma.recommendation.create({
+    data: {
+      userId,
+      planId: plan.id,
+      kind: parsed.decision,
+      status: "active",
+      rationale: parsed.rationale,
+      suggestedProgramId: parsed.programId,
+    },
+  })) as RecommendationRow;
+
+  await recordAudit({
+    actorId: userId,
+    action: "recommendation.generated",
+    entityType: "Recommendation",
+    entityId: created.id,
+    metadata: { planId: plan.id, kind: parsed.decision },
+  });
+
+  const suggestedName = parsed.programId ? candidates.find((p) => p.id === parsed.programId)?.name ?? null : null;
+  return toRecommendationDTO(created, suggestedName);
+}
+
+export async function getCurrentRecommendation(userId: string): Promise<RecommendationDTO | null> {
+  const rec = (await prisma.recommendation.findFirst({
+    where: { userId, status: "active" },
+    orderBy: { createdAt: "desc" },
+  })) as RecommendationRow | null;
+  if (!rec) return null;
+  const name = rec.suggestedProgramId
+    ? (await prisma.program.findUnique({ where: { id: rec.suggestedProgramId }, select: { name: true } }))?.name ?? null
+    : null;
+  return toRecommendationDTO(rec, name);
+}
+
+/**
+ * Decides an active Recommendation — the same entry point Developer 2's
+ * future professional-review UI is designed to call (passing
+ * decidedByRole: "professional" instead of "user"), see this file's own
+ * top comment. Accepting a "switch_program" recommendation creates a real
+ * new active Plan directly (no second AI call — the choice is already
+ * made); "modify" does the same but with an admin/professional-chosen
+ * `replacementProgramId` instead of the AI's own suggestion.
+ */
+export async function decideRecommendation(
+  userId: string,
+  recommendationId: string,
+  input: DecideRecommendationInput,
+  decidedByRole: "user" | "professional" = "user",
+): Promise<RecommendationDTO> {
+  const rec = (await prisma.recommendation.findUnique({ where: { id: recommendationId } })) as RecommendationRow | null;
+  if (!rec || rec.userId !== userId) {
+    throw new ApiHttpError(404, "recommendation_not_found", "Recommendation not found");
+  }
+  if (rec.status !== "active") {
+    throw new ApiHttpError(409, "recommendation_already_decided", "This recommendation has already been decided");
+  }
+
+  let newProgramId: string | null = null;
+  let newStatus: RecommendationRow["status"];
+
+  if (input.action === "decline") {
+    newStatus = "declined";
+  } else if (input.action === "modify") {
+    const replacement = await prisma.program.findUnique({ where: { id: input.replacementProgramId }, select: { id: true, status: true } });
+    if (!replacement || replacement.status !== "published") {
+      throw new ApiHttpError(404, "program_not_found", "The replacement program could not be found");
+    }
+    newStatus = "modified";
+    newProgramId = replacement.id;
+  } else {
+    // "accept" — behavior depends on what kind of recommendation this was.
+    if (rec.kind === "no_change") {
+      newStatus = "no_change";
+    } else {
+      newStatus = "accepted";
+      newProgramId = rec.suggestedProgramId;
+    }
+  }
+
+  const updated = (await prisma.recommendation.update({
+    where: { id: recommendationId },
+    data: { status: newStatus, decidedByRole, decidedById: userId, decidedAt: new Date() },
+  })) as RecommendationRow;
+
+  if (newProgramId) {
+    const lastVersion = await prisma.plan.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true } });
+    const version = (lastVersion?.version ?? 0) + 1;
+    await prisma.$transaction([
+      prisma.plan.updateMany({ where: { userId, isActive: true }, data: { isActive: false } }),
+      prisma.plan.create({
+        data: {
+          userId,
+          version,
+          status: "generated",
+          programId: newProgramId,
+          rationale: `Switched based on a ${newStatus} recommendation: ${rec.rationale}`,
+          isActive: true,
+        },
+      }),
+    ]);
+  }
+
+  await recordAudit({
+    actorId: decidedByRole === "user" ? userId : null,
+    actorProfessionalId: decidedByRole === "professional" ? userId : null,
+    action: "recommendation.decided",
+    entityType: "Recommendation",
+    entityId: recommendationId,
+    metadata: { action: input.action, status: newStatus, decidedByRole },
+  });
+
+  const name = newProgramId ? (await prisma.program.findUnique({ where: { id: newProgramId }, select: { name: true } }))?.name ?? null : null;
+  return toRecommendationDTO(updated, name);
+}

@@ -185,11 +185,11 @@ enum UserStatus {
 }
 
 model User {
-  id                String        @id @default(uuid())
-  email             String        @unique
-  passwordHash      String
-  fullName          String
-  phone             String?
+  id                     String      @id @default(uuid())
+  email                  String      @unique
+  passwordHash           String
+  fullName               String
+  phone                  String?
   // Module 09.05 Geographic (added 26 Aug 2026) — ISO 3166-1 alpha-2 (e.g.
   // "US", "IN"), format-validated by users.schema.ts's updateProfileSchema,
   // NOT restricted to a fixed country list server-side (the mobile picker's
@@ -201,7 +201,7 @@ model User {
   // at signup, so parsing a country code out of it would be guessing, not
   // capturing — see adminAnalytics.service.ts's Geographic doc comment for
   // the full reasoning behind capturing this explicitly instead.
-  countryCode       String?
+  countryCode            String?
   // Module 02.01 Bulk-select + suspend/reactivate (added 26 Aug 2026) —
   // the exact same mutable-status precedent as Professional.status/
   // AdminUser.status: login is blocked while suspended (see
@@ -211,32 +211,32 @@ model User {
   // account-operations only ("this account shouldn't sign in right
   // now"), the smallest real slice of 02.01's spec that doesn't require
   // 08.04 Safety/Abuse Reports' still-open moderation-policy decision.
-  status            UserStatus    @default(active)
+  status                 UserStatus  @default(active)
   // Same "one latest note, full trail lives in AuditLog" convention as
   // Professional.adminNotes — set optionally on suspend/reactivate.
-  adminNotes        String?
-  languagePreference String       @default("en")
-  unitSystem        UnitSystem    @default(metric)
-  accentColor       AccentColor   @default(blue)
+  adminNotes             String?
+  languagePreference     String      @default("en")
+  unitSystem             UnitSystem  @default(metric)
+  accentColor            AccentColor @default(blue)
   // §L "Notification Settings"' master toggle — gates whether the client
   // schedules ANY local reminder notifications at all (see
   // apps/user-mobile's src/lib/reminderNotifications.ts). Per-category /
   // per-reminder control already lives on the Reminders screen itself
   // (each Reminder has its own `isEnabled`), so this is deliberately just
   // the one master switch, not a second parallel category-toggle system.
-  notificationsEnabled Boolean    @default(true)
+  notificationsEnabled   Boolean     @default(true)
   // §O "Refer & Invite" — generated once at signup (see auth.service.ts's
   // generateReferralCode()), never user-editable. Just an identifier for
   // sharing/redeeming; the reward value it can now earn lives on
   // `referralCreditMonths` below and in the ReferralReward model.
-  referralCode      String        @unique
+  referralCode           String      @unique
   // §O reward (added 31 Aug 2026) — accrued months of subscription credit
   // earned from successful referrals. Incremented when a referee first
   // subscribes to a paid plan (see subscriptions.service.ts + the
   // ReferralReward model's own doc comment). A real balance, not yet auto-
   // consumed at renewal (no billing engine runs renewals in this build) —
   // surfaced honestly on the mobile Refer & Invite screen as credit earned.
-  referralCreditMonths Int        @default(0)
+  referralCreditMonths   Int         @default(0)
   // §L "Security" — Two-Factor Authentication, added 25 Aug 2026 (Phase 4,
   // closing gap §17). TOTP (RFC 6238, authenticator-app style — Google
   // Authenticator/Authy/1Password), not SMS: unlike gap §9's phone+OTP,
@@ -251,85 +251,89 @@ model User {
   // authenticator app is verified (see users.service.ts's
   // enableTwoFactor), so a half-finished setup never silently protects
   // (or fails to protect) a login.
-  twoFactorEnabled  Boolean       @default(false)
-  twoFactorSecret   String?
+  twoFactorEnabled       Boolean     @default(false)
+  twoFactorSecret        String?
   // Bcrypt-hashed one-time recovery codes (same hashing as passwordHash),
   // shown to the user ONCE in plaintext at enable time, regenerated every
   // time 2FA is (re-)enabled. Each is single-use — consumed and removed
   // from this array the moment it's used to complete a login, same
   // "can't be replayed" property a TOTP code already has by expiring.
-  twoFactorRecoveryCodes String[] @default([])
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  twoFactorRecoveryCodes String[]    @default([])
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 
-  onboardingProfile OnboardingProfile?
-  subscriptions     Subscription[]
-  refreshTokens     RefreshToken[]
-  auditLogEntries   AuditLog[]
-  workoutSessions   WorkoutSession[]
-  mealLogs          MealLog[]
-  waterLogs         WaterLog[]
-  bodyMeasurements  BodyMeasurement[]
-  progressPhotos    ProgressPhoto[]
-  programPurchases  ProgramPurchase[]
-  reminders         Reminder[]
-  supportTickets    SupportTicket[]
+  onboardingProfile           OnboardingProfile?
+  subscriptions               Subscription[]
+  refreshTokens               RefreshToken[]
+  auditLogEntries             AuditLog[]
+  workoutSessions             WorkoutSession[]
+  mealLogs                    MealLog[]
+  waterLogs                   WaterLog[]
+  bodyMeasurements            BodyMeasurement[]
+  progressPhotos              ProgressPhoto[]
+  programPurchases            ProgramPurchase[]
+  // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
+  // doc comment.
+  plans                       Plan[]
+  recommendations             Recommendation[]
+  reminders                   Reminder[]
+  supportTickets              SupportTicket[]
   // Support Ticket Messages (added 3 Sep 2026) — see that model's own doc
   // comment. This user is always the reply's author when `sender` is
   // "user" (a support thread has exactly one consumer party, the ticket's
   // own owner).
-  supportTicketMessages SupportTicketMessage[]
-  referralsMade     Referral[]        @relation("ReferralsMade")
-  referredBy        Referral?         @relation("ReferralReceived")
-  payments          Payment[]
-  relationships     Relationship[]
-  aiCoachMessages   AiCoachMessage[]
+  supportTicketMessages       SupportTicketMessage[]
+  referralsMade               Referral[]                   @relation("ReferralsMade")
+  referredBy                  Referral?                    @relation("ReferralReceived")
+  payments                    Payment[]
+  relationships               Relationship[]
+  aiCoachMessages             AiCoachMessage[]
   // Coach Discovery & Booking, added 25 Aug 2026 — see the Booking/
   // RelationshipChangeRequest models' own doc comments below.
-  bookings          Booking[]
-  changeRequests    RelationshipChangeRequest[]
+  bookings                    Booking[]
+  changeRequests              RelationshipChangeRequest[]
   // Sensitive Data Access Requests, added 25 Aug 2026 — see that model's
   // own doc comment below. This user is the SUBJECT of each request, never
   // the requester (only an AdminUser can request/review).
   sensitiveDataAccessRequests SensitiveDataAccessRequest[]
   // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
   // model's own doc comment below.
-  coachMessages     CoachMessage[]
+  coachMessages               CoachMessage[]
   // Coupons / Referral rewards / Recovery, added 31 Aug 2026 — see each
   // model's own doc comment below.
-  couponRedemptions CouponRedemption[]
-  referralRewardsEarned ReferralReward[] @relation("ReferralRewardsEarned")
-  recoveryLogs      RecoveryLog[]
+  couponRedemptions           CouponRedemption[]
+  referralRewardsEarned       ReferralReward[]             @relation("ReferralRewardsEarned")
+  recoveryLogs                RecoveryLog[]
 
   @@map("users")
 }
 
 model OnboardingProfile {
-  userId             String   @id
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gender              String?
-  age                 Int?
-  weightKg            Float?
-  heightCm            Float?
-  goals               String[] @default([])
-  trainingLevel       TrainingLevel?
-  dietType            String?
-  allergens           String[] @default([])
-  medicalConditions   String[] @default([])
-  injuries            String[] @default([])
-  completedAt         DateTime?
+  userId            String         @id
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender            String?
+  age               Int?
+  weightKg          Float?
+  heightCm          Float?
+  goals             String[]       @default([])
+  trainingLevel     TrainingLevel?
+  dietType          String?
+  allergens         String[]       @default([])
+  medicalConditions String[]       @default([])
+  injuries          String[]       @default([])
+  completedAt       DateTime?
 
   @@map("onboarding_profiles")
 }
 
 model RefreshToken {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  createdAt  DateTime @default(now())
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@map("refresh_tokens")
@@ -367,52 +371,59 @@ enum ContentStatus {
 }
 
 model Program {
-  id             String        @id @default(uuid())
-  name           String
-  type           ProgramType
-  description    String
-  durationWeeks  Int
-  isAiOnly       Boolean       @default(true)
-  priceCents     Int           @default(0)
+  id               String        @id @default(uuid())
+  name             String
+  type             ProgramType
+  description      String
+  durationWeeks    Int
+  isAiOnly         Boolean       @default(true)
+  priceCents       Int           @default(0)
   // 4 Sep 2026 — cover image for the Train tab's program cards and Program
   // Detail's hero. A plain URL to an already-hosted image (this build has
   // no object storage — see ProgressPhoto's doc comment further down for
   // why), same shape as Exercise.mediaUrl below. Nullable so every
   // pre-existing row and every admin-authored program without artwork
   // keeps working; the apps fall back to their icon tile when it's null.
-  imageUrl       String?
-  status         ContentStatus @default(published)
+  imageUrl         String?
+  status           ContentStatus @default(published)
   createdByAdminId String?
-  createdByAdmin AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdByAdmin   AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  workouts       Workout[]
-  purchases      ProgramPurchase[]
+  workouts      Workout[]
+  purchases     ProgramPurchase[]
+  // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
+  // doc comment. Two distinct relations: `plans` is every Plan that
+  // selected this Program; `recommendedIn` is every Recommendation that
+  // suggested switching TO this Program (a different thing — a
+  // Recommendation proposes a Program before any Plan adopts it).
+  plans         Plan[]
+  recommendedIn Recommendation[]  @relation("RecommendationSuggestedProgram")
 
   @@index([createdByAdminId])
   @@map("programs")
 }
 
 model Exercise {
-  id           String        @id @default(uuid())
-  name         String
-  muscleGroup  String
-  equipment    String
-  difficulty   Difficulty
-  mediaUrl     String?
+  id               String        @id @default(uuid())
+  name             String
+  muscleGroup      String
+  equipment        String
+  difficulty       Difficulty
+  mediaUrl         String?
   // Exercise Detail's "scrollable instructions" (docs/mobile/03-screen-
   // inventory.md §C trn-06), added 19 Aug 2026. String[] follows the same
   // precedent as OnboardingProfile's goals/allergens/injuries above.
-  instructions String[]      @default([])
+  instructions     String[]      @default([])
   // 22 Aug 2026 — see Program's own doc comment just above for why
   // ContentStatus is draft/published only and why the default is
   // `published`, not `draft`.
-  status         ContentStatus @default(published)
+  status           ContentStatus @default(published)
   createdByAdminId String?
-  createdByAdmin AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdByAdmin   AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   workoutExercises WorkoutExercise[]
   setLogs          ExerciseSetLog[]
@@ -428,47 +439,47 @@ model Exercise {
 // it, containing per-exercise ExerciseSetLog rows.
 
 model Workout {
-  id            String       @id @default(uuid())
-  programId     String
-  program       Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
-  name          String
-  order         Int          @default(0)
+  id              String     @id @default(uuid())
+  programId       String
+  program         Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name            String
+  order           Int        @default(0)
   durationMinutes Int
-  intensity     Difficulty   @default(beginner)
+  intensity       Difficulty @default(beginner)
 
-  exercises     WorkoutExercise[]
-  sessions      WorkoutSession[]
+  exercises WorkoutExercise[]
+  sessions  WorkoutSession[]
 
   @@index([programId])
   @@map("workouts")
 }
 
 model WorkoutExercise {
-  id          String       @id @default(uuid())
-  workoutId   String
-  workout     Workout      @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  exerciseId  String
-  exercise    Exercise     @relation(fields: [exerciseId], references: [id])
-  phase       WorkoutPhase @default(main)
-  order       Int          @default(0)
-  targetSets  Int          @default(3)
-  targetReps  Int          @default(10)
+  id         String       @id @default(uuid())
+  workoutId  String
+  workout    Workout      @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise     @relation(fields: [exerciseId], references: [id])
+  phase      WorkoutPhase @default(main)
+  order      Int          @default(0)
+  targetSets Int          @default(3)
+  targetReps Int          @default(10)
 
   @@index([workoutId])
   @@map("workout_exercises")
 }
 
 model WorkoutSession {
-  id           String                @id @default(uuid())
-  userId       String
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutId    String
-  workout      Workout               @relation(fields: [workoutId], references: [id])
-  status       WorkoutSessionStatus  @default(in_progress)
-  startedAt    DateTime              @default(now())
-  completedAt  DateTime?
+  id          String               @id @default(uuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId   String
+  workout     Workout              @relation(fields: [workoutId], references: [id])
+  status      WorkoutSessionStatus @default(in_progress)
+  startedAt   DateTime             @default(now())
+  completedAt DateTime?
 
-  setLogs      ExerciseSetLog[]
+  setLogs ExerciseSetLog[]
 
   @@index([userId])
   @@index([workoutId])
@@ -476,24 +487,24 @@ model WorkoutSession {
 }
 
 model ExerciseSetLog {
-  id               String         @id @default(uuid())
-  sessionId        String
-  session          WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  exerciseId       String
-  exercise         Exercise       @relation(fields: [exerciseId], references: [id])
-  setNumber        Int
-  weightKg         Float?
-  reps             Int
-  rpe              Float?
+  id         String         @id @default(uuid())
+  sessionId  String
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise       @relation(fields: [exerciseId], references: [id])
+  setNumber  Int
+  weightKg   Float?
+  reps       Int
+  rpe        Float?
   // Added for the Set/Rest Tracker screen (docs/mobile/03-screen-inventory.md
   // §C trn-08, Phase 1). isWarmup/isDropSet mirror that screen's "warm-up/
   // drop-set toggles"; note mirrors its free-text "note field". All three are
   // optional/defaulted so existing rows and the plain Active Workout log-set
   // flow (which doesn't set them) are unaffected.
-  isWarmup         Boolean        @default(false)
-  isDropSet        Boolean        @default(false)
-  note             String?
-  loggedAt         DateTime       @default(now())
+  isWarmup   Boolean        @default(false)
+  isDropSet  Boolean        @default(false)
+  note       String?
+  loggedAt   DateTime       @default(now())
 
   @@index([sessionId])
   @@map("exercise_set_logs")
@@ -525,6 +536,136 @@ model ProgramPurchase {
   @@map("program_purchases")
 }
 
+// Plan-Generation / Recommendation Engine — added 14 Sep 2026.
+//
+// The R1 work-package split (Developer 1: consumer app, Developer 2:
+// professional app, Developer 3: admin/web/platform) names an "Assessment
+// → Plan" flow and an ongoing "Recommendation" concept with real state
+// machines, but no work package claims the engine that actually turns an
+// Assessment into a Plan, or produces a Recommendation to review —
+// Developer 1 owns the Plan/Recommendation *screens and states*,
+// Developer 2 owns *reviewing* a recommendation (Accept/Modify/No Change),
+// neither owns generating one. Picked up here as shared platform logic,
+// the same way `aiClient.ts`'s `generateCompletion()` already sits
+// underneath AI Coach without being "owned" by any one screen.
+//
+// Real design decision made, not left implicit: a Plan is an AI-driven
+// SELECTION of one real, existing, admin-authored `Program` from the
+// catalog — grounded in the user's real `OnboardingProfile` (goals,
+// training level, safety flags) — not AI-authored novel workouts. Same
+// reasoning AI Coach's own doc comment already establishes for this
+// codebase: an LLM inventing exercises/sets/reps with no human review is
+// a real safety risk (contraindicated movements for a real injury, unsafe
+// progressions); selecting and explaining a choice among real, reviewed
+// content is not. See planGeneration.service.ts's own doc comment for
+// the full reasoning and what's deliberately NOT attempted this pass
+// (equipment-aware selection needs Gym Context, Developer 3's future
+// work; multi-program sequencing; a real Assessment entity — this reuses
+// OnboardingProfile as today's assessment source).
+enum PlanStatus {
+  generating
+  generated
+  failed
+}
+
+model Plan {
+  id            String     @id @default(uuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Monotonically increasing per user — a new Assessment or an accepted
+  // "switch program" Recommendation produces a new version rather than
+  // mutating history in place, so "why did my plan change" always has a
+  // real prior version to compare against (Dev1's "Why This Changed").
+  version       Int
+  status        PlanStatus @default(generating)
+  // Set only once status is "generated" — the real Program this plan
+  // points a user at. Nullable because a "generating" or "failed" row has
+  // no selection yet.
+  programId     String?
+  program       Program?   @relation(fields: [programId], references: [id], onDelete: SetNull)
+  // AI-generated, grounded explanation of why this Program was selected —
+  // references the user's actual goals/level/safety context, never a
+  // generic template. Null until generated.
+  rationale     String?
+  // Set only when status is "failed" — a real error, not swallowed, so a
+  // retry has something honest to show/log (mirrors AI Coach's own
+  // ai_coach_upstream_error handling).
+  failureReason String?
+  // Exactly one active Plan per user at a time — the one Today/Train
+  // actually reads from. Defaults false, not true: a row starts
+  // "generating" with nothing to activate yet, and only flips to true
+  // once generation actually succeeds (planGeneration.service.ts sets it
+  // explicitly, deactivating the prior active row in the same
+  // transaction) — a "failed" row must never become active. History is
+  // kept, never deleted.
+  isActive      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  recommendations Recommendation[]
+
+  @@unique([userId, version])
+  @@index([userId, isActive])
+  @@map("plans")
+}
+
+enum RecommendationKind {
+  // "Continue Current Plan" / "No Change" — a valid, first-class outcome
+  // (BR-AI-010/BR-AI-011 across both the Dev1 and Dev2 work packages),
+  // not merely the absence of a recommendation.
+  no_change
+  // Suggests switching the user's active Plan to a different real Program
+  // — e.g. after completing one, or when recent activity/measurements
+  // suggest the current one no longer fits.
+  switch_program
+}
+
+enum RecommendationStatus {
+  // Awaiting a decision — from the user (self-serve) or, once Developer 2
+  // builds professional review on top of this same engine, a professional.
+  active
+  accepted
+  modified
+  declined
+  no_change
+  // A later Recommendation for the same Plan superseded this one before
+  // it was ever decided — kept for history, not deleted.
+  superseded
+}
+
+model Recommendation {
+  id                 String               @id @default(uuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
+  kind               RecommendationKind
+  status             RecommendationStatus @default(active)
+  // Grounded in real data the same way Plan.rationale is — recent
+  // WorkoutSession completion, latest BodyMeasurement trend. Never a
+  // generic "keep up the good work" template.
+  rationale          String
+  // Set only when kind is "switch_program" — the real Program being
+  // suggested. Null for "no_change".
+  suggestedProgramId String?
+  suggestedProgram   Program?             @relation("RecommendationSuggestedProgram", fields: [suggestedProgramId], references: [id], onDelete: SetNull)
+  // Who decided, and how — deliberately a plain string pair rather than
+  // two nullable FKs (one to User, one to a future Professional decision
+  // record) so this stays a decidable-by-anyone-permitted contract:
+  // Developer 2's professional review UI can call the same decide
+  // endpoint this pass builds for self-serve users, recording
+  // decidedByRole: "professional" and its own Decision Record on top,
+  // without this table needing to know about Professional at all.
+  decidedByRole      String?
+  decidedById        String?
+  decidedAt          DateTime?
+  createdAt          DateTime             @default(now())
+
+  @@index([userId, status])
+  @@index([planId])
+  @@map("recommendations")
+}
+
 model Recipe {
   id               String        @id @default(uuid())
   name             String
@@ -548,7 +689,7 @@ model Recipe {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  mealLogs         MealLog[]
+  mealLogs MealLog[]
 
   @@index([createdByAdminId])
   @@map("recipes")
@@ -593,17 +734,17 @@ enum ContentReviewStatus {
 }
 
 model ContentReview {
-  id                  String                    @id @default(uuid())
-  contentType         ContentReviewContentType
-  contentId           String
-  submittedByAdminId  String
-  submittedByAdmin    AdminUser                 @relation("ContentReviewSubmittedBy", fields: [submittedByAdminId], references: [id], onDelete: Cascade)
-  reviewedByAdminId   String?
-  reviewedByAdmin     AdminUser?                @relation("ContentReviewReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
-  status              ContentReviewStatus       @default(pending)
-  reviewNotes         String?
-  reviewedAt          DateTime?
-  createdAt           DateTime                  @default(now())
+  id                 String                   @id @default(uuid())
+  contentType        ContentReviewContentType
+  contentId          String
+  submittedByAdminId String
+  submittedByAdmin   AdminUser                @relation("ContentReviewSubmittedBy", fields: [submittedByAdminId], references: [id], onDelete: Cascade)
+  reviewedByAdminId  String?
+  reviewedByAdmin    AdminUser?               @relation("ContentReviewReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  status             ContentReviewStatus      @default(pending)
+  reviewNotes        String?
+  reviewedAt         DateTime?
+  createdAt          DateTime                 @default(now())
 
   @@index([contentType, contentId])
   @@index([submittedByAdminId])
@@ -619,19 +760,19 @@ model ContentReview {
 // someone's food history — recipeId is kept only for traceability.
 
 model MealLog {
-  id         String        @id @default(uuid())
-  userId     String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipeId   String?
-  recipe     Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  mealType   MealType
-  name       String
-  calories   Int
-  proteinG   Int           @default(0)
-  carbsG     Int           @default(0)
-  fatG       Int           @default(0)
-  source     MealLogSource @default(manual)
-  loggedAt   DateTime      @default(now())
+  id       String        @id @default(uuid())
+  userId   String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId String?
+  recipe   Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  mealType MealType
+  name     String
+  calories Int
+  proteinG Int           @default(0)
+  carbsG   Int           @default(0)
+  fatG     Int           @default(0)
+  source   MealLogSource @default(manual)
+  loggedAt DateTime      @default(now())
 
   @@index([userId, loggedAt])
   @@map("meal_logs")
@@ -670,16 +811,16 @@ model WaterLog {
 // docs/mobile/07-open-questions-gaps.md for that flagged simplification.
 
 model BodyMeasurement {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weightKg   Float?
-  chestCm    Float?
-  waistCm    Float?
-  hipsCm     Float?
-  armsCm     Float?
-  thighsCm   Float?
-  loggedAt   DateTime @default(now())
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg Float?
+  chestCm  Float?
+  waistCm  Float?
+  hipsCm   Float?
+  armsCm   Float?
+  thighsCm Float?
+  loggedAt DateTime @default(now())
 
   @@index([userId, loggedAt])
   @@map("body_measurements")
@@ -840,16 +981,16 @@ enum SupportTicketStatus {
 }
 
 model SupportTicket {
-  id        String                 @id @default(uuid())
+  id        String                @id @default(uuid())
   userId    String
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category  SupportTicketCategory  @default(other)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  SupportTicketCategory @default(other)
   subject   String
   message   String
-  priority  SupportTicketPriority  @default(normal)
-  status    SupportTicketStatus    @default(open)
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
+  priority  SupportTicketPriority @default(normal)
+  status    SupportTicketStatus   @default(open)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
   escalations Escalation[]
   // Support Ticket Messages (added 3 Sep 2026) — see the
@@ -888,18 +1029,18 @@ enum EscalationStatus {
 }
 
 model Escalation {
-  id                 String            @id @default(uuid())
+  id                 String           @id @default(uuid())
   supportTicketId    String
-  supportTicket      SupportTicket     @relation(fields: [supportTicketId], references: [id], onDelete: Cascade)
+  supportTicket      SupportTicket    @relation(fields: [supportTicketId], references: [id], onDelete: Cascade)
   escalatedByAdminId String
-  escalatedByAdmin   AdminUser         @relation("EscalationEscalatedBy", fields: [escalatedByAdminId], references: [id], onDelete: Cascade)
+  escalatedByAdmin   AdminUser        @relation("EscalationEscalatedBy", fields: [escalatedByAdminId], references: [id], onDelete: Cascade)
   reason             String
-  status             EscalationStatus  @default(open)
+  status             EscalationStatus @default(open)
   resolvedByAdminId  String?
-  resolvedByAdmin    AdminUser?        @relation("EscalationResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  resolvedByAdmin    AdminUser?       @relation("EscalationResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
   resolutionNotes    String?
   resolvedAt         DateTime?
-  createdAt          DateTime          @default(now())
+  createdAt          DateTime         @default(now())
 
   @@index([supportTicketId])
   @@index([status])
@@ -1088,7 +1229,7 @@ model Referral {
 
   // §O reward (added 31 Aug 2026) — at most one reward grant per referral;
   // see the ReferralReward model's own doc comment.
-  reward     ReferralReward?
+  reward ReferralReward?
 
   @@index([referrerId])
   @@map("referrals")
@@ -1113,14 +1254,14 @@ model Referral {
 // (published)` above — every pre-existing seeded plan stays purchasable
 // exactly as it always was.
 model SubscriptionPlan {
-  id            String           @id @default(uuid())
-  tier          SubscriptionTier
-  name          String
-  priceCents    Int
-  billingCycle  BillingCycle
-  isActive      Boolean          @default(true)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id           String           @id @default(uuid())
+  tier         SubscriptionTier
+  name         String
+  priceCents   Int
+  billingCycle BillingCycle
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   subscriptions Subscription[]
 
@@ -1128,14 +1269,14 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  id         String             @id @default(uuid())
-  userId     String
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId     String
-  plan       SubscriptionPlan   @relation(fields: [planId], references: [id])
-  status     SubscriptionStatus @default(trialing)
-  renewsAt   DateTime?
-  createdAt  DateTime           @default(now())
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status    SubscriptionStatus @default(trialing)
+  renewsAt  DateTime?
+  createdAt DateTime           @default(now())
 
   @@index([userId])
   @@map("subscriptions")
@@ -1265,13 +1406,13 @@ model AdminUser {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  auditLogEntries AuditLog[]
+  auditLogEntries                 AuditLog[]
   // 22 Aug 2026 (Module 05 — Programs CMS) — the reverse side of
   // Program/Exercise/Recipe's `createdByAdmin` relation; see those models'
   // own doc comments.
-  createdPrograms  Program[]
-  createdExercises Exercise[]
-  createdRecipes   Recipe[]
+  createdPrograms                 Program[]
+  createdExercises                Exercise[]
+  createdRecipes                  Recipe[]
   // Sensitive Data Access Requests, added 25 Aug 2026 — two distinct
   // relations since one AdminUser can both request access to a user's
   // panel and separately review other admins' requests (never their own,
@@ -1282,37 +1423,37 @@ model AdminUser {
   // relation needed here (unlike the two above): the requester on a
   // RelationshipChangeRequest is always a consumer User, never an
   // AdminUser, so there's no "requested by admin" side to also model.
-  reviewedChangeRequests RelationshipChangeRequest[]
+  reviewedChangeRequests          RelationshipChangeRequest[]
   // Module 05.05 Review/Approval, added 25 Aug 2026 — two relations again
   // (like Sensitive Data Access, unlike the Change/Intervention Queue just
   // above): the submitter on a ContentReview is always an AdminUser too
   // (whoever wrote the draft), so both sides need modeling.
-  contentReviewsSubmitted ContentReview[] @relation("ContentReviewSubmittedBy")
-  contentReviewsReviewed  ContentReview[] @relation("ContentReviewReviewedBy")
+  contentReviewsSubmitted         ContentReview[]              @relation("ContentReviewSubmittedBy")
+  contentReviewsReviewed          ContentReview[]              @relation("ContentReviewReviewedBy")
   // Module 08.02 Escalations, added 25 Aug 2026 — two relations, same
   // shape as Sensitive Data Access / Content Review above: the admin who
   // raises an escalation and the admin who resolves it are both always
   // AdminUsers, and (unlike those two) can legitimately be the same one —
   // see `Escalation`'s own comment for why no self-guard applies here.
-  escalationsRaised   Escalation[] @relation("EscalationEscalatedBy")
-  escalationsResolved Escalation[] @relation("EscalationResolvedBy")
+  escalationsRaised               Escalation[]                 @relation("EscalationEscalatedBy")
+  escalationsResolved             Escalation[]                 @relation("EscalationResolvedBy")
   // Support Ticket Messages (added 3 Sep 2026) — any admin holding
   // support:edit can reply to any ticket, so unlike Escalation's two fixed
   // relations this is just the one "messages this admin has sent" list —
   // see SupportTicketMessage's own doc comment.
-  supportTicketMessagesSent SupportTicketMessage[]
+  supportTicketMessagesSent       SupportTicketMessage[]
   // Module 10 Finance, added 26 Aug 2026 — one relation each, unlike
   // Escalation/ContentReview/Sensitive Data Access above: an Expense is
   // recorded once by whoever entered it, a TaxConfig is updated by
   // whoever last saved it, and neither has a second "reviewed by" side
   // the way an approval workflow would.
-  expensesRecorded  Expense[]
-  taxConfigsUpdated TaxConfig[]
+  expensesRecorded                Expense[]
+  taxConfigsUpdated               TaxConfig[]
   // Module 11 AI Operations, added 27 Aug 2026 — see AiCoachSettings's own
   // comment. Always 0 or 1 rows in practice (the singleton), modeled as a
   // list only because that's how every other "who last touched this
   // config row" relation above is shaped.
-  aiCoachSettingsUpdated AiCoachSettings[]
+  aiCoachSettingsUpdated          AiCoachSettings[]
 
   @@map("admin_users")
 }
@@ -1358,20 +1499,20 @@ enum RelationshipStatus {
 }
 
 model Professional {
-  id           String              @id @default(uuid())
-  email        String              @unique
-  passwordHash String
-  fullName     String
-  phone        String?
-  bio          String?
-  specializationTags String[]      @default([])
-  yearsExperience Int?
-  status       ProfessionalStatus  @default(active)
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  passwordHash       String
+  fullName           String
+  phone              String?
+  bio                String?
+  specializationTags String[]           @default([])
+  yearsExperience    Int?
+  status             ProfessionalStatus @default(active)
   // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
   // take on this coach's booking value, admin-editable (Module 03 Profile /
   // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
   // model's doc comment for how it's applied.
-  commissionPct Int                @default(20)
+  commissionPct      Int                @default(20)
   // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
   // service, unlike ProfessionalCredential below. Same base64-in-Postgres
   // storage precedent as ProgressPhoto.imageData (no object storage exists
@@ -1381,21 +1522,21 @@ model Professional {
   // security/privacy review (encryption-at-rest, redaction, scoped access)
   // before this should ever hold a real government ID — this build has
   // none of that, only the same storage mechanism as everything else here.
-  kycDocumentData String?
-  kycStatus    CredentialStatus    @default(not_verified)
+  kycDocumentData    String?
+  kycStatus          CredentialStatus   @default(not_verified)
   // Admin review notes for the KYC check (docs/admin/03-screen-inventory.md
   // 03.03's "admin review notes/log" field) — added 21 Aug 2026 for the
   // Credential Verification screen. A single current-notes field, not a
   // full threaded log; each verify/reject/suspend action is separately
   // captured in AuditLog (recordAudit()) for the actual audit trail.
-  adminNotes   String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  adminNotes         String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  credentials   ProfessionalCredential[]
-  refreshTokens ProfessionalRefreshToken[]
-  relationships Relationship[]
-  auditLogEntries AuditLog[]
+  credentials      ProfessionalCredential[]
+  refreshTokens    ProfessionalRefreshToken[]
+  relationships    Relationship[]
+  auditLogEntries  AuditLog[]
   // Coach Discovery & Booking, added 25 Aug 2026 — see the
   // ProfessionalServiceOffering/Booking models' own doc comments below.
   serviceOfferings ProfessionalServiceOffering[]
@@ -1502,18 +1643,18 @@ model Relationship {
 // "combined" only ever describes what one priced session bundles, never
 // what a professional is verified for or a relationship tracks.
 model ProfessionalServiceOffering {
-  id                String                   @id @default(uuid())
-  professionalId    String
-  professional      Professional             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  serviceType       ProfessionalServiceType?
-  label             String
-  durationMinutes   Int
-  priceCents        Int
-  isActive          Boolean                  @default(true)
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
+  id              String                   @id @default(uuid())
+  professionalId  String
+  professional    Professional             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType     ProfessionalServiceType?
+  label           String
+  durationMinutes Int
+  priceCents      Int
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
-  bookings          Booking[]
+  bookings Booking[]
 
   @@index([professionalId])
   @@map("professional_service_offerings")
@@ -1539,18 +1680,18 @@ enum BookingStatus {
 // same "copy the value at write time" precedent MealLog uses for a
 // Recipe's macros.
 model Booking {
-  id                String                      @id @default(uuid())
-  userId            String
-  user              User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  professionalId    String
-  professional      Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  offeringId        String
-  offering          ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
-  scheduledAt       DateTime
-  durationMinutes   Int
-  priceCents        Int
-  status            BookingStatus               @default(confirmed)
-  createdAt         DateTime                    @default(now())
+  id              String                      @id @default(uuid())
+  userId          String
+  user            User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId  String
+  professional    Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  offeringId      String
+  offering        ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  scheduledAt     DateTime
+  durationMinutes Int
+  priceCents      Int
+  status          BookingStatus               @default(confirmed)
+  createdAt       DateTime                    @default(now())
 
   @@index([userId])
   @@index([professionalId])
@@ -1585,19 +1726,19 @@ enum RelationshipChangeStatus {
 // requester is always a consumer `User`, never an `AdminUser`, so an
 // admin can never be reviewing their own request.
 model RelationshipChangeRequest {
-  id                String                    @id @default(uuid())
+  id                String                   @id @default(uuid())
   relationshipId    String
-  relationship      Relationship              @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  relationship      Relationship             @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
   userId            String
-  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reason            ChangeReasonCategory
   note              String?
-  status            RelationshipChangeStatus  @default(pending)
+  status            RelationshipChangeStatus @default(pending)
   reviewedByAdminId String?
-  reviewedByAdmin   AdminUser?                @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  reviewedByAdmin   AdminUser?               @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
   reviewedAt        DateTime?
   reviewNotes       String?
-  createdAt         DateTime                  @default(now())
+  createdAt         DateTime                 @default(now())
 
   @@index([relationshipId])
   @@index([userId])
@@ -1677,18 +1818,18 @@ model SensitiveDataAccessRequest {
 // added the same day for the same reason, for `Professional` actions.
 
 model AuditLog {
-  id            String        @id @default(uuid())
-  actorId       String?
-  actor         User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  actorAdminId  String?
-  actorAdmin    AdminUser?    @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
+  id                  String        @id @default(uuid())
+  actorId             String?
+  actor               User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorAdminId        String?
+  actorAdmin          AdminUser?    @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
   actorProfessionalId String?
   actorProfessional   Professional? @relation(fields: [actorProfessionalId], references: [id], onDelete: SetNull)
-  action        String
-  entityType    String
-  entityId      String?
-  metadata      Json?
-  createdAt     DateTime      @default(now())
+  action              String
+  entityType          String
+  entityId            String?
+  metadata            Json?
+  createdAt           DateTime      @default(now())
 
   @@index([actorId])
   @@index([actorAdminId])
@@ -1784,7 +1925,7 @@ enum InfluencerStatus {
 }
 
 model Influencer {
-  id            String             @id @default(uuid())
+  id            String           @id @default(uuid())
   name          String
   email         String?
   handle        String?
@@ -1796,13 +1937,13 @@ model Influencer {
   // Module 07), so payouts are admin-entered amounts, not computed from a
   // real attributed-revenue × rate. The field is honest metadata for when
   // an attribution pipeline exists, not a live calculation input.
-  commissionPct Int                @default(20)
-  status        InfluencerStatus   @default(active)
+  commissionPct Int              @default(20)
+  status        InfluencerStatus @default(active)
   notes         String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  payouts       InfluencerPayout[]
+  payouts InfluencerPayout[]
 
   @@map("influencers")
 }
@@ -1851,7 +1992,7 @@ model Coupon {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  redemptions    CouponRedemption[]
+  redemptions CouponRedemption[]
 
   @@map("coupons")
 }

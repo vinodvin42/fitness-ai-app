@@ -3058,3 +3058,50 @@ export interface UpsertRecoveryInput {
   energyLevel?: number;
   notes?: string;
 }
+
+// ---- Plan-Generation / Recommendation Engine (14 Sep 2026) ---------------
+// See apps/api/src/modules/plans/plans.service.ts's own doc comment for
+// the full design reasoning — shared platform logic none of the three R1
+// work packages (Developer 1 consumer app / Developer 2 professional app
+// / Developer 3 admin+web+platform) claimed ownership of.
+
+export type PlanStatus = "generating" | "generated" | "failed";
+
+export interface Plan {
+  id: string;
+  version: number;
+  status: PlanStatus;
+  programId: string | null;
+  programName: string | null;
+  /** AI-generated, grounded in the user's real goals/level/safety context. Null until generated. */
+  rationale: string | null;
+  /** Set only when status is "failed" — a real error, never silently swallowed. */
+  failureReason: string | null;
+  /** Exactly one Plan per user has this true at a time — the one Today/Train reads from. */
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type RecommendationKind = "no_change" | "switch_program";
+export type RecommendationStatus = "active" | "accepted" | "modified" | "declined" | "no_change" | "superseded";
+
+export interface Recommendation {
+  id: string;
+  planId: string;
+  kind: RecommendationKind;
+  status: RecommendationStatus;
+  /** Grounded in real recent WorkoutSession/BodyMeasurement data, not a generic template. */
+  rationale: string;
+  suggestedProgramId: string | null;
+  suggestedProgramName: string | null;
+  /** "user" for a self-serve decision; "professional" once Developer 2's review UI calls the same decide endpoint. Null until decided. */
+  decidedByRole: "user" | "professional" | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface DecideRecommendationInput {
+  action: "accept" | "decline" | "modify";
+  /** Required only when action is "modify". */
+  replacementProgramId?: string;
+}
