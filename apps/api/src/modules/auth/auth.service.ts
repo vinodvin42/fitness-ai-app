@@ -43,7 +43,16 @@ export async function signup(input: SignupInput) {
   const passwordHash = await hashPassword(input.password);
   const referralCode = await generateUniqueReferralCode();
   const user = await prisma.user.create({
-    data: { email: input.email, passwordHash, fullName: input.fullName, referralCode },
+    data: {
+      email: input.email,
+      passwordHash,
+      fullName: input.fullName,
+      referralCode,
+      // Acquisition-context capture (R1 Developer 1 U1, 14 Sep 2026) —
+      // stored as-is, never validated against a real model; see
+      // schema.prisma's own comment on this field for why.
+      acquisitionContext: input.acquisitionContext ?? null,
+    },
   });
 
   await recordAudit({ actorId: user.id, action: "user.signup", entityType: "User", entityId: user.id });

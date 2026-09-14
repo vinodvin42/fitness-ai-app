@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -6,6 +6,11 @@ import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
 import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
+import {
+  clearStoredAcquisitionContext,
+  describeAcquisitionContext,
+  getStoredAcquisitionContext,
+} from "../../lib/acquisitionContext";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
 
@@ -20,18 +25,37 @@ export function SignupScreen({ navigation }: Props) {
   const [referralCode, setReferralCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Acquisition-context capture (R1 Developer 1 U1, 14 Sep 2026) — see
+  // src/lib/acquisitionContext.ts's own doc comment. Read once on mount;
+  // null when the app was opened directly (no gym QR/creator link) or the
+  // link wasn't recognized — this banner simply doesn't render then.
+  const [acquisitionContext, setAcquisitionContext] = useState<string | null>(null);
+
+  useEffect(() => {
+    getStoredAcquisitionContext().then(setAcquisitionContext);
+  }, []);
 
   const onSubmit = async () => {
     setError(null);
     setLoading(true);
     try {
-      await signup({ fullName, email, password, referralCode: referralCode.trim() || undefined });
+      await signup({
+        fullName,
+        email,
+        password,
+        referralCode: referralCode.trim() || undefined,
+        acquisitionContext: acquisitionContext ?? undefined,
+      });
       // A fresh signup always has onboardingCompleted: false, so
       // RootNavigator automatically shows OnboardingStack next — no
       // explicit navigation call needed here.
     } catch (err) {
       setError("Could not create your account — that email may already be taken.");
     } finally {
+      // Cleared either way — a failed attempt (e.g. email already taken)
+      // shouldn't keep re-attaching stale context to whatever the user
+      // tries next, and a successful one has already sent it server-side.
+      await clearStoredAcquisitionContext();
       setLoading(false);
     }
   };
@@ -41,6 +65,12 @@ export function SignupScreen({ navigation }: Props) {
       <View style={styles.content}>
         <Text style={styles.title}>Create your account</Text>
         <Text style={styles.subtitle}>Start your fitness journey with 23PrimeFit.</Text>
+
+        {acquisitionContext && describeAcquisitionContext(acquisitionContext) ? (
+          <View style={styles.acquisitionBanner}>
+            <Text style={styles.acquisitionBannerText}>{describeAcquisitionContext(acquisitionContext)}</Text>
+          </View>
+        ) : null}
 
         <TextInput
           style={styles.input}
@@ -119,4 +149,11 @@ const styles = StyleSheet.create({
   },
   error: { color: colors.danger, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
+  acquisitionBanner: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  acquisitionBannerText: { color: colors.accent, ...typography.meta },
 });

@@ -8,6 +8,14 @@ export const signupSchema = z.object({
   // signup. Optional; an unrecognized code is silently ignored rather
   // than failing the signup (see referrals.service.ts's redeemReferralCode).
   referralCode: z.string().trim().min(1).max(20).optional(),
+  // Acquisition-context capture (R1 Developer 1 U1, 14 Sep 2026) — a raw
+  // client-captured string like "gym:ABC123", never validated against a
+  // real Gym/Campaign entity here (none exists yet — see
+  // schema.prisma's own comment on User.acquisitionContext for why).
+  // Shape-checked only; an unrecognized value is stored as-is, not
+  // rejected — same "capture honestly, don't gatekeep signup on it"
+  // reasoning as referralCode above.
+  acquisitionContext: z.string().trim().min(1).max(120).optional(),
 });
 
 export const loginSchema = z.object({

@@ -25,6 +25,8 @@ export interface SignupInput {
   fullName: string;
   /** §O "Refer & Invite" — someone else's `User.referralCode`. An unrecognized code is silently ignored. */
   referralCode?: string;
+  /** R1 Developer 1 U1 (14 Sep 2026) — a raw, client-captured acquisition string like "gym:ABC123". See apps/api/prisma/schema.prisma's User.acquisitionContext comment. */
+  acquisitionContext?: string;
 }
 
 export interface LoginInput {

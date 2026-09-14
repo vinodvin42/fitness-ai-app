@@ -237,6 +237,22 @@ model User {
   // consumed at renewal (no billing engine runs renewals in this build) —
   // surfaced honestly on the mobile Refer & Invite screen as credit earned.
   referralCreditMonths   Int         @default(0)
+  // Acquisition-context capture (R1 Developer 1 U1, 14 Sep 2026) — a raw,
+  // honest capture of whatever arrival context a QR code/invite link
+  // carried at signup, e.g. "gym:ABC123" or "creator:XYZ789". Null when
+  // nothing was captured (a direct signup, or the app couldn't recognize
+  // the link) — never fabricated as "direct" just to avoid a null,
+  // same "don't invent what you don't know" discipline this schema uses
+  // throughout. Deliberately a plain string, NOT a foreign key to a
+  // Gym/Campaign/Source/Touchpoint model — no such model exists yet
+  // (that's Developer 3's own future "Identity & Roles"/"Acquisition"
+  // foundation per both R1 work packages' own ownership tables, not
+  // something Developer 1 gets to invent unilaterally). This field is a
+  // deliberately narrow placeholder for that future model to reconcile
+  // against, distinct from and unrelated to `referralCode` above (a
+  // different concept — a peer sharing their own code — not a
+  // gym/creator's commercial acquisition link).
+  acquisitionContext     String?
   // §L "Security" — Two-Factor Authentication, added 25 Aug 2026 (Phase 4,
   // closing gap §17). TOTP (RFC 6238, authenticator-app style — Google
   // Authenticator/Authy/1Password), not SMS: unlike gap §9's phone+OTP,
