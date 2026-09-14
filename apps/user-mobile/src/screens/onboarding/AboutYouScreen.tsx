@@ -14,16 +14,19 @@ const GENDERS = ["male", "female", "other"] as const;
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: About You". */
 export function AboutYouScreen({ navigation }: Props) {
-  const { state, update } = useOnboardingWizard();
+  const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={1}
-      total={5}
+      total={6}
       label="About You"
       title="Tell us about yourself"
       subtitle="This helps us personalize your training and nutrition plans."
-      onNext={() => navigation.navigate("Goals")}
+      onNext={() => {
+        markScreenReached("Goals");
+        navigation.navigate("Goals");
+      }}
       nextDisabled={!state.gender}
     >
       <View style={{ gap: spacing.sm }}>

@@ -18,16 +18,19 @@ const LEVELS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Training Level" — 4 experience-level cards. */
 export function TrainingLevelScreen({ navigation }: Props) {
-  const { state, update } = useOnboardingWizard();
+  const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={3}
-      total={5}
+      total={6}
       label="Training Level"
       title="What's your experience level?"
       onBack={() => navigation.goBack()}
-      onNext={() => navigation.navigate("FoodDiet")}
+      onNext={() => {
+        markScreenReached("FoodDiet");
+        navigation.navigate("FoodDiet");
+      }}
       nextDisabled={!state.trainingLevel}
     >
       <View style={{ gap: spacing.sm }}>

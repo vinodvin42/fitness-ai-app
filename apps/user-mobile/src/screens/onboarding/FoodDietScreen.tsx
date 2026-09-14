@@ -24,16 +24,19 @@ const ALLERGENS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Food/Diet". */
 export function FoodDietScreen({ navigation }: Props) {
-  const { state, update, toggleListValue } = useOnboardingWizard();
+  const { state, update, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={4}
-      total={5}
+      total={6}
       label="Food/Diet"
       title="Your diet preferences"
       onBack={() => navigation.goBack()}
-      onNext={() => navigation.navigate("Safety")}
+      onNext={() => {
+        markScreenReached("Safety");
+        navigation.navigate("Safety");
+      }}
       nextDisabled={!state.dietType}
     >
       <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>Diet type</Text>

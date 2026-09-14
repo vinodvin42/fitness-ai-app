@@ -22,17 +22,20 @@ const GOALS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Goals" — multi-select chip grid. */
 export function GoalsScreen({ navigation }: Props) {
-  const { state, toggleListValue } = useOnboardingWizard();
+  const { state, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={2}
-      total={5}
+      total={6}
       label="Goals"
       title="What are your goals?"
       subtitle="Select as many as apply — you can change these later."
       onBack={() => navigation.goBack()}
-      onNext={() => navigation.navigate("TrainingLevel")}
+      onNext={() => {
+        markScreenReached("TrainingLevel");
+        navigation.navigate("TrainingLevel");
+      }}
       nextDisabled={state.goals.length === 0}
     >
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>

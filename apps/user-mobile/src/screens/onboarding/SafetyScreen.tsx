@@ -1,10 +1,9 @@
 import React from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
 import { Chip } from "../../components/Chip";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
-import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
@@ -26,31 +25,30 @@ const INJURIES = ["Knee", "Shoulder", "Lower back", "Ankle", "Wrist", "Neck"];
  * health-data collection point worth a privacy review; nothing extra is
  * done with this data yet beyond storing it (see OnboardingProfile in
  * apps/api/prisma/schema.prisma), which is itself the open item.
+ *
+ * U2 (15 Sep 2026): this used to submit the assessment directly on
+ * "Finish Setup". It now just moves to AssessmentSummary — the actual
+ * submit + safety review happens there, as its own distinct step (BR-SAF-004
+ * "safety outcome separate" — see that screen's own comment).
  */
 export function SafetyScreen({ navigation }: Props) {
-  const { state, toggleListValue, submit, isSubmitting } = useOnboardingWizard();
+  const { state, toggleListValue, markScreenReached } = useOnboardingWizard();
 
-  const onFinish = async () => {
-    try {
-      await submit();
-      // AuthContext.markOnboardingCompleted() (called inside submit()) flips
-      // RootNavigator over to MainTabs — no explicit navigation call needed.
-    } catch (err) {
-      Alert.alert("Couldn't finish setup", extractErrorMessage(err, "Check your connection and try again."));
-    }
+  const onNext = () => {
+    markScreenReached("Safety");
+    navigation.navigate("AssessmentSummary");
   };
 
   return (
     <WizardLayout
       step={5}
-      total={5}
+      total={6}
       label="Safety"
       title="Any medical conditions or injuries?"
       subtitle="This helps us avoid recommending unsafe exercises."
       onBack={() => navigation.goBack()}
-      onNext={onFinish}
-      nextLabel="Finish Setup"
-      nextLoading={isSubmitting}
+      onNext={onNext}
+      nextLabel="Review"
     >
       <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>
         Medical conditions
