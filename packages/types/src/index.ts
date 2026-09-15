@@ -508,7 +508,8 @@ export interface Recipe {
 // Added Phase 1 (18 Aug 2026) alongside apps/api/prisma/schema.prisma's
 // MealLog model.
 
-export type MealLogSource = "recipe" | "manual";
+/** `ai_estimate` added U4 (15 Sep 2026) — see `FoodEstimate`'s own doc comment below. */
+export type MealLogSource = "recipe" | "manual" | "ai_estimate";
 
 export interface MealLog {
   id: string;
@@ -533,6 +534,63 @@ export interface MealLog {
 export interface LogMealInput {
   mealType: MealType;
   recipeId?: string;
+  name?: string;
+  calories?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+}
+
+// ---- Nutrition: Food input data-quality flow (Estimate -> Confirm/Edit) --
+// U4 (15 Sep 2026) — BR-DAT-003 ("estimated data is not actual until
+// confirmed/edited where required") and the Food-input row of the Core
+// State Requirements table ("Estimated; user-confirmed; edited; logged.
+// Estimate is not treated as confirmed fact."). See apps/api's FoodEstimate
+// model (schema.prisma) for the full design reasoning. `POST
+// /food-estimates` is synchronous, same convention as `POST /plans/generate`
+// (apps/api's plans.service.ts) — it awaits the real AI call and resolves
+// with a FINAL status (`estimated` or `insufficient_context`), never a
+// persisted "estimating" — that phase only exists client-side, as the
+// loading UI while the request is in flight.
+
+export type FoodEstimateStatus = "estimated" | "insufficient_context" | "confirmed" | "edited";
+
+export interface FoodEstimate {
+  id: string;
+  userId: string;
+  mealType: MealType;
+  /** The raw text the user typed, e.g. "2 eggs and a slice of toast". */
+  description: string;
+  status: FoodEstimateStatus;
+  /** Null only when status is `insufficient_context` — no real numbers to show. */
+  name: string | null;
+  calories: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  /** Set only when status is `insufficient_context` — a real, user-facing reason, never a raw error. */
+  failureReason: string | null;
+  /** Set once this estimate is confirmed/edited into a real MealLog. */
+  mealLogId: string | null;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+/** Body for POST /food-estimates — matches apps/api's createFoodEstimateSchema (Zod). */
+export interface CreateFoodEstimateInput {
+  mealType: MealType;
+  description: string;
+}
+
+/**
+ * Body for POST /food-estimates/:id/confirm — matches apps/api's
+ * confirmFoodEstimateSchema (Zod). Every field is optional: send none to
+ * confirm the estimate exactly as given (status becomes `confirmed`), or
+ * send whichever fields the user changed on the Confirm/Edit screen (status
+ * becomes `edited`) — the server, not the client, decides which of the two
+ * happened, by comparing against the estimate's own original values.
+ */
+export interface ConfirmFoodEstimateInput {
   name?: string;
   calories?: number;
   proteinG?: number;

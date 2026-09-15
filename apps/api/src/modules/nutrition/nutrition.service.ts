@@ -1,7 +1,8 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { LogMealInput, LogWaterInput } from "./nutrition.schema";
+import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
+import { ConfirmFoodEstimateInput, CreateFoodEstimateInput, LogMealInput, LogWaterInput } from "./nutrition.schema";
 
 /**
  * The Fuel/Nutrition daily loop (docs/mobile/03-screen-inventory.md §D):
@@ -12,6 +13,14 @@ import { LogMealInput, LogWaterInput } from "./nutrition.schema";
  * meal or water entry (matches how WorkoutSession set logs are append-only
  * in this same pass). Also (19 Aug 2026) `listMealHistory` — every meal
  * logged, all-time — backing the Nutrition Calendar screen.
+ *
+ * U4 (15 Sep 2026) added the Food input data-quality flow below
+ * (createFoodEstimate / confirmFoodEstimate) — BR-DAT-003 ("estimated data
+ * is not actual until confirmed/edited where required"). `logMeal` above
+ * (manual entry) is deliberately left untouched: the user is typing exact
+ * numbers they're asserting as true, not reviewing an AI guess, so there's
+ * no "estimate" to confirm — BR-DAT-003 has nothing to grab onto there.
+ * The new flow only applies to the genuinely new AI-estimate input method.
  */
 
 function startOfToday(): Date {
@@ -119,4 +128,224 @@ export async function logWater(userId: string, input: LogWaterInput) {
   });
 
   return waterLog;
+}
+
+// ---- Food input data-quality flow (U4, 15 Sep 2026) -----------------------
+// See FoodEstimate's own doc comment (schema.prisma) for the full design.
+
+/**
+ * Both prompts below ask for a strict, parseable shape and an honest
+ * "I can't tell" escape hatch rather than a guessed number — the same
+ * "ground it, then validate the answer before trusting it" discipline
+ * plans.service.ts already establishes for this codebase (see that file's
+ * own top-of-file doc comment), applied here to BR-DAT-004's "weak/
+ * conflicting/missing evidence" principle: a vague or empty food
+ * description is real grounds for INSUFFICIENT_CONTEXT, not a fabricated
+ * calorie count.
+ */
+function buildFoodEstimatePrompt(mealType: string, description: string): string {
+  return [
+    "You are estimating the nutrition (calories and macros) of a food description a user typed into a fitness app's meal log. This is a rough ESTIMATE the user will review and can edit before it's treated as real logged data — not a final, authoritative answer.",
+    `Meal type: ${mealType}. Food description: "${description}"`,
+    "If the description doesn't name any identifiable food (empty, gibberish, or something with no specifics like just 'food' or 'meal'), say so honestly rather than guessing numbers.",
+    "Respond in EXACTLY this format, nothing else:",
+    "STATUS: <either OK or INSUFFICIENT_CONTEXT>",
+    "NAME: <a short 2-6 word name for this food/meal — only if STATUS is OK>",
+    "CALORIES: <integer kcal — only if STATUS is OK>",
+    "PROTEIN_G: <integer grams — only if STATUS is OK>",
+    "CARBS_G: <integer grams — only if STATUS is OK>",
+    "FAT_G: <integer grams — only if STATUS is OK>",
+  ].join("\n\n");
+}
+
+interface ParsedFoodEstimate {
+  ok: boolean;
+  name?: string;
+  calories?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+}
+
+function parseFoodEstimate(raw: string): ParsedFoodEstimate | null {
+  const statusMatch = raw.match(/STATUS:\s*(\S+)/i);
+  if (!statusMatch) return null;
+  const status = statusMatch[1].trim().toUpperCase();
+  if (status === "INSUFFICIENT_CONTEXT") return { ok: false };
+  if (status !== "OK") return null;
+
+  const nameMatch = raw.match(/NAME:\s*(.+)/i);
+  const caloriesMatch = raw.match(/CALORIES:\s*(\d+)/i);
+  const proteinMatch = raw.match(/PROTEIN_G:\s*(\d+)/i);
+  const carbsMatch = raw.match(/CARBS_G:\s*(\d+)/i);
+  const fatMatch = raw.match(/FAT_G:\s*(\d+)/i);
+  if (!nameMatch || !caloriesMatch || !proteinMatch || !carbsMatch || !fatMatch) return null;
+
+  const name = nameMatch[1].split("\n")[0].trim();
+  const calories = parseInt(caloriesMatch[1], 10);
+  const proteinG = parseInt(proteinMatch[1], 10);
+  const carbsG = parseInt(carbsMatch[1], 10);
+  const fatG = parseInt(fatMatch[1], 10);
+  // Same range sanity-check confirmFoodEstimateSchema itself applies to a
+  // user-supplied edit — an AI answer isn't exempt from the same bounds.
+  if (!name || calories > 10000 || proteinG > 1000 || carbsG > 1000 || fatG > 1000) return null;
+
+  return { ok: true, name, calories, proteinG, carbsG, fatG };
+}
+
+/**
+ * Calls the real AI provider to estimate a food description's nutrition,
+ * and persists the result — synchronously, same convention as
+ * plans.service.ts's generatePlan (the request awaits the real LLM call and
+ * resolves with a final status, never a persisted in-flight state). Unlike
+ * Plan, there's no pre-call row and no retry-in-place: an unusable AI
+ * response just becomes an `insufficient_context` row, and the client's own
+ * retry is submitting the description again (or falling back to manual
+ * entry), not re-running this exact row.
+ */
+export async function createFoodEstimate(userId: string, input: CreateFoodEstimateInput) {
+  if (!isAiConfigured()) {
+    throw new ApiHttpError(
+      503,
+      "food_estimate_not_configured",
+      "AI food estimation isn't configured on this server yet — set ANTHROPIC_API_KEY, OPENAI_API_KEY, or the AZURE_OPENAI_* trio, or use manual entry instead",
+    );
+  }
+
+  let raw: string;
+  try {
+    raw = await generateCompletion(buildFoodEstimatePrompt(input.mealType, input.description));
+  } catch {
+    const estimate = await prisma.foodEstimate.create({
+      data: {
+        userId,
+        mealType: input.mealType,
+        description: input.description,
+        status: "insufficient_context",
+        failureReason: "The estimate service didn't respond — try again, or use manual entry instead",
+      },
+    });
+    await recordAudit({
+      actorId: userId,
+      action: "food_estimate.created",
+      entityType: "FoodEstimate",
+      entityId: estimate.id,
+      metadata: { status: "insufficient_context", reason: "upstream_error" },
+    });
+    return estimate;
+  }
+
+  const parsed = parseFoodEstimate(raw);
+  const estimate = await prisma.foodEstimate.create({
+    data:
+      parsed && parsed.ok
+        ? {
+            userId,
+            mealType: input.mealType,
+            description: input.description,
+            status: "estimated",
+            name: parsed.name,
+            calories: parsed.calories,
+            proteinG: parsed.proteinG,
+            carbsG: parsed.carbsG,
+            fatG: parsed.fatG,
+          }
+        : {
+            userId,
+            mealType: input.mealType,
+            description: input.description,
+            status: "insufficient_context",
+            failureReason: "Not enough detail to estimate this — try describing it differently, or use manual entry",
+          },
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: "food_estimate.created",
+    entityType: "FoodEstimate",
+    entityId: estimate.id,
+    metadata: { status: estimate.status, reason: parsed && parsed.ok ? undefined : "unparseable_or_insufficient" },
+  });
+
+  return estimate;
+}
+
+/**
+ * The confirm/edit gate BR-DAT-003 requires: only this function ever
+ * creates the real MealLog row for an AI estimate, and only once — an
+ * estimate that's already been confirmed/edited (mealLogId already set) or
+ * that never produced real numbers (insufficient_context) can't be
+ * confirmed again. Whether the result is "confirmed" or "edited" is decided
+ * here, not by the client: it's `edited` if ANY field the caller sent
+ * differs from the estimate's own original value, `confirmed` otherwise
+ * (including when the caller sends no fields at all — an as-is accept).
+ */
+export async function confirmFoodEstimate(userId: string, estimateId: string, input: ConfirmFoodEstimateInput) {
+  const estimate = await prisma.foodEstimate.findUnique({ where: { id: estimateId } });
+  if (!estimate || estimate.userId !== userId) {
+    throw new ApiHttpError(404, "food_estimate_not_found", "Food estimate not found");
+  }
+  if (estimate.status !== "estimated") {
+    throw new ApiHttpError(
+      409,
+      "food_estimate_not_confirmable",
+      estimate.status === "insufficient_context"
+        ? "This estimate has no usable numbers to confirm — try describing it differently, or use manual entry"
+        : "This estimate was already logged",
+    );
+  }
+
+  const finalName = input.name ?? estimate.name!;
+  const finalCalories = input.calories ?? estimate.calories!;
+  const finalProteinG = input.proteinG ?? estimate.proteinG!;
+  const finalCarbsG = input.carbsG ?? estimate.carbsG!;
+  const finalFatG = input.fatG ?? estimate.fatG!;
+  const wasEdited =
+    finalName !== estimate.name ||
+    finalCalories !== estimate.calories ||
+    finalProteinG !== estimate.proteinG ||
+    finalCarbsG !== estimate.carbsG ||
+    finalFatG !== estimate.fatG;
+
+  const mealLog = await prisma.mealLog.create({
+    data: {
+      userId,
+      mealType: estimate.mealType,
+      name: finalName,
+      calories: finalCalories,
+      proteinG: finalProteinG,
+      carbsG: finalCarbsG,
+      fatG: finalFatG,
+      source: "ai_estimate",
+    },
+  });
+
+  await prisma.foodEstimate.update({
+    where: { id: estimateId },
+    data: {
+      status: wasEdited ? "edited" : "confirmed",
+      confirmedAt: new Date(),
+      mealLogId: mealLog.id,
+      ...(wasEdited
+        ? { name: finalName, calories: finalCalories, proteinG: finalProteinG, carbsG: finalCarbsG, fatG: finalFatG }
+        : {}),
+    },
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: wasEdited ? "food_estimate.edited" : "food_estimate.confirmed",
+    entityType: "FoodEstimate",
+    entityId: estimateId,
+    metadata: { mealLogId: mealLog.id },
+  });
+  await recordAudit({
+    actorId: userId,
+    action: "meal_log.created",
+    entityType: "MealLog",
+    entityId: mealLog.id,
+    metadata: { source: "ai_estimate", mealType: estimate.mealType, edited: wasEdited },
+  });
+
+  return mealLog;
 }
