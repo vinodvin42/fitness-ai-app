@@ -27,6 +27,12 @@ type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
  * §34) — the transformation-photo gallery link this doc comment used to
  * flag as unbuilt is now real.
  *
+ * U5 (15 Sep 2026): a "Progress Review" entry point — the new periodic/
+ * reflective screen (docs/mobile/07-open-questions-gaps.md §47), distinct
+ * from this day-to-day dashboard: recent activity plus whatever the real
+ * Recommendation engine currently suggests, with "Why This Changed" one
+ * tap away from there.
+ *
  * 20 Aug 2026: the weight trend is now a real **line chart**
  * (`WeightTrendChart`, `react-native-svg`, newly installed this pass —
  * see gap §36), replacing the bar-based stand-in this doc comment used to
@@ -149,6 +155,14 @@ export function ProgressOverviewScreen({ navigation }: Props) {
       </Card>
 
       <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+        <ListRow
+          icon="sparkles"
+          title="Progress Review"
+          subtitle="Recent activity and what your plan suggests"
+          tint={colors.aiAccent}
+          tintSoft={colors.aiAccentSoft}
+          onPress={() => navigation.navigate("ProgressReview")}
+        />
         <ListRow icon="plus" title="Log Measurement" tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("LogMeasurement")} />
         <ListRow icon="calendar" title="Measurement History" tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("MeasurementHistory")} />
         <ListRow icon="flame" title="Streak Tracker" tint={colors.orange} tintSoft="rgba(251,146,60,0.16)" onPress={() => navigation.navigate("StreakTracker")} />
