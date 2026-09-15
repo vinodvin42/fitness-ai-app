@@ -17,3 +17,10 @@ export const logSetSchema = z.object({
 });
 
 export type LogSetInput = z.infer<typeof logSetSchema>;
+
+// U3 (15 Sep 2026) — see workoutSessions.service.ts's updateProgress comment.
+export const updateProgressSchema = z.object({
+  currentExerciseIndex: z.number().int().nonnegative(),
+});
+
+export type UpdateProgressInput = z.infer<typeof updateProgressSchema>;

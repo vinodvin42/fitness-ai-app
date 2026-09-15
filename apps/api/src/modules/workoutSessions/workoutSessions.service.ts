@@ -90,6 +90,27 @@ export async function logSet(sessionId: string, userId: string, input: LogSetInp
   });
 }
 
+/**
+ * U3 (15 Sep 2026) — "temporary connectivity must not lose active data".
+ * ActiveWorkoutScreen calls this whenever the user advances to the next
+ * exercise, so `currentExerciseIndex` is real server-side truth the client
+ * can resume from after an app kill/connectivity drop, not just a local
+ * React state variable. Deliberately doesn't touch setLogs/status — this
+ * is the one field a resumed session needs beyond what setLogs already
+ * gives it for free (each logged set is its own durable row already).
+ */
+export async function updateProgress(sessionId: string, userId: string, currentExerciseIndex: number) {
+  const session = await getOwnedSession(sessionId, userId);
+  if (session.status !== "in_progress") {
+    throw new ApiHttpError(409, "session_not_active", "This workout session is no longer in progress");
+  }
+
+  return prisma.workoutSession.update({
+    where: { id: session.id },
+    data: { currentExerciseIndex },
+  });
+}
+
 export async function completeSession(sessionId: string, userId: string) {
   const session = await getOwnedSession(sessionId, userId);
 

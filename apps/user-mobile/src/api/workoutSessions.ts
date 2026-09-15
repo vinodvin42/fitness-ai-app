@@ -19,6 +19,13 @@ export function logWorkoutSet(sessionId: string, input: LogSetInput) {
   return apiClient.post(`/workout-sessions/${sessionId}/sets`, input).then((r) => r.data);
 }
 
+/** U3 (15 Sep 2026) — persists which exercise the user is on, so a resumed session (Today's "Resume session") lands back where they left off instead of restarting at exercise 1. */
+export function updateSessionProgress(sessionId: string, currentExerciseIndex: number) {
+  return apiClient
+    .patch<WorkoutSession>(`/workout-sessions/${sessionId}/progress`, { currentExerciseIndex })
+    .then((r) => r.data);
+}
+
 export function completeWorkoutSession(sessionId: string) {
   return apiClient.post<WorkoutSession>(`/workout-sessions/${sessionId}/complete`).then((r) => r.data);
 }

@@ -338,6 +338,53 @@ export async function getCurrentPlan(userId: string): Promise<PlanDTO | null> {
   return toPlanDTO(plan, program?.name ?? null);
 }
 
+interface NextWorkoutSummary {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  intensity: string;
+}
+
+interface PlanNextWorkoutDTO {
+  plan: PlanDTO;
+  workout: NextWorkoutSummary | null;
+  programComplete: boolean;
+}
+
+/**
+ * Today's "what to do next" (U3, 15 Sep 2026) — the first real consumer of
+ * `Plan.isActive` outside the onboarding flow that creates it (see this
+ * file's own top comment: "the one Today/Train reads from"). Resolves the
+ * active Plan's selected Program into one concrete next Workout: the
+ * lowest-`order` workout in that Program the user hasn't yet completed.
+ *
+ * Deliberately does NOT duplicate the purchase/entitlement gate here —
+ * WorkoutDetailScreen (client) and startSession's real server-side check
+ * (workoutSessions.service.ts) already handle an unpurchased program
+ * correctly; this is a read-only resolver with no side effects, same shape
+ * as getCurrentPlan.
+ */
+export async function getNextWorkoutForActivePlan(userId: string): Promise<PlanNextWorkoutDTO | null> {
+  const plan = await getCurrentPlan(userId);
+  if (!plan || plan.status !== "generated" || !plan.programId) return null;
+
+  const workouts = await prisma.workout.findMany({
+    where: { programId: plan.programId },
+    orderBy: { order: "asc" },
+    select: { id: true, name: true, durationMinutes: true, intensity: true },
+  });
+  if (workouts.length === 0) return { plan, workout: null, programComplete: false };
+
+  const completed = await prisma.workoutSession.findMany({
+    where: { userId, status: "completed", workoutId: { in: workouts.map((w) => w.id) } },
+    select: { workoutId: true },
+  });
+  const completedIds = new Set(completed.map((s) => s.workoutId));
+  const next = workouts.find((w) => !completedIds.has(w.id));
+
+  return { plan, workout: next ?? null, programComplete: !next };
+}
+
 export async function listPlans(userId: string): Promise<PlanDTO[]> {
   const plans = (await prisma.plan.findMany({ where: { userId }, orderBy: { version: "desc" } })) as PlanRow[];
   const programIds = [...new Set(plans.map((p) => p.programId).filter((id): id is string => id !== null))];

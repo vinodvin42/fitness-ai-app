@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { logSetSchema } from "./workoutSessions.schema";
+import { logSetSchema, updateProgressSchema } from "./workoutSessions.schema";
 import * as workoutSessionsService from "./workoutSessions.service";
 
 export const workoutSessionsRouter = Router();
@@ -43,6 +43,16 @@ workoutSessionsRouter.post("/workout-sessions/:id/sets", requireAuth, async (req
     const input = logSetSchema.parse(req.body);
     const setLog = await workoutSessionsService.logSet(req.params.id, req.userId!, input);
     res.status(201).json(setLog);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// U3 (15 Sep 2026) — see workoutSessions.service.ts's updateProgress comment.
+workoutSessionsRouter.patch("/workout-sessions/:id/progress", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = updateProgressSchema.parse(req.body);
+    res.json(await workoutSessionsService.updateProgress(req.params.id, req.userId!, input.currentExerciseIndex));
   } catch (err) {
     next(err);
   }

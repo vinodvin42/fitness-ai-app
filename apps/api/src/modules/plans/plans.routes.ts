@@ -38,6 +38,15 @@ plansRouter.get("/plans/current", requireAuth, async (req: AuthedRequest, res, n
   }
 });
 
+// U3 (15 Sep 2026) — see plans.service.ts's getNextWorkoutForActivePlan comment.
+plansRouter.get("/plans/current/next-workout", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ nextWorkout: await plansService.getNextWorkoutForActivePlan(req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 plansRouter.get("/plans", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json({ items: await plansService.listPlans(req.userId!) });

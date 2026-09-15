@@ -1,4 +1,4 @@
-import type { Plan } from "@fitness-ai-app/types";
+import type { Plan, PlanNextWorkout } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 /**
@@ -20,4 +20,11 @@ export function retryPlanGeneration(planId: string) {
 
 export function fetchCurrentPlan() {
   return apiClient.get<{ plan: Plan | null }>("/plans/current").then((r) => r.data.plan);
+}
+
+/** U3 (15 Sep 2026) — Today's real "what to do next", resolved server-side from the active Plan's selected Program. Null when there's no active generated Plan, or its Program has no workouts. */
+export function fetchNextWorkout() {
+  return apiClient
+    .get<{ nextWorkout: PlanNextWorkout | null }>("/plans/current/next-workout")
+    .then((r) => r.data.nextWorkout);
 }

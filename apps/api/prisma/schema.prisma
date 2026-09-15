@@ -494,6 +494,15 @@ model WorkoutSession {
   status      WorkoutSessionStatus @default(in_progress)
   startedAt   DateTime             @default(now())
   completedAt DateTime?
+  // U3 (15 Sep 2026) — "temporary connectivity must not lose active data".
+  // Individual set logs were already durably persisted per-action
+  // (ExerciseSetLog, one row per logged set); what wasn't recoverable was
+  // WHICH exercise the client was on when the app was killed/backgrounded
+  // mid-workout — that lived only in ActiveWorkoutScreen's local React
+  // state. This makes it real, server-side truth instead of a guess
+  // re-derived from set counts (which a user manually skipping ahead with
+  // sets remaining would get wrong).
+  currentExerciseIndex Int @default(0)
 
   setLogs ExerciseSetLog[]
 

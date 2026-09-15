@@ -11,7 +11,13 @@ import { StepProgressBar } from "../../components/StepProgressBar";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
 import { fetchWorkoutDetail } from "../../api/programs";
-import { abandonWorkoutSession, completeWorkoutSession, fetchWorkoutSession, logWorkoutSet } from "../../api/workoutSessions";
+import {
+  abandonWorkoutSession,
+  completeWorkoutSession,
+  fetchWorkoutSession,
+  logWorkoutSet,
+  updateSessionProgress,
+} from "../../api/workoutSessions";
 import { extractErrorMessage } from "../../lib/apiError";
 import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
@@ -107,6 +113,28 @@ function PhasePill({ phase }: { phase: WorkoutPhase }) {
  * treating it as in-progress, and the screen pops back to the root of this
  * stack (`navigation.popToTop()`, the same pattern Workout Complete's
  * "Back to Train" already uses).
+ *
+ * U3 (15 Sep 2026): **real connectivity/app-kill recovery.** Each logged
+ * set was already durably persisted server-side the moment it was logged
+ * (`ExerciseSetLog`, one row per set) — what wasn't recoverable was WHICH
+ * exercise the screen was on: `exerciseIndex`/`loggedSets` were plain
+ * `useState`, rebuilt empty on every mount, so resuming an in-progress
+ * session (Today's "Resume session") always restarted at exercise 1 with
+ * no logged sets shown, even though the real data was sitting on the
+ * server the whole time. Fixed two ways: (1) `WorkoutSession` gained a
+ * real, server-persisted `currentExerciseIndex` (see its schema.prisma
+ * comment) — `onNextExercise` now saves it via `updateSessionProgress`
+ * before advancing, so a heuristic re-derived from set counts (wrong for a
+ * user who deliberately skips remaining sets and moves on) isn't needed;
+ * (2) a one-time hydration effect below reads `session.currentExerciseIndex`
+ * and `session.setLogs` on load and seeds `exerciseIndex`/`loggedSets` from
+ * them — this also just naturally handles a fresh, never-touched session
+ * (empty setLogs → exerciseIndex 0, loggedSets `[]`), so it isn't a
+ * resume-only code path. `elapsedSeconds` already correctly re-derived
+ * from `session.startedAt` before this pass (line below) — no change
+ * needed there. `paused` stays deliberately NOT server-persisted, same
+ * reasoning as before: it's a real control of THIS SCREEN's local timer,
+ * not a workout-session status.
  */
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
@@ -133,8 +161,30 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [rpe, setRpe] = useState<number | undefined>(undefined);
   const [isSubmittingSet, setIsSubmittingSet] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const [wasResumed, setWasResumed] = useState(false);
+
+  // U3 — real connectivity/app-kill recovery, see this screen's own top
+  // comment. Runs exactly once, as soon as both the workout (for exercise
+  // order) and the session (for currentExerciseIndex/setLogs) are loaded.
+  useEffect(() => {
+    if (hasHydrated || orderedExercises.length === 0 || !session) return;
+    const resumeIndex = Math.min(session.currentExerciseIndex, orderedExercises.length - 1);
+    const resumeExercise = orderedExercises[resumeIndex];
+    const resumedSets: LoggedSet[] = resumeExercise
+      ? session.setLogs
+          .filter((l) => l.exerciseId === resumeExercise.exercise.id)
+          .sort((a, b) => a.setNumber - b.setNumber)
+          .map((l) => ({ setNumber: l.setNumber, reps: l.reps, weightKg: l.weightKg ?? undefined, rpe: l.rpe ?? undefined }))
+      : [];
+    setExerciseIndex(resumeIndex);
+    setLoggedSets(resumedSets);
+    setWasResumed(resumeIndex > 0 || resumedSets.length > 0);
+    setHasHydrated(true);
+  }, [hasHydrated, orderedExercises, session]);
 
   // A real stopwatch, not a re-derived "now minus startedAt" clock — pausing
   // stops the interval below, so paused time is genuinely excluded from the
@@ -215,11 +265,23 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       }
       return;
     }
-    setExerciseIndex((i) => i + 1);
-    setLoggedSets([]);
-    setReps("");
-    setWeight("");
-    setRpe(undefined);
+    const nextIndex = exerciseIndex + 1;
+    setIsAdvancing(true);
+    try {
+      // Persisted server-side BEFORE the local state changes, so a
+      // connectivity drop right here never leaves the client "ahead" of
+      // what the server can recover on the next load.
+      await updateSessionProgress(sessionId, nextIndex);
+      setExerciseIndex(nextIndex);
+      setLoggedSets([]);
+      setReps("");
+      setWeight("");
+      setRpe(undefined);
+    } catch (err) {
+      Alert.alert("Couldn't move to the next exercise", extractErrorMessage(err, "Check your connection and try again."));
+    } finally {
+      setIsAdvancing(false);
+    }
   };
 
   const onAbandon = () => {
@@ -284,6 +346,11 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           total={orderedExercises.length}
           label={currentExercise ? phaseLabel(currentExercise.phase) : ""}
         />
+        {wasResumed ? (
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+            Resumed from where you left off — nothing was lost.
+          </Text>
+        ) : null}
       </View>
 
       <ScrollView
@@ -379,7 +446,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         <Button
           label={isLastExercise ? "Finish Workout" : "Next Exercise"}
           onPress={onNextExercise}
-          loading={isFinishing}
+          loading={isFinishing || isAdvancing}
           disabled={paused}
           variant={setsRemaining > 0 ? "secondary" : "primary"}
         />

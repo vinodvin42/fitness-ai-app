@@ -429,6 +429,8 @@ export interface WorkoutSession {
   status: WorkoutSessionStatus;
   startedAt: string;
   completedAt: string | null;
+  /** U3 (15 Sep 2026) — real, server-persisted resume point. See ActiveWorkoutScreen. */
+  currentExerciseIndex: number;
   setLogs: ExerciseSetLog[];
 }
 
@@ -3106,4 +3108,22 @@ export interface DecideRecommendationInput {
   action: "accept" | "decline" | "modify";
   /** Required only when action is "modify". */
   replacementProgramId?: string;
+}
+
+// U3 (15 Sep 2026) — Today's real "what to do next", resolved from the
+// active Plan's selected Program. See apps/api's
+// plans.service.ts#getNextWorkoutForActivePlan.
+
+export interface NextWorkoutSummary {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  intensity: string;
+}
+
+export interface PlanNextWorkout {
+  plan: Plan;
+  workout: NextWorkoutSummary | null;
+  /** True when every workout in the active Plan's Program is already completed. */
+  programComplete: boolean;
 }

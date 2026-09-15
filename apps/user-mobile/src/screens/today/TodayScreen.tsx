@@ -11,6 +11,7 @@ import { AIBanner } from "../../components/AIBanner";
 import { useAuth } from "../../context/AuthContext";
 import { fetchTodayWaterLogs, logWater } from "../../api/nutrition";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
+import { fetchNextWorkout } from "../../api/plans";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -35,12 +36,22 @@ function todayLabel(): string {
  * unchanged from the functional build. See the git history / prior comment
  * for the feature-level notes; readiness-score ring still awaits wearable
  * data (§E).
+ *
+ * U3 (15 Sep 2026): a real **"Today's Plan" card** — the first place
+ * anywhere in the app that reads `Plan.isActive` (the Plan-Generation
+ * Engine shipped 14 Sep 2026 had zero client consumer until now). Resolves
+ * to one concrete next Workout via GET /plans/current/next-workout; an
+ * in-progress session still takes priority (finishing what's started beats
+ * starting something new). Silent (renders nothing) when there's no active
+ * generated Plan — never fabricates a "next workout" out of nothing, same
+ * discipline the AI Plan/Recommendation engine itself follows.
  */
 export function TodayScreen({ navigation }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: waterLogs } = useQuery({ queryKey: ["waterLogs", "today"], queryFn: fetchTodayWaterLogs });
   const { data: history } = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
+  const { data: nextWorkout } = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout });
   const [isLoggingWater, setIsLoggingWater] = useState(false);
 
   const totalGlasses = useMemo(() => (waterLogs ?? []).reduce((sum, w) => sum + w.glasses, 0), [waterLogs]);
@@ -112,6 +123,38 @@ export function TodayScreen({ navigation }: Props) {
             }
             style={{ marginTop: spacing.md }}
           />
+        </Card>
+      ) : nextWorkout?.workout ? (
+        <Card>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Icon name="target" size={18} color={colors.accent} />
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Today's Plan</Text>
+          </View>
+          <Text style={{ color: colors.textSecondary }}>
+            {nextWorkout.workout.name} · {nextWorkout.plan.programName}
+          </Text>
+          {nextWorkout.plan.rationale ? (
+            <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }} numberOfLines={2}>
+              {nextWorkout.plan.rationale}
+            </Text>
+          ) : null}
+          <Button
+            label="Start Workout"
+            onPress={() =>
+              navigation.navigate("Train", {
+                screen: "WorkoutDetail",
+                params: { workoutId: nextWorkout.workout!.id },
+              })
+            }
+            style={{ marginTop: spacing.md }}
+          />
+        </Card>
+      ) : nextWorkout?.programComplete ? (
+        <Card>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>🎉 Plan complete</Text>
+          <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+            You've finished every workout in {nextWorkout.plan.programName}. Head to Train to explore more programs.
+          </Text>
         </Card>
       ) : null}
 
