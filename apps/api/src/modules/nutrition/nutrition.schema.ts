@@ -34,3 +34,29 @@ export const logWaterSchema = z.object({
 });
 
 export type LogWaterInput = z.infer<typeof logWaterSchema>;
+
+// U4 (15 Sep 2026) — Food input data-quality flow, BR-DAT-003. See
+// apps/api's FoodEstimate model (schema.prisma) doc comment for the full
+// design. description is free text describing what was eaten — the raw
+// input the AI estimate is grounded in, kept short (300 chars) since this
+// is a quick "what did you eat" prompt, not a paragraph.
+export const createFoodEstimateSchema = z.object({
+  mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+  description: z.string().trim().min(1).max(300),
+});
+
+export type CreateFoodEstimateInput = z.infer<typeof createFoodEstimateSchema>;
+
+// Every field optional and independent, same "send only what changed"
+// shape as updateProfileSchema elsewhere in this codebase — the service
+// layer (not this schema) decides "confirmed" vs "edited" by comparing
+// whatever IS sent against the estimate's own original values.
+export const confirmFoodEstimateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  calories: z.number().int().nonnegative().max(10000).optional(),
+  proteinG: z.number().int().nonnegative().max(1000).optional(),
+  carbsG: z.number().int().nonnegative().max(1000).optional(),
+  fatG: z.number().int().nonnegative().max(1000).optional(),
+});
+
+export type ConfirmFoodEstimateInput = z.infer<typeof confirmFoodEstimateSchema>;

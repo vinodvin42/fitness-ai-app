@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { logMealSchema, logWaterSchema } from "./nutrition.schema";
+import { writeRateLimit } from "../../middleware/rateLimit";
+import { confirmFoodEstimateSchema, createFoodEstimateSchema, logMealSchema, logWaterSchema } from "./nutrition.schema";
 import * as nutritionService from "./nutrition.service";
 
 export const nutritionRouter = Router();
@@ -48,3 +49,32 @@ nutritionRouter.post("/water-logs", requireAuth, async (req: AuthedRequest, res,
     next(err);
   }
 });
+
+// Food input data-quality flow (U4, 15 Sep 2026) — see
+// nutrition.service.ts's own doc comment. writeRateLimit on both: the
+// estimate call is a real, non-free LLM request, and confirm is a real
+// mutating write, same rate-limit convention as plans.routes.ts's
+// /plans/generate and /recommendations/:id/decide.
+
+nutritionRouter.post("/food-estimates", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = createFoodEstimateSchema.parse(req.body);
+    res.status(201).json(await nutritionService.createFoodEstimate(req.userId!, input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+nutritionRouter.post(
+  "/food-estimates/:id/confirm",
+  requireAuth,
+  writeRateLimit,
+  async (req: AuthedRequest, res, next) => {
+    try {
+      const input = confirmFoodEstimateSchema.parse(req.body ?? {});
+      res.json(await nutritionService.confirmFoodEstimate(req.userId!, req.params.id, input));
+    } catch (err) {
+      next(err);
+    }
+  },
+);

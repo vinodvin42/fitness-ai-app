@@ -7,9 +7,9 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
-import { logMeal } from "../../api/nutrition";
+import { createFoodEstimate, logMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing } from "../../theme/tokens";
+import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "LogMeal">;
@@ -21,15 +21,26 @@ const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "
  * Log Meal (fuel-02) — docs/mobile/03-screen-inventory.md §D: "search with
  * a barcode-scan shortcut, a take-photo option, a recent-foods list with
  * quick-add, saved/favorited meals, and a manual macro-entry card." Phase 1
- * scope: the manual macro-entry card only — search/barcode/photo/recent/
- * saved all need catalogs (FoodItem) or vision/camera integrations this
- * pass doesn't have (see docs/mobile/05-data-model.md §2, "NOT modeled
- * yet"). Quick-adding a known Recipe is Recipe Detail's "Log" action
- * instead of duplicated here.
+ * scope: a manual macro-entry card, plus (U4, 15 Sep 2026) a real
+ * AI-estimate card — describe what you ate in a sentence, the AI guesses
+ * calories/macros, and Confirm Food Estimate (next screen) is the real
+ * BR-DAT-003 gate before anything is actually logged. Search/barcode/photo/
+ * recent/saved all still need catalogs (FoodItem) or vision/camera
+ * integrations this pass doesn't have (see docs/mobile/05-data-model.md
+ * §2, "NOT modeled yet"). Quick-adding a known Recipe is Recipe Detail's
+ * "Log" action instead of duplicated here.
+ *
+ * Manual entry (below) is deliberately NOT routed through the same
+ * confirm/edit gate — see nutrition.service.ts's own doc comment for why:
+ * the user is typing exact numbers they're asserting as true, not
+ * reviewing an AI guess, so there's no "estimate" for BR-DAT-003 to apply
+ * to. Logging it stays a single step, same as before this pass.
  */
 export function LogMealScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
   const [mealType, setMealType] = useState<MealType>(route.params?.mealType ?? "breakfast");
+  const [description, setDescription] = useState("");
+  const [isEstimating, setIsEstimating] = useState(false);
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
   const [protein, setProtein] = useState("");
@@ -38,6 +49,27 @@ export function LogMealScreen({ route, navigation }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = name.trim().length > 0 && calories.trim().length > 0;
+  const canEstimate = description.trim().length > 0;
+
+  const onEstimate = async () => {
+    if (!canEstimate) return;
+    setIsEstimating(true);
+    try {
+      const estimate = await createFoodEstimate({ mealType, description: description.trim() });
+      if (estimate.status === "insufficient_context") {
+        Alert.alert(
+          "Couldn't estimate that",
+          estimate.failureReason ?? "Try describing it differently, or use manual entry below.",
+        );
+        return;
+      }
+      navigation.navigate("ConfirmFoodEstimate", { estimate });
+    } catch (err) {
+      Alert.alert("Couldn't estimate this meal", extractErrorMessage(err, "Check your connection and try again."));
+    } finally {
+      setIsEstimating(false);
+    }
+  };
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -69,6 +101,28 @@ export function LogMealScreen({ route, navigation }: Props) {
             <Chip key={mt} label={MEAL_LABELS[mt]} selected={mealType === mt} onPress={() => setMealType(mt)} />
           ))}
         </View>
+      </Card>
+
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Describe what you ate</Text>
+        <Text style={{ color: colors.textMuted, ...typography.caption, marginBottom: spacing.sm }}>
+          AI estimates the calories and macros — you'll review and can edit before it's logged.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 2 eggs and a slice of toast"
+          placeholderTextColor={colors.textMuted}
+          value={description}
+          onChangeText={setDescription}
+        />
+        <Button
+          label="Estimate"
+          variant="secondary"
+          onPress={onEstimate}
+          loading={isEstimating}
+          disabled={!canEstimate}
+          style={{ marginTop: spacing.sm, height: 44 }}
+        />
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>

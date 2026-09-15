@@ -139,6 +139,33 @@ enum WorkoutSessionStatus {
 enum MealLogSource {
   recipe
   manual
+  // U4 (15 Sep 2026) — a MealLog created from a confirmed/edited
+  // FoodEstimate (see that model's own doc comment). Distinct from
+  // `manual` because the ORIGINAL numbers came from the AI, not the user
+  // typing exact values themselves — real provenance, not just "not a
+  // recipe."
+  ai_estimate
+}
+
+// FoodEstimateStatus — the Food Input state machine BR-DAT-003 requires
+// ("Estimated; user-confirmed; edited; logged. Estimate is not treated as
+// confirmed fact.") made real, not just asserted in a comment. See
+// FoodEstimate's own doc comment for the full flow.
+enum FoodEstimateStatus {
+  // A real AI guess exists (name/calories/macros populated) but the user
+  // hasn't acted on it yet — BR-DAT-003's "not treated as confirmed fact."
+  estimated
+  // The AI honestly couldn't produce a usable guess from the description
+  // (BR-DAT-004's "weak/conflicting/missing evidence" applied to a single
+  // food description, not just Plan/Recommendation) — no numbers are
+  // populated, only `failureReason`. Terminal: the client's own fallback
+  // is the pre-existing manual-entry card, not a retry loop here.
+  insufficient_context
+  // User reviewed and accepted the estimate's numbers exactly as-is.
+  confirmed
+  // User reviewed and changed at least one field before logging it — still
+  // real, user-owned data, just not what the AI originally guessed.
+  edited
 }
 
 enum ReminderCategory {
@@ -285,6 +312,9 @@ model User {
   workoutSessions             WorkoutSession[]
   mealLogs                    MealLog[]
   waterLogs                   WaterLog[]
+  // Food input data-quality flow (U4, 15 Sep 2026) — see FoodEstimate's own
+  // doc comment.
+  foodEstimates               FoodEstimate[]
   bodyMeasurements            BodyMeasurement[]
   progressPhotos              ProgressPhoto[]
   programPurchases            ProgramPurchase[]
@@ -486,14 +516,14 @@ model WorkoutExercise {
 }
 
 model WorkoutSession {
-  id          String               @id @default(uuid())
-  userId      String
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutId   String
-  workout     Workout              @relation(fields: [workoutId], references: [id])
-  status      WorkoutSessionStatus @default(in_progress)
-  startedAt   DateTime             @default(now())
-  completedAt DateTime?
+  id                   String               @id @default(uuid())
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId            String
+  workout              Workout              @relation(fields: [workoutId], references: [id])
+  status               WorkoutSessionStatus @default(in_progress)
+  startedAt            DateTime             @default(now())
+  completedAt          DateTime?
   // U3 (15 Sep 2026) — "temporary connectivity must not lose active data".
   // Individual set logs were already durably persisted per-action
   // (ExerciseSetLog, one row per logged set); what wasn't recoverable was
@@ -502,7 +532,7 @@ model WorkoutSession {
   // state. This makes it real, server-side truth instead of a guess
   // re-derived from set counts (which a user manually skipping ahead with
   // sets remaining would get wrong).
-  currentExerciseIndex Int @default(0)
+  currentExerciseIndex Int                  @default(0)
 
   setLogs ExerciseSetLog[]
 
@@ -785,22 +815,90 @@ model ContentReview {
 // someone's food history — recipeId is kept only for traceability.
 
 model MealLog {
-  id       String        @id @default(uuid())
-  userId   String
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipeId String?
-  recipe   Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  mealType MealType
-  name     String
-  calories Int
-  proteinG Int           @default(0)
-  carbsG   Int           @default(0)
-  fatG     Int           @default(0)
-  source   MealLogSource @default(manual)
-  loggedAt DateTime      @default(now())
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId     String?
+  recipe       Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  mealType     MealType
+  name         String
+  calories     Int
+  proteinG     Int           @default(0)
+  carbsG       Int           @default(0)
+  fatG         Int           @default(0)
+  source       MealLogSource @default(manual)
+  loggedAt     DateTime      @default(now())
+  // U4 (15 Sep 2026) — set only when this row was created by confirming/
+  // editing a FoodEstimate (source: ai_estimate). The back-half of
+  // FoodEstimate.mealLogId, kept for the same "trace how a logged number
+  // got here" reason recipeId already exists on this model.
+  foodEstimate FoodEstimate?
 
   @@index([userId, loggedAt])
   @@map("meal_logs")
+}
+
+// ---- Nutrition: Food input data-quality flow (Estimate -> Confirm/Edit) --
+// U4 (15 Sep 2026), BR-DAT-003 ("estimated data is not actual until
+// confirmed/edited where required") and the Food-input row of the Core
+// State Requirements table ("Estimated; user-confirmed; edited; logged.
+// Estimate is not treated as confirmed fact."). Before this pass, Log
+// Meal's only input path was direct manual entry — the user types exact
+// numbers themselves, so there was never really an "estimate" to
+// distinguish from a "logged fact"; that path is left as-is (see
+// nutrition.service.ts's doc comment for why it's out of scope here).
+//
+// This model is the NEW path: a raw text food description goes to the
+// real AI Coach provider (apps/api/src/lib/aiClient.ts, same
+// `generateCompletion()` Plan-Generation already uses) for a nutrition
+// estimate, which is persisted here — deliberately NOT written into
+// MealLog yet, since MealLog is this app's "real, logged fact" table and
+// an unconfirmed AI guess doesn't belong there (BR-DAT-003's whole point).
+// Only `confirmFoodEstimate` (nutrition.service.ts) ever creates the
+// MealLog row, once the user has confirmed or edited the numbers —
+// `status` flips to `confirmed` or `edited` at that same moment,
+// `mealLogId` is stamped, and the row becomes a permanent audit trail of
+// "this logged meal's numbers originated as an AI estimate, here's
+// exactly what the AI said vs. what the user actually logged."
+//
+// Unlike Plan (which persists a `generating` row before calling the LLM,
+// so a Retry can reuse it), this is a single synchronous round trip with
+// no persisted in-flight row and no retry-in-place semantics — re-asking
+// is just submitting the description again, cheap enough not to need
+// Plan's version/retry machinery. `estimated`/`insufficient_context`
+// (BR-DAT-004 applied here: a vague description is honest grounds for
+// "insufficient context," never a fabricated guess) are the only two
+// terminal states a create can end in.
+model FoodEstimate {
+  id            String             @id @default(uuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealType      MealType
+  // The raw text the user typed, e.g. "2 eggs and a slice of toast" — kept
+  // verbatim so a later "insufficient_context" or "edited" row still shows
+  // what was actually asked.
+  description   String
+  status        FoodEstimateStatus
+  // Null until/unless status is estimated/confirmed/edited — an
+  // insufficient_context row never gets real numbers, by design.
+  name          String?
+  calories      Int?
+  proteinG      Int?
+  carbsG        Int?
+  fatG          Int?
+  // Only set when status is insufficient_context — a real, user-facing
+  // reason (never a raw stack trace), same convention as Plan.failureReason.
+  failureReason String?
+  // Stamped by confirmFoodEstimate the moment this estimate is actually
+  // logged — @unique because each estimate can produce at most one
+  // MealLog, ever (a second confirm attempt 409s, see nutrition.service.ts).
+  mealLogId     String?            @unique
+  mealLog       MealLog?           @relation(fields: [mealLogId], references: [id], onDelete: SetNull)
+  createdAt     DateTime           @default(now())
+  confirmedAt   DateTime?
+
+  @@index([userId, createdAt])
+  @@map("food_estimates")
 }
 
 // ---- Nutrition: WaterLog ------------------------------------------------
