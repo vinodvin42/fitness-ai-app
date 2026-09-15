@@ -224,11 +224,29 @@ interface PaymentRecord {
  * if any — verifyPayment() needs it to hand the client a real
  * BookingConfirmation without a second round trip; the webhook path
  * ignores this return value.
+ *
+ * The "whichever reaches here first wins" claim above only holds if the
+ * paid-status transition itself is atomic. The webhook and a client's
+ * /verify call each fetch their own `Payment` snapshot independently
+ * (verifyPayment/handleWebhook above) and can genuinely race — Razorpay's
+ * webhook commonly fires within milliseconds of the client's own checkout
+ * callback. A plain `if (payment.status === "paid") return {}` guard reads
+ * that stale, already-fetched snapshot, so both concurrent calls can pass
+ * it and both proceed to call subscribe()/purchaseProgram()/createBooking()
+ * for the same payment — subscribe() in particular has no uniqueness
+ * guard, so this could create two simultaneously-"active" Subscription
+ * rows for one user from a single payment. Using `updateMany` with a
+ * `status: { not: "paid" }` filter makes the claim step itself atomic: only
+ * the call whose update actually affects a row proceeds to activate.
  */
 async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awaited<ReturnType<typeof createBooking>> }> {
-  if (payment.status === "paid") return {}; // already activated — don't double-grant
+  if (payment.status === "paid") return {}; // fast path — already activated per our own snapshot
 
-  await prisma.payment.update({ where: { id: payment.id }, data: { status: "paid" } });
+  const claimed = await prisma.payment.updateMany({
+    where: { id: payment.id, status: { not: "paid" } },
+    data: { status: "paid" },
+  });
+  if (claimed.count === 0) return {}; // a concurrent call (webhook vs. /verify) already claimed it — don't double-grant
 
   let booking: Awaited<ReturnType<typeof createBooking>> | undefined;
 
