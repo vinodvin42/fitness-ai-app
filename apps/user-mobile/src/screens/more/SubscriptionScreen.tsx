@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { SubscriptionPlan } from "@fitness-ai-app/types";
+import type { SubscriptionDetail, SubscriptionPlan } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -30,6 +30,50 @@ const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string 
 function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billingCycle"]) {
   if (priceCents === 0) return "Free";
   return `₹${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : "mo"}`;
+}
+
+/**
+ * U6 Premium entitlement (15 Sep 2026) — this card used to show a hardcoded
+ * "Active" Pill for ANY current subscription, including a real `trialing`
+ * or `past_due` one (the two other non-terminal statuses `Subscription.
+ * status` already declares — see subscriptions.service.ts's
+ * getCurrentSubscription doc comment for why `past_due` wasn't even
+ * reaching this screen before today). A binary "has a subscription row" /
+ * "doesn't" read is exactly the gap the milestone's Core State
+ * Requirements (§5, "Entitlement" row) calls out. `renewsAt` already
+ * existed on every Subscription but nothing ever read it to notice a
+ * lapsed renewal date — no renewal/billing cron exists in this build (a
+ * real one is a genuine follow-up, not something to fake client-side), so
+ * this is an honest, purely-derived "expired" read of data that was
+ * already there, not a new state the server tracks.
+ */
+function entitlementDisplay(current: { status: SubscriptionDetail["status"]; renewsAt: string | null }): {
+  label: string;
+  tone: "success" | "accent" | "warning" | "neutral";
+  icon: IconName;
+  note: string | null;
+} {
+  const lapsed = current.renewsAt != null && new Date(current.renewsAt).getTime() < Date.now();
+  if (current.status === "past_due") {
+    return {
+      label: "Payment issue",
+      tone: "warning",
+      icon: "alert-triangle" as IconName,
+      note: "Your last payment didn't go through. Update your payment method to keep premium access.",
+    };
+  }
+  if (lapsed) {
+    return {
+      label: "Expired",
+      tone: "neutral",
+      icon: "alert-triangle" as IconName,
+      note: "This plan's renewal date has passed. Choose a plan below to reactivate.",
+    };
+  }
+  if (current.status === "trialing") {
+    return { label: "Trial", tone: "accent", icon: "zap" as IconName, note: null };
+  }
+  return { label: "Active", tone: "success", icon: "check" as IconName, note: null };
 }
 
 /**
@@ -110,6 +154,11 @@ export function SubscriptionScreen({ navigation }: Props) {
     // screens instead of the default inline Alert.
     onSuccess: () => navigation.navigate("PaymentResult", { status: "success" }),
     onError: (message) => navigation.navigate("PaymentResult", { status: "failed", message }),
+    // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — payment
+    // captured, entitlement grant failed: a distinct, recoverable screen
+    // with a Retry action, never the plain "Payment Failed" one above.
+    onActivationFailed: (paymentId, message) =>
+      navigation.navigate("PaymentResult", { status: "activation_failed", message, paymentId }),
   });
 
   // Basic (free) still activates directly, no payment step needed — see
@@ -170,30 +219,42 @@ export function SubscriptionScreen({ navigation }: Props) {
     <ScreenContainer title="Subscription">
       {current ? (
         <Card>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: radius.md,
-                backgroundColor: TIER_TINT[current.plan.tier].soft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Icon name={TIER_ICON[current.plan.tier]} size={22} color={TIER_TINT[current.plan.tier].color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{TIER_LABEL[current.plan.tier]}</Text>
-                <Pill label="Active" tone="success" icon="check" />
-              </View>
-              <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                {formatPrice(current.plan.priceCents, current.plan.billingCycle)}
-                {current.renewsAt ? ` · renews ${new Date(current.renewsAt).toLocaleDateString()}` : ""}
-              </Text>
-            </View>
-          </View>
+          {(() => {
+            const entitlement = entitlementDisplay(current);
+            return (
+              <>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: radius.md,
+                      backgroundColor: TIER_TINT[current.plan.tier].soft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name={TIER_ICON[current.plan.tier]} size={22} color={TIER_TINT[current.plan.tier].color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                      <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{TIER_LABEL[current.plan.tier]}</Text>
+                      <Pill label={entitlement.label} tone={entitlement.tone} icon={entitlement.icon} />
+                    </View>
+                    <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
+                      {formatPrice(current.plan.priceCents, current.plan.billingCycle)}
+                      {current.renewsAt ? ` · renews ${new Date(current.renewsAt).toLocaleDateString()}` : ""}
+                    </Text>
+                  </View>
+                </View>
+                {entitlement.note ? (
+                  <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
+                    {entitlement.note}
+                  </Text>
+                ) : null}
+              </>
+            );
+          })()}
           <Button
             label="Cancel Subscription"
             variant="secondary"

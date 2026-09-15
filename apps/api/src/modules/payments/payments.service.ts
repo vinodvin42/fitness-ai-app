@@ -212,6 +212,9 @@ interface PaymentRecord {
   // PAY-01 — only set (and only read) when purpose is "booking". See its
   // own comment on the Payment model in schema.prisma.
   scheduledAt: Date | null;
+  // U6 Premium entitlement — see the Payment model's own doc comment in
+  // schema.prisma for the full "paid" vs. "actually activated" story.
+  activationFailedAt: Date | null;
 }
 
 /**
@@ -238,85 +241,160 @@ interface PaymentRecord {
  * rows for one user from a single payment. Using `updateMany` with a
  * `status: { not: "paid" }` filter makes the claim step itself atomic: only
  * the call whose update actually affects a row proceeds to activate.
+ *
+ * U6 Premium entitlement (15 Sep 2026, BR-COM-011 / Error & Recovery §9) —
+ * the claim above only proves the MONEY is captured, not that the
+ * entitlement itself was granted. If subscribe()/purchaseProgram() throws
+ * AFTER the atomic claim (a DB hiccup, a dropped connection — nothing
+ * exotic), the old code left the Payment stuck at `status: "paid"` forever
+ * with no Subscription/ProgramPurchase ever created and no way back in:
+ * the same `status: { not: "paid" }` claim filter that makes the race-safe
+ * fast path safe also permanently refuses a retry, and the client's own
+ * catch block sent the user to a flat "Payment Failed" screen — a lie,
+ * since Razorpay really did charge them. This is exactly the recoverable-
+ * state gap §9 names. Fixed the same "atomic claim, not read-then-write"
+ * way as the race above, just keyed on `activationFailedAt` instead of
+ * `status` for the retry case: activation failures for subscription/
+ * program_purchase are now recorded distinctly (`activationFailedAt` +
+ * `activationFailureReason`) and re-attempted via `retryActivation()`
+ * below (`POST /payments/:id/retry-activation`), which never re-charges —
+ * it only re-runs the DB-side grant. Booking is deliberately excluded:
+ * its failure mode (a slot going unavailable in the capture window) is
+ * often a *permanent* fact about the world, not a transient one, so it
+ * keeps its own pre-existing "record it, don't auto-retry, needs a human"
+ * path unchanged below.
  */
 async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awaited<ReturnType<typeof createBooking>> }> {
-  if (payment.status === "paid") return {}; // fast path — already activated per our own snapshot
+  if (payment.status === "paid" && !payment.activationFailedAt) return {}; // fast path — already fully activated
 
-  const claimed = await prisma.payment.updateMany({
-    where: { id: payment.id, status: { not: "paid" } },
-    data: { status: "paid" },
-  });
-  if (claimed.count === 0) return {}; // a concurrent call (webhook vs. /verify) already claimed it — don't double-grant
+  if (payment.status !== "paid") {
+    const claimed = await prisma.payment.updateMany({
+      where: { id: payment.id, status: { not: "paid" } },
+      data: { status: "paid" },
+    });
+    if (claimed.count === 0) return {}; // a concurrent call (webhook vs. /verify) already claimed it — don't double-grant
+  } else {
+    // payment.status is already "paid" but activationFailedAt is set: this
+    // is a genuine retry of a previously-failed activation attempt, not a
+    // fresh one — money was captured earlier, the entitlement grant just
+    // never finished. Same atomic-claim discipline as above, just keyed on
+    // activationFailedAt so two concurrent retries (a user's manual Retry
+    // tap racing a Razorpay webhook redelivery, which also funnels through
+    // here) can't both re-run subscribe()/purchaseProgram().
+    const claimedRetry = await prisma.payment.updateMany({
+      where: { id: payment.id, activationFailedAt: { not: null } },
+      data: { activationFailedAt: null, activationFailureReason: null },
+    });
+    if (claimedRetry.count === 0) return {}; // no longer in a failed state — another retry already owns it (or already finished)
+  }
 
   let booking: Awaited<ReturnType<typeof createBooking>> | undefined;
 
-  if (payment.purpose === "subscription") {
-    await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true });
-  } else if (payment.purpose === "booking") {
-    const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: payment.referenceId } });
-    if (!offering) {
-      // Should be unreachable — the offering existed at order-creation time
-      // (resolveAmountCents checked it) and nothing in this build deletes a
-      // ProfessionalServiceOffering (same "not deletable anywhere in this
-      // console" note adminPayments.service.ts makes about Plans/Programs).
-      // Treat it as a real failure rather than silently skipping, same as
-      // that file's own precedent.
-      throw new ApiHttpError(500, "offering_missing", "The coaching service for this payment no longer exists");
+  try {
+    if (payment.purpose === "subscription") {
+      await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true });
+    } else if (payment.purpose === "booking") {
+      const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: payment.referenceId } });
+      if (!offering) {
+        // Should be unreachable — the offering existed at order-creation time
+        // (resolveAmountCents checked it) and nothing in this build deletes a
+        // ProfessionalServiceOffering (same "not deletable anywhere in this
+        // console" note adminPayments.service.ts makes about Plans/Programs).
+        // Treat it as a real failure rather than silently skipping, same as
+        // that file's own precedent.
+        throw new ApiHttpError(500, "offering_missing", "The coaching service for this payment no longer exists");
+      }
+      try {
+        booking = await createBooking(
+          payment.userId,
+          { professionalId: offering.professionalId, offeringId: offering.id, scheduledAt: payment.scheduledAt!.toISOString() },
+          { verifiedPayment: true },
+        );
+      } catch (err) {
+        // Money has already been captured by Razorpay by this point (status
+        // just flipped to "paid" above) — this only throws if the slot
+        // became unavailable in the narrow window between order-creation
+        // (which already checked it) and payment capture. No hold/lock
+        // mechanism exists to fully close that race (the free-booking path
+        // has the exact same unlocked check-then-create gap, just without a
+        // real charge riding on it), so this is rare, not impossible. Rather
+        // than let a paid-but-unfulfilled booking vanish silently, record it
+        // distinctly for manual follow-up (refund or reschedule — no
+        // automated refund flow exists yet, see gap doc's Refunds item) and
+        // re-throw: the client needs to know the booking didn't happen even
+        // though the charge did, not see a false success. Deliberately NOT
+        // marked activationFailedAt/retryable (see this function's own top
+        // comment) — a lost slot needs a human, not a blind re-run.
+        await recordAudit({
+          actorId: payment.userId,
+          action: "booking.payment_captured_but_unfulfilled",
+          entityType: "Payment",
+          entityId: payment.id,
+          metadata: { offeringId: offering.id, reason: err instanceof ApiHttpError ? err.code : "unknown_error" },
+        });
+        throw err;
+      }
+    } else {
+      await purchaseProgram(payment.userId, payment.referenceId, { verifiedPayment: true });
     }
-    try {
-      booking = await createBooking(
-        payment.userId,
-        { professionalId: offering.professionalId, offeringId: offering.id, scheduledAt: payment.scheduledAt!.toISOString() },
-        { verifiedPayment: true },
-      );
-    } catch (err) {
-      // Money has already been captured by Razorpay by this point (status
-      // just flipped to "paid" above) — this only throws if the slot
-      // became unavailable in the narrow window between order-creation
-      // (which already checked it) and payment capture. No hold/lock
-      // mechanism exists to fully close that race (the free-booking path
-      // has the exact same unlocked check-then-create gap, just without a
-      // real charge riding on it), so this is rare, not impossible. Rather
-      // than let a paid-but-unfulfilled booking vanish silently, record it
-      // distinctly for manual follow-up (refund or reschedule — no
-      // automated refund flow exists yet, see gap doc's Refunds item) and
-      // re-throw: the client needs to know the booking didn't happen even
-      // though the charge did, not see a false success.
-      await recordAudit({
-        actorId: payment.userId,
-        action: "booking.payment_captured_but_unfulfilled",
-        entityType: "Payment",
-        entityId: payment.id,
-        metadata: { offeringId: offering.id, reason: err instanceof ApiHttpError ? err.code : "unknown_error" },
-      });
-      throw err;
-    }
-  } else {
-    await purchaseProgram(payment.userId, payment.referenceId, { verifiedPayment: true });
+
+    await recordAudit({
+      actorId: payment.userId,
+      action: "payment.captured",
+      entityType: "Payment",
+      entityId: payment.id,
+      metadata: { purpose: payment.purpose, referenceId: payment.referenceId },
+    });
+
+    // Module 06.05 Coupons (31 Aug 2026) — record the coupon redemption now
+    // that the payment is genuinely captured (idempotent, no-op if no coupon
+    // was applied). See coupons.service.ts's recordRedemptionForPayment.
+    await recordRedemptionForPayment(payment.id);
+
+    // Module 10 Finance, added 26 Aug 2026 — the "one ledger" architecture
+    // decision's real trigger point (reports/finance-architecture-plan.html):
+    // every Payment that reaches "paid" gets exactly one Invoice, generated
+    // here rather than through any separate manual flow. Idempotent on its
+    // own, but this is the single choke point both the /verify call and the
+    // webhook funnel through either way (this function's own guard above).
+    await ensureInvoiceForPayment(payment.id);
+
+    await prisma.payment.update({ where: { id: payment.id }, data: { activatedAt: new Date() } });
+
+    return { booking };
+  } catch (err) {
+    if (payment.purpose === "booking") throw err; // booking's own catch above already recorded + rethrew this
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        activationFailedAt: new Date(),
+        activationFailureReason: err instanceof ApiHttpError ? err.code : "unknown_error",
+      },
+    });
+    await recordAudit({
+      actorId: payment.userId,
+      action: "payment.activation_failed",
+      entityType: "Payment",
+      entityId: payment.id,
+      metadata: {
+        purpose: payment.purpose,
+        referenceId: payment.referenceId,
+        reason: err instanceof ApiHttpError ? err.code : "unknown_error",
+      },
+    });
+    // A distinct, honest, detectable error — "paid" (Razorpay captured the
+    // charge) is already true and stays true; only the entitlement grant
+    // failed and is retryable with no further charge. The client keys off
+    // this exact `code` to show a recoverable state instead of a flat
+    // "Payment Failed" (§9) — see useRazorpayPurchase.ts / PaymentResultScreen.tsx.
+    throw new ApiHttpError(
+      502,
+      "entitlement_activation_failed",
+      "Your payment went through, but activating it failed. You haven't been charged again — tap Retry to finish, or contact support with your payment ID if this keeps happening.",
+      { paymentId: payment.id },
+    );
   }
-
-  await recordAudit({
-    actorId: payment.userId,
-    action: "payment.captured",
-    entityType: "Payment",
-    entityId: payment.id,
-    metadata: { purpose: payment.purpose, referenceId: payment.referenceId },
-  });
-
-  // Module 06.05 Coupons (31 Aug 2026) — record the coupon redemption now
-  // that the payment is genuinely captured (idempotent, no-op if no coupon
-  // was applied). See coupons.service.ts's recordRedemptionForPayment.
-  await recordRedemptionForPayment(payment.id);
-
-  // Module 10 Finance, added 26 Aug 2026 — the "one ledger" architecture
-  // decision's real trigger point (reports/finance-architecture-plan.html):
-  // every Payment that reaches "paid" gets exactly one Invoice, generated
-  // here rather than through any separate manual flow. Idempotent on its
-  // own, but this is the single choke point both the /verify call and the
-  // webhook funnel through either way (this function's own guard above).
-  await ensureInvoiceForPayment(payment.id);
-
-  return { booking };
 }
 
 export async function verifyPayment(
@@ -332,15 +410,27 @@ export async function verifyPayment(
     throw new ApiHttpError(404, "payment_not_found", "No matching payment order found for this user");
   }
 
-  if (payment.status === "paid") {
-    // Idempotent retry of an already-verified payment — `booking` is
-    // omitted here even for a booking payment: activatePayment()'s return
-    // value (the one place that shapes a real BookingConfirmation DTO) only
-    // exists on the call that actually ran it, and this is deliberately not
-    // re-derived from a raw Booking row (a different, thinner shape). A
+  if (payment.status === "paid" && !payment.activationFailedAt) {
+    // Idempotent retry of an already-verified, already-activated payment —
+    // `booking` is omitted here even for a booking payment: activatePayment()'s
+    // return value (the one place that shapes a real BookingConfirmation DTO)
+    // only exists on the call that actually ran it, and this is deliberately
+    // not re-derived from a raw Booking row (a different, thinner shape). A
     // client retrying an already-successful /verify call already navigated
     // on the first response; this is a safety-net path, not the common one.
     return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId };
+  }
+
+  if (payment.status === "paid" && payment.activationFailedAt) {
+    // U6 Premium entitlement — a prior activation attempt captured the
+    // money but never finished granting the entitlement (see
+    // activatePayment()'s own doc comment). The signature was already
+    // verified once to get here; re-verifying it again would need the same
+    // razorpayPaymentId/razorpaySignature this call was already given, so
+    // just retry activation directly rather than re-deriving a decision
+    // from the (already-consumed) signature check below.
+    const { booking } = await activatePayment(payment);
+    return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
   }
 
   // The actual security boundary — recompute the signature server-side
@@ -400,4 +490,65 @@ export async function handleWebhook(rawBody: Buffer, signatureHeader: string | u
   } else if (event.event === "payment.failed" && payment.status === "created") {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } });
   }
+}
+
+/**
+ * U6 Premium entitlement — lets a client poll a specific Payment's real
+ * state (GET /payments/:id) rather than guessing from a static "success"/
+ * "failed" nav param. Scoped to the requesting user (404, not 403, for a
+ * payment that exists but isn't theirs — same "don't confirm existence to
+ * a non-owner" reasoning every other owned-resource lookup in this app
+ * already follows). This is the read side of the recoverable state §9
+ * requires: a screen can show "we're finishing activation" / "activation
+ * needs a retry" / "you're all set" from real data instead of only the
+ * one-shot result a /verify call returned at the moment it happened.
+ */
+export async function getPaymentForUser(userId: string, paymentId: string) {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.userId !== userId) {
+    throw new ApiHttpError(404, "payment_not_found", "Payment not found");
+  }
+  return {
+    id: payment.id,
+    purpose: payment.purpose,
+    referenceId: payment.referenceId,
+    status: payment.status,
+    activatedAt: payment.activatedAt,
+    activationFailedAt: payment.activationFailedAt,
+    activationFailureReason: payment.activationFailureReason,
+  };
+}
+
+/**
+ * U6 Premium entitlement — the retry side of the recoverable state §9
+ * requires (`POST /payments/:id/retry-activation`). Deliberately does NOT
+ * take or re-check a Razorpay signature: the money was already captured
+ * and verified by an earlier /verify call or webhook delivery (that's the
+ * only way `status` can be "paid" at all), so this only re-runs the DB-side
+ * entitlement grant — it can never cause a second charge. Refuses to run
+ * for a payment that was never paid, or one with nothing to retry (already
+ * active, or a booking — see activatePayment()'s own comment on why
+ * booking is excluded from this retry path).
+ */
+export async function retryActivation(userId: string, paymentId: string) {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.userId !== userId) {
+    throw new ApiHttpError(404, "payment_not_found", "Payment not found");
+  }
+  if (payment.status !== "paid") {
+    throw new ApiHttpError(409, "payment_not_captured", "This payment was never captured — nothing to retry");
+  }
+  if (!payment.activationFailedAt) {
+    throw new ApiHttpError(409, "activation_not_failed", "This payment doesn't have a failed activation to retry");
+  }
+  if (payment.purpose === "booking") {
+    throw new ApiHttpError(
+      409,
+      "booking_retry_unsupported",
+      "A captured booking payment can't be auto-retried — contact support with your payment ID",
+    );
+  }
+
+  const { booking } = await activatePayment(payment);
+  return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
 }

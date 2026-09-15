@@ -1492,25 +1492,25 @@ model Subscription {
 // gap §14 for the full before/after.
 
 model Payment {
-  id                String          @id @default(uuid())
-  userId            String
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider          PaymentProvider @default(razorpay)
-  purpose           PaymentPurpose
-  referenceId       String
-  amountCents       Int
-  currency          String          @default("INR")
-  providerOrderId   String          @unique
-  providerPaymentId String?
-  status            PaymentStatus   @default(created)
+  id                      String          @id @default(uuid())
+  userId                  String
+  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider                PaymentProvider @default(razorpay)
+  purpose                 PaymentPurpose
+  referenceId             String
+  amountCents             Int
+  currency                String          @default("INR")
+  providerOrderId         String          @unique
+  providerPaymentId       String?
+  status                  PaymentStatus   @default(created)
   // Module 06.05 Coupons (added 31 Aug 2026) — the code applied at order
   // creation and the discount it produced, stashed here so the redemption
   // can be recorded only once the payment is actually captured (see
   // payments.service.ts's activatePayment + coupons.service.ts's
   // recordRedemptionForPayment). Null when no coupon was used. `amountCents`
   // above is the ALREADY-discounted amount actually charged.
-  couponCode        String?
-  discountCents     Int?
+  couponCode              String?
+  discountCents           Int?
   // PAY-01, added 5 Sep 2026 — only set (and only meaningful) when purpose
   // is "booking". Subscription/program purchases resolve their whole
   // referenceId (a SubscriptionPlan/Program id) at activation time with
@@ -1522,9 +1522,34 @@ model Payment {
   // the one extra fact createOrder() needs to persist so activatePayment()
   // can actually create the Booking later. See payments.service.ts's
   // resolveAmountCents()/activatePayment() for how it's used.
-  scheduledAt       DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  scheduledAt             DateTime?
+  // U6 Premium entitlement (added 15 Sep 2026) — BR-COM-011 / Error &
+  // Recovery §9's "payment success + entitlement failure must show a
+  // recoverable user state, not 'payment failed'" gap, closed for real.
+  // Before this, activatePayment() (payments.service.ts) atomically
+  // claimed `status: "paid"` and THEN called subscribe()/purchaseProgram()
+  // — if that second step threw (DB hiccup, dropped connection, anything
+  // short of the claim itself), the Payment was left permanently stuck at
+  // "paid" with no Subscription/ProgramPurchase ever created, and no way
+  // to retry short of a duplicate charge (the atomic claim's own `status:
+  // { not: "paid" }` filter would refuse a second attempt). `activatedAt`
+  // now marks the moment activation genuinely finished (entitlement
+  // really granted, not just money captured), and a non-null
+  // `activationFailedAt` marks that specific stuck state — set the moment
+  // activation throws after the claim, cleared the moment a retry
+  // (`payments.service.ts#retryActivation`, `POST /payments/:id/retry-
+  // activation`) succeeds. `status` alone was never sufficient — "paid"
+  // has always meant "Razorpay captured the money," not "the user has the
+  // thing they paid for," and conflating the two is exactly the bug this
+  // closes. Scoped to subscription/program_purchase only — booking keeps
+  // its own pre-existing, deliberately-not-auto-retryable failure path
+  // (a lost time slot needs a human refund/reschedule, see
+  // activatePayment()'s own comment).
+  activatedAt             DateTime?
+  activationFailedAt      DateTime?
+  activationFailureReason String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
   // Module 10 Finance, added 26 Aug 2026 — one real Invoice generated the
   // moment this Payment's status flips to "paid" (see payments.service.ts's

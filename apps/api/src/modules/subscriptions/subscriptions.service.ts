@@ -36,9 +36,22 @@ function renewalDateFor(billingCycle: "monthly" | "annual"): Date {
   return next;
 }
 
+/**
+ * U6 Premium entitlement (15 Sep 2026) — previously filtered to
+ * `["active", "trialing"]` only, so a `past_due` Subscription (the one
+ * other non-terminal status this model already declares — see
+ * adminFinance.service.ts's real Accounts Receivable report, which already
+ * reads `past_due` rows) silently vanished from this endpoint: the mobile
+ * client would show "Unlock your full potential" as if the user had never
+ * subscribed at all, even though a real, billing-troubled Subscription row
+ * existed for them. `past_due` now included — SubscriptionScreen.tsx
+ * renders it as its own honest state, not folded into "Active". `canceled`
+ * stays excluded: that's the one real terminal state where "no current
+ * subscription" is the correct read.
+ */
 export function getCurrentSubscription(userId: string) {
   return prisma.subscription.findFirst({
-    where: { userId, status: { in: ["active", "trialing"] } },
+    where: { userId, status: { in: ["active", "trialing", "past_due"] } },
     include: { plan: true },
     orderBy: { createdAt: "desc" },
   });

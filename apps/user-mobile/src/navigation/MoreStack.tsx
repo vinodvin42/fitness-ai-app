@@ -90,7 +90,12 @@ export type MoreStackParamList = {
   Recovery: undefined;
   Subscription: undefined;
   SubscriptionHistory: undefined;
-  PaymentResult: { status: "success" | "failed"; message?: string };
+  // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — "activation_failed"
+  // is a genuinely distinct, recoverable state: the payment WAS captured,
+  // only the entitlement grant failed, so it gets its own honest copy and a
+  // Retry action instead of collapsing into "failed" (a lie in that case).
+  // See PaymentResultScreen.tsx and payments.service.ts's activatePayment.
+  PaymentResult: { status: "success" | "failed" | "activation_failed"; message?: string; paymentId?: string };
   TimelineOverview: undefined;
   TimelineMonth: { year?: number; month?: number };
   TimelineEvent: { event: TimelineEvent };
