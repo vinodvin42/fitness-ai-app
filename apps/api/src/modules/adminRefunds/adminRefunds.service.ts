@@ -76,42 +76,84 @@ export async function listRefunds(query: ListRefundsQuery) {
   };
 }
 
-type PaymentForRefund = {
+type LockedPaymentRow = {
   id: string;
   userId: string;
   status: string;
   amountCents: number;
   currency: string;
   providerPaymentId: string | null;
-  refunds: { amountCents: number; status: string }[];
 };
 
+/**
+ * Real over-refund race (found during a later bug-hunt pass, 15 Sep 2026):
+ * the exact "read-then-write, not atomic" class already fixed five times
+ * elsewhere in this codebase (payments.service.ts's activatePayment,
+ * nutrition.service.ts's confirmFoodEstimate, adminInfluencers.service.ts's
+ * markPayoutPaid, adminSettlements' settleCoach-adjacent work, plans.
+ * service.ts's decideRecommendation) — but this one caps a running SUM
+ * across every non-failed Refund on a Payment, not a single row's status,
+ * so a conditional `updateMany` (this codebase's usual fix) can't express
+ * it. Two concurrent refund requests against the same Payment (two admins
+ * working the same ticket, or a double-click on "Issue Refund") could each
+ * read the same `alreadyRefunded` total from their own snapshot, both pass
+ * the `amountCents > remaining` check below, and both go on to call
+ * Razorpay's real refund API — actually moving more real money out than
+ * the payment ever collected, not just corrupting an internal counter.
+ *
+ * Fixed with a real row lock: `SELECT ... FOR UPDATE` on the Payment row
+ * inside a transaction serializes the read-total-then-claim step, and the
+ * claim itself (creating a `pending` Refund row for the requested amount)
+ * happens inside that same locked transaction — so a second concurrent
+ * request blocks until the first commits, then re-reads a total that
+ * already includes it. The actual Razorpay call happens AFTER the
+ * transaction commits (an external HTTP call has no business holding a DB
+ * row lock open) and reconciles onto the already-reserved row rather than
+ * creating a second one.
+ */
 export async function createRefund(actorAdminId: string, paymentId: string, input: CreateRefundInput) {
-  const payment = (await prisma.payment.findUnique({
-    where: { id: paymentId },
-    include: { refunds: { select: { amountCents: true, status: true } } },
-  })) as PaymentForRefund | null;
+  const { payment, reserved } = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<LockedPaymentRow[]>`
+      SELECT id, "userId", status, "amountCents", currency, "providerPaymentId"
+      FROM "payments" WHERE id = ${paymentId} FOR UPDATE
+    `;
+    const lockedPayment = locked[0];
+    if (!lockedPayment) {
+      throw new ApiHttpError(404, "payment_not_found", "Payment not found");
+    }
+    if (lockedPayment.status !== "paid") {
+      throw new ApiHttpError(409, "payment_not_captured", "Only a captured payment can be refunded");
+    }
 
-  if (!payment) {
-    throw new ApiHttpError(404, "payment_not_found", "Payment not found");
-  }
-  if (payment.status !== "paid") {
-    throw new ApiHttpError(409, "payment_not_captured", "Only a captured payment can be refunded");
-  }
+    const existingRefunds = await tx.refund.findMany({
+      where: { paymentId, status: { not: "failed" } },
+      select: { amountCents: true },
+    });
+    const alreadyRefunded = existingRefunds.reduce((s, r) => s + r.amountCents, 0);
+    const remaining = lockedPayment.amountCents - alreadyRefunded;
+    if (input.amountCents > remaining) {
+      throw new ApiHttpError(
+        422,
+        "over_refund",
+        `Refund exceeds the refundable amount (${remaining} ${lockedPayment.currency} remaining)`,
+      );
+    }
 
-  const alreadyRefunded = payment.refunds
-    .filter((r) => r.status !== "failed")
-    .reduce((s, r) => s + r.amountCents, 0);
-  const remaining = payment.amountCents - alreadyRefunded;
-  if (input.amountCents > remaining) {
-    throw new ApiHttpError(
-      422,
-      "over_refund",
-      `Refund exceeds the refundable amount (${remaining} ${payment.currency} remaining)`,
-    );
-  }
+    const reservedRefund = await tx.refund.create({
+      data: {
+        paymentId,
+        amountCents: input.amountCents,
+        reason: input.reason ?? null,
+        status: "pending",
+        note: input.note ?? null,
+      },
+    });
 
-  // Try the real gateway refund when possible; otherwise record it pending.
+    return { payment: lockedPayment, reserved: reservedRefund };
+  });
+
+  // Try the real gateway refund when possible; otherwise leave the
+  // already-reserved row `pending`.
   let status: "processed" | "pending" = "pending";
   let providerRefundId: string | null = null;
   const now = new Date();
@@ -123,15 +165,13 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
       status = "processed";
       providerRefundId = (refund as { id?: string }).id ?? null;
     } catch (err) {
-      // A gateway failure is recorded as a real `failed` refund, not swallowed.
-      const failed = await prisma.refund.create({
-        data: {
-          paymentId,
-          amountCents: input.amountCents,
-          reason: input.reason ?? null,
-          status: "failed",
-          note: input.note ?? null,
-        },
+      // A gateway failure is recorded as a real `failed` refund (reconciled
+      // onto the already-reserved row, not a second one), not swallowed —
+      // this also frees up the reserved amount for a future retry, since
+      // "failed" refunds are excluded from the alreadyRefunded sum above.
+      const failed = await prisma.refund.update({
+        where: { id: reserved.id },
+        data: { status: "failed" },
       });
       await recordAudit({
         actorAdminId,
@@ -144,16 +184,9 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
     }
   }
 
-  const refund = await prisma.refund.create({
-    data: {
-      paymentId,
-      amountCents: input.amountCents,
-      reason: input.reason ?? null,
-      status,
-      providerRefundId,
-      note: input.note ?? null,
-      processedAt: status === "processed" ? now : null,
-    },
+  const refund = await prisma.refund.update({
+    where: { id: reserved.id },
+    data: { status, providerRefundId, processedAt: status === "processed" ? now : null },
   });
 
   if (status === "processed") {
