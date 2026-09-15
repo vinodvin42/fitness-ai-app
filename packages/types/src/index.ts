@@ -1129,8 +1129,17 @@ export interface AdminDashboardStats {
 export type ProfessionalServiceType = "fitness" | "nutrition";
 export type CredentialStatus = "not_verified" | "pending" | "verified" | "rejected";
 export type ProfessionalStatus = "active" | "suspended";
-/** `Relationship.status` (docs/coach/05-data-model.md §3) — added 21 Aug 2026 for apps/admin-web's Module 03/04, the Relationship model itself predates this by a day (see prisma/schema.prisma) but had no shared type yet since nothing outside apps/api read it directly until now. */
-export type RelationshipStatus = "active" | "ended";
+/**
+ * `Relationship.status` (docs/coach/05-data-model.md §3) — added 21 Aug 2026
+ * for apps/admin-web's Module 03/04, the Relationship model itself predates
+ * this by a day (see prisma/schema.prisma) but had no shared type yet since
+ * nothing outside apps/api read it directly until now. **Extended 15 Sep
+ * 2026 (R1 U6)** from just `active | ended` to the real six-stage lifecycle
+ * schema.prisma's own `RelationshipStatus` enum comment describes — see
+ * that comment for why `accepted` is a real, standing status despite this
+ * product having no coach-side request-review screen anywhere.
+ */
+export type RelationshipStatus = "requested" | "accepted" | "awaiting_payment" | "activating" | "active" | "ended";
 
 /** Public shape — never carries passwordHash or the raw kycDocumentData (see professionalAuth.service.ts's toPublicProfessional). */
 export interface Professional {
@@ -1333,6 +1342,27 @@ export interface BookingConfirmation {
   priceCents: number;
   status: BookingStatus;
   relationshipIds: string[];
+}
+
+/**
+ * U6 (15 Sep 2026) — the shape returned by GET /coaching/relationships/status,
+ * backing the real "Professional guidance request / status / active
+ * relationship entry" screen. One row per relationship that isn't `ended`
+ * (requested/accepted/awaiting_payment/activating/active), so the client
+ * can render a genuine state stepper — see coaching.service.ts's
+ * listRelationshipStatus doc comment.
+ */
+export interface RelationshipStatusItem {
+  relationshipId: string;
+  professionalId: string;
+  professionalFullName: string;
+  serviceType: ProfessionalServiceType;
+  status: RelationshipStatus;
+  createdAt: string;
+}
+
+export interface RelationshipStatusResponse {
+  relationships: RelationshipStatusItem[];
 }
 
 /** One row of "My Professional Team" — real last/next session dates computed from Booking. */

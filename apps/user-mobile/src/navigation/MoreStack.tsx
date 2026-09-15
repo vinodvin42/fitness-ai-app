@@ -26,6 +26,7 @@ import { SupportScreen } from "../screens/more/SupportScreen";
 import { SupportTicketFormScreen } from "../screens/more/SupportTicketFormScreen";
 import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailScreen";
 import { ReferralScreen } from "../screens/more/ReferralScreen";
+import { ProfessionalRelationshipScreen } from "../screens/coaching/ProfessionalRelationshipScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
 import { BookingServiceSelectionScreen } from "../screens/coaching/BookingServiceSelectionScreen";
@@ -73,6 +74,11 @@ import { MessageThreadScreen } from "../screens/coaching/MessageThreadScreen";
 // precedent as Security/Subscription) -> Coach Profile Detail -> Booking:
 // Service Selection -> Booking Confirmation, plus My Professional Team
 // (also reachable directly from the Coaching row) -> Change Professional.
+// **R1 Developer 1 U6 (15 Sep 2026):** the Coaching row now routes to
+// ProfessionalRelationship first (the real "request / status / active
+// relationship entry" hub, see that screen's own doc comment) instead of
+// straight to CoachDiscovery — Discovery, Profile Detail, Booking, and My
+// Professional Team are all unchanged and still reachable from it.
 // §N (26 Aug 2026): Edit Profile -> Country — the region-capture-method
 // decision behind Module 09.05 Geographic (admin console), same
 // searchable single-select pattern as §L's Language Selection, saving to
@@ -105,6 +111,7 @@ export type MoreStackParamList = {
   SupportTicketForm: undefined;
   SupportTicketDetail: { ticketId: string };
   Referral: undefined;
+  ProfessionalRelationship: undefined;
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
   BookingServiceSelection: { professionalId: string };
@@ -145,6 +152,7 @@ export function MoreStack() {
       <Stack.Screen name="SupportTicketForm" component={SupportTicketFormScreen} />
       <Stack.Screen name="SupportTicketDetail" component={SupportTicketDetailScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
+      <Stack.Screen name="ProfessionalRelationship" component={ProfessionalRelationshipScreen} />
       <Stack.Screen name="CoachDiscovery" component={CoachDiscoveryScreen} />
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />
       <Stack.Screen name="BookingServiceSelection" component={BookingServiceSelectionScreen} />

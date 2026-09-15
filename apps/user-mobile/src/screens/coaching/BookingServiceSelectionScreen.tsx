@@ -92,6 +92,10 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["coaching", "team"] }),
       queryClient.invalidateQueries({ queryKey: ["coaching", "professional", professionalId] }),
+      // U6 (15 Sep 2026) — a confirmed booking also advances the real
+      // Relationship state machine (requested/accepted/awaiting_payment/
+      // activating -> active), so the status screen needs a fresh read too.
+      queryClient.invalidateQueries({ queryKey: ["coaching", "relationships", "status"] }),
     ]);
 
   const { order, purchase, isPurchasing, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({

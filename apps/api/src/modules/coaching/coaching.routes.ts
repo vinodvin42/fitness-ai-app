@@ -51,6 +51,17 @@ coachingRouter.get("/coaching/team", requireAuth, async (req: AuthedRequest, res
   }
 });
 
+// U6 (15 Sep 2026) — real relationship status, for the required
+// "Professional guidance request / status / active relationship entry"
+// screen. See coaching.service.ts's listRelationshipStatus doc comment.
+coachingRouter.get("/coaching/relationships/status", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await coachingService.listRelationshipStatus(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
 coachingRouter.get("/coaching/professionals/:id", requireAuth, async (req, res, next) => {
   try {
     res.json(await coachingService.getProfessionalDetail(req.params.id));

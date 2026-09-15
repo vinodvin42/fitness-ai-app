@@ -52,6 +52,14 @@ const LABELS: Record<string, string> = {
   // Module 06.04 (Refunds) addition, 31 Aug 2026 — RefundStatus's
   // "processed" value ("pending"/"failed" above are already shared).
   processed: "Processed",
+  // Module 04 (Relationships) addition, 15 Sep 2026 — R1 U6 extended
+  // `RelationshipStatus` from just active/ended to a real six-stage
+  // lifecycle (see schema.prisma's own comment on that enum); "active"/
+  // "ended" above already cover two of the six.
+  requested: "Requested",
+  accepted: "Accepted",
+  awaiting_payment: "Awaiting Payment",
+  activating: "Activating",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -83,6 +91,10 @@ const TONE_CLASSES: Record<string, string> = {
   inactive: "bg-surface-raised text-text-dim",
   denied: "bg-danger/15 text-danger",
   processed: "bg-accent/15 text-accent",
+  requested: "bg-warning/15 text-warning",
+  accepted: "bg-warning/15 text-warning",
+  awaiting_payment: "bg-warning/15 text-warning",
+  activating: "bg-warning/15 text-warning",
 };
 
 const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed"]);
