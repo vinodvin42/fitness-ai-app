@@ -40,6 +40,41 @@ paymentsRouter.post("/payments/razorpay/verify", requireAuth, writeRateLimit, as
 });
 
 /**
+ * U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — lets a screen
+ * read a specific Payment's real activation state (see
+ * payments.service.ts's getPaymentForUser doc comment) instead of only
+ * trusting the one-shot result a /verify call returned at the moment it
+ * happened. No write rate limit — this is a read, polled by a recoverable-
+ * state screen while activation finishes or is retried.
+ */
+paymentsRouter.get("/payments/:id", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await paymentsService.getPaymentForUser(req.userId!, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * U6 Premium entitlement — re-runs a previously-failed entitlement grant
+ * for a payment that was already captured (see payments.service.ts's
+ * retryActivation doc comment). Never re-charges; only re-attempts the
+ * DB-side subscribe()/purchaseProgram() call.
+ */
+paymentsRouter.post(
+  "/payments/:id/retry-activation",
+  requireAuth,
+  writeRateLimit,
+  async (req: AuthedRequest, res, next) => {
+    try {
+      res.json(await paymentsService.retryActivation(req.userId!, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
  * Mounted separately in app.ts (with express.raw(), before the global
  * express.json() middleware, and with no requireAuth — Razorpay calls
  * this server-to-server, authenticated by the HMAC signature header, not

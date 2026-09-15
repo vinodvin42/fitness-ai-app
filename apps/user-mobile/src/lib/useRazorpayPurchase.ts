@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { PaymentPurpose, RazorpayOrder, VerifyRazorpayPaymentResult } from "@fitness-ai-app/types";
 import { createRazorpayOrder, verifyRazorpayPayment, fetchPaymentsConfig } from "../api/payments";
-import { extractErrorMessage } from "./apiError";
+import { extractErrorCode, extractErrorDetails, extractErrorMessage } from "./apiError";
 
 /**
  * Go-live hardening (3 Sep 2026) — whether to show a real Subscribe/
@@ -33,6 +33,17 @@ interface Options {
   /** Optional (31 Aug 2026) — a screen that wants dedicated Payment Success / Failed screens (§M) passes these; when present they REPLACE the default Alert so the flow isn't shown twice. Screens without them (Program/Workout purchase) keep the original Alert behaviour. */
   onSuccess?: () => void;
   onError?: (message: string) => void;
+  /**
+   * U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — Razorpay really
+   * did capture the money (this is only reached after verifyRazorpayPayment
+   * throws with apps/api's `entitlement_activation_failed` code — see
+   * payments.service.ts's activatePayment doc comment), but the entitlement
+   * grant itself failed and needs a retry, not a "Payment Failed" screen (a
+   * lie in this specific case). Optional — a screen without this keeps
+   * falling through to the plain onError/Alert path below, same message,
+   * just without a Retry action wired to the specific payment.
+   */
+  onActivationFailed?: (paymentId: string | undefined, message: string) => void;
 }
 
 /**
@@ -43,7 +54,7 @@ interface Options {
  * Pair with <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
  * rendered as a sibling in the same screen.
  */
-export function useRazorpayPurchase({ onVerified, onSuccess, onError }: Options) {
+export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivationFailed }: Options) {
   const [order, setOrder] = useState<RazorpayOrder | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -80,15 +91,25 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError }: Options)
         await onVerified(verifyResult);
         onSuccess?.();
       } catch (err) {
-        reportError(
-          "Payment couldn't be verified",
-          extractErrorMessage(err, "If you were charged, contact support with your payment ID."),
-        );
+        // U6 Premium entitlement — distinguish "the payment itself failed
+        // verification" (a real "Payment Failed") from "the payment was
+        // captured but activating it failed" (recoverable, retryable, see
+        // this hook's own Options doc comment). Falls back to the original
+        // Alert-based path when the screen doesn't opt into onActivationFailed.
+        if (extractErrorCode(err) === "entitlement_activation_failed" && onActivationFailed) {
+          const paymentId = extractErrorDetails(err)?.paymentId as string | undefined;
+          onActivationFailed(paymentId, extractErrorMessage(err, "Your payment went through, but activation failed. Please retry."));
+        } else {
+          reportError(
+            "Payment couldn't be verified",
+            extractErrorMessage(err, "If you were charged, contact support with your payment ID."),
+          );
+        }
       } finally {
         setIsVerifying(false);
       }
     },
-    [onVerified, onSuccess, reportError],
+    [onVerified, onSuccess, onActivationFailed, reportError],
   );
 
   const onCheckoutDismiss = useCallback(() => setOrder(null), []);

@@ -851,6 +851,27 @@ export interface VerifyRazorpayPaymentResult {
   booking?: BookingConfirmation;
 }
 
+// U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — "paid" alone was
+// never sufficient to mean "the user has the thing they paid for," see
+// payments.service.ts's Payment model + activatePayment() doc comments for
+// the full "money captured but entitlement grant failed" story this closes.
+
+/** GET /payments/:id — a specific payment's real activation state, for a recoverable post-checkout screen to read/poll instead of trusting only the one-shot /verify result. */
+export interface PaymentStatusDetail {
+  id: string;
+  purpose: PaymentPurpose;
+  referenceId: string;
+  status: PaymentStatus;
+  /** Set once the entitlement (Subscription/ProgramPurchase) was actually granted — distinct from `status === "paid"`, which only means Razorpay captured the money. */
+  activatedAt: string | null;
+  /** Set when a prior activation attempt captured the money but failed to grant the entitlement — retryable via POST /payments/:id/retry-activation, never a reason to re-charge. */
+  activationFailedAt: string | null;
+  activationFailureReason: string | null;
+}
+
+/** POST /payments/:id/retry-activation — same result shape as a successful /verify, since it's the same underlying activation. */
+export type RetryActivationResult = VerifyRazorpayPaymentResult;
+
 // ---- Reminders ----------------------------------------------------------
 // docs/mobile/03-screen-inventory.md §K "Add Reminder", Phase 4. Purely
 // local, on-device notifications scheduled by the client via
