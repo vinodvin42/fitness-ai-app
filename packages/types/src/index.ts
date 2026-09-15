@@ -708,6 +708,54 @@ export interface StreakSummary {
   overall: { currentStreak: number; longestStreak: number };
 }
 
+// ---- Check-In (R1 Developer 1 U5, 15 Sep 2026) --------------------------
+// The required "Daily / weekly Check-In" screen (work package §4) — see
+// apps/api's CheckIn model (schema.prisma) for the full design. Three
+// real self-reported ratings (1-5 each: energy, soreness, adherence to
+// plan) plus an optional note, at most one per user per real calendar
+// period (today, or the current ISO week) — enforced by a real DB unique
+// constraint, not a client-side guess. Deliberately NOT wired into the
+// Plan/Recommendation engine's AI reasoning (apps/api's plans.service.ts,
+// owned by a parallel U5 workstream) and deliberately does NOT compute a
+// "context confidence" score — see docs/mobile/07-open-questions-gaps.md
+// for the full reasoning.
+
+export type CheckInPeriod = "daily" | "weekly";
+
+export interface CheckIn {
+  id: string;
+  userId: string;
+  period: CheckInPeriod;
+  /** "YYYY-MM-DD" (UTC) for daily, "YYYY-Www" (ISO week) for weekly — the real period this entry claims. */
+  periodKey: string;
+  energy: number;
+  soreness: number;
+  adherence: number;
+  note: string | null;
+  createdAt: string;
+}
+
+/** Body for POST /check-ins — matches apps/api's submitCheckInSchema (Zod). */
+export interface SubmitCheckInInput {
+  period: CheckInPeriod;
+  energy: number;
+  soreness: number;
+  adherence: number;
+  note?: string;
+}
+
+export interface CheckInPeriodStatus {
+  submitted: boolean;
+  /** The real entry for the current period, if one was submitted — never fabricated when `submitted` is false. */
+  checkIn: CheckIn | null;
+}
+
+/** The shape GET /check-ins/status returns. */
+export interface CheckInStatus {
+  daily: CheckInPeriodStatus;
+  weekly: CheckInPeriodStatus;
+}
+
 // ---- Subscriptions -----------------------------------------------------
 // Corresponds to the admin console's Plan/Subscription entities — one
 // shared table, not duplicated between apps (docs/mobile/05-data-model.md §2).

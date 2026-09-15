@@ -5,10 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
+import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { ListRow } from "../../components/ListRow";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchProgressOverview } from "../../api/progress";
+import { fetchCheckInStatus, fetchProgressOverview } from "../../api/progress";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
@@ -36,12 +37,19 @@ type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
  * sparkline needs — same "smallest real dependency for the job" instinct
  * as RestTimer's hand-rolled numeral+bar instead of a gesture-based ring
  * library (gap §24).
+ *
+ * 15 Sep 2026 (U5): a real **Check-In** entry point — see
+ * `CheckInScreen.tsx`'s own doc comment for the full design. The status
+ * card below reads `GET /check-ins/status` plainly (never guesses): it
+ * shows whichever real state is true, today's/this week's check-in either
+ * done or not, with no fabricated in-between "pending" state.
  */
 export function ProgressOverviewScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["progress", "overview"],
     queryFn: fetchProgressOverview,
   });
+  const { data: checkInStatus } = useQuery({ queryKey: ["checkIns", "status"], queryFn: fetchCheckInStatus });
 
   if (isError) {
     return (
@@ -61,9 +69,30 @@ export function ProgressOverviewScreen({ navigation }: Props) {
 
   const { latestMeasurement, weightHistory, personalRecords } = data;
 
+  const dailyDone = checkInStatus?.daily.submitted ?? false;
+  const weeklyDone = checkInStatus?.weekly.submitted ?? false;
+
   return (
     <ScreenContainer title="Progress">
       <Card>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <Icon name="check" size={18} color={colors.success} />
+          <Text style={{ color: colors.textSecondary }}>Check-In</Text>
+        </View>
+        <Text style={{ color: colors.textPrimary, marginTop: spacing.xs }}>
+          {dailyDone ? "Today's check-in done" : "Today's check-in not done yet"}
+          {" · "}
+          {weeklyDone ? "this week's done" : "this week's not done yet"}
+        </Text>
+        <Button
+          label={dailyDone && weeklyDone ? "View Check-In" : "Check In"}
+          variant="secondary"
+          onPress={() => navigation.navigate("CheckIn")}
+          style={{ marginTop: spacing.md, height: 42 }}
+        />
+      </Card>
+
+      <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Icon name="trending-up" size={18} color={colors.accent} />
           <Text style={{ color: colors.textSecondary }}>Weight trend</Text>

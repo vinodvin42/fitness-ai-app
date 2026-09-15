@@ -5,6 +5,7 @@ import { LogMeasurementScreen } from "../screens/more/LogMeasurementScreen";
 import { MeasurementHistoryScreen } from "../screens/more/MeasurementHistoryScreen";
 import { StreakTrackerScreen } from "../screens/more/StreakTrackerScreen";
 import { ProgressPhotosScreen } from "../screens/more/ProgressPhotosScreen";
+import { CheckInScreen } from "../screens/more/CheckInScreen";
 
 // R1 Developer 1 work package, U1 (14 Sep 2026) — the primary nav BR-USR-001
 // requires is Today | Train | Fuel | Progress | More, with Recovery
@@ -24,6 +25,9 @@ export type ProgressStackParamList = {
   MeasurementHistory: undefined;
   StreakTracker: undefined;
   ProgressPhotos: undefined;
+  // U5 (15 Sep 2026) — the required "Daily / weekly Check-In" screen, see
+  // CheckInScreen's own doc comment.
+  CheckIn: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -36,6 +40,7 @@ export function ProgressStack() {
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} />
       <Stack.Screen name="StreakTracker" component={StreakTrackerScreen} />
       <Stack.Screen name="ProgressPhotos" component={ProgressPhotosScreen} />
+      <Stack.Screen name="CheckIn" component={CheckInScreen} />
     </Stack.Navigator>
   );
 }
