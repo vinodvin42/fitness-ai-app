@@ -190,6 +190,36 @@ describe("Food input data-quality flow (Estimate -> Confirm/Edit)", () => {
     expect(secondConfirm.status).toBe(409);
   });
 
+  it("two truly concurrent confirms on the same estimate still produce exactly one MealLog (not just sequential ones)", async () => {
+    // Same class of race the sequential test above can't catch — two
+    // requests that both read the estimate as "estimated" before either
+    // write lands (a double-tap, or a client retry racing its own earlier
+    // in-flight request). See confirmFoodEstimate's own doc comment: the
+    // real gate is the atomic `updateMany` claim, not the initial read.
+    generateCompletion.mockResolvedValueOnce("STATUS: OK\nNAME: Omelette\nCALORIES: 300\nPROTEIN_G: 20\nCARBS_G: 5\nFAT_G: 22");
+    const estimateRes = await request(app)
+      .post("/food-estimates")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ mealType: "breakfast", description: "cheese omelette" });
+
+    const [first, second] = await Promise.all([
+      request(app)
+        .post(`/food-estimates/${estimateRes.body.id}/confirm`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({}),
+      request(app)
+        .post(`/food-estimates/${estimateRes.body.id}/confirm`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({}),
+    ]);
+
+    const statuses = [first.status, second.status].sort();
+    expect(statuses).toEqual([200, 409]);
+
+    const mealLogs = await prisma.mealLog.findMany({ where: { userId, name: "Omelette" } });
+    expect(mealLogs).toHaveLength(1);
+  });
+
   it("404s confirming an estimate id that doesn't belong to this user", async () => {
     const res = await request(app)
       .post("/food-estimates/not-a-real-id/confirm")

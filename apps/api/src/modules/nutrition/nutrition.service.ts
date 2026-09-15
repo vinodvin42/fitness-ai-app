@@ -279,6 +279,17 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
  * here, not by the client: it's `edited` if ANY field the caller sent
  * differs from the estimate's own original value, `confirmed` otherwise
  * (including when the caller sends no fields at all — an as-is accept).
+ *
+ * The initial `status !== "estimated"` check below is a fast path only —
+ * it reads its own snapshot, same shape as the race
+ * apps/api/tests/paymentsActivationRace.test.ts documents for
+ * payments.service.ts's activatePayment(). Two concurrent confirms (a
+ * double-tap, or a client retry after a timed-out-but-actually-succeeded
+ * request) could both pass it. The actual claim below is the real gate:
+ * an atomic `updateMany` filtered on `status: "estimated"`, so only
+ * whichever call's update actually flips the row proceeds to create the
+ * MealLog — the loser sees `count === 0` and 409s, same outcome as today
+ * but race-safe.
  */
 export async function confirmFoodEstimate(userId: string, estimateId: string, input: ConfirmFoodEstimateInput) {
   const estimate = await prisma.foodEstimate.findUnique({ where: { id: estimateId } });
@@ -307,6 +318,23 @@ export async function confirmFoodEstimate(userId: string, estimateId: string, in
     finalCarbsG !== estimate.carbsG ||
     finalFatG !== estimate.fatG;
 
+  // The real gate: only the caller whose update actually flips the row
+  // proceeds. A concurrent loser affects zero rows here and 409s below,
+  // never creating a second MealLog for the same estimate.
+  const claimed = await prisma.foodEstimate.updateMany({
+    where: { id: estimateId, status: "estimated" },
+    data: {
+      status: wasEdited ? "edited" : "confirmed",
+      confirmedAt: new Date(),
+      ...(wasEdited
+        ? { name: finalName, calories: finalCalories, proteinG: finalProteinG, carbsG: finalCarbsG, fatG: finalFatG }
+        : {}),
+    },
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "food_estimate_not_confirmable", "This estimate was already logged");
+  }
+
   const mealLog = await prisma.mealLog.create({
     data: {
       userId,
@@ -320,17 +348,7 @@ export async function confirmFoodEstimate(userId: string, estimateId: string, in
     },
   });
 
-  await prisma.foodEstimate.update({
-    where: { id: estimateId },
-    data: {
-      status: wasEdited ? "edited" : "confirmed",
-      confirmedAt: new Date(),
-      mealLogId: mealLog.id,
-      ...(wasEdited
-        ? { name: finalName, calories: finalCalories, proteinG: finalProteinG, carbsG: finalCarbsG, fatG: finalFatG }
-        : {}),
-    },
-  });
+  await prisma.foodEstimate.update({ where: { id: estimateId }, data: { mealLogId: mealLog.id } });
 
   await recordAudit({
     actorId: userId,
