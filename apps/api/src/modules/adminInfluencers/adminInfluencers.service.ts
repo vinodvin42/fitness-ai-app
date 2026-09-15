@@ -188,6 +188,23 @@ export async function createPayout(actorAdminId: string, influencerId: string, i
   return payout;
 }
 
+/**
+ * Same read-then-write race already found and fixed in payments.service.ts's
+ * activatePayment() and nutrition.service.ts's confirmFoodEstimate() (see
+ * those functions' own comments): a plain `if (p.status === "paid") throw`
+ * guard reads this call's own already-fetched snapshot, so two concurrent
+ * calls for the same payout (an admin double-clicking "Mark Paid", or two
+ * admin tabs open on the same row — InfluencerPayout has no unique
+ * constraint of its own to fall back on, unlike CoachSettlement's
+ * `(professionalId, periodStart)`) can both pass the guard and both reach
+ * the unconditional `prisma.expense.create()` below, recording the same
+ * payout twice in Finance's ledger and double-counting it in every
+ * aggregate that sums `Expense` (Dashboard's expensesMtdCents/cashBalance,
+ * the revenue waterfall's coachSettlementCents-style totals, Payables).
+ * Fixed the same way: `updateMany` with a `status: { not: "paid" }` filter
+ * makes the claim atomic — only the caller whose update actually affects a
+ * row goes on to create the Expense.
+ */
 export async function markPayoutPaid(actorAdminId: string, payoutId: string) {
   const payout = await prisma.influencerPayout.findUnique({
     where: { id: payoutId },
@@ -204,10 +221,22 @@ export async function markPayoutPaid(actorAdminId: string, payoutId: string) {
   }
 
   const now = new Date();
-  const updated = await prisma.influencerPayout.update({
-    where: { id: payoutId },
+  const claimed = await prisma.influencerPayout.updateMany({
+    where: { id: payoutId, status: { not: "paid" } },
     data: { status: "paid", paidAt: now },
   });
+  if (claimed.count === 0) {
+    // A concurrent call already claimed it between our read above and now.
+    throw new ApiHttpError(409, "already_paid", "This payout is already marked paid");
+  }
+  const updated = (await prisma.influencerPayout.findUnique({ where: { id: payoutId } })) as {
+    id: string;
+    status: string;
+    amountCents: number;
+    periodLabel: string;
+    note: string | null;
+    paidAt: Date | null;
+  };
 
   await prisma.expense.create({
     data: {
