@@ -1,7 +1,8 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { CreateProgressPhotoInput, LogMeasurementInput } from "./progress.schema";
+import { CreateProgressPhotoInput, LogMeasurementInput, SubmitCheckInInput } from "./progress.schema";
 
 /**
  * Progress & Body (docs/mobile/03-screen-inventory.md §F). Phase 2 scope:
@@ -14,8 +15,11 @@ import { CreateProgressPhotoInput, LogMeasurementInput } from "./progress.schema
  * below and gap §29 for why "mindfulness" isn't one of the categories. Also
  * (19 Aug 2026) real Progress Photos CRUD — see the ProgressPhoto model's
  * doc comment in schema.prisma and gap §34 for the base64-in-Postgres
- * storage tradeoff. Not built: Body Composition, AI Insights — see roadmap
- * Phase 2.
+ * storage tradeoff. Also (R1 Developer 1 U5, 15 Sep 2026) Check-In — the
+ * required "Daily / weekly Check-In" screen, see the CheckIn model's own
+ * doc comment in schema.prisma and this file's own Check-In section below
+ * for the full design. Not built: Body Composition, AI Insights — see
+ * roadmap Phase 2.
  */
 
 export async function logMeasurement(userId: string, input: LogMeasurementInput) {
@@ -254,5 +258,122 @@ export async function deleteProgressPhoto(userId: string, photoId: string) {
     entityType: "ProgressPhoto",
     entityId: photoId,
     metadata: {},
+  });
+}
+
+// ---- Check-In (R1 Developer 1 U5, 15 Sep 2026) --------------------------
+// See the CheckIn model's own doc comment in schema.prisma for the full
+// design — a required "Daily / weekly Check-In" screen (work package §4)
+// with zero prior backing, scoped as a real, self-contained, honestly-
+// persisted signal (energy/soreness/adherence, 1-5 each, plus an optional
+// note), deliberately NOT wired into plans.service.ts's Recommendation
+// prompt or a fabricated "context confidence" score — see this pass's own
+// gap-doc entry for the full reasoning.
+
+function isoWeekKey(d: Date): string {
+  // Real ISO 8601 week numbering (Monday-start weeks, the year of a week
+  // is whichever year its Thursday falls in) — not a "days since epoch /
+  // 7" approximation, which would drift at year boundaries. UTC
+  // throughout, same boundary convention toDateKey() above already uses.
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7; // Mon=0 .. Sun=6
+  date.setUTCDate(date.getUTCDate() - dayNum + 3); // Thursday of this ISO week
+  const isoYear = date.getUTCFullYear();
+  const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+  const firstThursdayDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNum + 3);
+  const weekNum = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * ONE_DAY_MS));
+  return `${isoYear}-W${String(weekNum).padStart(2, "0")}`;
+}
+
+function currentPeriodKey(period: "daily" | "weekly"): string {
+  return period === "daily" ? toDateKey(new Date()) : isoWeekKey(new Date());
+}
+
+/**
+ * Submits a Check-In for the real current period (today, or this ISO
+ * week) — at most one per user per period, ever, per the CheckIn model's
+ * `@@unique([userId, period, periodKey])`. The actual "claim once" gate is
+ * that DB constraint, not a pre-insert `findFirst` the API layer could
+ * race on: two concurrent submits for the same period both attempt a real
+ * `create`, and Postgres itself guarantees only one can succeed — the
+ * loser's `create` throws a unique-constraint violation (Prisma error
+ * P2002), caught below and turned into an honest 409. This is the same
+ * "the DB is the real gate, not an in-process snapshot" discipline
+ * nutrition.service.ts's confirmFoodEstimate() and payments.service.ts's
+ * activatePayment() already established for their own concurrent-write
+ * races — just expressed as a unique-constrained `create` instead of a
+ * conditional `updateMany`, since there's no pre-existing row here to
+ * conditionally update.
+ */
+export async function submitCheckIn(userId: string, input: SubmitCheckInInput) {
+  const periodKey = currentPeriodKey(input.period);
+
+  let checkIn;
+  try {
+    checkIn = await prisma.checkIn.create({
+      data: {
+        userId,
+        period: input.period,
+        periodKey,
+        energy: input.energy,
+        soreness: input.soreness,
+        adherence: input.adherence,
+        note: input.note ?? null,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ApiHttpError(
+        409,
+        "check_in_already_submitted",
+        input.period === "daily"
+          ? "You've already checked in for today"
+          : "You've already checked in for this week",
+      );
+    }
+    throw err;
+  }
+
+  await recordAudit({
+    actorId: userId,
+    action: "check_in.submitted",
+    entityType: "CheckIn",
+    entityId: checkIn.id,
+    metadata: { period: input.period, periodKey, hasNote: input.note != null },
+  });
+
+  return checkIn;
+}
+
+/**
+ * Whether the user has already checked in for the real current daily and
+ * weekly period — read plainly off real rows, never inferred or defaulted
+ * to "not started" vs. some fabricated in-between state (BR-AI-011,
+ * "uncertainty is visible and valid" — this app's honest reading of that
+ * for a Check-In is simply never claiming a submission exists when it
+ * doesn't).
+ */
+export async function getCheckInStatus(userId: string) {
+  const dailyKey = currentPeriodKey("daily");
+  const weeklyKey = currentPeriodKey("weekly");
+
+  const [daily, weekly] = await Promise.all([
+    prisma.checkIn.findUnique({ where: { userId_period_periodKey: { userId, period: "daily", periodKey: dailyKey } } }),
+    prisma.checkIn.findUnique({ where: { userId_period_periodKey: { userId, period: "weekly", periodKey: weeklyKey } } }),
+  ]);
+
+  return {
+    daily: { submitted: daily !== null, checkIn: daily },
+    weekly: { submitted: weekly !== null, checkIn: weekly },
+  };
+}
+
+/** Recent Check-Ins, newest first — backs the small history strip on the Check-In screen. Real, unfiltered history, same "no computed trend beyond what's actually there" discipline as getStreaks/getProgressOverview above. */
+export function listCheckIns(userId: string) {
+  return prisma.checkIn.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
   });
 }

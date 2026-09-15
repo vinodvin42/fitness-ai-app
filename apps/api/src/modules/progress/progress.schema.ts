@@ -32,3 +32,20 @@ export const createProgressPhotoSchema = z.object({
 });
 
 export type CreateProgressPhotoInput = z.infer<typeof createProgressPhotoSchema>;
+
+// Check-In (docs/mobile — R1 Developer 1 U5, 15 Sep 2026) — see the
+// CheckIn model's own doc comment in schema.prisma for the full design.
+// Three real, self-reported ratings (never an AI guess), 1-5 each, plus an
+// optional note. `period` picks which real calendar boundary this entry
+// claims (today, or this ISO week) — the service layer, not this schema,
+// resolves that into the actual `periodKey` and enforces "once per period"
+// via the DB's own unique constraint.
+export const submitCheckInSchema = z.object({
+  period: z.enum(["daily", "weekly"]),
+  energy: z.number().int().min(1).max(5),
+  soreness: z.number().int().min(1).max(5),
+  adherence: z.number().int().min(1).max(5),
+  note: z.string().trim().max(280).optional(),
+});
+
+export type SubmitCheckInInput = z.infer<typeof submitCheckInSchema>;

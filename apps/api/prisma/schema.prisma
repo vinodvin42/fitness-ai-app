@@ -59,6 +59,11 @@
 // the future admin console (docs/mobile/06-cross-app-integration.md) — this
 // is intentionally the ONE schema both apps will read/write against later,
 // not a mobile-only model.
+// 15 Sep 2026: CheckIn added (R1 Developer 1 U5, the Check-In half only —
+// see the model's own comment below and its own section within
+// apps/api/src/modules/progress/{progress.schema,progress.service,
+// progress.routes}.ts, same "new section in the existing module" pattern
+// Progress Photos already used rather than a new module).
 
 generator client {
   provider = "prisma-client-js"
@@ -317,6 +322,8 @@ model User {
   foodEstimates               FoodEstimate[]
   bodyMeasurements            BodyMeasurement[]
   progressPhotos              ProgressPhoto[]
+  // Check-In (U5, 15 Sep 2026) — see CheckIn's own doc comment.
+  checkIns                    CheckIn[]
   programPurchases            ProgramPurchase[]
   // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
   // doc comment.
@@ -975,6 +982,60 @@ model ProgressPhoto {
 
   @@index([userId, takenAt])
   @@map("progress_photos")
+}
+
+// ---- Check-In (§F/§4, R1 Developer 1 U5, 15 Sep 2026) ------------------
+// The required "Daily / weekly Check-In" screen (work package §4) — had
+// zero backing anywhere in this schema before this pass (confirmed via a
+// repo-wide grep for check-in/checkin/Check-In). Scoped deliberately as
+// a real, self-contained, honestly-persisted signal — energy/soreness/
+// adherence, 1-5 each, plus an optional free-text note — NOT wired into
+// plans.service.ts's Recommendation prompt (BR-DAT-004's "weak/
+// conflicting/missing evidence" reasoning already lives there for a
+// DIFFERENT, parallel-owned U5 workstream — Progress/"Why This Changed"/
+// Recommendation states — touching that file risks a real, needless
+// conflict with that work rather than a clean extension point; see this
+// pass's own gap-doc entry for the full reasoning). "Context confidence"
+// (work package §5's Core State Requirements table: "Sufficient; limited;
+// conflicting; insufficient") is NOT computed anywhere by this model
+// either — nothing in this codebase names that concept yet (confirmed by
+// grep), and inventing a scoring formula for it here would be exactly the
+// kind of fabricated certainty BR-AI-011 ("uncertainty is visible and
+// valid") warns against. What IS real and honest: a Check-In's own
+// completion state is never guessed — `getCheckInStatus()`
+// (progress.service.ts) reports plainly whether today's/this week's
+// check-in has actually been submitted, with no fabricated default.
+//
+// One row per user per real calendar period — `periodKey` is "YYYY-MM-DD"
+// (UTC) for daily, "YYYY-Www" (ISO week) for weekly, same UTC-day-boundary
+// convention progress.service.ts's toDateKey()/nutrition.service.ts's
+// startOfToday() already use. `@@unique` below is the actual "claim once
+// per period" enforcement — a genuine DB constraint, not just a
+// pre-insert existence check the API layer could race on (see
+// progress.service.ts's submitCheckIn() doc comment for how a concurrent
+// double-submit is handled). Append-only, same "no edit/delete" precedent
+// as MealLog/ExerciseSetLog/WaterLog — a check-in is what the user
+// reported for that real period, not a draft.
+enum CheckInPeriod {
+  daily
+  weekly
+}
+
+model CheckIn {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period    CheckInPeriod
+  periodKey String
+  energy    Int
+  soreness  Int
+  adherence Int
+  note      String?
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, period, periodKey])
+  @@index([userId, createdAt])
+  @@map("check_ins")
 }
 
 // ---- AI Coach (§H, added 25 Aug 2026) ----------------------------------

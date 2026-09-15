@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { createProgressPhotoSchema, logMeasurementSchema } from "./progress.schema";
+import { createProgressPhotoSchema, logMeasurementSchema, submitCheckInSchema } from "./progress.schema";
 import * as progressService from "./progress.service";
 
 export const progressRouter = Router();
@@ -61,6 +61,37 @@ progressRouter.delete("/progress-photos/:id", requireAuth, async (req: AuthedReq
   try {
     await progressService.deleteProgressPhoto(req.userId!, req.params.id);
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Check-In (U5, 15 Sep 2026) — see progress.service.ts's own doc comment.
+// No writeRateLimit here — same "simple, non-AI, non-financial personal
+// write" class as POST /measurements and POST /progress-photos above,
+// neither of which carries it either.
+
+progressRouter.get("/check-ins/status", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await progressService.getCheckInStatus(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+progressRouter.get("/check-ins", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ items: await progressService.listCheckIns(req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+progressRouter.post("/check-ins", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = submitCheckInSchema.parse(req.body);
+    const checkIn = await progressService.submitCheckIn(req.userId!, input);
+    res.status(201).json(checkIn);
   } catch (err) {
     next(err);
   }
