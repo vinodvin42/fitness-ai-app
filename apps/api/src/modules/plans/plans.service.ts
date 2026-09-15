@@ -583,10 +583,37 @@ export async function decideRecommendation(
     }
   }
 
-  const updated = (await prisma.recommendation.update({
-    where: { id: recommendationId },
+  // Same read-then-write race already found and fixed in payments.service.ts's
+  // activatePayment(), nutrition.service.ts's confirmFoodEstimate(), and
+  // adminInfluencers.service.ts's markPayoutPaid(): the `rec.status !== "active"`
+  // guard above reads this call's own already-fetched snapshot, so two
+  // concurrent decideRecommendation calls for the same recommendation (a
+  // double-tap on Accept, or a client retry racing its own in-flight
+  // request) could both pass the guard. Confirmed two concrete failure
+  // modes with the old unconditional `prisma.recommendation.update(...)`:
+  // (1) if both calls decide differently (e.g. one "accept", one
+  // "decline"), the LAST write wins the recommendation's final `status`
+  // regardless of which call's Plan-switch side effect actually landed —
+  // so a user could see this recommendation as "declined" in "Why This
+  // Changed" history while their active Plan silently switched anyway
+  // (from the other call's "accept"); (2) two racing "accept" calls both
+  // reach the `if (newProgramId)` block and both attempt to create a new
+  // Plan version — `Plan`'s real `@@unique([userId, version])` constraint
+  // stops the duplicate row, but the loser's whole request then throws a
+  // raw, unhandled `PrismaClientKnownRequestError` (a 500) instead of the
+  // honest 409 this function is supposed to return, even though its
+  // `recommendation.update()` already committed moments earlier. Claiming
+  // the status transition atomically (`updateMany` with a `status:
+  // "active"` filter) closes both: only the caller whose update actually
+  // affected a row proceeds past this point at all.
+  const claimed = await prisma.recommendation.updateMany({
+    where: { id: recommendationId, status: "active" },
     data: { status: newStatus, decidedByRole, decidedById: userId, decidedAt: new Date() },
-  })) as RecommendationRow;
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "recommendation_already_decided", "This recommendation has already been decided");
+  }
+  const updated = (await prisma.recommendation.findUnique({ where: { id: recommendationId } })) as RecommendationRow;
 
   if (newProgramId) {
     const lastVersion = await prisma.plan.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true } });
