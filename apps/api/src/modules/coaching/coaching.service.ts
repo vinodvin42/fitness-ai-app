@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -78,6 +79,23 @@ import {
  * counterpart to all of the above, backing apps/coach-mobile's real
  * Calendar tab. See that function's own doc comment for the scoping
  * decision (a real Booking list, not an invented calendar-grid widget).
+ *
+ * **15 Sep 2026 (R1 U6, Developer 1's professional relationship
+ * request/status/active-state half):** `Relationship.status` gained a
+ * real six-stage lifecycle (requested/accepted/awaiting_payment/
+ * activating/active/ended — see schema.prisma's own comment on that
+ * enum), replacing the old `active`/`ended`-only version that used to
+ * jump straight to `active` the instant a booking's payment was captured,
+ * with nothing observable before that. `claimRelationship()` is the new
+ * single entry point every relationship-touching code path funnels
+ * through — `createBooking()` (below) and `payments.service.ts`'s
+ * `createOrder()` (the booking-purpose branch, so a real, checkable
+ * `awaiting_payment` row exists for the whole time a Razorpay Checkout is
+ * open, not just after it succeeds) — and `listRelationshipStatus()` is
+ * the new read side backing `apps/user-mobile`'s real status screen. See
+ * `claimRelationship()`'s own doc comment for the concurrency discipline
+ * and the product decision behind `accepted` being an automatic
+ * pass-through.
  *
  * Deliberately does NOT import Prisma model types for the same reason as
  * every other service in this build (adminProfessionals.service.ts,
@@ -279,12 +297,88 @@ export async function getAvailability(professionalId: string, query: Availabilit
   return { date: query.date, slots };
 }
 
-async function ensureRelationship(userId: string, professionalId: string, serviceType: "fitness" | "nutrition") {
-  const existing = await prisma.relationship.findFirst({
-    where: { userId, professionalId, serviceType, status: "active" },
-  });
-  if (existing) return existing;
-  return prisma.relationship.create({ data: { userId, professionalId, serviceType, status: "active" } });
+type RelationshipClaimRow = { id: string; status: string };
+
+/**
+ * Claim (create-or-reuse) the one `Relationship` row for a (user,
+ * professional, serviceType) triple — the real entry point into the
+ * requested -> accepted -> awaiting_payment -> activating -> active
+ * lifecycle schema.prisma's `RelationshipStatus` now models. A brand-new
+ * triple is created at `requested` and immediately auto-advanced to
+ * `accepted` in the same call — see this enum's own schema.prisma comment
+ * for why "accepted" is a real, conservative auto pass-through rather
+ * than a human coach's review, and docs/mobile/07-open-questions-gaps.md
+ * gap §49 for the full product-decision writeup.
+ *
+ * Uses the real `@@unique([userId, professionalId, serviceType])`
+ * constraint as the atomic claim, the same "the DB is the real gate, not
+ * an in-process snapshot" discipline as every other claim-once transition
+ * in this build (payments.service.ts's activatePayment, nutrition
+ * .service.ts's confirmFoodEstimate, plans.service.ts's
+ * decideRecommendation, progress.service.ts's submitCheckIn) — just
+ * expressed as a unique-constrained `create` + caught P2002 rather than a
+ * conditional `updateMany`, since (like submitCheckIn) there's no
+ * pre-existing row to conditionally update when the triple is brand new.
+ * Two concurrent callers for a brand-new triple can only ever have one
+ * `create()` win; the loser falls back to reading/reclaiming the winner's
+ * row instead of erroring the caller's request. If the existing row is
+ * `ended` (a previously-ended pairing, requested again), it's reclaimed
+ * via the exact `updateMany` + status-filter pattern those other claims
+ * use, so two concurrent revival attempts can't both "win" either. Any
+ * other existing status (already requested/accepted/awaiting_payment/
+ * activating/active) is left exactly as-is — booking a second session
+ * with an already-active coach must never downgrade that relationship,
+ * matching Error & Recovery §9's "never present professional service as
+ * active" rule in the other direction (never un-present it either, once
+ * genuinely active).
+ */
+export async function claimRelationship(
+  userId: string,
+  professionalId: string,
+  serviceType: "fitness" | "nutrition",
+): Promise<RelationshipClaimRow> {
+  try {
+    const created = await prisma.relationship.create({
+      data: { userId, professionalId, serviceType, status: "requested" },
+    });
+    // Auto-accept — see this function's own doc comment. Sequential, not
+    // racy: only the caller that just won the create() above holds a
+    // reference to this brand-new row at this point.
+    const accepted = await prisma.relationship.update({
+      where: { id: created.id },
+      data: { status: "accepted" },
+    });
+    return accepted;
+  } catch (err) {
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") throw err;
+
+    // Someone else's row already exists for this triple. If it's `ended`,
+    // atomically reclaim it (only one concurrent reclaim attempt's
+    // updateMany actually matches the row); any other status is left
+    // untouched.
+    await prisma.relationship.updateMany({
+      where: { userId, professionalId, serviceType, status: "ended" },
+      data: { status: "requested", endedAt: null },
+    });
+
+    const existing = await prisma.relationship.findUnique({
+      where: { userId_professionalId_serviceType: { userId, professionalId, serviceType } },
+    });
+    if (!existing) throw err; // unreachable — the P2002 above proves a row exists for this triple
+
+    if (existing.status === "requested") {
+      // Either we just reclaimed it above, or a fresh create() from
+      // another concurrent caller hasn't advanced it to `accepted` yet —
+      // either way, advance it the same way a fresh row does, guarded so
+      // only one concurrent advancer actually wins.
+      const advanced = await prisma.relationship.updateMany({
+        where: { id: existing.id, status: "requested" },
+        data: { status: "accepted" },
+      });
+      if (advanced.count > 0) return { id: existing.id, status: "accepted" };
+    }
+    return existing;
+  }
 }
 
 export async function createBooking(
@@ -350,9 +444,32 @@ export async function createBooking(
   const serviceTypes: Array<"fitness" | "nutrition"> = o.serviceType
     ? [o.serviceType as "fitness" | "nutrition"]
     : ["fitness", "nutrition"];
+  // claimRelationship() is idempotent/reuse-safe: for a priced offering
+  // this is the SECOND time the same triple is claimed (the first was in
+  // payments.service.ts's createOrder, the moment Checkout opened — see
+  // that function's own comment), so this just finds the already
+  // `awaiting_payment` row rather than creating a new one. For a free
+  // offering (no order/payment step at all) this is the only claim.
   const relationships = await Promise.all(
-    serviceTypes.map((st) => ensureRelationship(userId, input.professionalId, st)),
+    serviceTypes.map((st) => claimRelationship(userId, input.professionalId, st)),
   );
+  const relationshipIds = relationships.map((r) => r.id);
+
+  // We're now genuinely committed to creating the Booking — advance every
+  // claimed relationship into `activating` before attempting it. If
+  // `booking.create()` below throws (the narrow, already-documented
+  // slot-conflict race this file's own hasBookingConflict/createBooking
+  // comments flag — rare, not impossible, and for a paid booking money may
+  // already be captured by this point), the relationship is deliberately
+  // LEFT at `activating` rather than silently reverted or advanced to
+  // `active` — Error & Recovery §9's "must never present professional
+  // service as active" when it genuinely isn't, and an honest signal for
+  // manual follow-up rather than a relationship that looks fine but has no
+  // real session behind it.
+  await prisma.relationship.updateMany({
+    where: { id: { in: relationshipIds }, status: { not: "active" } },
+    data: { status: "activating" },
+  });
 
   const booking = await prisma.booking.create({
     data: {
@@ -364,6 +481,13 @@ export async function createBooking(
       priceCents: o.priceCents,
       status: "confirmed",
     },
+  });
+
+  // The Booking exists for real now — only past this point is the
+  // relationship allowed to read as `active`.
+  await prisma.relationship.updateMany({
+    where: { id: { in: relationshipIds }, status: { not: "active" } },
+    data: { status: "active" },
   });
 
   await recordAudit({
@@ -383,7 +507,50 @@ export async function createBooking(
     durationMinutes: booking.durationMinutes,
     priceCents: booking.priceCents,
     status: booking.status,
-    relationshipIds: (relationships as Array<{ id: string }>).map((r) => r.id),
+    relationshipIds,
+  };
+}
+
+type RelationshipStatusRow = {
+  id: string;
+  professionalId: string;
+  serviceType: string;
+  status: string;
+  createdAt: Date;
+  professional: { id: string; fullName: string };
+};
+
+/**
+ * Backs the real "Professional guidance request / status / active
+ * relationship entry" screen required by the R1 work package (§4) — U6,
+ * Developer 1's own half. Returns every relationship the user has that
+ * ISN'T `ended` (requested/accepted/awaiting_payment/activating/active),
+ * each carrying its real current status, so the client can render a
+ * genuine state stepper instead of a screen that only ever shows fully
+ * `active` relationships (that's `listMyTeam` below, unchanged, still the
+ * richer "last/next session" view for relationships that really are
+ * active). Deliberately excludes `ended` — that's what "no relationship
+ * with this professional" looks like today, same as before this status
+ * screen existed; a past-relationships history view isn't part of this
+ * required screen and isn't built here (no design source names one).
+ */
+export async function listRelationshipStatus(userId: string) {
+  const relationships = await prisma.relationship.findMany({
+    where: { userId, status: { not: "ended" } },
+    include: { professional: { select: { id: true, fullName: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const rows = relationships as RelationshipStatusRow[];
+
+  return {
+    relationships: rows.map((r) => ({
+      relationshipId: r.id,
+      professionalId: r.professionalId,
+      professionalFullName: r.professional.fullName,
+      serviceType: r.serviceType,
+      status: r.status,
+      createdAt: r.createdAt,
+    })),
   };
 }
 

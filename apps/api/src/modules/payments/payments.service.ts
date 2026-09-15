@@ -6,7 +6,7 @@ import { env } from "../../config/env";
 import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
 import { subscribe } from "../subscriptions/subscriptions.service";
 import { purchaseProgram } from "../programPurchases/programPurchases.service";
-import { createBooking, hasBookingConflict } from "../coaching/coaching.service";
+import { claimRelationship, createBooking, hasBookingConflict } from "../coaching/coaching.service";
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
 import { CreateOrderInput } from "./payments.schema";
@@ -42,6 +42,13 @@ import { CreateOrderInput } from "./payments.schema";
  *      through the same activatePayment() so a Payment can only ever be
  *      activated once.
  *
+ * **15 Sep 2026 (R1 U6):** createOrder()'s booking branch also now claims
+ * the real Relationship row(s) (schema.prisma's `RelationshipStatus`) into
+ * `awaiting_payment` right after the Payment row above is created — see
+ * that call site's own comment and coaching.service.ts's
+ * claimRelationship() for the full requested/accepted/awaiting_payment/
+ * activating/active lifecycle this feeds into.
+ *
  * RESOLVED 5 Sep 2026 (PAY-02) — every seeded priceCents value used to be
  * chosen and displayed as USD cents (`$14.99`) while Razorpay's native
  * currency is INR, which would have undercharged real money by roughly
@@ -72,7 +79,15 @@ function timingSafeEqualHex(a: string, b: string): boolean {
 
 async function resolveAmountCents(
   input: CreateOrderInput,
-): Promise<{ amountCents: number; description: string }> {
+): Promise<{
+  amountCents: number;
+  description: string;
+  // U6 (15 Sep 2026) — only set for purpose "booking", so createOrder()
+  // can claim the real Relationship row(s) into `awaiting_payment` right
+  // after this resolves, without a second DB round trip to re-fetch the
+  // offering it just validated.
+  booking?: { professionalId: string; serviceType: "fitness" | "nutrition" | null };
+}> {
   if (input.purpose === "subscription") {
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.referenceId } });
     if (!plan) throw new ApiHttpError(404, "plan_not_found", "Subscription plan not found");
@@ -116,7 +131,11 @@ async function resolveAmountCents(
     if (await hasBookingConflict(offering.professionalId, scheduledAt, offering.durationMinutes)) {
       throw new ApiHttpError(409, "slot_unavailable", "This time is no longer available — pick another slot");
     }
-    return { amountCents: offering.priceCents, description: `${offering.label} with ${professional.fullName}` };
+    return {
+      amountCents: offering.priceCents,
+      description: `${offering.label} with ${professional.fullName}`,
+      booking: { professionalId: offering.professionalId, serviceType: offering.serviceType as "fitness" | "nutrition" | null },
+    };
   }
 
   const program = await prisma.program.findUnique({ where: { id: input.referenceId } });
@@ -136,7 +155,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     );
   }
 
-  const { amountCents: listAmountCents, description } = await resolveAmountCents(input);
+  const { amountCents: listAmountCents, description, booking } = await resolveAmountCents(input);
 
   // Module 06.05 Coupons (31 Aug 2026) — apply an optional discount code
   // against the real list price. Validation is server-side; an invalid code
@@ -182,6 +201,32 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       scheduledAt: input.purpose === "booking" ? new Date(input.scheduledAt!) : null,
     },
   });
+
+  // U6 (15 Sep 2026) — claim the real Relationship row(s) into
+  // `awaiting_payment` now that a real order/Payment genuinely exists, so
+  // a status screen opened anytime between now and Checkout completing (or
+  // being abandoned) shows an honest "awaiting payment" state instead of
+  // nothing at all. Placed after the Payment row above (not before) so a
+  // Razorpay/DB failure earlier in this function never advances a
+  // relationship for an order that was never actually created — same
+  // "only advance once genuinely committed" discipline as
+  // coaching.service.ts's createBooking now uses for
+  // activating/active. claimRelationship() itself is the atomic claim
+  // (see its own doc comment); this call and createBooking's later one for
+  // the SAME triple are safe to run twice — the second is a reuse, not a
+  // second creation.
+  if (booking) {
+    const serviceTypes: Array<"fitness" | "nutrition"> = booking.serviceType
+      ? [booking.serviceType]
+      : ["fitness", "nutrition"];
+    const relationships = await Promise.all(
+      serviceTypes.map((st) => claimRelationship(userId, booking.professionalId, st)),
+    );
+    await prisma.relationship.updateMany({
+      where: { id: { in: relationships.map((r) => r.id) }, status: { not: "active" } },
+      data: { status: "awaiting_payment" },
+    });
+  }
 
   await recordAudit({
     actorId: userId,

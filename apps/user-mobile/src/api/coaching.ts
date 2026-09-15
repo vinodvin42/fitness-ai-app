@@ -8,6 +8,7 @@ import type {
   CreateChangeRequestInput,
   ProfessionalServiceType,
   RelationshipChangeRequest,
+  RelationshipStatusResponse,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
@@ -39,6 +40,13 @@ export function createBooking(input: CreateBookingInput) {
 
 export function fetchMyTeam() {
   return apiClient.get<CoachTeamResponse>("/coaching/team").then((r) => r.data);
+}
+
+// U6 (15 Sep 2026) — real relationship status, backing the required
+// "Professional guidance request / status / active relationship entry"
+// screen. See coaching.service.ts's listRelationshipStatus doc comment.
+export function fetchRelationshipStatus() {
+  return apiClient.get<RelationshipStatusResponse>("/coaching/relationships/status").then((r) => r.data);
 }
 
 export function submitChangeRequest(relationshipId: string, input: CreateChangeRequestInput) {

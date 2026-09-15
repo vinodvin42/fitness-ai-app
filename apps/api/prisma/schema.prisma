@@ -1702,7 +1702,40 @@ enum ProfessionalStatus {
   suspended
 }
 
+// Extended 15 Sep 2026 (R1 U6 — Professional relationship request/status/
+// active-state UX, Developer 1's own half of this milestone) from just
+// `active`/`ended` to a real six-stage lifecycle. Before this, a
+// Relationship row was created directly as `active` the instant a paid
+// Booking's payment was captured (see this enum's own model comment below
+// and coaching.service.ts's PAY-01 note) — "requested"/"awaiting payment"
+// never existed as real, checkable states, just a synchronous function
+// call's internal steps. The R1 work package's Core State Requirements §5
+// names this exact lifecycle: "Requested/selection; accepted; awaiting
+// payment; activating; active; changed/ended" — a user should be able to
+// open a real status screen mid-flow (e.g. after starting Razorpay
+// Checkout but before completing it) and see where they are, per Error &
+// Recovery §9's "must never present professional service as active"
+// requirement. `changed` is deliberately NOT a value here — it's the
+// pre-existing `RelationshipChangeRequest` flow layered on top of an
+// `active` relationship (docs/coach §E's Change Professional screen,
+// already real since 25 Aug 2026), unaffected by this change.
+//
+// `accepted` is a real, standing status here, but — a documented,
+// conservative product decision, not an oversight — it's an automatic
+// pass-through, not a human coach's approval click: no request-review
+// screen exists anywhere in this build for either app/role (confirmed via
+// audit of apps/coach-mobile and docs/coach's own screen inventory — Coach
+// Booking has always been "pick an available slot, pay, done," never
+// "request, wait for accept/reject"). See coaching.service.ts's
+// claimRelationship() and docs/mobile/07-open-questions-gaps.md gap §49
+// for the full reasoning and why a future real coach-side review workflow
+// could be inserted between `requested` and `accepted` later without
+// touching this enum again.
 enum RelationshipStatus {
+  requested
+  accepted
+  awaiting_payment
+  activating
   active
   ended
 }
@@ -1814,12 +1847,26 @@ model Relationship {
   professionalId String
   professional   Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   serviceType    ProfessionalServiceType
-  status         RelationshipStatus      @default(active)
+  status         RelationshipStatus      @default(requested)
   createdAt      DateTime                @default(now())
   endedAt        DateTime?
 
   changeRequests RelationshipChangeRequest[]
 
+  // Added 15 Sep 2026 alongside the richer status enum above: one row per
+  // (user, professional, serviceType) for that pair's entire lifecycle,
+  // not one per "stint". This was already an implicit assumption —
+  // adminRelationships.service.ts's reactivate() has, since 25 Aug 2026,
+  // revived an `ended` relationship in place (status back to `active` on
+  // the SAME row) rather than creating a new one — this constraint just
+  // makes that a real, DB-enforced invariant instead of an unenforced
+  // convention, and doubles as the atomic "claim once" gate
+  // coaching.service.ts's claimRelationship() needs to create-or-reuse a
+  // relationship under concurrent requests without a plain
+  // findFirst-then-create race (same "the DB is the real gate" discipline
+  // as CheckIn's own `@@unique([userId, period, periodKey])`, see
+  // progress.service.ts's submitCheckIn doc comment).
+  @@unique([userId, professionalId, serviceType])
   @@index([userId])
   @@index([professionalId])
   @@map("relationships")

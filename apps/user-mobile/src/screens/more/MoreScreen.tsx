@@ -19,7 +19,7 @@ type MoreTarget =
   | "Reminders"
   | "SettingsHub"
   | "Referral"
-  | "CoachDiscovery";
+  | "ProfessionalRelationship";
 
 /**
  * More Menu — docs/mobile/03-screen-inventory.md §L/N/O. 31 Aug 2026 design
@@ -34,7 +34,7 @@ type MoreTarget =
 const ROWS: Array<{ label: string; subtitle: string; icon: IconName; tint: string; tintSoft: string; target: MoreTarget }> = [
   { label: "Recover", subtitle: "AI Coach & recovery log", icon: "heart-pulse", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "RecoverHub" },
   { label: "Timeline", subtitle: "Milestones & PRs", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
-  { label: "Coaching", subtitle: "Find & message a coach", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "CoachDiscovery" },
+  { label: "Coaching", subtitle: "Request, status & your team", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
   { label: "Subscription", subtitle: "Plan & payments", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },
   { label: "Reminders", subtitle: "Workout, meal & water nudges", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Reminders" },
   { label: "Refer & Invite", subtitle: "Earn free months", icon: "sparkles", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "Referral" },
