@@ -324,6 +324,9 @@ model User {
   progressPhotos              ProgressPhoto[]
   // Check-In (U5, 15 Sep 2026) — see CheckIn's own doc comment.
   checkIns                    CheckIn[]
+  // Product-analytics event stream (U7, 15 Sep 2026) — see AnalyticsEvent's
+  // own doc comment for why this is a separate model from AuditLog.
+  analyticsEvents              AnalyticsEvent[]
   programPurchases            ProgramPurchase[]
   // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
   // doc comment.
@@ -1036,6 +1039,63 @@ model CheckIn {
   @@unique([userId, period, periodKey])
   @@index([userId, createdAt])
   @@map("check_ins")
+}
+
+// ---- Product-analytics events (U7, 15 Sep 2026) -------------------------
+//
+// R1 work package §8 ("Required Analytics Events") names a minimum set of
+// product-analytics events (assessment.started, plan.generated,
+// workout.completed, ...) and §7 ("Shared API/Contract Dependencies") says
+// every domain should "emit domain.object.action with rule_id and relevant
+// IDs" — a real event stream, not the existing `AuditLog`/`recordAudit()`
+// (middleware/auditLog.ts). Deliberately a NEW model rather than reusing or
+// extending AuditLog, a real architectural call made after reading that
+// file in full:
+//   - AuditLog is an internal, admin-visible COMPLIANCE trail — "who did
+//     what to which entity" — read by Module 12.03's unscoped Audit Logs
+//     screen and several entity-scoped tabs across apps/admin-web. Its
+//     `action` strings predate this spec and don't match `domain.object
+//     .action` (e.g. "user.onboarding_completed", "plan.activated" —
+//     close in places by coincidence, but not the same naming discipline,
+//     and several required §8 events like "assessment.resumed" or
+//     "recommendation.viewed" have no natural audit-worthy mutation at
+//     all — a screen rendering or a local draft resuming isn't "an admin-
+//     traceable action against an entity", it's a product-analytics
+//     signal about user behavior).
+//   - Folding analytics into AuditLog would mean either polluting the
+//     admin trail with high-volume, non-compliance-relevant rows (a
+//     "recommendation.viewed" on every screen render), or growing a
+//     second incompatible meaning onto one column depending on context —
+//     exactly the kind of silent redefinition this schema's own
+//     conventions avoid elsewhere.
+// So: a separate, purpose-built, write-once, append-only table. `name`
+// follows the `domain.object.action` convention verbatim; `entityIds` is a
+// flexible JSON bag for whatever real entity IDs the event actually has
+// (planId, programId, workoutSessionId, ...) rather than a fixed set of
+// nullable FK columns that would need a migration for every new event
+// family; `ruleId` is the real BR-XXX rule id when one motivated the
+// event (e.g. "BR-DAT-003" for food_estimate.confirmed), null otherwise —
+// most events have none, and inventing one would be exactly the kind of
+// fabricated-rationale this codebase's own conventions warn against
+// (see plans.service.ts's/nutrition.service.ts's "ground it, don't guess"
+// discipline applied here to metadata instead of AI output).
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // domain.object.action, e.g. "workout.completed", "plan.generation_failed"
+  // — a plain string, not an enum, same "the real column type is honest
+  // about there being no fixed, confirmable list" reasoning
+  // adminAuditLogs.service.ts's own top comment gives for AuditLog.action.
+  name       String
+  entityIds  Json?
+  ruleId     String?
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([name, occurredAt])
+  @@map("analytics_events")
 }
 
 // ---- AI Coach (§H, added 25 Aug 2026) ----------------------------------

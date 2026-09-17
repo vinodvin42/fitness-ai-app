@@ -1,6 +1,7 @@
 import type { User } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import {
@@ -92,6 +93,11 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
     entityType: "OnboardingProfile",
     entityId: userId,
   });
+
+  // §8 "assessment.completed" — this PUT is the real, single completion
+  // point for the Assessment wizard (see OnboardingWizardContext.tsx's own
+  // comment: nothing is sent to the API until here).
+  await trackEvent(userId, "assessment.completed", { onboardingProfileId: profile.userId });
 
   return profile;
 }

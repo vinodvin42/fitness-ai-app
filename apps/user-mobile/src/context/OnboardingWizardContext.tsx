@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { OnboardingProfileInput } from "@fitness-ai-app/types";
 import { submitOnboarding } from "../api/users";
+import { trackClientEvent } from "../api/analytics";
 import * as secureStore from "../lib/secureStore";
 
 type WizardState = Partial<OnboardingProfileInput> & {
@@ -91,6 +92,19 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
           const draft = JSON.parse(raw) as { state: WizardState; lastScreen: ResumableScreenName };
           setState({ ...initialState, ...draft.state });
           setResumeRouteName(draft.lastScreen);
+          // §8 "assessment.resumed" — a real draft actually reached a
+          // screen past AboutYou, i.e. genuine in-progress work is being
+          // picked back up, not just a freshly-created empty draft.
+          if (draft.lastScreen !== "AboutYou") {
+            trackClientEvent("assessment.resumed", undefined, { lastScreen: draft.lastScreen });
+          } else {
+            trackClientEvent("assessment.started");
+          }
+        } else {
+          // §8 "assessment.started" — no draft at all, a genuinely fresh
+          // start (first time opening the wizard, or a prior attempt
+          // already completed and cleared its draft).
+          trackClientEvent("assessment.started");
         }
       } catch {
         // Corrupted/unreadable draft — start fresh rather than block the

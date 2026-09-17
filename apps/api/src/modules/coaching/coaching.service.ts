@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import {
   AvailabilityQuery,
@@ -341,6 +342,14 @@ export async function claimRelationship(
     const created = await prisma.relationship.create({
       data: { userId, professionalId, serviceType, status: "requested" },
     });
+
+    // §8 "professional.requested" — the real, brand-new request, before
+    // the auto-accept pass-through below (see this function's own doc
+    // comment for why `accepted` is an automatic advance, not a human
+    // decision) — the event describes the user's real action, not the
+    // system's own follow-on state change.
+    await trackEvent(userId, "professional.requested", { professionalId, relationshipId: created.id }, { metadata: { serviceType } });
+
     // Auto-accept — see this function's own doc comment. Sequential, not
     // racy: only the caller that just won the create() above holds a
     // reference to this brand-new row at this point.
@@ -489,6 +498,18 @@ export async function createBooking(
     where: { id: { in: relationshipIds }, status: { not: "active" } },
     data: { status: "active" },
   });
+
+  // §8 "relationship.activated" — fired for every relationship this
+  // booking confirms as active. Honest simplification: a relationship
+  // that was ALREADY active before this call (e.g. booking a second
+  // session with an already-active coach) still emits the event here
+  // rather than diffing against its pre-call status — the real fact
+  // being reported ("this booking's relationships are active") is true
+  // either way, so a rare extra event for an already-active relationship
+  // is a harmless over-count, not a fabricated one.
+  for (const relationshipId of relationshipIds) {
+    await trackEvent(userId, "relationship.activated", { relationshipId, professionalId: input.professionalId, bookingId: booking.id });
+  }
 
   await recordAudit({
     actorId: userId,

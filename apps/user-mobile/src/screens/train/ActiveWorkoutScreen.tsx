@@ -18,6 +18,7 @@ import {
   logWorkoutSet,
   updateSessionProgress,
 } from "../../api/workoutSessions";
+import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
 import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
@@ -182,8 +183,17 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       : [];
     setExerciseIndex(resumeIndex);
     setLoggedSets(resumedSets);
-    setWasResumed(resumeIndex > 0 || resumedSets.length > 0);
+    const resumedForReal = resumeIndex > 0 || resumedSets.length > 0;
+    setWasResumed(resumedForReal);
     setHasHydrated(true);
+
+    // §8 "workout.sync_recovered" — only when hydration actually restored
+    // non-empty progress (the real "temporary connectivity loss didn't lose
+    // active data" moment, see this screen's own top comment), never on a
+    // fresh session that naturally hydrates to index 0 / empty sets.
+    if (resumedForReal) {
+      trackClientEvent("workout.sync_recovered", { workoutSessionId: session.id }, { resumeIndex, resumedSetCount: resumedSets.length });
+    }
   }, [hasHydrated, orderedExercises, session]);
 
   // A real stopwatch, not a re-derived "now minus startedAt" clock — pausing

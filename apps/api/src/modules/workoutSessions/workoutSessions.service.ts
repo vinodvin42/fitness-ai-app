@@ -1,5 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { hasAccess } from "../programPurchases/programPurchases.service";
 import { getStreaks } from "../progress/progress.service";
@@ -67,6 +68,9 @@ export async function startSession(userId: string, workoutId: string) {
     metadata: { workoutId },
   });
 
+  // §8 "workout.started"
+  await trackEvent(userId, "workout.started", { workoutSessionId: session.id, workoutId });
+
   return session;
 }
 
@@ -85,9 +89,16 @@ export async function logSet(sessionId: string, userId: string, input: LogSetInp
     throw new ApiHttpError(409, "session_not_active", "This workout session is no longer in progress");
   }
 
-  return prisma.exerciseSetLog.create({
+  const setLog = await prisma.exerciseSetLog.create({
     data: { sessionId: session.id, ...input },
   });
+
+  // §8 "workout.set.logged" — no recordAudit exists here today (a set log
+  // is high-volume, not an admin-compliance-relevant mutation), so this is
+  // the first tracking of any kind for this action.
+  await trackEvent(userId, "workout.set.logged", { workoutSessionId: session.id, exerciseId: input.exerciseId, setLogId: setLog.id });
+
+  return setLog;
 }
 
 /**
@@ -127,6 +138,9 @@ export async function completeSession(sessionId: string, userId: string) {
     entityId: session.id,
     metadata: { setCount: updated.setLogs.length },
   });
+
+  // §8 "workout.completed"
+  await trackEvent(userId, "workout.completed", { workoutSessionId: session.id }, { metadata: { setCount: updated.setLogs.length } });
 
   return updated;
 }

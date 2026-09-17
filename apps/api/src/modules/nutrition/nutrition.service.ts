@@ -1,5 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { ConfirmFoodEstimateInput, CreateFoodEstimateInput, LogMealInput, LogWaterInput } from "./nutrition.schema";
@@ -103,6 +104,9 @@ export async function logMeal(userId: string, input: LogMealInput) {
     entityId: mealLog.id,
     metadata: { source: entry.source, mealType: input.mealType },
   });
+
+  // §8 "meal.logged"
+  await trackEvent(userId, "meal.logged", { mealLogId: mealLog.id }, { metadata: { source: entry.source, mealType: input.mealType } });
 
   return mealLog;
 }
@@ -232,6 +236,8 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
       entityId: estimate.id,
       metadata: { status: "insufficient_context", reason: "upstream_error" },
     });
+    // §8 "food_estimate.created"
+    await trackEvent(userId, "food_estimate.created", { foodEstimateId: estimate.id }, { metadata: { status: "insufficient_context" } });
     return estimate;
   }
 
@@ -266,6 +272,9 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
     entityId: estimate.id,
     metadata: { status: estimate.status, reason: parsed && parsed.ok ? undefined : "unparseable_or_insufficient" },
   });
+
+  // §8 "food_estimate.created"
+  await trackEvent(userId, "food_estimate.created", { foodEstimateId: estimate.id }, { metadata: { status: estimate.status } });
 
   return estimate;
 }
@@ -364,6 +373,18 @@ export async function confirmFoodEstimate(userId: string, estimateId: string, in
     entityId: mealLog.id,
     metadata: { source: "ai_estimate", mealType: estimate.mealType, edited: wasEdited },
   });
+
+  // §8 "food_estimate.confirmed"/"food_estimate.edited" (BR-DAT-003 — see
+  // this function's own doc comment) and "meal.logged" — the same real
+  // MealLog-creation moment as logMeal()'s own trackEvent above, just via
+  // the AI-estimate path.
+  await trackEvent(
+    userId,
+    wasEdited ? "food_estimate.edited" : "food_estimate.confirmed",
+    { foodEstimateId: estimateId, mealLogId: mealLog.id },
+    { ruleId: "BR-DAT-003" },
+  );
+  await trackEvent(userId, "meal.logged", { mealLogId: mealLog.id }, { metadata: { source: "ai_estimate", mealType: estimate.mealType, edited: wasEdited } });
 
   return mealLog;
 }

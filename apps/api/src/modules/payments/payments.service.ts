@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { env } from "../../config/env";
 import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
@@ -236,6 +237,13 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     metadata: { purpose: input.purpose, referenceId: input.referenceId, amountCents, razorpayOrderId: order.id },
   });
 
+  // §8 "premium.checkout_started" — the real moment Razorpay Checkout is
+  // about to open client-side, for a subscription purchase specifically
+  // (program_purchase/booking checkouts aren't "premium").
+  if (input.purpose === "subscription") {
+    await trackEvent(userId, "premium.checkout_started", { paymentId: payment.id, planId: input.referenceId }, { metadata: { amountCents } });
+  }
+
   return {
     orderId: order.id,
     amountCents,
@@ -406,6 +414,12 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
 
     await prisma.payment.update({ where: { id: payment.id }, data: { activatedAt: new Date() } });
 
+    // §8 "entitlement.activated" — the real BR-COM-011 boundary (see this
+    // function's own top comment): money captured is not the same fact as
+    // the entitlement actually granted, and this line is where the latter
+    // becomes true.
+    await trackEvent(payment.userId, "entitlement.activated", { paymentId: payment.id }, { metadata: { purpose: payment.purpose }, ruleId: "BR-COM-011" });
+
     return { booking };
   } catch (err) {
     if (payment.purpose === "booking") throw err; // booking's own catch above already recorded + rethrew this
@@ -428,6 +442,17 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         reason: err instanceof ApiHttpError ? err.code : "unknown_error",
       },
     });
+
+    // §8 "entitlement.activation_failed" — the exact BR-COM-011 gap this
+    // function's own top comment describes: money captured, entitlement
+    // grant genuinely failed.
+    await trackEvent(
+      payment.userId,
+      "entitlement.activation_failed",
+      { paymentId: payment.id },
+      { metadata: { purpose: payment.purpose, reason: err instanceof ApiHttpError ? err.code : "unknown_error" }, ruleId: "BR-COM-011" },
+    );
+
     // A distinct, honest, detectable error — "paid" (Razorpay captured the
     // charge) is already true and stays true; only the entitlement grant
     // failed and is retryable with no further charge. The client keys off
