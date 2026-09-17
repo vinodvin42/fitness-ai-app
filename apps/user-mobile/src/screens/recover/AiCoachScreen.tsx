@@ -252,10 +252,14 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             multiline
             maxLength={2000}
             editable={!isSending}
+            accessibilityLabel="Message to AI Coach"
           />
           <Pressable
             onPress={() => send(draft)}
             disabled={isSending || draft.trim().length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            accessibilityState={{ disabled: isSending || draft.trim().length === 0, busy: isSending }}
             style={[
               styles.sendButton,
               (isSending || draft.trim().length === 0) && styles.sendButtonDisabled,

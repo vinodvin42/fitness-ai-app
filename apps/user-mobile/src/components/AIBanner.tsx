@@ -53,5 +53,16 @@ export function AIBanner({ title, body, ctaLabel, onPress }: AIBannerProps) {
     </View>
   );
 
-  return onPress ? <Pressable onPress={onPress}>{content}</Pressable> : content;
+  return onPress ? (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={ctaLabel ? `${title}. ${ctaLabel}` : title}
+      accessibilityHint={body}
+    >
+      {content}
+    </Pressable>
+  ) : (
+    content
+  );
 }

@@ -174,7 +174,13 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs, justifyContent: "center" }}>
             {RPE_SCALE.map((n) => (
-              <Chip key={n} label={String(n)} selected={rpe === n} onPress={() => setRpe(rpe === n ? undefined : n)} />
+              <Chip
+                key={n}
+                label={String(n)}
+                accessibilityLabel={`RPE ${n} of 10`}
+                selected={rpe === n}
+                onPress={() => setRpe(rpe === n ? undefined : n)}
+              />
             ))}
           </View>
 

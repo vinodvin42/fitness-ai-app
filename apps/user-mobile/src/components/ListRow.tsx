@@ -71,5 +71,15 @@ export function ListRow({
     </Card>
   );
 
-  return onPress ? <Pressable onPress={onPress}>{body}</Pressable> : body;
+  return onPress ? (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+    >
+      {body}
+    </Pressable>
+  ) : (
+    body
+  );
 }
