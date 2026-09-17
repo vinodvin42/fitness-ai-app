@@ -21,6 +21,7 @@ import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
+import { analyticsEventsRouter } from "./modules/analyticsEvents/analyticsEvents.routes";
 import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
 import { adminDashboardRouter } from "./modules/adminDashboard/adminDashboard.routes";
 import { adminUsersRouter } from "./modules/adminUsers/adminUsers.routes";
@@ -32,6 +33,7 @@ import { adminPaymentsRouter } from "./modules/adminPayments/adminPayments.route
 import { adminPlansRouter } from "./modules/adminPlans/adminPlans.routes";
 import { adminSupportRouter } from "./modules/adminSupport/adminSupport.routes";
 import { adminAuditLogsRouter } from "./modules/adminAuditLogs/adminAuditLogs.routes";
+import { adminAnalyticsEventsRouter } from "./modules/adminAnalyticsEvents/adminAnalyticsEvents.routes";
 import { adminReferralsRouter } from "./modules/adminReferrals/adminReferrals.routes";
 import { adminAnalyticsRouter } from "./modules/adminAnalytics/adminAnalytics.routes";
 import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegrations.routes";
@@ -133,6 +135,11 @@ export function createApp() {
   // plans.service.ts's own doc comment for why this exists and who it's
   // for (shared platform logic, not any one R1 work package's own scope).
   app.use("/", plansRouter);
+  // Product-analytics events (U7, 15 Sep 2026) — the client-facing half of
+  // apps/api/src/lib/analytics.ts's trackEvent() pipeline, for the handful
+  // of §8 events that only exist client-side. See analyticsEventsRouter's
+  // own doc comment.
+  app.use("/", analyticsEventsRouter);
   // Admin console (Phase 6) — mounted at "/" like the rest since each
   // router already scopes its own full paths (e.g. "/admin/auth/login"),
   // matching the mounting convention every other router above uses.
@@ -191,6 +198,11 @@ export function createApp() {
   // a real `totalCount`/`truncated` rather than either faking full
   // pagination or silently under-reporting.
   app.use("/", adminAuditLogsRouter);
+  // U7 (15 Sep 2026) — the admin-facing read path for `AnalyticsEvent`,
+  // proving the product-analytics events trackEvent() writes are
+  // genuinely inspectable rather than write-only. See
+  // adminAnalyticsEvents.service.ts's own doc comment.
+  app.use("/", adminAnalyticsEventsRouter);
   // Module 07 — Growth, 07.03 Referrals only (added 25 Aug 2026) — the
   // first admin surface over the existing `Referral` model; see
   // adminReferrals.service.ts's own doc comment for why this is the one

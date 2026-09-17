@@ -1,5 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { DecideRecommendationInput } from "./plans.schema";
@@ -223,6 +224,9 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
 
   const planRow = await prisma.plan.create({ data: { userId, version, status: "generating" } });
 
+  // §8 "plan.generation_started"
+  await trackEvent(userId, "plan.generation_started", { planId: planRow.id }, { metadata: { version } });
+
   return runSelectionAndPersist(planRow, {
     goals: profile.goals,
     trainingLevel: profile.trainingLevel,
@@ -254,6 +258,9 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     data: { status: "generating", failureReason: null },
   });
 
+  // §8 "plan.generation_started" — a retry is a real new generation attempt.
+  await trackEvent(userId, "plan.generation_started", { planId: reset.id }, { metadata: { retry: true } });
+
   return runSelectionAndPersist(reset, {
     goals: profile.goals,
     trainingLevel: profile.trainingLevel,
@@ -284,6 +291,8 @@ async function runSelectionAndPersist(
       entityId: planRow.id,
       metadata: { reason: "upstream_error" },
     });
+    // §8 "plan.generation_failed"
+    await trackEvent(planRow.userId, "plan.generation_failed", { planId: planRow.id }, { metadata: { reason: "upstream_error" } });
     return toPlanDTO(failed, null);
   }
 
@@ -298,6 +307,8 @@ async function runSelectionAndPersist(
       entityId: planRow.id,
       metadata: { reason: "unparseable_response" },
     });
+    // §8 "plan.generation_failed"
+    await trackEvent(planRow.userId, "plan.generation_failed", { planId: planRow.id }, { metadata: { reason: "unparseable_response" } });
     return toPlanDTO(failed, null);
   }
 
@@ -322,6 +333,14 @@ async function runSelectionAndPersist(
     entityId: planRow.id,
     metadata: { programId: parsed.programId, version: planRow.version },
   });
+
+  // §8 "plan.generated" and "plan.activated" — both real and simultaneous
+  // here: runSelectionAndPersist's only success path both generates AND
+  // immediately activates a Plan (see this function's own transaction
+  // above), so both events are honestly emitted together rather than one
+  // being inferred from the other.
+  await trackEvent(planRow.userId, "plan.generated", { planId: planRow.id, programId: parsed.programId });
+  await trackEvent(planRow.userId, "plan.activated", { planId: planRow.id, programId: parsed.programId }, { metadata: { version: planRow.version } });
 
   const program = programs.find((p) => p.id === parsed.programId);
   return toPlanDTO(generated as PlanRow, program?.name ?? null);
@@ -641,6 +660,22 @@ export async function decideRecommendation(
     entityId: recommendationId,
     metadata: { action: input.action, status: newStatus, decidedByRole },
   });
+
+  // §8 "recommendation.accepted/declined/no_change" — "modified" (an
+  // accept-with-a-different-program override) is honestly grouped under
+  // "accepted" here: §8 names exactly these three outcome events, not a
+  // fourth "modified" one, and a modify is a real decision to ACT on the
+  // recommendation, just with a chosen replacement rather than the AI's
+  // own suggestion — never a decline. `input.action` in the metadata keeps
+  // the real distinction visible to anyone reading the event.
+  const outcomeEventName =
+    newStatus === "declined" ? "recommendation.declined" : newStatus === "no_change" ? "recommendation.no_change" : "recommendation.accepted";
+  await trackEvent(
+    userId,
+    outcomeEventName,
+    { recommendationId, planId: rec.planId, newProgramId },
+    { metadata: { action: input.action, decidedByRole } },
+  );
 
   const name = newProgramId ? (await prisma.program.findUnique({ where: { id: newProgramId }, select: { name: true } }))?.name ?? null : null;
   return toRecommendationDTO(updated, name);

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { CreateProgressPhotoInput, LogMeasurementInput, SubmitCheckInInput } from "./progress.schema";
 
@@ -342,6 +343,9 @@ export async function submitCheckIn(userId: string, input: SubmitCheckInInput) {
     entityId: checkIn.id,
     metadata: { period: input.period, periodKey, hasNote: input.note != null },
   });
+
+  // §8 "checkin.completed"
+  await trackEvent(userId, "checkin.completed", { checkInId: checkIn.id }, { metadata: { period: input.period, periodKey } });
 
   return checkIn;
 }

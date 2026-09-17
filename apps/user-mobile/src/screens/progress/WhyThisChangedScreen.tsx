@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -13,6 +13,7 @@ import { SelectCard } from "../../components/SelectCard";
 import { fetchCurrentPlan } from "../../api/plans";
 import { fetchPrograms } from "../../api/programs";
 import { decideRecommendation, fetchCurrentRecommendation, generateRecommendation } from "../../api/recommendations";
+import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
@@ -48,11 +49,12 @@ type Props = NativeStackScreenProps<ProgressStackParamList, "WhyThisChanged">;
  * freshly-generated one directly. Reachable with no param too: fetches
  * the current one itself, and offers to generate one if none exists yet.
  *
- * Analytics (`recommendation.viewed/accepted/declined/no_change`) are
- * required by this milestone but explicitly deferred to U7 — the exact
- * same call gaps §43/§44/§45 already made for U2/U3/U4's own required
- * events (no `analytics.ts`/`trackEvent` exists anywhere in this codebase
- * yet, confirmed via this pass's own audit).
+ * Analytics (U7, 15 Sep 2026): `recommendation.viewed` fires client-side
+ * (below) the first time a real Recommendation is actually on screen — a
+ * render, not a mutation, so it has no natural server call to attach to
+ * (see api/analytics.ts's own doc comment). `accepted/declined/no_change`
+ * are tracked server-side in `decideRecommendation()`
+ * (plans.service.ts), since those really are mutations.
  */
 export function WhyThisChangedScreen({ route }: Props) {
   const queryClient = useQueryClient();
@@ -86,6 +88,17 @@ export function WhyThisChangedScreen({ route }: Props) {
     setRecommendation(fetchedRecommendation);
     setHasHydrated(true);
   }, [hasHydrated, passedRecommendation, fetchedRecommendation]);
+
+  // §8 "recommendation.viewed" — fires once per distinct recommendation id
+  // actually rendered on this screen, guarded by a ref so re-renders (or
+  // the local state update onDecide makes to the SAME recommendation)
+  // never double-fire it.
+  const viewedRecommendationId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!recommendation || viewedRecommendationId.current === recommendation.id) return;
+    viewedRecommendationId.current = recommendation.id;
+    trackClientEvent("recommendation.viewed", { recommendationId: recommendation.id, planId: recommendation.planId });
+  }, [recommendation]);
 
   const { data: currentPlan } = useQuery({ queryKey: ["plans", "current"], queryFn: fetchCurrentPlan });
   const { data: programs } = useQuery({
