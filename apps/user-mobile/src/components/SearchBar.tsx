@@ -33,6 +33,8 @@ export function SearchBar({ value, onChangeText, placeholder = "Search" }: Searc
         value={value}
         onChangeText={onChangeText}
         autoCapitalize="none"
+        accessibilityLabel={placeholder}
+        accessibilityRole="search"
       />
     </View>
   );

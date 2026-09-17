@@ -24,13 +24,25 @@ export function Stepper({ label, value, unit, step = 1, min = 0, max = 999, onCh
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.controls}>
-        <Pressable onPress={decrement} style={styles.button}>
+        <Pressable
+          onPress={decrement}
+          accessibilityRole="button"
+          accessibilityLabel={`Decrease ${label}`}
+          accessibilityHint={`Current value ${value ?? min} ${unit}`}
+          style={styles.button}
+        >
           <Icon name="minus" size={18} color={colors.accent} strokeWidth={2.5} />
         </Pressable>
-        <Text style={styles.value}>
+        <Text style={styles.value} accessibilityLabel={`${label}: ${value ?? "not set"} ${unit}`}>
           {value ?? "–"} <Text style={styles.unit}>{unit}</Text>
         </Text>
-        <Pressable onPress={increment} style={styles.button}>
+        <Pressable
+          onPress={increment}
+          accessibilityRole="button"
+          accessibilityLabel={`Increase ${label}`}
+          accessibilityHint={`Current value ${value ?? min} ${unit}`}
+          style={styles.button}
+        >
           <Icon name="plus" size={18} color={colors.accent} strokeWidth={2.5} />
         </Pressable>
       </View>

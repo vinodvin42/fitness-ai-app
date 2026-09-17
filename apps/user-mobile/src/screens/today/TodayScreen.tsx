@@ -217,7 +217,7 @@ function QuickLink({
   tintSoft: string;
 }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1 }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ flex: 1 }}>
       <Card style={{ alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md }}>
         <View
           style={{

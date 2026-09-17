@@ -48,6 +48,8 @@ export function LoginScreen({ navigation }: Props) {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          accessibilityLabel="Email"
+          textContentType="emailAddress"
         />
         <TextInput
           style={styles.input}
@@ -56,9 +58,15 @@ export function LoginScreen({ navigation }: Props) {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          accessibilityLabel="Password"
+          textContentType="password"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : null}
 
         <Button label="Log In" onPress={onSubmit} loading={loading} disabled={!email || !password} />
         <Button

@@ -9,15 +9,37 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  /**
+   * Overrides the screen-reader label (defaults to `label`) — use when the
+   * visible text alone doesn't say what the action does, e.g. a short
+   * "Retry" button that needs more context read aloud than a sighted user
+   * gets from surrounding layout.
+   */
+  accessibilityLabel?: string;
+  /** Extra screen-reader-only context read after the label (VoiceOver/TalkBack "hint"). */
+  accessibilityHint?: string;
 }
 
 /** Shared primary/secondary button — docs/mobile/04-design-system.md §5 "build these once, reuse everywhere". */
-export function Button({ label, onPress, variant = "primary", loading, disabled, style }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  variant = "primary",
+  loading,
+  disabled,
+  style,
+  accessibilityLabel,
+  accessibilityHint,
+}: ButtonProps) {
   const isPrimary = variant === "primary";
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={[
         styles.base,
         isPrimary ? styles.primary : styles.secondary,

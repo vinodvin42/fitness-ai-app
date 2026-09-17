@@ -151,7 +151,11 @@ export function FuelScreen({ navigation }: Props) {
                 {totalGlasses} / {WATER_GOAL_GLASSES}
               </Text>
             </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.md }}>
+            <View
+              accessible
+              accessibilityLabel={`${totalGlasses} of ${WATER_GOAL_GLASSES} glasses of water logged today`}
+              style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.md }}
+            >
               {Array.from({ length: Math.max(WATER_GOAL_GLASSES, totalGlasses) }, (_, i) => (
                 <View
                   key={i}

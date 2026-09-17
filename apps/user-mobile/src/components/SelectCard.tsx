@@ -19,7 +19,13 @@ interface SelectCardProps {
  */
 export function SelectCard({ title, subtitle, selected, onPress, icon }: SelectCardProps) {
   return (
-    <Pressable onPress={onPress} style={[styles.card, selected && styles.cardSelected]}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      accessibilityState={{ selected, checked: selected }}
+      style={[styles.card, selected && styles.cardSelected]}
+    >
       {icon ? (
         <View style={[styles.iconWell, selected && styles.iconWellSelected]}>
           <Icon name={icon} size={20} color={selected ? colors.accent : colors.textSecondary} />

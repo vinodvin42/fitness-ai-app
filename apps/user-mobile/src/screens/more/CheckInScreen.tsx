@@ -213,7 +213,13 @@ function RatingPicker({
       <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{label}</Text>
       <View style={{ flexDirection: "row", gap: spacing.xs }}>
         {RATING_SCALE.map((n) => (
-          <Chip key={n} label={String(n)} selected={value === n} onPress={() => onChange(n)} />
+          <Chip
+            key={n}
+            label={String(n)}
+            accessibilityLabel={`${label}: ${n} of 5`}
+            selected={value === n}
+            onPress={() => onChange(n)}
+          />
         ))}
       </View>
     </View>

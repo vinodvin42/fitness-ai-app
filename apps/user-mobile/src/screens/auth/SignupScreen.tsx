@@ -78,6 +78,7 @@ export function SignupScreen({ navigation }: Props) {
           placeholderTextColor={colors.textMuted}
           value={fullName}
           onChangeText={setFullName}
+          accessibilityLabel="Full name"
         />
         <TextInput
           style={styles.input}
@@ -87,6 +88,8 @@ export function SignupScreen({ navigation }: Props) {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          accessibilityLabel="Email"
+          textContentType="emailAddress"
         />
         <TextInput
           style={styles.input}
@@ -95,6 +98,8 @@ export function SignupScreen({ navigation }: Props) {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          accessibilityLabel="Password, minimum 8 characters"
+          textContentType="newPassword"
         />
         <TextInput
           style={styles.input}
@@ -103,9 +108,14 @@ export function SignupScreen({ navigation }: Props) {
           autoCapitalize="characters"
           value={referralCode}
           onChangeText={setReferralCode}
+          accessibilityLabel="Referral code, optional"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : null}
 
         <Button
           label="Create Account"
