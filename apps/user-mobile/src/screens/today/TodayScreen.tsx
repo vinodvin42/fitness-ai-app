@@ -8,6 +8,7 @@ import { Button } from "../../components/Button";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
 import { AIBanner } from "../../components/AIBanner";
+import { ErrorState } from "../../components/ErrorState";
 import { useAuth } from "../../context/AuthContext";
 import { fetchTodayWaterLogs, logWater } from "../../api/nutrition";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
@@ -45,14 +46,49 @@ function todayLabel(): string {
  * starting something new). Silent (renders nothing) when there's no active
  * generated Plan — never fabricates a "next workout" out of nothing, same
  * discipline the AI Plan/Recommendation engine itself follows.
+ *
+ * U7 (§9 audit, 17 Sep 2026): this screen's three real network reads
+ * previously had no error/retry handling at all — a failed request just
+ * left `data` undefined, which this screen's own render logic couldn't
+ * tell apart from "genuinely nothing to show" (no in-progress session, no
+ * active Plan). A user opening the app with a bad connection saw a
+ * perfectly quiet Today tab with no Plan card and no way to know their
+ * actual Plan/session state hadn't loaded at all versus really not
+ * existing — exactly the silent-failure pattern §9 exists to close. Each
+ * query now surfaces its own honest inline ErrorState + Retry instead of
+ * being swallowed, same "partial failure, partial screen" pattern
+ * FuelScreen's own mealLogs/waterLogs split already established, rather
+ * than one all-or-nothing screen-level error blocking Hydration/Quick
+ * Links when only the Plan card's data failed to load (or vice versa).
  */
 export function TodayScreen({ navigation }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: waterLogs } = useQuery({ queryKey: ["waterLogs", "today"], queryFn: fetchTodayWaterLogs });
-  const { data: history } = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
-  const { data: nextWorkout } = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout });
+  const {
+    data: waterLogs,
+    isError: isWaterError,
+    refetch: refetchWater,
+  } = useQuery({ queryKey: ["waterLogs", "today"], queryFn: fetchTodayWaterLogs });
+  const {
+    data: history,
+    isError: isHistoryError,
+    refetch: refetchHistory,
+  } = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
+  const {
+    data: nextWorkout,
+    isError: isNextWorkoutError,
+    refetch: refetchNextWorkout,
+  } = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout });
   const [isLoggingWater, setIsLoggingWater] = useState(false);
+
+  // Either query feeds the same Plan/Continue-Workout card, so either
+  // failing is treated as one honest "couldn't load your plan" state
+  // rather than two competing partial ones.
+  const isPlanError = isHistoryError || isNextWorkoutError;
+  const onRetryPlan = () => {
+    if (isHistoryError) refetchHistory();
+    if (isNextWorkoutError) refetchNextWorkout();
+  };
 
   const totalGlasses = useMemo(() => (waterLogs ?? []).reduce((sum, w) => sum + w.glasses, 0), [waterLogs]);
   const inProgressToday = useMemo(
@@ -101,7 +137,9 @@ export function TodayScreen({ navigation }: Props) {
         onPress={() => navigation.navigate("More", { screen: "AiCoach" })}
       />
 
-      {inProgressToday ? (
+      {isPlanError ? (
+        <ErrorState message="Couldn't load your plan for today." onRetry={onRetryPlan} />
+      ) : inProgressToday ? (
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
             <Icon name="dumbbell" size={18} color={colors.accent} />
@@ -158,6 +196,9 @@ export function TodayScreen({ navigation }: Props) {
         </Card>
       ) : null}
 
+      {isWaterError ? (
+        <ErrorState message="Couldn't load today's hydration." onRetry={() => refetchWater()} />
+      ) : (
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <ProgressRing progress={totalGlasses / WATER_GOAL_GLASSES} size={92} strokeWidth={10} color={colors.cyan}>
@@ -184,6 +225,7 @@ export function TodayScreen({ navigation }: Props) {
           </View>
         </View>
       </Card>
+      )}
 
       <View>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Quick links</Text>
