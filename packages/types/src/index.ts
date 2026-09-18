@@ -130,6 +130,19 @@ export interface User {
   updatedAt: string;
 }
 
+/** Day-of-week keys used by `preferredTrainingDays` below — lowercase, 3-letter, Monday-first. */
+export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+/**
+ * Equipment/gym-context self-report (R1 Developer 1, 18 Sep 2026) — a
+ * plain, honest, user-reported string, same "raw, honest, never
+ * fabricated" pattern `User.acquisitionContext` established, NOT a foreign
+ * key to a `Gym`/partner/location entity (deliberately deferred to
+ * Developer 3's own future platform ownership — see apps/api's
+ * plans.service.ts top comment).
+ */
+export type EquipmentContext = "full_gym" | "home_dumbbells_bands" | "home_bodyweight_only" | "none_travel";
+
 export interface OnboardingProfile {
   userId: string;
   gender: string | null;
@@ -142,6 +155,12 @@ export interface OnboardingProfile {
   allergens: string[];
   medicalConditions: string[];
   injuries: string[];
+  /** Availability/Schedule (18 Sep 2026) — see OnboardingProfileInput's own doc comment. */
+  trainingDaysPerWeek: number | null;
+  preferredTrainingDays: DayOfWeek[];
+  sessionLengthMinutes: number | null;
+  /** Wired into Plan-Generation's selection prompt — see apps/api's plans.service.ts. */
+  equipmentContext: EquipmentContext | null;
 }
 
 /**
@@ -236,6 +255,19 @@ export const COMMON_COUNTRIES: Array<{ code: string; name: string }> = [
   { code: "NZ", name: "New Zealand" },
 ];
 
+/**
+ * Availability/Schedule + Equipment/gym-context + broader Baseline/
+ * measurements (R1 Developer 1, 18 Sep 2026). `trainingDaysPerWeek`/
+ * `preferredTrainingDays`/`sessionLengthMinutes` and `equipmentContext`
+ * map straight onto new OnboardingProfile columns. `bodyFatPercent`/
+ * `waistCm`/`hipsCm` do NOT — they're the wizard's new baseline-
+ * measurements step, and apps/api's users.service.ts#upsertOnboardingProfile
+ * writes them into a real BodyMeasurement row instead of a second,
+ * competing measurements table on OnboardingProfile (see that function's
+ * own comment). All three are clearly optional — most users won't have a
+ * precise body-fat% reading, and a tape-measure baseline is a nice-to-have,
+ * not a requirement to finish onboarding.
+ */
 export interface OnboardingProfileInput {
   gender?: string;
   age?: number;
@@ -247,6 +279,13 @@ export interface OnboardingProfileInput {
   allergens: string[];
   medicalConditions: string[];
   injuries: string[];
+  trainingDaysPerWeek?: number;
+  preferredTrainingDays: DayOfWeek[];
+  sessionLengthMinutes?: number;
+  equipmentContext?: EquipmentContext;
+  bodyFatPercent?: number;
+  waistCm?: number;
+  hipsCm?: number;
 }
 
 /**
@@ -652,6 +691,8 @@ export interface BodyMeasurement {
   hipsCm: number | null;
   armsCm: number | null;
   thighsCm: number | null;
+  /** Broader Baseline/measurements (18 Sep 2026) — clearly optional, most users won't have a precise reading. See schema.prisma's BodyMeasurement.bodyFatPercent comment. */
+  bodyFatPercent: number | null;
   loggedAt: string;
 }
 
@@ -663,6 +704,7 @@ export interface LogMeasurementInput {
   hipsCm?: number;
   armsCm?: number;
   thighsCm?: number;
+  bodyFatPercent?: number;
 }
 
 /**

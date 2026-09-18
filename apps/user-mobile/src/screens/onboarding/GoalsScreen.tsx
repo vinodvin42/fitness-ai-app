@@ -26,8 +26,8 @@ export function GoalsScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={2}
-      total={6}
+      step={3}
+      total={8}
       label="Goals"
       title="What are your goals?"
       subtitle="Select as many as apply — you can change these later."
