@@ -15,11 +15,13 @@ import {
 } from "../../lib/twoFactor";
 import {
   ChangePasswordInput,
+  consentTypes,
   DeleteAccountInput,
   DisableTwoFactorInput,
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
   OnboardingProfileInput,
+  UpdateConsentInput,
   UpdateProfileInput,
 } from "./users.schema";
 
@@ -94,6 +96,15 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
   const { bodyFatPercent, waistCm, hipsCm, ...profileFields } = input;
 
+  // BR-SAF-004 (R1 Developer 1, 18 Sep 2026) needs to know, BEFORE the
+  // upsert below, whether this call is a genuinely NEW completion or a
+  // re-submission of an already-completed assessment — read here, not
+  // inferred from the upsert's own create/update branch (Prisma's upsert
+  // doesn't expose which branch ran). `completedAt` is the one real
+  // "has this user ever finished onboarding before" signal this model has.
+  const existing = await prisma.onboardingProfile.findUnique({ where: { userId }, select: { completedAt: true } });
+  const isNewCompletion = !existing?.completedAt;
+
   const profile = await prisma.onboardingProfile.upsert({
     where: { userId },
     create: { userId, ...profileFields, completedAt: new Date() },
@@ -131,6 +142,34 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // point for the Assessment wizard (see OnboardingWizardContext.tsx's own
   // comment: nothing is sent to the API until here).
   await trackEvent(userId, "assessment.completed", { onboardingProfileId: profile.userId });
+
+  // BR-SAF-004 real safety escalation (R1 Developer 1, 18 Sep 2026) — see
+  // SafetyEscalation's own schema.prisma doc comment for the full design.
+  // Deliberately gated on `isNewCompletion`: this PUT is an upsert (a
+  // resubmission of the wizard would hit it again with the same answers),
+  // and `editOnboardingProfile` below — the OTHER real write path onto
+  // this same model — never touches medicalConditions/injuries at all (see
+  // editOnboardingProfileSchema's own comment), so it's structurally
+  // incapable of reaching this branch. A real escalation only fires once,
+  // at the one real moment this data is first reported.
+  if (isNewCompletion && (input.medicalConditions.length > 0 || input.injuries.length > 0)) {
+    const escalation = await prisma.safetyEscalation.create({
+      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+    });
+
+    await trackEvent(
+      userId,
+      "safety.escalated",
+      { safetyEscalationId: escalation.id, onboardingProfileId: profile.userId },
+      {
+        ruleId: "BR-SAF-004",
+        metadata: {
+          medicalConditionsCount: input.medicalConditions.length,
+          injuriesCount: input.injuries.length,
+        },
+      },
+    );
+  }
 
   return profile;
 }
@@ -434,4 +473,64 @@ export async function verifyTwoFactorLoginCode(user: User, code: string): Promis
   }
 
   return false;
+}
+
+/**
+ * §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
+ * prisma/schema.prisma's `Consent` model doc comment for the full design.
+ *
+ * Returns exactly one entry per `ConsentType`, always — a type with no row
+ * yet in the database reads as `granted: false, updatedAt: null` rather
+ * than being omitted. This is a deliberate, honest default: `granted:
+ * false` is never inferred as "the user declined it," only "no decision
+ * has been recorded yet" (the same reasoning docs/mobile calls out for
+ * every other "don't fabricate a default" case in this codebase) — the
+ * mobile screen renders `updatedAt === null` distinctly (see
+ * PrivacySettingsScreen.tsx) so a real "not yet toggled" state isn't
+ * confused with a real "explicitly turned off" one. Returning all three
+ * types unconditionally (rather than only the rows that exist) is what
+ * lets the client render a real, complete toggle list on first load
+ * without a separate "which types exist" lookup.
+ */
+export async function listConsents(userId: string) {
+  const rows = await prisma.consent.findMany({ where: { userId } });
+  const byType = new Map(rows.map((r) => [r.type, r]));
+
+  return consentTypes.map((type) => {
+    const row = byType.get(type);
+    return {
+      type,
+      granted: row?.granted ?? false,
+      updatedAt: row?.updatedAt ?? null,
+    };
+  });
+}
+
+/**
+ * The one real state-changing action behind §4's Privacy/Consent screen —
+ * an upsert keyed on the real `@@unique([userId, type])` constraint, so a
+ * toggle is always an update to the SAME row for that (user, type) pair,
+ * never a growing history. Fires the real `consent.changed` event (§8),
+ * closing the exact gap §50's own "Left genuinely unbuilt" section
+ * named: no honest home existed for this event until this Consent model
+ * did.
+ */
+export async function updateConsent(userId: string, input: UpdateConsentInput) {
+  const consent = await prisma.consent.upsert({
+    where: { userId_type: { userId, type: input.type } },
+    create: { userId, type: input.type, granted: input.granted },
+    update: { granted: input.granted },
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: "user.consent_changed",
+    entityType: "Consent",
+    entityId: consent.id,
+    metadata: { type: input.type, granted: input.granted },
+  });
+
+  await trackEvent(userId, "consent.changed", { consentId: consent.id }, { metadata: { consentType: input.type, granted: input.granted } });
+
+  return { type: consent.type, granted: consent.granted, updatedAt: consent.updatedAt };
 }

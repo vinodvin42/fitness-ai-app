@@ -12,8 +12,12 @@ type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
 
 /**
  * Settings hub (docs/mobile/03-screen-inventory.md §L, Phase 4). 31 Aug 2026
- * design polish: iconized ListRows. Destinations unchanged. Health Connect
- * stays an honest "blocked" note (needs Bluetooth/HealthKit — gap §13).
+ * design polish: iconized ListRows. Health Connect stays an honest
+ * "blocked" note (needs Bluetooth/HealthKit — gap §13). **18 Sep 2026:**
+ * "Privacy & Consent" added — the real §4 screen over the new `Consent`
+ * model (see PrivacySettingsScreen.tsx), a separate row from "Security &
+ * Privacy" (which stays password/sessions/2FA/data-export/delete — the
+ * GDPR-style account-security cluster, unrelated to consent toggles).
  */
 const ROWS: Array<{
   label: string;
@@ -21,11 +25,12 @@ const ROWS: Array<{
   icon: IconName;
   tint: string;
   tintSoft: string;
-  target: "LanguageSelection" | "NotificationSettings" | "Security" | "Support";
+  target: "LanguageSelection" | "NotificationSettings" | "Security" | "PrivacySettings" | "Support";
 }> = [
   { label: "Language", subtitle: "App language", icon: "globe", tint: colors.accent, tintSoft: colors.accentSoft, target: "LanguageSelection" },
   { label: "Notifications", subtitle: "Reminder scheduling", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "NotificationSettings" },
   { label: "Security & Privacy", subtitle: "Password, sessions, data", icon: "shield-check", tint: colors.success, tintSoft: colors.successSoft, target: "Security" },
+  { label: "Privacy & Consent", subtitle: "Marketing, analytics, health data", icon: "shield-check", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "PrivacySettings" },
   { label: "Support", subtitle: "Tickets, FAQ, contact", icon: "life-buoy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Support" },
 ];
 

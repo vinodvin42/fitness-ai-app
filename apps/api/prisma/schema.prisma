@@ -341,6 +341,10 @@ model User {
   // Product-analytics event stream (U7, 15 Sep 2026) — see AnalyticsEvent's
   // own doc comment for why this is a separate model from AuditLog.
   analyticsEvents              AnalyticsEvent[]
+  // Consent + Safety Escalation (R1 Developer 1, 18 Sep 2026) — see each
+  // model's own doc comment above.
+  consents                     Consent[]
+  safetyEscalations            SafetyEscalation[]
   programPurchases            ProgramPurchase[]
   // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
   // doc comment.
@@ -1179,6 +1183,94 @@ model AnalyticsEvent {
   @@map("analytics_events")
 }
 
+// ---- Consent (R1 Developer 1, 18 Sep 2026) -----------------------------
+// Closes the real gap `adminPrivacy.service.ts`'s own top comment and
+// gap §50 both named honestly: no `Consent`/opt-in tracking entity existed
+// anywhere in this schema, so `consent.changed` (§8) had no honest event to
+// attach to and §4's required Privacy/Consent settings screen didn't exist.
+//
+// `type` is a closed enum, not a free string (unlike `AnalyticsEvent.name`)
+// — a consent record needs a small, fixed, legally-meaningful vocabulary the
+// server can validate against, not an open-ended tag. Three real, honest
+// categories for a fitness app that processes health data, deliberately not
+// a larger invented taxonomy:
+//  - `marketing_emails` — promotional/marketing email opt-in.
+//  - `data_analytics` — the real product-analytics pipeline this same
+//    Consent model's own sibling event (`AnalyticsEvent`, just above) feeds.
+//  - `health_data_processing` — the assessment's medical conditions/
+//    injuries, body measurements, and workout/meal logs this app already
+//    collects and processes; a real, distinct consent from the other two
+//    given this app's own domain (see SafetyEscalation below, which reads
+//    that same medical/injury data — the two features share a domain, not
+//    a mechanism).
+//
+// One row per (userId, type) — `@@unique` enforces that a toggle is always
+// an update to the SAME row, never a growing history of every past flip;
+// `updatedAt` alone (no separate history table) is enough to show "as of
+// when" a consent was last set, the same granularity §4's screen needs.
+// `granted` has no server-side default value baked into a signup flow —
+// see users.service.ts's `listConsents` for why an absent row reads as
+// "not yet decided" (rendered as off, not fabricated as an implied yes)
+// rather than this model silently opting every existing user into anything.
+enum ConsentType {
+  marketing_emails
+  data_analytics
+  health_data_processing
+}
+
+model Consent {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ConsentType
+  granted   Boolean
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, type])
+  @@map("consents")
+}
+
+// ---- Safety Escalation (R1 Developer 1, 18 Sep 2026, BR-SAF-004) --------
+// Closes the real gap §43/§50 both named honestly: `AssessmentSummaryScreen`'s
+// Safety card renders a user's reported medical conditions/injuries, but
+// nothing escalated that information to a real human anywhere — no
+// notification, no admin visibility, no `safety.escalated` event. For
+// BR-SAF-004 ("safety escalation is independent of recovery/readiness") to
+// be genuinely true rather than vacuously true, a real escalation mechanism
+// has to exist. This is that mechanism, deliberately scoped to what
+// Developer 1 can honestly own: a real queue a human admin can see and act
+// on — NOT automated risk scoring, NOT medical advice, NOT blocking the
+// user's access. See users.service.ts's `upsertOnboardingProfile` for the
+// one real trigger point, and adminSafety.service.ts for the admin queue.
+//
+// `medicalConditions`/`injuries` are captured as a point-in-time SNAPSHOT
+// (plain String[] copied at creation, not a live FK back to
+// OnboardingProfile) — the same "a record of what was true when it
+// happened" reasoning `AuditLog.metadata` already uses throughout this
+// schema. OnboardingProfile can change later (Edit Profile's own partial-
+// edit path, or a future retake); this row should keep reading exactly
+// what triggered it, not silently drift with later edits.
+//
+// `reviewedAt`/`reviewedByAdminId` are a nullable pair, same shape as
+// `SensitiveDataAccessRequest.reviewedAt`/`reviewedByAdminId` — null means
+// genuinely not yet looked at by anyone, not defaulted to "reviewed".
+model SafetyEscalation {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicalConditions String[]
+  injuries          String[]
+  createdAt         DateTime  @default(now())
+  reviewedAt        DateTime?
+  reviewedByAdminId String?
+  reviewedByAdmin   AdminUser? @relation("SafetyEscalationReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([reviewedAt])
+  @@map("safety_escalations")
+}
+
 // ---- AI Coach (§H, added 25 Aug 2026) ----------------------------------
 // Closes the feature half of gap §13 — apps/api/src/lib/aiClient.ts (20
 // Aug 2026) already had the provider plumbing (AI_PROVIDER/API key,
@@ -1803,6 +1895,11 @@ model AdminUser {
   // see `Escalation`'s own comment for why no self-guard applies here.
   escalationsRaised               Escalation[]                 @relation("EscalationEscalatedBy")
   escalationsResolved             Escalation[]                 @relation("EscalationResolvedBy")
+  // Safety Escalation (BR-SAF-004, added 18 Sep 2026) — one relation only,
+  // unlike Escalation's two: SafetyEscalation has no "raised by admin" side
+  // (it's created server-side from a user's own onboarding completion, see
+  // users.service.ts), just who (if anyone) has reviewed it.
+  safetyEscalationsReviewed       SafetyEscalation[]           @relation("SafetyEscalationReviewedBy")
   // Support Ticket Messages (added 3 Sep 2026) — any admin holding
   // support:edit can reply to any ticket, so unlike Escalation's two fixed
   // relations this is just the one "messages this admin has sent" list —

@@ -28,6 +28,7 @@ import { CouponsScreen } from "./screens/commerce/CouponsScreen";
 import { RefundsScreen } from "./screens/commerce/RefundsScreen";
 import { SupportTicketsScreen } from "./screens/support/SupportTicketsScreen";
 import { EscalationsScreen } from "./screens/support/EscalationsScreen";
+import { SafetyEscalationsScreen } from "./screens/support/SafetyEscalationsScreen";
 import { ReferralsScreen } from "./screens/growth/ReferralsScreen";
 import { InfluencersScreen } from "./screens/growth/InfluencersScreen";
 import { UserAnalyticsScreen } from "./screens/analytics/UserAnalyticsScreen";
@@ -359,6 +360,17 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <EscalationsScreen />
+          </RequireAuth>
+        }
+      />
+      {/* BR-SAF-004 Safety Escalations (added 18 Sep 2026) — Module 08's
+          real second queue, alongside 08.02 Escalations above. See
+          adminSafety.service.ts's own doc comment. */}
+      <Route
+        path="/support/safety-escalations"
+        element={
+          <RequireAuth>
+            <SafetyEscalationsScreen />
           </RequireAuth>
         }
       />
