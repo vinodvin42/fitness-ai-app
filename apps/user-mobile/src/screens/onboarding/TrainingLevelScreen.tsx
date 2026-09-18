@@ -22,14 +22,14 @@ export function TrainingLevelScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={3}
-      total={6}
+      step={4}
+      total={8}
       label="Training Level"
       title="What's your experience level?"
       onBack={() => navigation.goBack()}
       onNext={() => {
-        markScreenReached("FoodDiet");
-        navigation.navigate("FoodDiet");
+        markScreenReached("Equipment");
+        navigation.navigate("Equipment");
       }}
       nextDisabled={!state.trainingLevel}
     >

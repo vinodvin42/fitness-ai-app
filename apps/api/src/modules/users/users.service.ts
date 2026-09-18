@@ -80,12 +80,45 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
   return user;
 }
 
+/**
+ * `bodyFatPercent`/`waistCm`/`hipsCm` are the wizard's new baseline-
+ * measurements step (broader Baseline/measurements, 18 Sep 2026) but are
+ * NOT OnboardingProfile columns — `OnboardingProfile.update()` below would
+ * throw on unknown fields if they were passed straight through. They're
+ * split off here and, when the user actually gave at least one, written
+ * into a real BodyMeasurement row instead: the same model/table Progress's
+ * own Log Measurement feature already writes to (see progress.service.ts's
+ * logMeasurement), so this is the user's real, honest day-one baseline —
+ * not a second, competing measurements table bolted onto OnboardingProfile.
+ */
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
+  const { bodyFatPercent, waistCm, hipsCm, ...profileFields } = input;
+
   const profile = await prisma.onboardingProfile.upsert({
     where: { userId },
-    create: { userId, ...input, completedAt: new Date() },
-    update: { ...input, completedAt: new Date() },
+    create: { userId, ...profileFields, completedAt: new Date() },
+    update: { ...profileFields, completedAt: new Date() },
   });
+
+  if (profileFields.weightKg != null || bodyFatPercent != null || waistCm != null || hipsCm != null) {
+    const baseline = await prisma.bodyMeasurement.create({
+      data: {
+        userId,
+        weightKg: profileFields.weightKg ?? null,
+        waistCm: waistCm ?? null,
+        hipsCm: hipsCm ?? null,
+        bodyFatPercent: bodyFatPercent ?? null,
+      },
+    });
+
+    await recordAudit({
+      actorId: userId,
+      action: "body_measurement.logged",
+      entityType: "BodyMeasurement",
+      entityId: baseline.id,
+      metadata: { source: "onboarding_baseline" },
+    });
+  }
 
   await recordAudit({
     actorId: userId,

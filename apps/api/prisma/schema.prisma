@@ -377,6 +377,35 @@ model OnboardingProfile {
   allergens         String[]       @default([])
   medicalConditions String[]       @default([])
   injuries          String[]       @default([])
+  // Availability/Schedule (R1 Developer 1, 18 Sep 2026 — closes the "no
+  // Availability/schedule screen or field anywhere" gap confirmed by
+  // audit). A real, honest self-report of how often and roughly when a
+  // user can train — `trainingDaysPerWeek` is the simple count,
+  // `preferredTrainingDays` the actual day-of-week multi-select (values are
+  // lowercase 3-letter keys: mon/tue/wed/thu/fri/sat/sun), and
+  // `sessionLengthMinutes` a rough per-session time budget. Deliberately
+  // NOT wired into Plan-Generation's selection prompt or any scheduling
+  // algorithm this pass — collecting it honestly is this pass's job; a real
+  // scheduling engine that turns this into a concrete weekly plan layout is
+  // a separate, much larger feature this pass doesn't invent (see
+  // plans.service.ts's own top comment for the same discipline applied to
+  // equipment).
+  trainingDaysPerWeek    Int?
+  preferredTrainingDays  String[] @default([])
+  sessionLengthMinutes   Int?
+  // Equipment/gym-context self-report (R1 Developer 1, 18 Sep 2026). A
+  // plain, honest, user-reported string — same "raw, honest, never
+  // fabricated" pattern as `User.acquisitionContext` — NOT a foreign key to
+  // a `Gym`/partner/location entity, which stays explicitly Developer 3's
+  // own future platform ownership (see plans.service.ts's own top comment
+  // on why equipment-aware Plan selection was deferred, and this field's
+  // own reasoning for why it's still real progress without that entity).
+  // One of "full_gym" | "home_dumbbells_bands" | "home_bodyweight_only" |
+  // "none_travel" once set by the wizard; null for every profile created
+  // before this field existed. This IS wired into
+  // plans.service.ts#buildSelectionPrompt (unlike the schedule fields
+  // above) — see that function's own comment.
+  equipmentContext  String?
   completedAt       DateTime?
 
   @@map("onboarding_profiles")
@@ -953,6 +982,14 @@ model BodyMeasurement {
   hipsCm   Float?
   armsCm   Float?
   thighsCm Float?
+  // Broader Baseline/measurements (R1 Developer 1, 18 Sep 2026) — real,
+  // clearly-optional body-fat percentage, most users won't have this
+  // precisely so it's never required anywhere it's collected. Same model
+  // Progress's own Log Measurement feature already writes to (see
+  // progress.service.ts's logMeasurement) — the onboarding wizard's new
+  // baseline step creates a real row here rather than a second, competing
+  // measurements table on OnboardingProfile.
+  bodyFatPercent Float?
   loggedAt DateTime @default(now())
 
   @@index([userId, loggedAt])

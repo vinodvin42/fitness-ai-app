@@ -28,8 +28,8 @@ export function FoodDietScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={4}
-      total={6}
+      step={6}
+      total={8}
       label="Food/Diet"
       title="Your diet preferences"
       onBack={() => navigation.goBack()}

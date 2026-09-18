@@ -11,6 +11,11 @@ export const logMeasurementSchema = z
     hipsCm: z.number().positive().max(300).optional(),
     armsCm: z.number().positive().max(200).optional(),
     thighsCm: z.number().positive().max(200).optional(),
+    // Broader Baseline/measurements (R1 Developer 1, 18 Sep 2026) — same
+    // real column the onboarding wizard's baseline step writes to (see
+    // schema.prisma's BodyMeasurement.bodyFatPercent comment); clearly
+    // optional here too, same as onboarding.
+    bodyFatPercent: z.number().positive().max(70).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one measurement is required" });
 

@@ -303,5 +303,40 @@ describe("Plan-Generation / Recommendation Engine", () => {
       const current = await request(app).get("/plans/current").set("Authorization", `Bearer ${accessToken}`).send();
       expect(current.body.plan.programId).toBe(programBId);
     });
+
+    // 18 Sep 2026 — Equipment/gym-context self-report is now real, honest
+    // context the selection prompt reads (see plans.service.ts's
+    // buildSelectionPrompt); this asserts the prompt text actually carries
+    // it, not just that generation still succeeds.
+    it("includes the user's real equipmentContext in the Plan-Generation selection prompt", async () => {
+      await prisma.onboardingProfile.update({
+        where: { userId },
+        data: { equipmentContext: "home_bodyweight_only" },
+      });
+
+      generateCompletion.mockResolvedValueOnce(`PROGRAM_ID: ${programAId}\nRATIONALE: Fits a bodyweight-only setup.`);
+      const res = await request(app).post("/plans/generate").set("Authorization", `Bearer ${accessToken}`).send();
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe("generated");
+
+      expect(generateCompletion).toHaveBeenCalledTimes(1);
+      const promptSent = generateCompletion.mock.calls[0][0] as string;
+      expect(promptSent).toContain("bodyweight only");
+
+      // Reset for any tests that run after this one in the same file.
+      await prisma.onboardingProfile.update({ where: { userId }, data: { equipmentContext: null } });
+    });
+
+    it("still generates cleanly when no equipmentContext was ever self-reported (never fabricates one)", async () => {
+      await prisma.onboardingProfile.update({ where: { userId }, data: { equipmentContext: null } });
+
+      generateCompletion.mockResolvedValueOnce(`PROGRAM_ID: ${programAId}\nRATIONALE: Fine without equipment context.`);
+      const res = await request(app).post("/plans/generate").set("Authorization", `Bearer ${accessToken}`).send();
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe("generated");
+
+      const promptSent = generateCompletion.mock.calls[0][0] as string;
+      expect(promptSent).toContain("not specified");
+    });
   });
 });

@@ -9,6 +9,7 @@ type WizardState = Partial<OnboardingProfileInput> & {
   allergens: string[];
   medicalConditions: string[];
   injuries: string[];
+  preferredTrainingDays: string[];
 };
 
 const initialState: WizardState = {
@@ -16,19 +17,25 @@ const initialState: WizardState = {
   allergens: [],
   medicalConditions: [],
   injuries: [],
+  preferredTrainingDays: [],
 };
 
-/** The 5 data-entry screens a draft can resume into — AssessmentSummary/
+/** The 7 data-entry screens a draft can resume into — AssessmentSummary/
  * PlanGenerating are deliberately not resume targets (see markScreenReached
- * below). */
-type ResumableScreenName = "AboutYou" | "Goals" | "TrainingLevel" | "FoodDiet" | "Safety";
+ * below). Schedule (Availability) and Equipment are new (18 Sep 2026, real
+ * gaps #1/#3 closed this pass — see docs/mobile/07-open-questions-gaps.md
+ * §54). */
+type ResumableScreenName = "AboutYou" | "Schedule" | "Goals" | "TrainingLevel" | "Equipment" | "FoodDiet" | "Safety";
 
 const DRAFT_STORAGE_KEY = "onboardingWizardDraft";
 
 interface OnboardingWizardContextValue {
   state: WizardState;
   update: (patch: Partial<WizardState>) => void;
-  toggleListValue: (field: "goals" | "allergens" | "medicalConditions" | "injuries", value: string) => void;
+  toggleListValue: (
+    field: "goals" | "allergens" | "medicalConditions" | "injuries" | "preferredTrainingDays",
+    value: string,
+  ) => void;
   isSubmitting: boolean;
   /** Submits the assessment (PUT /users/me/onboarding) — this alone marks
    * Assessment "completed" server-side. Does NOT flip the app over to
@@ -128,7 +135,10 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
 
   const update = (patch: Partial<WizardState>) => setState((prev) => ({ ...prev, ...patch }));
 
-  const toggleListValue = (field: "goals" | "allergens" | "medicalConditions" | "injuries", value: string) => {
+  const toggleListValue = (
+    field: "goals" | "allergens" | "medicalConditions" | "injuries" | "preferredTrainingDays",
+    value: string,
+  ) => {
     setState((prev) => {
       const list = prev[field];
       const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -161,6 +171,13 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
         allergens: state.allergens,
         medicalConditions: state.medicalConditions,
         injuries: state.injuries,
+        trainingDaysPerWeek: state.trainingDaysPerWeek,
+        preferredTrainingDays: state.preferredTrainingDays,
+        sessionLengthMinutes: state.sessionLengthMinutes,
+        equipmentContext: state.equipmentContext,
+        bodyFatPercent: state.bodyFatPercent,
+        waistCm: state.waistCm,
+        hipsCm: state.hipsCm,
       });
       await clearDraft();
     } finally {

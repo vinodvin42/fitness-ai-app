@@ -1,7 +1,22 @@
 import { z } from "zod";
 
 // Mirrors docs/mobile/02-information-architecture.md §1 onboarding wizard:
-// About You -> Goals -> Training level -> Food/diet -> Safety/injuries.
+// About You -> Schedule -> Goals -> Training level -> Equipment -> Food/diet
+// -> Safety/injuries. `trainingDaysPerWeek`/`preferredTrainingDays`/
+// `sessionLengthMinutes` and `equipmentContext` map straight onto
+// OnboardingProfile's own columns (see schema.prisma's own comments there).
+// `bodyFatPercent`/`waistCm`/`hipsCm` are NOT OnboardingProfile columns —
+// they're the wizard's new baseline-measurements step, and
+// users.service.ts#upsertOnboardingProfile writes them into a real
+// BodyMeasurement row instead (see that function's own comment for why).
+const DAYS_OF_WEEK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export const EQUIPMENT_CONTEXTS = [
+  "full_gym",
+  "home_dumbbells_bands",
+  "home_bodyweight_only",
+  "none_travel",
+] as const;
+
 export const onboardingProfileSchema = z.object({
   gender: z.string().optional(),
   age: z.number().int().positive().max(120).optional(),
@@ -13,6 +28,19 @@ export const onboardingProfileSchema = z.object({
   allergens: z.array(z.string()).default([]),
   medicalConditions: z.array(z.string()).default([]),
   injuries: z.array(z.string()).default([]),
+  // Availability/Schedule (18 Sep 2026) — see schema.prisma's own comment.
+  trainingDaysPerWeek: z.number().int().min(1).max(7).optional(),
+  preferredTrainingDays: z.array(z.enum(DAYS_OF_WEEK)).default([]),
+  sessionLengthMinutes: z.number().int().min(15).max(180).optional(),
+  // Equipment/gym-context self-report (18 Sep 2026) — see schema.prisma's
+  // own comment; wired into plans.service.ts#buildSelectionPrompt.
+  equipmentContext: z.enum(EQUIPMENT_CONTEXTS).optional(),
+  // Broader Baseline/measurements (18 Sep 2026) — clearly optional; most
+  // users won't have a precise body-fat% reading. See this file's top
+  // comment and users.service.ts#upsertOnboardingProfile.
+  bodyFatPercent: z.number().positive().max(70).optional(),
+  waistCm: z.number().positive().max(300).optional(),
+  hipsCm: z.number().positive().max(300).optional(),
 });
 
 export type OnboardingProfileInput = z.infer<typeof onboardingProfileSchema>;

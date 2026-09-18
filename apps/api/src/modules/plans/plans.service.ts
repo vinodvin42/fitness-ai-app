@@ -35,6 +35,19 @@ import { DecideRecommendationInput } from "./plans.schema";
  * trusted — an unparseable or out-of-catalog answer is a real, honest
  * `failed` state, never silently coerced into *some* selection.
  *
+ * **18 Sep 2026 update:** `buildSelectionPrompt` now includes the user's
+ * own self-reported `OnboardingProfile.equipmentContext` (full gym / home
+ * dumbbells+bands / home bodyweight-only / none-travel — see that field's
+ * own schema.prisma comment) and instructs the model to avoid recommending
+ * a program that needs equipment the user doesn't have. This is
+ * deliberately still NOT the "equipment-aware selection needs Gym Context"
+ * gap named below — there is still no `Gym`/partner/location entity, no
+ * per-Program structured equipment requirement, and no hard filtering of
+ * the catalog; it's a soft, honest steer using only the user's own raw
+ * self-report, read by the LLM the same way it already reads goals/level/
+ * safety context above. A real Gym-Context-driven hard dependency stays
+ * Developer 3's own future platform work.
+ *
  * **What this pass deliberately does NOT attempt** (real gaps, not
  * hidden ones): equipment-aware selection needs Gym Context, Developer
  * 3's own future work (no `Gym`/equipment model exists yet); this reuses
@@ -121,23 +134,37 @@ function programCatalogText(programs: EligibleProgram[]): string {
  * just enforced more strictly here since the output drives what a user
  * is actually assigned to train on, not a chat reply.
  */
+// Human-readable phrasing for OnboardingProfile.equipmentContext's real
+// enum values (see users.schema.ts's EQUIPMENT_CONTEXTS) — kept here rather
+// than in users.schema.ts since it's prompt-authoring text, not validation.
+const EQUIPMENT_CONTEXT_TEXT: Record<string, string> = {
+  full_gym: "has access to a full gym with a wide range of equipment",
+  home_dumbbells_bands: "trains at home with only dumbbells and/or resistance bands",
+  home_bodyweight_only: "trains at home with no equipment at all (bodyweight only)",
+  none_travel: "currently has no regular equipment access (e.g. traveling)",
+};
+
 function buildSelectionPrompt(profile: {
   goals: string[];
   trainingLevel: string | null;
   medicalConditions: string[];
   injuries: string[];
+  equipmentContext: string | null;
 }, programs: EligibleProgram[]): string {
   const goals = profile.goals.length ? profile.goals.join(", ") : "not specified";
   const level = profile.trainingLevel ?? "not specified";
   const safety = [...profile.medicalConditions, ...profile.injuries];
   const safetyText = safety.length ? safety.join(", ") : "none reported";
+  const equipmentText = profile.equipmentContext
+    ? (EQUIPMENT_CONTEXT_TEXT[profile.equipmentContext] ?? profile.equipmentContext)
+    : "not specified — no equipment self-report on file, so don't assume either way";
 
   return [
     "You are selecting ONE real training/nutrition program for a fitness app user from a fixed catalog — you are not designing a new workout.",
-    `User's stated goals: ${goals}. Training level: ${level}. Reported medical conditions/injuries: ${safetyText}.`,
+    `User's stated goals: ${goals}. Training level: ${level}. Reported medical conditions/injuries: ${safetyText}. Equipment access: this user ${equipmentText}.`,
     "Available programs (choose exactly one id from this list — never invent an id):",
     programCatalogText(programs),
-    "Pick the single best-fitting program for this user given their goals, level, and any safety context. If a program's description conflicts with a reported injury/condition, avoid it in favor of a safer real option from the list.",
+    "Pick the single best-fitting program for this user given their goals, level, and any safety context. If a program's description conflicts with a reported injury/condition, avoid it in favor of a safer real option from the list. Likewise, avoid recommending a program that clearly requires gym equipment the user doesn't have access to when a comparable real option on this list fits their equipment access better — equipment access is a soft preference to weigh, not an automatic disqualifier, since the catalog descriptions may not always spell out equipment needs explicitly.",
     "Respond in EXACTLY this format, two lines, nothing else:",
     "PROGRAM_ID: <the exact id of your chosen program>",
     "RATIONALE: <2-3 sentences explaining the choice, referencing the user's actual goals/level/safety context above — never a generic template>",
@@ -232,6 +259,7 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
     trainingLevel: profile.trainingLevel,
     medicalConditions: profile.medicalConditions,
     injuries: profile.injuries,
+    equipmentContext: profile.equipmentContext,
   });
 }
 
@@ -266,12 +294,19 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     trainingLevel: profile.trainingLevel,
     medicalConditions: profile.medicalConditions,
     injuries: profile.injuries,
+    equipmentContext: profile.equipmentContext,
   });
 }
 
 async function runSelectionAndPersist(
   planRow: PlanRow,
-  profile: { goals: string[]; trainingLevel: string | null; medicalConditions: string[]; injuries: string[] },
+  profile: {
+    goals: string[];
+    trainingLevel: string | null;
+    medicalConditions: string[];
+    injuries: string[];
+    equipmentContext: string | null;
+  },
 ): Promise<PlanDTO> {
   const programs = await eligiblePrograms();
   if (programs.length === 0) {

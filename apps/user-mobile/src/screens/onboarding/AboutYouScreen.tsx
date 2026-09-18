@@ -1,31 +1,39 @@
 import React from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
 import { SelectCard } from "../../components/SelectCard";
 import { Stepper } from "../../components/Stepper";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
-import { spacing } from "../../theme/tokens";
+import { colors, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "AboutYou">;
 
 const GENDERS = ["male", "female", "other"] as const;
 
-/** docs/mobile/03-screen-inventory.md §A "Setup: About You". */
+/**
+ * docs/mobile/03-screen-inventory.md §A "Setup: About You". 18 Sep 2026:
+ * gained a real, clearly-optional Baseline measurements section
+ * (body-fat%/waist/hips) — the broader Baseline/measurements gap this pass
+ * closes, added here rather than as its own screen since it's a natural
+ * extension of the body stats this screen already collects. Persisted as a
+ * real BodyMeasurement row (not new OnboardingProfile columns) — see
+ * users.service.ts#upsertOnboardingProfile's own comment.
+ */
 export function AboutYouScreen({ navigation }: Props) {
   const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={1}
-      total={6}
+      total={8}
       label="About You"
       title="Tell us about yourself"
       subtitle="This helps us personalize your training and nutrition plans."
       onNext={() => {
-        markScreenReached("Goals");
-        navigation.navigate("Goals");
+        markScreenReached("Schedule");
+        navigation.navigate("Schedule");
       }}
       nextDisabled={!state.gender}
     >
@@ -59,6 +67,40 @@ export function AboutYouScreen({ navigation }: Props) {
           min={100}
           max={230}
           onChange={(heightCm) => update({ heightCm })}
+        />
+      </View>
+
+      <View style={{ marginTop: spacing.lg }}>
+        <Text style={{ ...typography.h2, color: colors.textPrimary }}>Baseline measurements</Text>
+        <Text style={{ ...typography.meta, color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.xs }}>
+          Optional — skip anything you don't know precisely. Leave a value at "–" to leave it out.
+        </Text>
+        <Stepper
+          label="Body fat %"
+          value={state.bodyFatPercent}
+          unit="%"
+          step={0.5}
+          min={3}
+          max={60}
+          onChange={(bodyFatPercent) => update({ bodyFatPercent })}
+        />
+        <Stepper
+          label="Waist"
+          value={state.waistCm}
+          unit="cm"
+          step={1}
+          min={40}
+          max={200}
+          onChange={(waistCm) => update({ waistCm })}
+        />
+        <Stepper
+          label="Hips"
+          value={state.hipsCm}
+          unit="cm"
+          step={1}
+          min={40}
+          max={200}
+          onChange={(hipsCm) => update({ hipsCm })}
         />
       </View>
     </WizardLayout>

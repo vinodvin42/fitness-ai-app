@@ -56,10 +56,32 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
 
   const hasSafetyInfo = state.medicalConditions.length > 0 || state.injuries.length > 0;
 
+  const DAY_LABELS: Record<string, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
+  const EQUIPMENT_LABELS: Record<string, string> = {
+    full_gym: "Full gym",
+    home_dumbbells_bands: "Home — dumbbells/bands",
+    home_bodyweight_only: "Home — bodyweight only",
+    none_travel: "None / traveling",
+  };
+
+  const scheduleParts: string[] = [];
+  if (state.trainingDaysPerWeek) scheduleParts.push(`${state.trainingDaysPerWeek} days/week`);
+  if ((state.preferredTrainingDays ?? []).length > 0) {
+    scheduleParts.push((state.preferredTrainingDays ?? []).map((d) => DAY_LABELS[d] ?? d).join(", "));
+  }
+  if (state.sessionLengthMinutes) scheduleParts.push(`${state.sessionLengthMinutes} min sessions`);
+  const scheduleValue = scheduleParts.length ? scheduleParts.join(" · ") : "Not set";
+
+  const baselineParts: string[] = [];
+  if (state.bodyFatPercent != null) baselineParts.push(`Body fat ${state.bodyFatPercent}%`);
+  if (state.waistCm != null) baselineParts.push(`Waist ${state.waistCm}cm`);
+  if (state.hipsCm != null) baselineParts.push(`Hips ${state.hipsCm}cm`);
+  const hasBaselineInfo = baselineParts.length > 0;
+
   return (
     <WizardLayout
-      step={6}
-      total={6}
+      step={8}
+      total={8}
       label="Review"
       title="Review your assessment"
       subtitle="Check your answers before we build your plan."
@@ -71,8 +93,11 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
       <Card>
         <SummaryRow label="Goals" value={state.goals.length ? state.goals.join(", ") : "None selected"} />
         <SummaryRow label="Experience level" value={state.trainingLevel ?? "Not set"} />
+        <SummaryRow label="Schedule" value={scheduleValue} />
+        <SummaryRow label="Equipment" value={state.equipmentContext ? (EQUIPMENT_LABELS[state.equipmentContext] ?? state.equipmentContext) : "Not set"} />
         <SummaryRow label="Diet" value={state.dietType ?? "Not set"} />
         {state.allergens.length > 0 ? <SummaryRow label="Allergens" value={state.allergens.join(", ")} /> : null}
+        {hasBaselineInfo ? <SummaryRow label="Baseline measurements" value={baselineParts.join(" · ")} /> : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md, borderColor: hasSafetyInfo ? colors.warning : colors.border }}>

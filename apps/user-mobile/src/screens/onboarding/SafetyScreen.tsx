@@ -41,8 +41,8 @@ export function SafetyScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={5}
-      total={6}
+      step={7}
+      total={8}
       label="Safety"
       title="Any medical conditions or injuries?"
       subtitle="This helps us avoid recommending unsafe exercises."
