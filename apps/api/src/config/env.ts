@@ -126,6 +126,24 @@ const envSchema = z.object({
   // against Microsoft Learn's Azure OpenAI REST API reference. Override via
   // env if Azure moves the stable line before this comment is updated.
   AZURE_OPENAI_API_VERSION: z.string().default("2024-10-21"),
+  // Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — the
+  // consumer app's real transactional-email need. Same "optional,
+  // quietly-off, never blocks boot" pattern as Razorpay/AI above: this
+  // build environment has no real SMTP relay to supply, so
+  // lib/mailer.ts's isEmailConfigured() check gates every send, and
+  // POST /auth/forgot-password still creates a real reset token even when
+  // this is unset — it just can't deliver it, and says so honestly
+  // instead of faking a "sent" response. Deliberately provider-agnostic
+  // generic SMTP (not a vendor SDK like @sendgrid/mail or a Postmark
+  // client) — works with any real SMTP relay a human supplies later
+  // (SendGrid, Postmark, SES, a plain Gmail/Workspace relay, etc. all
+  // speak SMTP), same reasoning as AI_PROVIDER supporting multiple
+  // providers rather than hardcoding one.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

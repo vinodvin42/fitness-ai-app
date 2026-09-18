@@ -1,17 +1,21 @@
 import { prisma } from "../../db/prisma";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import {
+  generatePasswordResetToken,
   generateRefreshToken,
+  hashPasswordResetToken,
   hashRefreshToken,
+  passwordResetTokenExpiry,
   refreshTokenExpiry,
   signAccessToken,
   signTwoFactorChallengeToken,
   verifyTwoFactorChallengeToken,
 } from "../../lib/jwt";
 import { generateUniqueReferralCode } from "../../lib/referralCode";
+import { isEmailConfigured, sendEmail } from "../../lib/mailer";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { LoginInput, SignupInput } from "./auth.schema";
+import { ForgotPasswordInput, LoginInput, ResetPasswordInput, SignupInput } from "./auth.schema";
 import { hasCompletedOnboarding, verifyTwoFactorLoginCode } from "../users/users.service";
 import { redeemReferralCode } from "../referrals/referrals.service";
 
@@ -164,5 +168,133 @@ export async function logout(rawRefreshToken: string) {
   await prisma.refreshToken.updateMany({
     where: { tokenHash, revokedAt: null },
     data: { revokedAt: new Date() },
+  });
+}
+
+/**
+ * Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — the
+ * consumer app's account-recovery flow. Deliberately generic-response,
+ * same "never reveal account-existence" discipline login()/
+ * professionalLogin/adminLogin already establish: this always returns
+ * the same shape regardless of whether `input.email` has an account, so
+ * an attacker can't use this endpoint to enumerate real emails. A real
+ * token IS created (and, if email is configured, sent) when the account
+ * exists — but the caller can never distinguish "no such account" from
+ * "account exists, email sent" from the response alone.
+ *
+ * Returns `emailSent: false` (rather than throwing) when SMTP isn't
+ * configured — honest about delivery, not a silent no-op and not a fake
+ * success. The token is still created either way, so the flow stays
+ * testable/usable via a direct POST /auth/reset-password call in a dev
+ * environment with no real SMTP relay.
+ */
+export async function forgotPassword(input: ForgotPasswordInput): Promise<{ emailSent: boolean }> {
+  const user = await prisma.user.findUnique({ where: { email: input.email } });
+
+  // No account, or a suspended one (same "don't reveal account state to
+  // an unauthenticated caller" reasoning login() already applies) — still
+  // return the generic success shape, just skip actually creating
+  // anything. `emailSent` mirrors isEmailConfigured() rather than being
+  // hardcoded `true`: a caller comparing this response against a real
+  // account's (below) must see the SAME value in both cases, in every
+  // environment — including one with SMTP unconfigured, where a real
+  // account's response is honestly `emailSent: false` too. Hardcoding
+  // `true` here would itself become a real account-enumeration
+  // side-channel the moment SMTP isn't configured (exactly what this
+  // whole function exists to prevent) — a nonexistent email would
+  // always read `true` while a real one read `false`.
+  if (!user || user.status !== "active") {
+    return { emailSent: isEmailConfigured() };
+  }
+
+  const rawToken = generatePasswordResetToken();
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: hashPasswordResetToken(rawToken),
+      expiresAt: passwordResetTokenExpiry(),
+    },
+  });
+
+  await recordAudit({ actorId: user.id, action: "user.password_reset_requested", entityType: "User", entityId: user.id });
+
+  if (!isEmailConfigured()) {
+    return { emailSent: false };
+  }
+
+  const resetLink = `primefit://reset-password?token=${rawToken}`;
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your 23PrimeFit password",
+      text: [
+        `We received a request to reset your 23PrimeFit password.`,
+        ``,
+        `Reset it here: ${resetLink}`,
+        ``,
+        `This link expires in 30 minutes. If you didn't request this, you can safely ignore this email — your password hasn't been changed.`,
+      ].join("\n"),
+    });
+  } catch (err) {
+    // A real SMTP-configured relay that then fails to actually deliver
+    // (bad credentials, relay downtime, etc.) shouldn't surface as a 500
+    // to the caller — the token still exists and the generic-response
+    // discipline still applies. Log for operator visibility and report
+    // honestly that delivery didn't happen.
+    console.error("Failed to send password reset email:", err);
+    return { emailSent: false };
+  }
+
+  return { emailSent: true };
+}
+
+/**
+ * Completes a password reset. Looks up the hash of the provided raw
+ * token (never the raw value — same as refresh()/hashRefreshToken
+ * above), claims it atomically so two concurrent reset attempts with the
+ * same token can't both succeed (the same `updateMany`-with-a-filter
+ * claim-once pattern payments.service.ts's activatePayment() uses for
+ * marking a Payment "paid" exactly once), then sets the new password and
+ * revokes every existing refresh token for the account — a password
+ * reset is a real security event that should log out every other
+ * session, not just the one performing the reset.
+ */
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  const tokenHash = hashPasswordResetToken(input.token);
+  const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    throw new ApiHttpError(400, "invalid_reset_token", "This reset link is invalid or has expired");
+  }
+
+  // Atomic single-use claim — mirrors activatePayment()'s
+  // `updateMany({ where: { ..., status: { not: "paid" } } })` guard: only
+  // the call whose `updateMany` actually affects a row gets to proceed,
+  // so a token replayed concurrently (e.g. a user double-tapping "Reset"
+  // or an attacker racing a guessed/leaked token) can only ever succeed
+  // once.
+  const claimed = await prisma.passwordResetToken.updateMany({
+    where: { id: record.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "reset_token_already_used", "This reset link has already been used");
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  await prisma.user.update({ where: { id: record.userId }, data: { passwordHash } });
+
+  // Same "a password reset logs out every other session" discipline as
+  // users.service.ts's changePassword().
+  await prisma.refreshToken.updateMany({
+    where: { userId: record.userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+
+  await recordAudit({
+    actorId: record.userId,
+    action: "user.password_reset_completed",
+    entityType: "User",
+    entityId: record.userId,
   });
 }

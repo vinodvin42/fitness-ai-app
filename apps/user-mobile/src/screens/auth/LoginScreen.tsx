@@ -70,6 +70,12 @@ export function LoginScreen({ navigation }: Props) {
 
         <Button label="Log In" onPress={onSubmit} loading={loading} disabled={!email || !password} />
         <Button
+          label="Forgot password?"
+          variant="secondary"
+          onPress={() => navigation.navigate("ForgotPassword")}
+          style={styles.secondaryButton}
+        />
+        <Button
           label="Create an account"
           variant="secondary"
           onPress={() => navigation.navigate("Signup")}

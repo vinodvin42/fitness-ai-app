@@ -10,6 +10,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { OfflineBanner } from "./src/components/OfflineBanner";
 import { captureAcquisitionContext } from "./src/lib/acquisitionContext";
+import { captureResetPasswordToken } from "./src/lib/resetPasswordLink";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -42,12 +43,21 @@ export default function App() {
   // context is only ever captured, never routes anywhere itself — the
   // user still lands wherever the app's normal auth-state logic puts
   // them and taps through to Sign Up themselves.
+  // Reset Password deep link (18 Sep 2026, gap §53) — captured the same
+  // way, right alongside acquisition-context capture above; see
+  // src/lib/resetPasswordLink.ts's own doc comment for why this is a
+  // second capture-then-consume pair rather than a shared one (the two
+  // URL shapes and storage lifetimes are genuinely different).
   useEffect(() => {
     Linking.getInitialURL().then((url) => {
-      if (url) captureAcquisitionContext(url);
+      if (url) {
+        captureAcquisitionContext(url);
+        captureResetPasswordToken(url);
+      }
     });
     const subscription = Linking.addEventListener("url", ({ url }) => {
       captureAcquisitionContext(url);
+      captureResetPasswordToken(url);
     });
     return () => subscription.remove();
   }, []);

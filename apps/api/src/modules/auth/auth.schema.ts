@@ -38,6 +38,18 @@ export const verifyTwoFactorLoginSchema = z.object({
   code: z.string().min(6).max(20),
 });
 
+// Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53).
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyTwoFactorLoginInput = z.infer<typeof verifyTwoFactorLoginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
