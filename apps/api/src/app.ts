@@ -32,6 +32,7 @@ import { adminProgramsRouter } from "./modules/adminPrograms/adminPrograms.route
 import { adminPaymentsRouter } from "./modules/adminPayments/adminPayments.routes";
 import { adminPlansRouter } from "./modules/adminPlans/adminPlans.routes";
 import { adminSupportRouter } from "./modules/adminSupport/adminSupport.routes";
+import { adminSafetyRouter } from "./modules/adminSafety/adminSafety.routes";
 import { adminAuditLogsRouter } from "./modules/adminAuditLogs/adminAuditLogs.routes";
 import { adminAnalyticsEventsRouter } from "./modules/adminAnalyticsEvents/adminAnalyticsEvents.routes";
 import { adminReferralsRouter } from "./modules/adminReferrals/adminReferrals.routes";
@@ -190,6 +191,10 @@ export function createApp() {
   // for why 08.02/08.03/08.04 aren't built this pass, and for the
   // reasoning behind picking this over Module 07 — Growth this cycle.
   app.use("/", adminSupportRouter);
+  // BR-SAF-004 Safety Escalations (added 18 Sep 2026) — Module 08's real
+  // second queue, alongside 08.02 Escalations just above. See
+  // adminSafety.service.ts's own doc comment.
+  app.use("/", adminSafetyRouter);
   // Module 12.03 — Audit Logs (added 22 Aug 2026) — the first genuinely
   // unscoped, cross-entity, filterable view of the existing `AuditLog`
   // table (every prior read was scoped to one entity or actor); see

@@ -109,6 +109,24 @@ export interface User {
   updatedAt: string;
 }
 
+// §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — matches
+// apps/api's `ConsentType` (prisma/schema.prisma) field-for-field. See
+// that model's own doc comment for why these three, specifically.
+export type ConsentType = "marketing_emails" | "data_analytics" | "health_data_processing";
+
+export interface Consent {
+  type: ConsentType;
+  granted: boolean;
+  /** Null when this type has never been explicitly set — see users.service.ts's listConsents doc comment: this is NOT the same as `granted: false` meaning "declined". */
+  updatedAt: string | null;
+}
+
+/** Matches apps/api's updateConsentSchema (Zod). */
+export interface UpdateConsentInput {
+  type: ConsentType;
+  granted: boolean;
+}
+
 export interface OnboardingProfile {
   userId: string;
   gender: string | null;
@@ -2284,6 +2302,29 @@ export interface AdminEscalateSupportTicketInput {
 /** Matches apps/api's resolveEscalationSchema (Zod). */
 export interface AdminResolveEscalationInput {
   resolutionNotes?: string;
+}
+
+// ---- BR-SAF-004 Safety Escalations, added 18 Sep 2026 — Module 08's real
+// second queue, alongside 08.02 Escalations just above. See apps/api's
+// adminSafety.service.ts and prisma/schema.prisma's `SafetyEscalation`
+// model doc comment for the full design.
+
+export interface AdminSafetyEscalationListItem {
+  id: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  medicalConditions: string[];
+  injuries: string[];
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedByAdminId: string | null;
+  reviewedByAdminName: string | null;
+}
+
+export interface AdminSafetyEscalationListResponse {
+  escalations: AdminSafetyEscalationListItem[];
+  counts: { total: number; unreviewed: number; reviewed: number };
 }
 
 // ---- Module 12.03 — Audit Logs, added 22 Aug 2026. See apps/api's

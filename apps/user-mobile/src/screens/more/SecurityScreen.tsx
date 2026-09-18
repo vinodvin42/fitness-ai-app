@@ -73,10 +73,14 @@ function formatDate(iso: string) {
  * scripting a real browser confirm() dialog around the click, not just
  * trusting that the tap alone did anything.
  *
- * Data-sharing toggles from the design's "Data & Privacy" screen aren't
- * built — there's no analytics/health-sharing pipeline yet for them to
- * actually gate, and a toggle that doesn't gate anything real would
- * misrepresent itself; see docs/mobile/07-open-questions-gaps.md.
+ * **18 Sep 2026:** the data-sharing/consent toggles this comment used to
+ * say weren't built now are — see the separate "Privacy & Consent" row on
+ * SettingsHubScreen.tsx (PrivacySettingsScreen.tsx), backed by a real
+ * `Consent` model. Kept as its own screen rather than folded in here: this
+ * screen is account-security (password/2FA/sessions/data export/delete),
+ * Privacy & Consent is data-processing opt-ins — a different concept, the
+ * same split `adminPrivacy.service.ts`'s own DSAR-vs-consent distinction
+ * draws on the admin side.
  *
  * Active Sessions has no device metadata to show (RefreshToken doesn't
  * capture a user-agent/device name at login), so sessions are listed

@@ -22,6 +22,7 @@ import { SettingsHubScreen } from "../screens/more/SettingsHubScreen";
 import { LanguageSelectionScreen } from "../screens/more/LanguageSelectionScreen";
 import { NotificationSettingsScreen } from "../screens/more/NotificationSettingsScreen";
 import { SecurityScreen } from "../screens/more/SecurityScreen";
+import { PrivacySettingsScreen } from "../screens/more/PrivacySettingsScreen";
 import { SupportScreen } from "../screens/more/SupportScreen";
 import { SupportTicketFormScreen } from "../screens/more/SupportTicketFormScreen";
 import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailScreen";
@@ -112,6 +113,9 @@ export type MoreStackParamList = {
   LanguageSelection: undefined;
   NotificationSettings: undefined;
   Security: undefined;
+  // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
+  // PrivacySettingsScreen.tsx's own doc comment.
+  PrivacySettings: undefined;
   Support: undefined;
   SupportTicketForm: undefined;
   SupportTicketDetail: { ticketId: string };
@@ -153,6 +157,7 @@ export function MoreStack() {
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Security" component={SecurityScreen} />
+      <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="SupportTicketForm" component={SupportTicketFormScreen} />
       <Stack.Screen name="SupportTicketDetail" component={SupportTicketDetailScreen} />

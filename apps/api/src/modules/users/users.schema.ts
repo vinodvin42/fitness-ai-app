@@ -108,3 +108,17 @@ export const disableTwoFactorSchema = z.object({
   password: z.string().min(1),
 });
 export type DisableTwoFactorInput = z.infer<typeof disableTwoFactorSchema>;
+
+// §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
+// prisma/schema.prisma's `Consent` model doc comment for the full
+// reasoning behind this exact three-value set. Kept in sync with
+// `ConsentType` there — Prisma's own enum is the source of truth, this is
+// just the request-validation mirror every other enum field in this file
+// (e.g. `trainingLevel` above) already keeps.
+export const consentTypes = ["marketing_emails", "data_analytics", "health_data_processing"] as const;
+
+export const updateConsentSchema = z.object({
+  type: z.enum(consentTypes),
+  granted: z.boolean(),
+});
+export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;

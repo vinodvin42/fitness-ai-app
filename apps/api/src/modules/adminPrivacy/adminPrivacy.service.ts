@@ -34,11 +34,20 @@ import { prisma } from "../../db/prisma";
  * user's own Profile screen). Both cards are clearly labeled so neither
  * is mistaken for the other.
  *
- * **Not built:** consent management (no `Consent`/opt-in tracking entity
- * anywhere in this schema — `User.notificationsEnabled` is the closest
- * thing, and it's a notification preference, not a data-processing
- * consent record) and data retention (no retention-policy config or
- * scheduled-deletion job exists). Both render via `NotAvailablePanel`.
+ * **18 Sep 2026: a real `Consent` model now exists** (R1 Developer 1,
+ * `apps/user-mobile`'s new PrivacySettingsScreen.tsx +
+ * `users.service.ts#listConsents`/`updateConsent`) — this comment's older
+ * "no Consent/opt-in tracking entity anywhere in this schema" claim no
+ * longer holds. What that pass built is real user-facing consent
+ * management (a real toggle per consent type, backed by real rows), but
+ * this admin console's own read side of it — a console-wide consent
+ * dashboard/table mirroring the DSAR card just above — wasn't part of
+ * that pass's scope and stays genuinely unbuilt here; `notAvailable`
+ * below still names `consentManagement` for that reason, now meaning "no
+ * admin-console view of it yet" rather than "the underlying capability
+ * doesn't exist." Data retention (no retention-policy config or
+ * scheduled-deletion job exists) is unrelated and remains as originally
+ * described. Both still render via `NotAvailablePanel`.
  */
 
 const REQUEST_CAP = 200;

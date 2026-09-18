@@ -8,6 +8,7 @@ import {
   editOnboardingProfileSchema,
   enableTwoFactorSchema,
   onboardingProfileSchema,
+  updateConsentSchema,
   updateProfileSchema,
 } from "./users.schema";
 import * as usersService from "./users.service";
@@ -132,6 +133,26 @@ usersRouter.post("/me/2fa/disable", requireAuth, async (req: AuthedRequest, res,
     const input = disableTwoFactorSchema.parse(req.body);
     await usersService.disableTwoFactor(req.userId!, input);
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
+// users.service.ts's listConsents/updateConsent for the full design.
+usersRouter.get("/me/consents", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ items: await usersService.listConsents(req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.patch("/me/consents", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = updateConsentSchema.parse(req.body);
+    const consent = await usersService.updateConsent(req.userId!, input);
+    res.json({ consent });
   } catch (err) {
     next(err);
   }
