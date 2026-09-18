@@ -5,22 +5,32 @@ import { generateUniqueReferralCode } from "../src/lib/referralCode";
 import { claimRelationship } from "../src/modules/coaching/coaching.service";
 
 /**
- * Regression test for the new "claim once" logic this pass (R1 U6 —
- * professional relationship request/status/active-state UX) added to
- * coaching.service.ts's claimRelationship(): the real six-stage
- * `RelationshipStatus` lifecycle (requested -> accepted -> awaiting_payment
- * -> activating -> active) now lives on a `Relationship` row that's
- * create-or-reused via the real `@@unique([userId, professionalId,
- * serviceType])` constraint (schema.prisma) — the same "the DB is the real
- * gate, not an in-process snapshot" discipline as
- * payments.service.ts#activatePayment, nutrition.service.ts's
- * confirmFoodEstimate, plans.service.ts's decideRecommendation, and
- * progress.service.ts's submitCheckIn (see paymentsActivationRace.test.ts
- * and decideRecommendationRace.test.ts for the sibling tests this one is
- * modeled on), just expressed as a unique-constrained `create()` + caught
- * P2002 fallback rather than a conditional `updateMany` — there's no
- * pre-existing row to conditionally update the first time a (user,
- * professional, serviceType) triple is claimed.
+ * Regression test for the "claim once" logic (R1 U6 — professional
+ * relationship request/status/active-state UX) coaching.service.ts's
+ * claimRelationship() uses: the real six-stage `RelationshipStatus`
+ * lifecycle (requested -> accepted -> awaiting_payment -> activating ->
+ * active) now lives on a `Relationship` row that's create-or-reused via
+ * the real `@@unique([userId, professionalId, serviceType])` constraint
+ * (schema.prisma) — the same "the DB is the real gate, not an in-process
+ * snapshot" discipline as payments.service.ts#activatePayment, nutrition
+ * .service.ts's confirmFoodEstimate, plans.service.ts's
+ * decideRecommendation, and progress.service.ts's submitCheckIn (see
+ * paymentsActivationRace.test.ts and decideRecommendationRace.test.ts for
+ * the sibling tests this one is modeled on), just expressed as a
+ * unique-constrained `create()` + caught P2002 fallback rather than a
+ * conditional `updateMany` — there's no pre-existing row to conditionally
+ * update the first time a (user, professional, serviceType) triple is
+ * claimed.
+ *
+ * **16 Sep 2026 (gap §56 — updates this file's own pre-existing
+ * assertions):** `claimRelationship()` no longer auto-advances a brand-new
+ * row to `accepted` — it leaves it at `requested` until a real coach calls
+ * `acceptRelationship()` (see coaching.test.ts's "Coach relationship
+ * accept/decline" suite for that real accept/decline/concurrency
+ * coverage). This file keeps its own original scope — the create-or-reuse
+ * race itself — and just updates its status assertions to match: a
+ * brand-new triple now resolves to exactly one Relationship row at
+ * `requested`, not auto-accepted.
  *
  * A realistic race this closes: a user requests guidance from the same
  * professional for the same service twice in quick succession — a
@@ -91,9 +101,10 @@ describe("Relationship claim race: concurrent claimRelationship() calls for a ne
       where: { userId, professionalId, serviceType: "fitness" },
     });
     expect(relationships).toHaveLength(1);
-    // Auto-accepted (see claimRelationship's own doc comment for why
-    // "accepted" is a real, automatic pass-through in this build).
-    expect(relationships[0].status).toBe("accepted");
+    // Left at `requested` (gap §56 — no auto-accept anymore; see
+    // claimRelationship's own doc comment) — a real coach has to accept it
+    // via acceptRelationship() before it becomes anything else.
+    expect(relationships[0].status).toBe("requested");
   });
 
   it("re-claiming an already-open triple returns the same row without downgrading its status", async () => {

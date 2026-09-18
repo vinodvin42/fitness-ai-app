@@ -1780,17 +1780,18 @@ enum ProfessionalStatus {
 // `active` relationship (docs/coach §E's Change Professional screen,
 // already real since 25 Aug 2026), unaffected by this change.
 //
-// `accepted` is a real, standing status here, but — a documented,
-// conservative product decision, not an oversight — it's an automatic
-// pass-through, not a human coach's approval click: no request-review
-// screen exists anywhere in this build for either app/role (confirmed via
-// audit of apps/coach-mobile and docs/coach's own screen inventory — Coach
-// Booking has always been "pick an available slot, pay, done," never
-// "request, wait for accept/reject"). See coaching.service.ts's
-// claimRelationship() and docs/mobile/07-open-questions-gaps.md gap §49
-// for the full reasoning and why a future real coach-side review workflow
-// could be inserted between `requested` and `accepted` later without
-// touching this enum again.
+// **16 Sep 2026 (gap §56, superseding §49's own "accepted is an automatic
+// pass-through" call):** `accepted` is now a REAL, human, coach-reviewed
+// transition — see coaching.service.ts's claimRelationship()/
+// acceptRelationship()/declineRelationship() and
+// docs/mobile/07-open-questions-gaps.md gap §56 for the full reasoning.
+// §49's own text named this as "the live, unresolved product question for
+// whoever owns the coach's own workspace next" and left the schema room to
+// insert a real review step between `requested` and `accepted` without
+// another migration — this is that insertion. A brand-new relationship now
+// sits at `requested` until a coach explicitly accepts (-> `accepted`) or
+// declines (-> `ended`, with `endReason` set) it; nothing auto-advances it
+// anymore.
 enum RelationshipStatus {
   requested
   accepted
@@ -1910,6 +1911,16 @@ model Relationship {
   status         RelationshipStatus      @default(requested)
   createdAt      DateTime                @default(now())
   endedAt        DateTime?
+  // Added 16 Sep 2026 (gap §56) alongside the real coach accept/decline
+  // gate — set when a coach declines a `requested` relationship (a short,
+  // free-text reason the coach can optionally give, distinct from the
+  // structured `ChangeReasonCategory` a USER picks in
+  // RelationshipChangeRequest.reason, since this is the professional's own
+  // side of a very different action). Left null for every other end path
+  // (a user's own Change Professional flow doesn't end the relationship
+  // itself — see createChangeRequest's doc comment — so no other code path
+  // sets `endedAt` today either).
+  endReason      String?
 
   changeRequests RelationshipChangeRequest[]
 

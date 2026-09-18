@@ -6,6 +6,7 @@ import {
   availabilityQuerySchema,
   createBookingSchema,
   createChangeRequestSchema,
+  declineRelationshipSchema,
   discoverProfessionalsQuerySchema,
 } from "./coaching.schema";
 import * as coachingService from "./coaching.service";
@@ -25,6 +26,53 @@ coachingRouter.get(
   async (req: ProfessionalAuthedRequest, res, next) => {
     try {
       res.json(await coachingService.listMySchedule(req.professionalId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// 16 Sep 2026 (gap §56) — the real coach-side review gate: professional-
+// authed (this coach's OWN pending requests / accept / decline actions),
+// same route family/auth guard as the schedule route above. Backs
+// apps/coach-mobile's new Pending Requests screen. Mounted before
+// "/coaching/relationships/:id/change-request" below to keep every
+// professional-authed route grouped with `requireProfessionalAuth`
+// together at the top of this file, same ordering convention as the
+// schedule route.
+coachingRouter.get(
+  "/professionals/me/relationships/requests",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.json(await coachingService.listPendingRelationships(req.professionalId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+coachingRouter.post(
+  "/professionals/me/relationships/:id/accept",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.json(await coachingService.acceptRelationship(req.professionalId as string, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+coachingRouter.post(
+  "/professionals/me/relationships/:id/decline",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = declineRelationshipSchema.parse(req.body ?? {});
+      res.json(await coachingService.declineRelationship(req.professionalId as string, req.params.id, input.reason));
     } catch (err) {
       next(err);
     }

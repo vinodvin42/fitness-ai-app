@@ -9,8 +9,9 @@ import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchClients } from "../../api/professionalClients";
+import { fetchPendingRelationships } from "../../api/relationshipRequests";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography } from "../../theme/tokens";
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
@@ -32,9 +33,51 @@ export function ClientsListScreen() {
     queryKey: ["coach-clients"],
     queryFn: fetchClients,
   });
+  // gap §56 — the real coach-side review gate's entry point. Polled at the
+  // same cadence a screen focus would naturally refetch it; no push/badge
+  // infra exists in this build to update it live in the background.
+  const { data: pending } = useQuery({
+    queryKey: ["coach-pending-requests"],
+    queryFn: fetchPendingRelationships,
+  });
+  const pendingCount = pending?.requests.length ?? 0;
 
   return (
     <ScreenContainer title="Clients">
+      {pendingCount > 0 && (
+        <Pressable onPress={() => navigation.navigate("PendingRequests")}>
+          <Card
+            style={{
+              backgroundColor: colors.surfaceRaised,
+              borderColor: colors.accent,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: spacing.sm,
+            }}
+          >
+            <View>
+              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
+                {pendingCount} pending request{pendingCount === 1 ? "" : "s"}
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                Review and accept or decline
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: colors.accent,
+                borderRadius: radius.sm,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.xs,
+              }}
+            >
+              <Text style={{ color: "#0B0B0F", fontWeight: "700" }}>Review</Text>
+            </View>
+          </Card>
+        </Pressable>
+      )}
+
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
 

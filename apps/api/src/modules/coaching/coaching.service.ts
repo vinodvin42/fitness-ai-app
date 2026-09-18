@@ -94,9 +94,17 @@ import {
  * `awaiting_payment` row exists for the whole time a Razorpay Checkout is
  * open, not just after it succeeds) — and `listRelationshipStatus()` is
  * the new read side backing `apps/user-mobile`'s real status screen. See
- * `claimRelationship()`'s own doc comment for the concurrency discipline
- * and the product decision behind `accepted` being an automatic
- * pass-through.
+ * `claimRelationship()`'s own doc comment for the concurrency discipline.
+ *
+ * **16 Sep 2026 (gap §56):** `accepted` is no longer an automatic
+ * pass-through — `claimRelationship()` now leaves a brand-new relationship
+ * at `requested` until a real coach explicitly calls
+ * `acceptRelationship()`/`declineRelationship()` (new, backing
+ * apps/coach-mobile's Pending Requests screen). `createBooking()` and
+ * `payments.service.ts`'s `createOrder()` both now refuse to proceed past
+ * a still-`requested` relationship — see gap §56 for the full behavior
+ * change and why it's the correct reading of the R1 spec that §49
+ * deliberately left open.
  *
  * Deliberately does NOT import Prisma model types for the same reason as
  * every other service in this build (adminProfessionals.service.ts,
@@ -304,12 +312,20 @@ type RelationshipClaimRow = { id: string; status: string };
  * Claim (create-or-reuse) the one `Relationship` row for a (user,
  * professional, serviceType) triple — the real entry point into the
  * requested -> accepted -> awaiting_payment -> activating -> active
- * lifecycle schema.prisma's `RelationshipStatus` now models. A brand-new
- * triple is created at `requested` and immediately auto-advanced to
- * `accepted` in the same call — see this enum's own schema.prisma comment
- * for why "accepted" is a real, conservative auto pass-through rather
- * than a human coach's review, and docs/mobile/07-open-questions-gaps.md
- * gap §49 for the full product-decision writeup.
+ * lifecycle schema.prisma's `RelationshipStatus` now models.
+ *
+ * **16 Sep 2026 (gap §56):** a brand-new triple is created at `requested`
+ * and left there — it no longer auto-advances to `accepted`. §49's own
+ * "real product decision" writeup named the missing coach-side review gate
+ * as the live, unresolved question for whoever owns the coach's own
+ * workspace next; that's this pass. A real human coach now has to call
+ * `acceptRelationship()`/`declineRelationship()` below (backing
+ * apps/coach-mobile's new Pending Requests screen) before a `requested`
+ * relationship can become anything else. See those functions' own doc
+ * comments for the accept/decline transitions themselves, and
+ * `createBooking()`/`payments.service.ts`'s `createOrder()` for the
+ * refusal every booking/payment call site now enforces against a
+ * still-`requested` relationship.
  *
  * Uses the real `@@unique([userId, professionalId, serviceType])`
  * constraint as the atomic claim, the same "the DB is the real gate, not
@@ -323,10 +339,13 @@ type RelationshipClaimRow = { id: string; status: string };
  * Two concurrent callers for a brand-new triple can only ever have one
  * `create()` win; the loser falls back to reading/reclaiming the winner's
  * row instead of erroring the caller's request. If the existing row is
- * `ended` (a previously-ended pairing, requested again), it's reclaimed
- * via the exact `updateMany` + status-filter pattern those other claims
- * use, so two concurrent revival attempts can't both "win" either. Any
- * other existing status (already requested/accepted/awaiting_payment/
+ * `ended` (a previously-ended pairing — either a past Change Professional
+ * flow or a coach's own decline — requested again), it's reclaimed via the
+ * exact `updateMany` + status-filter pattern those other claims use, so
+ * two concurrent revival attempts can't both "win" either, and fires
+ * `professional.requested` again since re-requesting a previously-ended
+ * pairing is a genuine new request needing its own coach review. Any other
+ * existing status (already requested/accepted/awaiting_payment/
  * activating/active) is left exactly as-is — booking a second session
  * with an already-active coach must never downgrade that relationship,
  * matching Error & Recovery §9's "never present professional service as
@@ -343,31 +362,24 @@ export async function claimRelationship(
       data: { userId, professionalId, serviceType, status: "requested" },
     });
 
-    // §8 "professional.requested" — the real, brand-new request, before
-    // the auto-accept pass-through below (see this function's own doc
-    // comment for why `accepted` is an automatic advance, not a human
-    // decision) — the event describes the user's real action, not the
-    // system's own follow-on state change.
+    // §8 "professional.requested" — the real, brand-new request, fired at
+    // the real moment it's created now that nothing auto-advances it any
+    // further (gap §56) — this is genuinely the request moment, not a
+    // step inside a larger synchronous auto-accept.
     await trackEvent(userId, "professional.requested", { professionalId, relationshipId: created.id }, { metadata: { serviceType } });
 
-    // Auto-accept — see this function's own doc comment. Sequential, not
-    // racy: only the caller that just won the create() above holds a
-    // reference to this brand-new row at this point.
-    const accepted = await prisma.relationship.update({
-      where: { id: created.id },
-      data: { status: "accepted" },
-    });
-    return accepted;
+    return created;
   } catch (err) {
     if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") throw err;
 
     // Someone else's row already exists for this triple. If it's `ended`,
-    // atomically reclaim it (only one concurrent reclaim attempt's
-    // updateMany actually matches the row); any other status is left
-    // untouched.
-    await prisma.relationship.updateMany({
+    // atomically reclaim it back to `requested` (only one concurrent
+    // reclaim attempt's updateMany actually matches the row) — a genuine
+    // new request against a previously-ended pairing, needing its own
+    // coach review again; any other status is left untouched.
+    const reclaimed = await prisma.relationship.updateMany({
       where: { userId, professionalId, serviceType, status: "ended" },
-      data: { status: "requested", endedAt: null },
+      data: { status: "requested", endedAt: null, endReason: null },
     });
 
     const existing = await prisma.relationship.findUnique({
@@ -375,19 +387,106 @@ export async function claimRelationship(
     });
     if (!existing) throw err; // unreachable — the P2002 above proves a row exists for this triple
 
-    if (existing.status === "requested") {
-      // Either we just reclaimed it above, or a fresh create() from
-      // another concurrent caller hasn't advanced it to `accepted` yet —
-      // either way, advance it the same way a fresh row does, guarded so
-      // only one concurrent advancer actually wins.
-      const advanced = await prisma.relationship.updateMany({
-        where: { id: existing.id, status: "requested" },
-        data: { status: "accepted" },
-      });
-      if (advanced.count > 0) return { id: existing.id, status: "accepted" };
+    if (reclaimed.count > 0) {
+      await trackEvent(userId, "professional.requested", { professionalId, relationshipId: existing.id }, { metadata: { serviceType } });
     }
     return existing;
   }
+}
+
+/**
+ * The professional-facing counterpart to `claimRelationship()` — backs
+ * apps/coach-mobile's Pending Requests screen (gap §56). Atomic
+ * `updateMany` + status/ownership filter, the same "claim-once" shape as
+ * `payments.service.ts#activatePayment`/`plans.service.ts#decideRecommendation`:
+ * only a `requested` relationship that genuinely belongs to THIS
+ * professional can be accepted, and only one of two concurrent
+ * accept-taps (two coach devices, or a double-tap) actually wins — the
+ * loser's `updateMany` affects zero rows and gets a clear 409 rather than
+ * silently re-accepting.
+ */
+export async function acceptRelationship(professionalId: string, relationshipId: string): Promise<RelationshipClaimRow> {
+  const existing = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!existing || existing.professionalId !== professionalId) {
+    throw new ApiHttpError(404, "relationship_not_found", "Relationship request not found");
+  }
+
+  const result = await prisma.relationship.updateMany({
+    where: { id: relationshipId, professionalId, status: "requested" },
+    data: { status: "accepted" },
+  });
+  if (result.count === 0) {
+    throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
+  }
+
+  return { id: relationshipId, status: "accepted" };
+}
+
+/**
+ * The decline counterpart to `acceptRelationship()` above — moves a
+ * `requested` relationship straight to `ended` (with a real `endReason`)
+ * rather than through `accepted` first, same atomic ownership+status-filtered
+ * `updateMany` claim. Declining is deliberately only possible while a
+ * relationship is still `requested`: once a coach has accepted, a booking
+ * may already be `awaiting_payment`/paid, and Error & Recovery §9's "money
+ * must never move for a relationship that isn't at least accepted" rule
+ * only protects the user going INTO acceptance — it says nothing about
+ * revoking accepted access, which is Change Professional's/the admin
+ * console's own, separately-reviewed territory (createChangeRequest above,
+ * adminRelationships.service.ts), not this endpoint's.
+ */
+export async function declineRelationship(
+  professionalId: string,
+  relationshipId: string,
+  reason?: string,
+): Promise<RelationshipClaimRow> {
+  const existing = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!existing || existing.professionalId !== professionalId) {
+    throw new ApiHttpError(404, "relationship_not_found", "Relationship request not found");
+  }
+
+  const result = await prisma.relationship.updateMany({
+    where: { id: relationshipId, professionalId, status: "requested" },
+    data: { status: "ended", endedAt: new Date(), endReason: reason ?? "declined_by_professional" },
+  });
+  if (result.count === 0) {
+    throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
+  }
+
+  return { id: relationshipId, status: "ended" };
+}
+
+type PendingRelationshipRow = {
+  id: string;
+  userId: string;
+  serviceType: string;
+  createdAt: Date;
+  user: { fullName: string };
+};
+
+/**
+ * Backs apps/coach-mobile's new Pending Requests screen (gap §56) — every
+ * `requested` relationship for this professional, oldest first (first
+ * request in, first reviewed), so a coach can genuinely review and act on
+ * each one instead of it auto-advancing unseen.
+ */
+export async function listPendingRelationships(professionalId: string) {
+  const relationships = await prisma.relationship.findMany({
+    where: { professionalId, status: "requested" },
+    include: { user: { select: { fullName: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const rows = relationships as PendingRelationshipRow[];
+
+  return {
+    requests: rows.map((r) => ({
+      relationshipId: r.id,
+      userId: r.userId,
+      userFullName: r.user.fullName,
+      serviceType: r.serviceType,
+      createdAt: r.createdAt,
+    })),
+  };
 }
 
 export async function createBooking(
@@ -462,6 +561,23 @@ export async function createBooking(
   const relationships = await Promise.all(
     serviceTypes.map((st) => claimRelationship(userId, input.professionalId, st)),
   );
+
+  // 16 Sep 2026 (gap §56) — a still-`requested` relationship means this
+  // coach hasn't reviewed the request yet (or just declined it, which
+  // reclaimRelationship() would put right back at `requested` on a fresh
+  // ask). No Booking is created past this point, paid or free — the same
+  // real, honest refusal `payments.service.ts`'s `createOrder()` gives
+  // BEFORE a Razorpay order even exists, re-checked here as this function's
+  // own defense-in-depth for the free-offering path, which never goes
+  // through createOrder at all.
+  if (relationships.some((r) => r.status === "requested")) {
+    throw new ApiHttpError(
+      409,
+      "relationship_pending_acceptance",
+      "This coach hasn't accepted your request yet — wait for them to accept before booking",
+    );
+  }
+
   const relationshipIds = relationships.map((r) => r.id);
 
   // We're now genuinely committed to creating the Booking — advance every

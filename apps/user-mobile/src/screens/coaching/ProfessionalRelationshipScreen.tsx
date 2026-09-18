@@ -45,7 +45,7 @@ function stepLabel(step: RelationshipStatus): string {
 function statusPresentation(status: RelationshipStatus): { label: string; color: string; icon: IconName } {
   switch (status) {
     case "requested":
-      return { label: "Request sent", color: colors.aiAccent, icon: "sparkles" };
+      return { label: "Waiting for the coach to respond", color: colors.aiAccent, icon: "sparkles" };
     case "accepted":
       return { label: "Accepted — set up your payment to continue", color: colors.warning, icon: "check" };
     case "awaiting_payment":
@@ -76,6 +76,14 @@ function statusPresentation(status: RelationshipStatus): { label: string; color:
  * in-flight relationship (anything short of `active`) is always rendered
  * with a real state stepper and an explicit "not active yet" framing,
  * never folded into or confused with the active-team summary below it.
+ *
+ * **16 Sep 2026 (gap §56):** `requested` is no longer an instantaneous,
+ * auto-advancing state — a real coach now has to review and accept it
+ * (apps/coach-mobile's new Pending Requests screen) before it becomes
+ * `accepted`. `requested`'s own copy here is deliberately framed as
+ * normal waiting, never as an error or something the user needs to act
+ * on — see statusPresentation()/RelationshipStatusCard's own "requested"
+ * branches below.
  */
 export function ProfessionalRelationshipScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -193,7 +201,9 @@ function RelationshipStatusCard({
       </View>
 
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
-        Not an active professional relationship yet — full access unlocks once this reaches Active.
+        {item.status === "requested"
+          ? "Nothing's wrong — the coach hasn't reviewed your request yet. You'll be able to continue as soon as they accept."
+          : "Not an active professional relationship yet — full access unlocks once this reaches Active."}
       </Text>
 
       {onContinuePayment ? (

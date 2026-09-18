@@ -49,3 +49,14 @@ export const createChangeRequestSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 export type CreateChangeRequestInput = z.infer<typeof createChangeRequestSchema>;
+
+// 16 Sep 2026 (gap §56) — the coach's own real accept/decline actions on a
+// `requested` relationship. Decline's reason is an optional short free-text
+// note (not the structured ChangeReasonCategory above — that's the USER's
+// own reason for wanting a different coach on an already-`active`
+// relationship, a different action entirely), defaulted server-side
+// (coaching.service.ts's declineRelationship) when omitted.
+export const declineRelationshipSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+export type DeclineRelationshipInput = z.infer<typeof declineRelationshipSchema>;

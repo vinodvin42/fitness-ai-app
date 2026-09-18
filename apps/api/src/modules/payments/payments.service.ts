@@ -50,6 +50,15 @@ import { CreateOrderInput } from "./payments.schema";
  * claimRelationship() for the full requested/accepted/awaiting_payment/
  * activating/active lifecycle this feeds into.
  *
+ * **16 Sep 2026 (gap §56):** that same claim now happens BEFORE the
+ * Razorpay order is created, not after — and createOrder() refuses to
+ * create the order at all (409 `relationship_pending_acceptance`) if the
+ * claimed relationship is still `requested` (the coach hasn't accepted the
+ * booking request yet). Money must never move, and a user must never even
+ * see Razorpay's Checkout UI, for a relationship short of `accepted` — see
+ * coaching.service.ts's acceptRelationship()/declineRelationship() for the
+ * new real coach-side gate this enforces.
+ *
  * RESOLVED 5 Sep 2026 (PAY-02) — every seeded priceCents value used to be
  * chosen and displayed as USD cents (`$14.99`) while Razorpay's native
  * currency is INR, which would have undercharged real money by roughly
@@ -158,6 +167,31 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
 
   const { amountCents: listAmountCents, description, booking } = await resolveAmountCents(input);
 
+  // 16 Sep 2026 (gap §56) — claim the real Relationship row(s) up front and
+  // refuse to go any further if the coach hasn't accepted the request yet.
+  // Deliberately BEFORE the razorpay.orders.create() call below (and before
+  // the Payment row is even created) — a user must never be let into
+  // Razorpay's hosted Checkout only to be refused after money would have
+  // moved; that's the real BR-COM-011-adjacent honesty problem gap §56
+  // exists to close, not just createBooking()'s own later, narrower guard.
+  let bookingRelationshipIds: string[] = [];
+  if (booking) {
+    const serviceTypes: Array<"fitness" | "nutrition"> = booking.serviceType
+      ? [booking.serviceType]
+      : ["fitness", "nutrition"];
+    const relationships = await Promise.all(
+      serviceTypes.map((st) => claimRelationship(userId, booking.professionalId, st)),
+    );
+    if (relationships.some((r) => r.status === "requested")) {
+      throw new ApiHttpError(
+        409,
+        "relationship_pending_acceptance",
+        "This coach hasn't accepted your request yet — wait for them to accept before paying",
+      );
+    }
+    bookingRelationshipIds = relationships.map((r) => r.id);
+  }
+
   // Module 06.05 Coupons (31 Aug 2026) — apply an optional discount code
   // against the real list price. Validation is server-side; an invalid code
   // fails the order (422) rather than quietly charging full price. The
@@ -203,28 +237,22 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     },
   });
 
-  // U6 (15 Sep 2026) — claim the real Relationship row(s) into
-  // `awaiting_payment` now that a real order/Payment genuinely exists, so
-  // a status screen opened anytime between now and Checkout completing (or
-  // being abandoned) shows an honest "awaiting payment" state instead of
-  // nothing at all. Placed after the Payment row above (not before) so a
-  // Razorpay/DB failure earlier in this function never advances a
-  // relationship for an order that was never actually created — same
-  // "only advance once genuinely committed" discipline as
-  // coaching.service.ts's createBooking now uses for
-  // activating/active. claimRelationship() itself is the atomic claim
-  // (see its own doc comment); this call and createBooking's later one for
-  // the SAME triple are safe to run twice — the second is a reuse, not a
-  // second creation.
-  if (booking) {
-    const serviceTypes: Array<"fitness" | "nutrition"> = booking.serviceType
-      ? [booking.serviceType]
-      : ["fitness", "nutrition"];
-    const relationships = await Promise.all(
-      serviceTypes.map((st) => claimRelationship(userId, booking.professionalId, st)),
-    );
+  // U6 (15 Sep 2026) — advance the already-claimed, already-accepted
+  // Relationship row(s) (claimed and checked above, before the Razorpay
+  // order was even created) into `awaiting_payment` now that a real order/
+  // Payment genuinely exists, so a status screen opened anytime between
+  // now and Checkout completing (or being abandoned) shows an honest
+  // "awaiting payment" state instead of nothing at all. Placed after the
+  // Payment row above (not before) so a Razorpay/DB failure earlier in
+  // this function never advances a relationship for an order that was
+  // never actually created — same "only advance once genuinely committed"
+  // discipline as coaching.service.ts's createBooking now uses for
+  // activating/active. `status: { not: "active" }` guards a booking of a
+  // second session with an already-active coach from ever being
+  // downgraded back to awaiting_payment.
+  if (bookingRelationshipIds.length > 0) {
     await prisma.relationship.updateMany({
-      where: { id: { in: relationships.map((r) => r.id) }, status: { not: "active" } },
+      where: { id: { in: bookingRelationshipIds }, status: { not: "active" } },
       data: { status: "awaiting_payment" },
     });
   }

@@ -1156,9 +1156,10 @@ export type ProfessionalStatus = "active" | "suspended";
  * this by a day (see prisma/schema.prisma) but had no shared type yet since
  * nothing outside apps/api read it directly until now. **Extended 15 Sep
  * 2026 (R1 U6)** from just `active | ended` to the real six-stage lifecycle
- * schema.prisma's own `RelationshipStatus` enum comment describes — see
- * that comment for why `accepted` is a real, standing status despite this
- * product having no coach-side request-review screen anywhere.
+ * schema.prisma's own `RelationshipStatus` enum comment describes.
+ * **16 Sep 2026 (gap §56):** `accepted` is now reached only via a real
+ * coach review (apps/coach-mobile's Pending Requests screen, see
+ * `PendingRelationshipItem` below) — `requested` no longer auto-advances.
  */
 export type RelationshipStatus = "requested" | "accepted" | "awaiting_payment" | "activating" | "active" | "ended";
 
@@ -1384,6 +1385,31 @@ export interface RelationshipStatusItem {
 
 export interface RelationshipStatusResponse {
   relationships: RelationshipStatusItem[];
+}
+
+/**
+ * **16 Sep 2026 (gap §56)** — the real coach-side review gate: one row of
+ * GET /professionals/me/relationships/requests, backing apps/coach-mobile's
+ * new Pending Requests screen. Only ever `requested` relationships (a
+ * relationship this coach has already accepted/declined never appears
+ * here again) — see coaching.service.ts's listPendingRelationships doc
+ * comment.
+ */
+export interface PendingRelationshipItem {
+  relationshipId: string;
+  userId: string;
+  userFullName: string;
+  serviceType: ProfessionalServiceType;
+  createdAt: string;
+}
+
+export interface PendingRelationshipsResponse {
+  requests: PendingRelationshipItem[];
+}
+
+/** Matches coaching.schema.ts's declineRelationshipSchema — POST /professionals/me/relationships/:id/decline's optional body. */
+export interface DeclineRelationshipInput {
+  reason?: string;
 }
 
 /** One row of "My Professional Team" — real last/next session dates computed from Booking. */
