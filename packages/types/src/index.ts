@@ -761,7 +761,10 @@ export interface CheckInStatus {
 // shared table, not duplicated between apps (docs/mobile/05-data-model.md §2).
 
 export type SubscriptionTier = "basic" | "pro" | "elite";
-export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled";
+// `expired`/`revoked` added 18 Sep 2026 (gap §57) — see
+// apps/api/prisma/schema.prisma's SubscriptionStatus enum doc comment for
+// the full real cancel-at-period-end policy and force-revoke design.
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "expired" | "revoked";
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
 export type BillingCycle = "monthly" | "annual";
 
@@ -780,6 +783,11 @@ export interface Subscription {
   status: SubscriptionStatus;
   renewsAt: string | null;
   createdAt: string;
+  /** Gap §57 (18 Sep 2026) — set true by the real cancel-at-period-end policy; see subscriptions.service.ts. */
+  cancelAtPeriodEnd: boolean;
+  /** Gap §57 — only ever set by the admin force-revoke action. */
+  revokedAt: string | null;
+  revokedReason: string | null;
 }
 
 /**
@@ -795,6 +803,15 @@ export interface SubscriptionDetail extends Subscription {
 /** The write side of subscribing/changing plan — matches apps/api's subscribeSchema (Zod). */
 export interface SubscribeInput {
   planId: string;
+}
+
+/** Gap §57 (18 Sep 2026) — matches apps/api's revokeSubscriptionSchema (Zod), POST /admin/subscriptions/:id/revoke. */
+export interface RevokeSubscriptionInput {
+  reason: string;
+}
+
+export interface RevokeSubscriptionResponse {
+  subscription: SubscriptionDetail;
 }
 
 // ---- Payments (Razorpay integration, added 20 Aug 2026) -------------------
@@ -1883,6 +1900,8 @@ export interface AdminUserDetailResponse {
   lifetimeValue: AdminUserLifetimeValue;
   currentSubscription: SubscriptionDetail | null;
   subscriptions: SubscriptionDetail[];
+  /** Gap §57 (18 Sep 2026) — true when the VIEWING admin's role holds `commerce: approve`, the force-revoke gate. Frontend-only convenience; the route itself enforces the same check server-side. */
+  canForceRevoke: boolean;
   payments: AdminUserPayment[];
   relationships: AdminUserRelationship[];
   supportTickets: SupportTicket[];

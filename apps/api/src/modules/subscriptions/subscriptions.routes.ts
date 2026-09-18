@@ -15,7 +15,10 @@ subscriptionsRouter.get("/subscription-plans", requireAuth, async (_req, res, ne
 
 subscriptionsRouter.get("/subscriptions/me", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const subscription = await subscriptionsService.getCurrentSubscription(req.userId!);
+    // Gap §57 (18 Sep 2026) — the display-oriented read (includes real
+    // `expired`/`revoked` terminal rows), not the actionable-only
+    // `getCurrentSubscription` used internally by subscribe()/cancel().
+    const subscription = await subscriptionsService.getSubscriptionForDisplay(req.userId!);
     res.json({ subscription });
   } catch (err) {
     next(err);

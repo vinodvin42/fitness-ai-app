@@ -18,6 +18,9 @@ const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = {
   trialing: colors.accent,
   past_due: colors.warning,
   canceled: colors.textMuted,
+  // Gap §57 (18 Sep 2026) — real terminal states, distinct from each other.
+  expired: colors.textMuted,
+  revoked: colors.danger,
 };
 
 /**

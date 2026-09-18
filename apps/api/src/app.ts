@@ -30,6 +30,7 @@ import { adminRelationshipsRouter } from "./modules/adminRelationships/adminRela
 import { adminAccountsRouter } from "./modules/adminAccounts/adminAccounts.routes";
 import { adminProgramsRouter } from "./modules/adminPrograms/adminPrograms.routes";
 import { adminPaymentsRouter } from "./modules/adminPayments/adminPayments.routes";
+import { adminSubscriptionsRouter } from "./modules/adminSubscriptions/adminSubscriptions.routes";
 import { adminPlansRouter } from "./modules/adminPlans/adminPlans.routes";
 import { adminSupportRouter } from "./modules/adminSupport/adminSupport.routes";
 import { adminAuditLogsRouter } from "./modules/adminAuditLogs/adminAuditLogs.routes";
@@ -179,6 +180,9 @@ export function createApp() {
   // why 06.01/06.04 aren't built this pass (06.05's plans half shipped
   // 25 Aug 2026 — see adminPlansRouter below).
   app.use("/", adminPaymentsRouter);
+  // Gap §57 (18 Sep 2026) — real admin force-revoke for a Subscription
+  // (fraud/chargeback/ToS), commerce-module `approve`-gated.
+  app.use("/", adminSubscriptionsRouter);
   // Module 06.05 — Pricing (plans half only, added 25 Aug 2026) — the
   // first code anywhere in this build that can create/edit/archive a
   // `SubscriptionPlan` row; see adminPlans.service.ts's own doc comment
