@@ -24,6 +24,9 @@ const STATUS_TONE: Record<SubscriptionDetail["status"], "success" | "accent" | "
   trialing: "accent",
   past_due: "warning",
   canceled: "neutral",
+  // Gap §57 (18 Sep 2026) — real terminal states, distinct from each other.
+  expired: "neutral",
+  revoked: "neutral",
 };
 
 /**

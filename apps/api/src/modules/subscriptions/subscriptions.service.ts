@@ -44,17 +44,122 @@ function renewalDateFor(billingCycle: "monthly" | "annual"): Date {
  * reads `past_due` rows) silently vanished from this endpoint: the mobile
  * client would show "Unlock your full potential" as if the user had never
  * subscribed at all, even though a real, billing-troubled Subscription row
- * existed for them. `past_due` now included — SubscriptionScreen.tsx
- * renders it as its own honest state, not folded into "Active". `canceled`
- * stays excluded: that's the one real terminal state where "no current
- * subscription" is the correct read.
+ * existed for them. `past_due` now included.
+ *
+ * This is the ACTIONABLE current subscription — used by `subscribe()` (to
+ * decide whether there's a live plan to replace) and `cancelSubscription()`
+ * (to decide whether there's anything to cancel). `canceled`/`expired`/
+ * `revoked` are all correctly excluded here: none of them is a plan a user
+ * can still act on. For DISPLAY purposes (SubscriptionScreen.tsx needing
+ * to render an honest `expired`/`revoked` state rather than silently
+ * falling back to "no subscription"), use `getSubscriptionForDisplay`
+ * below instead — see gap §57.
  */
-export function getCurrentSubscription(userId: string) {
-  return prisma.subscription.findFirst({
+export async function getCurrentSubscription(userId: string) {
+  const current = await prisma.subscription.findFirst({
     where: { userId, status: { in: ["active", "trialing", "past_due"] } },
     include: { plan: true },
     orderBy: { createdAt: "desc" },
   });
+  if (!current) return null;
+  return maybeExpireLapsed(current as SubscriptionWithPlan);
+}
+
+/**
+ * Gap §57 (18 Sep 2026) — the read `GET /subscriptions/me` actually uses.
+ * Unlike `getCurrentSubscription` above (deliberately scoped to
+ * "actionable" statuses only), this returns the user's single most recent
+ * Subscription row regardless of status, EXCEPT `canceled` — `subscribe()`
+ * still sets an old row to `canceled` when a user switches plans (that's
+ * unchanged by this pass), but it always does so in the same beat as
+ * creating a newer `active` row, so a real user-facing "most recent
+ * subscription is canceled" case doesn't arise from that path; the guard
+ * here just preserves this endpoint's original "no current subscription"
+ * read for that status, unchanged from before this pass. `expired` and
+ * `revoked`, by contrast, are real terminal states this screen must be
+ * able to show distinctly (BR-COM-011 / Error & Recovery §9's honesty
+ * requirement, the same discipline gap §48 already applied here) — hiding
+ * them behind a blank "Unlock your full potential" would be exactly the
+ * "silently vanished" bug this file's own history (see the doc comment
+ * above) has already been fixed for once, for `past_due`.
+ */
+export async function getSubscriptionForDisplay(userId: string) {
+  const latest = await prisma.subscription.findFirst({
+    where: { userId },
+    include: { plan: true },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!latest || latest.status === "canceled") return null;
+  return maybeExpireLapsed(latest as SubscriptionWithPlan);
+}
+
+/**
+ * Gap §57 (18 Sep 2026) — the real lazy-expiry mechanism backing the
+ * cancel-at-period-end policy `cancelSubscription()` now implements.
+ *
+ * This codebase has no persistent worker process and no scheduled-job
+ * infrastructure that could reach it — the only real "server" this API
+ * runs as is a request-driven Express process (`npm run dev`/deployed App
+ * Service), and the one real CI/CD workflow that exists
+ * (`.github/workflows/deploy-azure-api.yml`) is `workflow_dispatch` only,
+ * explicitly NOT on a schedule, with no live Azure endpoint this pass is
+ * permitted to touch or verify against anyway (worktree constraints: no
+ * `gh workflow run`, no Azure). A scheduled GitHub Actions workflow calling
+ * an internal admin endpoint was considered and rejected for exactly that
+ * reason: it would be unverifiable fabricated infrastructure in this
+ * environment, not a real, exercised mechanism — the same "don't build
+ * what you can't honestly verify" discipline gap §48 already applied to
+ * `expiring`/`revoked` before this pass existed to answer it for real.
+ *
+ * Instead, this is a real, honest, in-request lazy-expiry check: every
+ * time a `cancelAtPeriodEnd` Subscription is actually read past its
+ * `renewsAt`, this flips it to a real, DB-persisted `expired` status right
+ * then, before returning. This is a genuine, verifiable mechanism (proven
+ * by this pass's own tests and local HTTP run — flip `renewsAt` into the
+ * past, read the row, see `expired` land in Postgres), not merely a
+ * client-side display trick the way gap §48's original `entitlementDisplay`
+ * lapsed-read was. The one honest limitation: a subscription that lapses
+ * and is never read again stays `active` in the DB until it next is read
+ * — acceptable because every real path that matters (the user's own
+ * `GET /subscriptions/me`, this function itself, called from `subscribe()`
+ * before replacing an existing plan) reads through here.
+ */
+type SubscriptionWithPlan = {
+  id: string;
+  userId: string;
+  planId: string;
+  status: string;
+  renewsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+  revokedAt: Date | null;
+  revokedReason: string | null;
+  createdAt: Date;
+  plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
+};
+
+async function maybeExpireLapsed(subscription: SubscriptionWithPlan): Promise<SubscriptionWithPlan> {
+  const lapsed =
+    subscription.cancelAtPeriodEnd &&
+    subscription.renewsAt != null &&
+    subscription.renewsAt.getTime() < Date.now() &&
+    (subscription.status === "active" || subscription.status === "trialing" || subscription.status === "past_due");
+  if (!lapsed) return subscription;
+
+  const expired = await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: { status: "expired" },
+    include: { plan: true },
+  });
+
+  await recordAudit({
+    actorId: subscription.userId,
+    action: "subscription.expired",
+    entityType: "Subscription",
+    entityId: subscription.id,
+    metadata: { reason: "cancel_at_period_end_lapsed" },
+  });
+
+  return expired as SubscriptionWithPlan;
 }
 
 /**
@@ -126,27 +231,52 @@ export async function subscribe(
   return subscription;
 }
 
+/**
+ * Cancel-at-period-end (gap §57, 18 Sep 2026) — the real, decided
+ * cancellation policy, replacing the old immediate-`canceled` flip. This
+ * is the standard, near-universal SaaS convention: a user who cancels
+ * keeps access through the period they already paid for (`renewsAt`), and
+ * only lapses to a real terminal `expired` status once that date passes
+ * (see `maybeExpireLapsed` above for the honest lazy-expiry mechanism that
+ * performs that flip — no billing/renewal cron exists in this build to do
+ * it on a schedule). `status` is deliberately left untouched here — the
+ * user's access is genuinely unchanged the moment they cancel, which is
+ * exactly what `cancelAtPeriodEnd: true` on an otherwise-still-`active`
+ * row is meant to communicate to any reader (this endpoint's own response,
+ * `entitlementDisplay()` in SubscriptionScreen.tsx, a future admin view).
+ *
+ * Idempotent: canceling an already-cancelAtPeriodEnd subscription 409s
+ * rather than silently no-op'ing, so a client can't mistake a repeat tap
+ * for a fresh confirmation of a policy it already agreed to.
+ */
 export async function cancelSubscription(userId: string) {
   const existing = await getCurrentSubscription(userId);
   if (!existing) {
     throw new ApiHttpError(404, "no_active_subscription", "No active subscription to cancel");
   }
+  if (existing.cancelAtPeriodEnd) {
+    throw new ApiHttpError(
+      409,
+      "already_canceling",
+      "This subscription is already set to cancel at the end of its billing period",
+    );
+  }
 
-  const canceled = await prisma.subscription.update({
+  const updated = await prisma.subscription.update({
     where: { id: existing.id },
-    data: { status: "canceled" },
+    data: { cancelAtPeriodEnd: true },
     include: { plan: true },
   });
 
   await recordAudit({
     actorId: userId,
-    action: "subscription.canceled",
+    action: "subscription.cancel_at_period_end",
     entityType: "Subscription",
-    entityId: canceled.id,
-    metadata: { planId: canceled.planId },
+    entityId: updated.id,
+    metadata: { planId: updated.planId, renewsAt: updated.renewsAt },
   });
 
-  return canceled;
+  return updated;
 }
 
 export function listSubscriptionHistory(userId: string) {
@@ -155,4 +285,53 @@ export function listSubscriptionHistory(userId: string) {
     include: { plan: true },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/**
+ * Real admin force-revoke (gap §57, 18 Sep 2026) — the genuinely distinct,
+ * admin-initiated terminal state `revoked`, for a fraud/chargeback/ToS
+ * case. Route-gated on `commerce: approve` (see adminSubscriptions.routes.ts
+ * — the strongest commerce-module action, matching the fact that this is
+ * an irreversible, money-adjacent action, not an ordinary edit). Unlike
+ * `cancelSubscription`, this always takes effect immediately: revocation
+ * is a "this access was wrongly granted / must stop now" action, not a
+ * user's own end-of-period request, so there's no honest reason to delay
+ * it to `renewsAt`.
+ *
+ * `reason` is required (validated by the route's Zod schema) and is
+ * persisted on the row itself (`revokedReason`) as well as echoed into the
+ * `recordAudit` entry — this is exactly the kind of action that trail
+ * exists for.
+ */
+export async function revokeSubscription(actorAdminId: string, subscriptionId: string, reason: string) {
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing) {
+    throw new ApiHttpError(404, "not_found", "Subscription not found");
+  }
+  if (existing.status === "revoked") {
+    throw new ApiHttpError(409, "already_revoked", "This subscription has already been revoked");
+  }
+  if (existing.status === "expired" || existing.status === "canceled") {
+    throw new ApiHttpError(
+      409,
+      "subscription_already_terminal",
+      `This subscription is already ${existing.status} — nothing to revoke`,
+    );
+  }
+
+  const revoked = await prisma.subscription.update({
+    where: { id: subscriptionId },
+    data: { status: "revoked", revokedAt: new Date(), revokedReason: reason },
+    include: { plan: true },
+  });
+
+  await recordAudit({
+    actorAdminId,
+    action: "subscription.revoked",
+    entityType: "Subscription",
+    entityId: revoked.id,
+    metadata: { userId: revoked.userId, planId: revoked.planId, reason },
+  });
+
+  return revoked;
 }

@@ -60,6 +60,12 @@ const LABELS: Record<string, string> = {
   accepted: "Accepted",
   awaiting_payment: "Awaiting Payment",
   activating: "Activating",
+  // Gap §57 (18 Sep 2026) — SubscriptionStatus's two new terminal values.
+  // "expired" is the real cancel-at-period-end lapse (distinct from the
+  // legacy immediate "canceled"); "revoked" is always admin-initiated
+  // (fraud/chargeback/ToS), never a user or lazy-expiry outcome.
+  expired: "Expired",
+  revoked: "Revoked",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -95,6 +101,8 @@ const TONE_CLASSES: Record<string, string> = {
   accepted: "bg-warning/15 text-warning",
   awaiting_payment: "bg-warning/15 text-warning",
   activating: "bg-warning/15 text-warning",
+  expired: "bg-surface-raised text-text-dim",
+  revoked: "bg-danger/15 text-danger",
 };
 
 const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed"]);

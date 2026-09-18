@@ -227,6 +227,9 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     planId: string;
     status: string;
     renewsAt: Date | null;
+    cancelAtPeriodEnd: boolean;
+    revokedAt: Date | null;
+    revokedReason: string | null;
     createdAt: Date;
     plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
   }>;
@@ -262,6 +265,12 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
   const canRequest = hasPermission(viewingAdminRole, "sensitiveData", "view");
   const canReview = hasPermission(viewingAdminRole, "sensitiveData", "approve");
   const permitted = typedMyLatestRequest?.status === "approved";
+  // Gap §57 (18 Sep 2026) — whether this viewing admin can force-revoke a
+  // subscription for this user (`commerce: approve`, the same gate the
+  // route itself enforces server-side — this is only for the frontend to
+  // decide whether to render the button at all, never a substitute for
+  // that route-level check).
+  const canForceRevoke = hasPermission(viewingAdminRole, "commerce", "approve");
 
   const typedPendingForReview = pendingRequestForReview as {
     id: string;
@@ -316,6 +325,7 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     },
     currentSubscription: typedSubscriptions[0] ?? null,
     subscriptions: typedSubscriptions,
+    canForceRevoke,
     payments: typedPayments,
     relationships: (
       relationships as Array<{

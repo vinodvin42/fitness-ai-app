@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import type { AdminUserDetailResponse, MembershipTier, SensitiveAccessRequestResponse } from "@fitness-ai-app/types";
+import type {
+  AdminUserDetailResponse,
+  MembershipTier,
+  RevokeSubscriptionResponse,
+  SensitiveAccessRequestResponse,
+} from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
@@ -69,11 +74,23 @@ function Row({ label, value }: { label: string; value: string | number }) {
  * purpose. Suspend/reactivate is a Directory action (bulk-select's own
  * natural home per the Figma spec), not duplicated as a second button on
  * this screen — see UserDirectoryScreen.tsx.
+ *
+ * **18 Sep 2026 (gap §57):** the Subscription tab gained the real admin
+ * force-revoke action — a distinct, terminal `revoked` status for a
+ * fraud/chargeback/ToS case, gated behind `commerce: approve`
+ * (`data.canForceRevoke`, mirroring the exact same
+ * server-truth-plus-frontend-convenience shape `sensitiveAccess` already
+ * established above). Requires a real reason, recorded via `recordAudit`.
+ * Also shows the real cancel-at-period-end state (`cancelAtPeriodEnd`) —
+ * an otherwise-`active` row that's scheduled to lapse rather than renew.
  */
+const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
+
 export function UserProfileScreen() {
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
   const [accessReason, setAccessReason] = useState("");
+  const [revokeReason, setRevokeReason] = useState("");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -101,6 +118,21 @@ export function UserProfileScreen() {
   const denyAccessMutation = useMutation({
     mutationFn: (requestId: string) => apiClient.post(`/admin/sensitive-access-requests/${requestId}/deny`, {}),
     onSuccess: invalidateDetail,
+  });
+
+  // Gap §57 (18 Sep 2026) — real admin force-revoke. Route is
+  // `commerce: approve`-gated server-side; `data.canForceRevoke` (from the
+  // same `hasPermission` check) is only used here to decide whether to
+  // render the control at all.
+  const revokeSubscriptionMutation = useMutation({
+    mutationFn: (params: { subscriptionId: string; reason: string }) =>
+      apiClient.post<RevokeSubscriptionResponse>(`/admin/subscriptions/${params.subscriptionId}/revoke`, {
+        reason: params.reason,
+      }),
+    onSuccess: () => {
+      setRevokeReason("");
+      invalidateDetail();
+    },
   });
 
   const overviewNotAvailable = (data?.notAvailable ?? []).filter((k) => k !== "activity");
@@ -344,38 +376,87 @@ export function UserProfileScreen() {
           {tab === "activity" && <NotAvailablePanel keys={["activity"]} subtitle="See this screen's own doc comment for why." />}
 
           {tab === "subscription" && (
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Plan</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Billing Cycle</th>
-                    <th className="px-4 py-3 font-normal">Renews</th>
-                    <th className="px-4 py-3 font-normal">Started</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.subscriptions.map((s) => (
-                    <tr key={s.id} className="border-b border-border-subtle last:border-0">
-                      <td className="px-4 py-3 text-text-primary">{s.plan.name}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={s.status} />
-                      </td>
-                      <td className="px-4 py-3 text-text-secondary">{s.plan.billingCycle}</td>
-                      <td className="px-4 py-3 text-text-secondary">{s.renewsAt ? new Date(s.renewsAt).toLocaleDateString() : "—"}</td>
-                      <td className="px-4 py-3 text-text-secondary">{new Date(s.createdAt).toLocaleDateString()}</td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                      <th className="px-4 py-3 font-normal">Plan</th>
+                      <th className="px-4 py-3 font-normal">Status</th>
+                      <th className="px-4 py-3 font-normal">Billing Cycle</th>
+                      <th className="px-4 py-3 font-normal">Renews</th>
+                      <th className="px-4 py-3 font-normal">Started</th>
                     </tr>
-                  ))}
-                  {data.subscriptions.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                        No subscription history.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.subscriptions.map((s) => (
+                      <tr key={s.id} className="border-b border-border-subtle last:border-0">
+                        <td className="px-4 py-3 text-text-primary">{s.plan.name}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={s.status} />
+                            {/* Gap §57 — an otherwise-`active` row that's scheduled to lapse, not yet expired. */}
+                            {s.cancelAtPeriodEnd && NON_TERMINAL_SUBSCRIPTION_STATUSES.has(s.status) && (
+                              <span className="text-[11px] text-text-dim">ends {s.renewsAt ? new Date(s.renewsAt).toLocaleDateString() : "—"}</span>
+                            )}
+                          </div>
+                          {s.status === "revoked" && s.revokedReason && (
+                            <div className="mt-1 text-[11px] text-text-dim">Reason: {s.revokedReason}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">{s.plan.billingCycle}</td>
+                        <td className="px-4 py-3 text-text-secondary">{s.renewsAt ? new Date(s.renewsAt).toLocaleDateString() : "—"}</td>
+                        <td className="px-4 py-3 text-text-secondary">{new Date(s.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                    {data.subscriptions.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
+                          No subscription history.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {data.canForceRevoke &&
+                data.currentSubscription &&
+                NON_TERMINAL_SUBSCRIPTION_STATUSES.has(data.currentSubscription.status) && (
+                  <div className="rounded-lg border border-danger/30 bg-danger/5 p-4">
+                    <div className="text-xs uppercase tracking-wide text-danger">Force Revoke (fraud / chargeback / ToS)</div>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      Immediately sets this user's current subscription to a terminal <span className="font-medium">Revoked</span> status
+                      — distinct from a normal cancellation or lapse, and not reversible from this screen. A reason is required and is
+                      recorded to the audit trail.
+                    </p>
+                    <textarea
+                      placeholder="Reason (required, at least 10 characters)"
+                      value={revokeReason}
+                      onChange={(e) => setRevokeReason(e.target.value)}
+                      className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-danger"
+                      rows={2}
+                    />
+                    <button
+                      type="button"
+                      disabled={revokeReason.trim().length < 10 || revokeSubscriptionMutation.isPending}
+                      onClick={() =>
+                        revokeSubscriptionMutation.mutate({
+                          subscriptionId: data.currentSubscription!.id,
+                          reason: revokeReason.trim(),
+                        })
+                      }
+                      className="mt-2 rounded-md bg-danger px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                    >
+                      Revoke Subscription
+                    </button>
+                    {revokeSubscriptionMutation.isError && (
+                      <p className="mt-2 text-xs text-danger">
+                        {extractErrorMessage(revokeSubscriptionMutation.error, "Couldn't revoke this subscription.")}
+                      </p>
+                    )}
+                  </div>
+                )}
             </div>
           )}
 

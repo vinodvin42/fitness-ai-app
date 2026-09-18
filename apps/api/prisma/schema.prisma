@@ -122,11 +122,25 @@ enum BillingCycle {
   annual
 }
 
+// `expired` and `revoked` added 18 Sep 2026 (gap §57) — the real
+// cancel-at-period-end policy and the real admin force-revoke capability.
+// `expired` is a derived-but-DB-persisted terminal state (see
+// subscriptions.service.ts's `maybeExpireLapsed` — no renewal/billing cron
+// exists in this build, so this is set lazily, the next time a lapsed
+// `cancelAtPeriodEnd` row is actually read, not by a background job).
+// `revoked` is a genuinely distinct terminal state from `expired`/
+// `canceled` — always admin-initiated (fraud/chargeback/ToS), never set by
+// any user-facing or lazy-read code path. `canceled` itself is now legacy:
+// no code path sets it going forward (see `cancelSubscription`'s own doc
+// comment) but it's kept in the enum since real historical rows already
+// carry it.
 enum SubscriptionStatus {
   active
   trialing
   past_due
   canceled
+  expired
+  revoked
 }
 
 enum WorkoutPhase {
@@ -1551,6 +1565,22 @@ model Subscription {
   status    SubscriptionStatus @default(trialing)
   renewsAt  DateTime?
   createdAt DateTime           @default(now())
+
+  // Real cancel-at-period-end policy (gap §57, 18 Sep 2026) — replaces the
+  // old immediate-cancel behavior. `cancelSubscription()` now sets this
+  // true and leaves `status` untouched (access is genuinely unchanged);
+  // the subscription lapses to a real `expired` status only once
+  // `renewsAt` passes — see subscriptions.service.ts's own doc comments
+  // for the full policy and the lazy-expiry mechanism that flips it.
+  cancelAtPeriodEnd Boolean @default(false)
+
+  // Set only by the admin force-revoke action (gap §57) — a distinct,
+  // admin-initiated terminal state (fraud/chargeback/ToS), never set by
+  // any user-facing or lazy-expiry code path. `revokedReason` is required
+  // whenever `revokedAt` is set (enforced in the service layer, not the
+  // DB) and is what the admin console's audit trail entry echoes.
+  revokedAt     DateTime?
+  revokedReason String?
 
   @@index([userId])
   @@map("subscriptions")

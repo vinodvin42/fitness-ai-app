@@ -44,16 +44,48 @@ function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billing
  * existed on every Subscription but nothing ever read it to notice a
  * lapsed renewal date — no renewal/billing cron exists in this build (a
  * real one is a genuine follow-up, not something to fake client-side), so
- * this is an honest, purely-derived "expired" read of data that was
+ * this was an honest, purely-derived "expired" read of data that was
  * already there, not a new state the server tracks.
+ *
+ * **18 Sep 2026 (gap §57):** the real cancel-at-period-end policy and
+ * lazy-expiry mechanism are now backend-real (subscriptions.service.ts) —
+ * this function's own "expired" read is no longer purely client-derived;
+ * `getCurrentSubscription` now genuinely excludes an expired row (it
+ * flips to a real DB-persisted `expired` status the moment it's read
+ * past `renewsAt`), so a client-visible `current` here is never actually
+ * lapsed unless it's mid-cancellation (`cancelAtPeriodEnd: true`, not yet
+ * past `renewsAt`) — that's the new **"Expiring"** state, distinct from
+ * plain "Active": access is unchanged, but it will not renew. `revoked`
+ * (admin force-revoke, also real as of this same pass) is a genuinely
+ * different terminal state from a lapsed cancellation — an honest,
+ * distinct Pill, never folded into "Expired".
  */
-function entitlementDisplay(current: { status: SubscriptionDetail["status"]; renewsAt: string | null }): {
+function entitlementDisplay(current: {
+  status: SubscriptionDetail["status"];
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+}): {
   label: string;
   tone: "success" | "accent" | "warning" | "neutral";
   icon: IconName;
   note: string | null;
 } {
-  const lapsed = current.renewsAt != null && new Date(current.renewsAt).getTime() < Date.now();
+  if (current.status === "revoked") {
+    return {
+      label: "Revoked",
+      tone: "neutral",
+      icon: "alert-triangle" as IconName,
+      note: "This subscription was revoked by an administrator. Contact support if you believe this is a mistake.",
+    };
+  }
+  if (current.status === "expired") {
+    return {
+      label: "Expired",
+      tone: "neutral",
+      icon: "alert-triangle" as IconName,
+      note: "This plan's renewal date has passed. Choose a plan below to reactivate.",
+    };
+  }
   if (current.status === "past_due") {
     return {
       label: "Payment issue",
@@ -62,12 +94,14 @@ function entitlementDisplay(current: { status: SubscriptionDetail["status"]; ren
       note: "Your last payment didn't go through. Update your payment method to keep premium access.",
     };
   }
-  if (lapsed) {
+  if (current.cancelAtPeriodEnd) {
     return {
-      label: "Expired",
-      tone: "neutral",
+      label: "Expiring",
+      tone: "warning",
       icon: "alert-triangle" as IconName,
-      note: "This plan's renewal date has passed. Choose a plan below to reactivate.",
+      note: current.renewsAt
+        ? `Your plan stays active until ${new Date(current.renewsAt).toLocaleDateString()}, then it won't renew.`
+        : "This plan is set to cancel and won't renew.",
     };
   }
   if (current.status === "trialing") {
@@ -182,16 +216,36 @@ export function SubscriptionScreen({ navigation }: Props) {
     }
   };
 
-  const onCancel = async () => {
-    setIsCanceling(true);
-    try {
-      await cancelSubscription();
-      await refresh();
-    } catch (err) {
-      Alert.alert("Couldn't cancel subscription", extractErrorMessage(err, "Check your connection and try again."));
-    } finally {
-      setIsCanceling(false);
-    }
+  // Gap §57 (18 Sep 2026) — real cancel-at-period-end confirmation copy,
+  // replacing the old immediate-loss framing (which never actually
+  // matched what `cancelSubscription()` did server-side even before this
+  // pass — see that function's own doc comment for the full policy).
+  const onCancel = () => {
+    const renewsAtLabel = current?.renewsAt ? new Date(current.renewsAt).toLocaleDateString() : null;
+    Alert.alert(
+      "Cancel subscription?",
+      renewsAtLabel
+        ? `Your plan will remain active until ${renewsAtLabel}, then it won't renew. You won't be charged again.`
+        : "Your plan will remain active through the end of your current billing period, then it won't renew. You won't be charged again.",
+      [
+        { text: "Keep plan", style: "cancel" },
+        {
+          text: "Cancel plan",
+          style: "destructive",
+          onPress: async () => {
+            setIsCanceling(true);
+            try {
+              await cancelSubscription();
+              await refresh();
+            } catch (err) {
+              Alert.alert("Couldn't cancel subscription", extractErrorMessage(err, "Check your connection and try again."));
+            } finally {
+              setIsCanceling(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (plansLoading || currentLoading) {
@@ -255,13 +309,17 @@ export function SubscriptionScreen({ navigation }: Props) {
               </>
             );
           })()}
-          <Button
-            label="Cancel Subscription"
-            variant="secondary"
-            onPress={onCancel}
-            loading={isCanceling}
-            style={{ marginTop: spacing.md }}
-          />
+          {/* Gap §57 — only offer Cancel for a still-actionable, not-already-cancelAtPeriodEnd subscription. A terminal (expired/revoked) or already-scheduled-to-lapse row has nothing left to cancel. */}
+          {(current.status === "active" || current.status === "trialing" || current.status === "past_due") &&
+            !current.cancelAtPeriodEnd && (
+              <Button
+                label="Cancel Subscription"
+                variant="secondary"
+                onPress={onCancel}
+                loading={isCanceling}
+                style={{ marginTop: spacing.md }}
+              />
+            )}
         </Card>
       ) : (
         <Card style={{ alignItems: "center", gap: spacing.xs, paddingVertical: spacing.lg }}>
