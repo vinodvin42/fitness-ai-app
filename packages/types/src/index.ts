@@ -81,6 +81,27 @@ export interface VerifyTwoFactorLoginInput {
   code: string;
 }
 
+// Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53).
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+/** Deliberately generic-response shape — see apps/api's auth.service.ts forgotPassword() doc comment for why `emailSent` never implies "this email has an account". */
+export interface ForgotPasswordResponse {
+  message: string;
+  emailSent: boolean;
+}
+
+/** `token` is the raw value from a `primefit://reset-password?token=...` deep link (see apps/user-mobile's App.tsx deep-link capture). */
+export interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
 // ---- User ------------------------------------------------------------------
 // Corresponds to the admin console's `User` entity (docs/admin/06-data-model.md).
 // This is deliberately the SAME logical record across admin/mobile/coach —

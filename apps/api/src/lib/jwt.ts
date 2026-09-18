@@ -75,3 +75,24 @@ export function refreshTokenExpiry(): Date {
   const days = env.JWT_REFRESH_TTL_DAYS;
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 }
+
+/**
+ * Forgot/Reset Password (18 Sep 2026, gap §53) — same opaque-random/
+ * hash-only-stored shape as the refresh token helpers above, and for the
+ * same reason: a stolen DB dump must never contain a usable reset token,
+ * only its hash. The raw value is only ever returned to the client once,
+ * in the reset link/email.
+ */
+export function generatePasswordResetToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+export function hashPasswordResetToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+const PASSWORD_RESET_TTL_MINUTES = 30;
+
+export function passwordResetTokenExpiry(): Date {
+  return new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -6,11 +6,27 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
+import { clearStoredResetPasswordToken, getStoredResetPasswordToken } from "../../lib/resetPasswordLink";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Splash">;
 
 /** docs/mobile/03-screen-inventory.md §A "Splash/Welcome". */
 export function SplashScreen({ navigation }: Props) {
+  // Reset Password deep link (18 Sep 2026, gap §53) — Splash is
+  // AuthStack's initialRouteName, so it's the first screen that mounts
+  // whenever the user is signed out, which is exactly when a real
+  // `primefit://reset-password?token=` link (captured in App.tsx, see
+  // src/lib/resetPasswordLink.ts) would be opened. `navigate` rather than
+  // `reset` so the normal back-to-Splash/Login flow still works if the
+  // user backs out of ResetPasswordScreen without completing it.
+  useEffect(() => {
+    getStoredResetPasswordToken().then((token) => {
+      if (!token) return;
+      clearStoredResetPasswordToken();
+      navigation.navigate("ResetPassword", { token });
+    });
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>

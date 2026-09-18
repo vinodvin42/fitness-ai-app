@@ -1,8 +1,12 @@
 import type {
   AuthResponse,
+  ForgotPasswordInput,
+  ForgotPasswordResponse,
   LoginInput,
   LoginResponse,
   MeResponse,
+  ResetPasswordInput,
+  ResetPasswordResponse,
   SignupInput,
   VerifyTwoFactorLoginInput,
 } from "@fitness-ai-app/types";
@@ -28,4 +32,13 @@ export function logoutRequest(refreshToken: string) {
 
 export function fetchMe() {
   return apiClient.get<MeResponse>("/users/me").then((r) => r.data);
+}
+
+// Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53).
+export function forgotPasswordRequest(input: ForgotPasswordInput) {
+  return apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", input).then((r) => r.data);
+}
+
+export function resetPasswordRequest(input: ResetPasswordInput) {
+  return apiClient.post<ResetPasswordResponse>("/auth/reset-password", input).then((r) => r.data);
 }

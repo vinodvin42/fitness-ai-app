@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { loginSchema, refreshSchema, signupSchema, verifyTwoFactorLoginSchema } from "./auth.schema";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  refreshSchema,
+  resetPasswordSchema,
+  signupSchema,
+  verifyTwoFactorLoginSchema,
+} from "./auth.schema";
 import * as authService from "./auth.service";
 import { toPublicUser } from "../users/users.service";
 import { authRateLimit, twoFactorRateLimit, writeRateLimit } from "../../middleware/rateLimit";
@@ -67,6 +74,38 @@ authRouter.post("/logout", async (req, res, next) => {
     const { refreshToken } = refreshSchema.parse(req.body);
     await authService.logout(refreshToken);
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53). Both
+// rate-limited with writeRateLimit — same "lower stakes than login, but
+// still real abuse surface" reasoning rateLimit.ts already applies to
+// signup: no password to guess here, but unlimited-speed hits would let
+// someone hammer this account's email or brute-force-guess reset tokens.
+authRouter.post("/forgot-password", writeRateLimit, async (req, res, next) => {
+  try {
+    const input = forgotPasswordSchema.parse(req.body);
+    const { emailSent } = await authService.forgotPassword(input);
+    // Deliberately generic — see auth.service.ts's forgotPassword() doc
+    // comment for why this response never reveals account existence.
+    res.status(200).json({
+      message: emailSent
+        ? "If an account exists for that email, a reset link has been sent."
+        : "If an account exists for that email, a reset request was recorded, but we couldn't send the email — contact support.",
+      emailSent,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+authRouter.post("/reset-password", writeRateLimit, async (req, res, next) => {
+  try {
+    const input = resetPasswordSchema.parse(req.body);
+    await authService.resetPassword(input);
+    res.status(200).json({ message: "Your password has been reset. Please log in with your new password." });
   } catch (err) {
     next(err);
   }

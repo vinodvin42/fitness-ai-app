@@ -360,6 +360,9 @@ model User {
   couponRedemptions           CouponRedemption[]
   referralRewardsEarned       ReferralReward[]             @relation("ReferralRewardsEarned")
   recoveryLogs                RecoveryLog[]
+  // Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — see
+  // PasswordResetToken's own doc comment below.
+  passwordResetTokens         PasswordResetToken[]
 
   @@map("users")
 }
@@ -380,6 +383,33 @@ model OnboardingProfile {
   completedAt       DateTime?
 
   @@map("onboarding_profiles")
+}
+
+// Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — the
+// consumer app (apps/user-mobile) had no account-recovery path at all
+// before this; password reset previously existed only for AdminUser (see
+// adminAuth.service.ts). Same "hash, never the raw value" discipline as
+// RefreshToken.tokenHash above — the raw token is only ever returned to
+// the client once, in the reset-link/email, and never persisted.
+// `usedAt` makes a token single-use (claimed atomically via an
+// `updateMany` filtered on `usedAt: null`, same pattern
+// payments.service.ts's activatePayment() uses for its paid-status
+// claim) rather than deleting the row outright — keeping a used/expired
+// row around costs nothing and leaves a real audit trail of reset
+// attempts. Rows are NOT auto-pruned (no cron/cleanup job in this build);
+// an expired or used row is simply never a valid match again, exactly
+// like an expired/revoked RefreshToken.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model RefreshToken {
