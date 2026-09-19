@@ -2066,6 +2066,25 @@ model ProfessionalCredential {
   // docs/admin/03-screen-inventory.md 03.03) — same "single current-notes
   // field, full trail lives in AuditLog" convention as Professional.adminNotes.
   adminNotes           String?
+  // R2 Wave 0 (19 Sep 2026) — Developer 2's own R1 work package names
+  // "credential/service approval expiry" as a required Admin Action
+  // Required surface; no real expiry concept existed anywhere before this.
+  // Real product decision made, not left implicit: a genuine "final
+  // qualification standard" (how long a specific certifying body's
+  // credential actually stays valid) is explicitly out of this pass's
+  // authority per both R1 work packages' own "Explicit Out of Scope"
+  // sections — the working default adopted instead is a flat 12 months
+  // from the moment a credential is verified, soft-only (reaching it never
+  // auto-suspends anything, it only surfaces a real Admin Action Required
+  // item 30 days ahead). This field is the real, stored expiry date itself
+  // — nullable because it's only ever set the moment `verifyCredential`
+  // (adminProfessionals.service.ts) actually approves a credential; an
+  // existing row (or one still pending/rejected) has no real verification
+  // moment to compute from, so it stays honestly untracked rather than
+  // getting a fabricated date. The write path and the 30-day-warning sweep
+  // are a later wave's own work (R2 Wave 6.2) — this field's job here is
+  // only to exist, honestly, ready for that to populate it.
+  expiresAt            DateTime?
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
 

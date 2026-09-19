@@ -10,6 +10,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { ReasonGatedAction } from "../../components/ReasonGatedAction";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
@@ -90,7 +91,6 @@ export function UserProfileScreen() {
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
   const [accessReason, setAccessReason] = useState("");
-  const [revokeReason, setRevokeReason] = useState("");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -129,10 +129,7 @@ export function UserProfileScreen() {
       apiClient.post<RevokeSubscriptionResponse>(`/admin/subscriptions/${params.subscriptionId}/revoke`, {
         reason: params.reason,
       }),
-    onSuccess: () => {
-      setRevokeReason("");
-      invalidateDetail();
-    },
+    onSuccess: invalidateDetail,
   });
 
   const overviewNotAvailable = (data?.notAvailable ?? []).filter((k) => k !== "activity");
@@ -423,39 +420,17 @@ export function UserProfileScreen() {
               {data.canForceRevoke &&
                 data.currentSubscription &&
                 NON_TERMINAL_SUBSCRIPTION_STATUSES.has(data.currentSubscription.status) && (
-                  <div className="rounded-lg border border-danger/30 bg-danger/5 p-4">
-                    <div className="text-xs uppercase tracking-wide text-danger">Force Revoke (fraud / chargeback / ToS)</div>
-                    <p className="mt-1 text-xs text-text-secondary">
-                      Immediately sets this user's current subscription to a terminal <span className="font-medium">Revoked</span> status
-                      — distinct from a normal cancellation or lapse, and not reversible from this screen. A reason is required and is
-                      recorded to the audit trail.
-                    </p>
-                    <textarea
-                      placeholder="Reason (required, at least 10 characters)"
-                      value={revokeReason}
-                      onChange={(e) => setRevokeReason(e.target.value)}
-                      className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-danger"
-                      rows={2}
-                    />
-                    <button
-                      type="button"
-                      disabled={revokeReason.trim().length < 10 || revokeSubscriptionMutation.isPending}
-                      onClick={() =>
-                        revokeSubscriptionMutation.mutate({
-                          subscriptionId: data.currentSubscription!.id,
-                          reason: revokeReason.trim(),
-                        })
-                      }
-                      className="mt-2 rounded-md bg-danger px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-                    >
-                      Revoke Subscription
-                    </button>
-                    {revokeSubscriptionMutation.isError && (
-                      <p className="mt-2 text-xs text-danger">
-                        {extractErrorMessage(revokeSubscriptionMutation.error, "Couldn't revoke this subscription.")}
-                      </p>
-                    )}
-                  </div>
+                  <ReasonGatedAction
+                    title="Force Revoke (fraud / chargeback / ToS)"
+                    description="Immediately sets this user's current subscription to a terminal Revoked status — distinct from a normal cancellation or lapse, and not reversible from this screen. A reason is required and is recorded to the audit trail."
+                    actionLabel="Revoke Subscription"
+                    isPending={revokeSubscriptionMutation.isPending}
+                    isError={revokeSubscriptionMutation.isError}
+                    error={revokeSubscriptionMutation.error}
+                    onConfirm={(reason) =>
+                      revokeSubscriptionMutation.mutate({ subscriptionId: data.currentSubscription!.id, reason })
+                    }
+                  />
                 )}
             </div>
           )}

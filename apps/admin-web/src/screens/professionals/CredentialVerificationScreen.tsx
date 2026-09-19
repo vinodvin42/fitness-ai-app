@@ -7,9 +7,13 @@ import type {
 } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { ReasonGatedAction } from "../../components/ReasonGatedAction";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
+
+/** BR-ADM-005 (R2 Wave 0, 19 Sep 2026) — high-impact actions need a real reason, not just optional notes. See ReasonGatedAction.tsx's own doc comment for the full rationale. */
+const MIN_REJECT_REASON_LENGTH = 10;
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
@@ -54,6 +58,14 @@ function DocLink({ label, dataUri }: { label: string; dataUri: string | null | u
  * `ProfessionalCredential` has no distinct submission timestamp separate
  * from `updatedAt`, so manufacturing a "submitted date" would imply more
  * precision than the data actually has.
+ *
+ * R2 Wave 0 (19 Sep 2026, BR-ADM-005): Reject and Suspend now require a
+ * real reason before the button enables — previously both were single-
+ * click with only an optional notes field, despite `recordAudit` already
+ * claiming a real trail existed. Approve stays low-friction (granting
+ * isn't the dangerous direction). See `ReasonGatedAction.tsx`'s own doc
+ * comment for the shared component this and gap §57's subscription
+ * force-revoke both now use.
  */
 export function CredentialVerificationScreen() {
   const queryClient = useQueryClient();
@@ -180,7 +192,7 @@ export function CredentialVerificationScreen() {
                     <DocLink label="Qualification certificate" dataUri={c.qualificationDocData} />
                   </div>
                   <textarea
-                    placeholder="Admin notes (optional)"
+                    placeholder={`Admin notes (optional to Approve, required — ${MIN_REJECT_REASON_LENGTH}+ characters — to Reject)`}
                     value={notes[c.id] ?? ""}
                     onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
                     className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -199,9 +211,21 @@ export function CredentialVerificationScreen() {
                     </button>
                     <button
                       type="button"
-                      disabled={c.status === "not_verified" || credentialMutation.isPending}
+                      title={
+                        (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
+                          ? `Rejecting requires a reason of at least ${MIN_REJECT_REASON_LENGTH} characters (BR-ADM-005)`
+                          : undefined
+                      }
+                      disabled={
+                        c.status === "not_verified" ||
+                        credentialMutation.isPending ||
+                        (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
+                      }
                       onClick={() =>
-                        credentialMutation.mutate({ credentialId: c.id, input: { status: "rejected", adminNotes: notes[c.id] } })
+                        credentialMutation.mutate({
+                          credentialId: c.id,
+                          input: { status: "rejected", adminNotes: notes[c.id]?.trim() },
+                        })
                       }
                       className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
                     >
@@ -254,25 +278,24 @@ export function CredentialVerificationScreen() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-danger/30 bg-danger/5 p-4">
-                <div className="text-sm font-medium text-danger">Suspend Application</div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  Sets this professional's account status to Suspended — reversible from the Directory.
-                </p>
-                <button
-                  type="button"
-                  disabled={suspendMutation.isPending || detail.professional.status === "suspended"}
-                  onClick={() => suspendMutation.mutate(notes.suspend)}
-                  className="mt-2 rounded-md border border-danger px-3 py-1.5 text-xs text-danger disabled:opacity-40"
-                >
-                  {detail.professional.status === "suspended" ? "Already suspended" : "Suspend Application"}
-                </button>
-              </div>
+              {detail.professional.status === "suspended" ? (
+                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-xs text-text-dim">Already suspended.</div>
+              ) : (
+                <ReasonGatedAction
+                  title="Suspend Application"
+                  description="Sets this professional's account status to Suspended — reversible from the Directory. A reason is required and is recorded to the audit trail."
+                  actionLabel="Suspend Application"
+                  isPending={suspendMutation.isPending}
+                  isError={suspendMutation.isError}
+                  error={suspendMutation.error}
+                  onConfirm={(reason) => suspendMutation.mutate(reason)}
+                />
+              )}
 
-              {(credentialMutation.isError || kycMutation.isError || suspendMutation.isError) && (
+              {(credentialMutation.isError || kycMutation.isError) && (
                 <p className="text-xs text-danger">
                   {extractErrorMessage(
-                    credentialMutation.error ?? kycMutation.error ?? suspendMutation.error,
+                    credentialMutation.error ?? kycMutation.error,
                     "That action didn't go through — check your connection and try again.",
                   )}
                 </p>
