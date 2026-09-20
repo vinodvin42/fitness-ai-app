@@ -54,6 +54,7 @@ import { professionalOnboardingRouter } from "./modules/professionalOnboarding/p
 import { professionalLifecycleRouter } from "./modules/professionalLifecycle/professionalLifecycle.routes";
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
+import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
@@ -288,6 +289,11 @@ export function createApp() {
   // Coach Client Profile (31 Aug 2026) — professional-authed (the coach's
   // own clients). See professionalClients.service.ts's doc comment.
   app.use("/", professionalClientsRouter);
+  // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — professional-authed only,
+  // deliberately never mounted under any User-authed path. See
+  // coachNotes.service.ts's doc comment for the full design and the
+  // active-vs-any-relationship read/write gate.
+  app.use("/", coachNotesRouter);
   // Coach Discovery & Booking (25 Aug 2026) — consumer-facing (User Bearer),
   // not Professional Bearer, since it's the user-mobile side of the
   // journey — see coaching.service.ts's doc comment (closes gap §1).

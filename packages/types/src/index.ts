@@ -1859,6 +1859,33 @@ export interface SendCoachMessageInput {
   content: string;
 }
 
+// ---- Coach Private Notes (R2 Wave 3, 20 Sep 2026) ------------------------
+// apps/coach-mobile only — a coach's own private, plain-text observations
+// about a client, NEVER exposed to the client themselves (no counterpart
+// exists or ever should in apps/user-mobile's own types). See apps/api's
+// coachNotes.service.ts and schema.prisma's CoachNote model doc comments
+// for the full design, including the active-vs-any-relationship
+// create/read gate and why cross-coach note isolation is enforced
+// server-side on (professionalId, userId), not userId alone.
+
+export interface CoachNote {
+  id: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /professionals/me/clients/:userId/notes */
+export interface CoachNoteListResponse {
+  notes: CoachNote[];
+}
+
+/** Body for POST/PATCH …/notes(/:noteId) — matches coachNotes.schema.ts. */
+export interface CoachNoteInput {
+  body: string;
+}
+
 // ---- Admin: Module 03 — Professionals (apps/admin-web) --------------------
 // Added 21 Aug 2026 — see apps/api's adminProfessionals.service.ts doc
 // comment for exactly what's real vs. honestly not modeled (Region,

@@ -406,6 +406,12 @@ model User {
   // own doc comment below. This user is always the PROPOSED CLIENT, never
   // the proposer (only an AdminUser proposes, this wave).
   professionalOffersReceived  ProfessionalOffer[]
+  // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — see the CoachNote
+  // model's own doc comment below. Required by Prisma as the back-relation
+  // for CoachNote.user's FK; NOT itself a leak (Prisma never returns a
+  // relation unless explicitly selected) — this codebase's user-authed
+  // endpoints never select it. See that model's own doc comment.
+  coachNotes                  CoachNote[]
 
   @@map("users")
 }
@@ -2135,6 +2141,9 @@ model Professional {
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
   // own doc comment below.
   offersReceived   ProfessionalOffer[]
+  // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — see the CoachNote
+  // model's own doc comment below.
+  coachNotes       CoachNote[]
 
   @@map("professionals")
 }
@@ -2580,6 +2589,84 @@ model CoachMessage {
   @@index([userId, professionalId, createdAt])
   @@index([professionalId, userId, createdAt])
   @@map("coach_messages")
+}
+
+// ---- Coach Private Notes (R2 Wave 3, 20 Sep 2026) -----------------------
+// A dedicated audit of this build (trusted, not re-verified here) confirmed
+// real 2-way `CoachMessage` messaging exists (above) but NO private,
+// coach-only notes capability anywhere — a coach has no way to jot down a
+// private observation about a client ("struggles with morning sessions",
+// "prefers low-impact cardio") that the client themselves never sees.
+// `CoachNote` is that missing capability: plain text, one row per note,
+// scoped to (professionalId, userId) — deliberately NOT a rich-text/
+// structured-fields system (no tags, no categories), same "smallest real
+// slice" discipline as CheckIn/WaterLog above.
+//
+// **The entire point of this model is that its content is NEVER exposed to
+// the user/client it's about** — see coachNotes.service.ts's own doc
+// comment for the explicit verification that no consumer-facing (User-
+// authed) code path can read it. A real, `onDelete: Cascade` FK to `User`
+// is declared below (so notes about a deleted user are cleaned up, same
+// hygiene as every other User-owned table), with the ordinary Prisma
+// back-relation array on `User` (Prisma requires both sides for an
+// explicit relation — a one-sided FK isn't representable). That array
+// field existing is NOT itself a leak: Prisma never returns a relation
+// unless a query explicitly `select`s/`include`s it by name, so the real
+// guarantee is operational, not structural — no `User`-scoped / consumer-
+// facing query anywhere in this codebase names `coachNotes` in a
+// `select`/`include` (verified by grep as part of this wave; see
+// coachNotes.service.ts's doc comment and this wave's own dated entry in
+// docs/coach/07-open-questions-gaps.md), and a real integration test
+// (coachNotes.test.ts) asserts a user-authed request can't reach note
+// content through any existing endpoint.
+//
+// **Authorization is a deliberately asymmetric gate, not a reused
+// `assertActiveRelationship`:**
+//   - CREATING a note requires an ACTIVE `Relationship` between this
+//     professional and this user — same precedent as Client 360/
+//     Recommendations (professionalClients.service.ts) — a coach can only
+//     start writing new private notes about someone they're actually
+//     coaching right now.
+//   - READING existing notes does NOT require the relationship to still be
+//     active — only that one existed, ever (active or `ended`). A coach's
+//     own historical notes about a client they used to coach are their own
+//     private record, written while the relationship was real; a client
+//     later ending the relationship shouldn't retroactively 404 a coach out
+//     of their own past observations. See coachNotes.service.ts's
+//     `assertAnyRelationshipEverExisted` for the real query this performs
+//     (distinct from `assertActiveRelationship`, reused unmodified from
+//     professionalClients.service.ts's own precedent for the write path).
+//   - UPDATE/DELETE require both: an ANY-relationship read gate (this note
+//     is even visible to this coach) AND that the acting professional is
+//     the note's own `professionalId` (a coach can't edit or delete another
+//     coach's note, even about a client they share — see the model's own
+//     `(professionalId, userId)` scoping below, chosen specifically because
+//     `Relationship` allows multiple professionals per user across
+//     different `serviceType`s, so a note keyed on `userId` alone would let
+//     a fitness coach read/edit a nutrition coach's private note about the
+//     same shared client).
+//
+// Real `recordAudit()` on create/update/delete — a private note about a
+// person's health/fitness context deserves the same audit discipline as
+// every other mutation in this build, even though its CONTENT is never
+// admin- or client-visible (only the fact that a note was
+// created/edited/deleted, same "audit the action, not necessarily every
+// byte" precedent AuditLog.metadata already uses elsewhere).
+model CoachNote {
+  id             String       @id @default(uuid())
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  // A real, enforced FK to User — see this model's own top comment for why
+  // the ordinary Prisma back-relation array this requires on `User` is not
+  // itself an exposure risk.
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body           String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([professionalId, userId])
+  @@map("coach_notes")
 }
 
 // ---- Coach Settlements & Influencer Payouts (added 31 Aug 2026) --------

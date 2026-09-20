@@ -1,6 +1,6 @@
-import React from "react";
-import { ActivityIndicator, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type {
@@ -10,6 +10,7 @@ import type {
   CoachClientSummaryCheckIn,
   CoachClientSummaryMealLog,
   CoachClientSummaryWorkoutSession,
+  CoachNote,
   CoachScheduleItem,
 } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -17,8 +18,10 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
+import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
+import { extractErrorMessage } from "../../lib/apiError";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography } from "../../theme/tokens";
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 const LEVEL_LABELS: Record<string, string> = {
@@ -105,7 +108,195 @@ export function ClientProfileScreen() {
       {isSummaryLoading && <ActivityIndicator color={colors.accent} />}
       {isSummaryError && <ErrorState onRetry={() => refetchSummary()} message="Couldn't load this client's activity." />}
       {summary && <ClientSummarySection summary={summary} />}
+
+      <NotesSection userId={userId} />
     </ScreenContainer>
+  );
+}
+
+/**
+ * Coach Private Notes (R2 Wave 3, 20 Sep 2026) — a coach's own private,
+ * plain-text observations about this client, never shown to the client
+ * themselves. See apps/api's coachNotes.service.ts doc comment for the
+ * active-vs-any-relationship gate (creating a note needs an active
+ * relationship; reading a coach's own past notes doesn't) and the
+ * cross-coach isolation (only the note's own author can edit/delete it —
+ * this screen never shows another coach's notes about a shared client,
+ * since the list endpoint itself is scoped to the calling coach).
+ */
+function NotesSection({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+
+  const { data: notes, isLoading, isError, refetch } = useQuery({
+    queryKey: ["coach-client-notes", userId],
+    queryFn: () => fetchClientNotes(userId),
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["coach-client-notes", userId] });
+
+  const createMutation = useMutation({
+    mutationFn: () => createClientNote(userId, { body: draft.trim() }),
+    onSuccess: () => {
+      setDraft("");
+      invalidate();
+    },
+    onError: (err) => Alert.alert("Note not saved", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (noteId: string) => updateClientNote(userId, noteId, { body: editDraft.trim() }),
+    onSuccess: () => {
+      setEditingId(null);
+      setEditDraft("");
+      invalidate();
+    },
+    onError: (err) => Alert.alert("Note not updated", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (noteId: string) => deleteClientNote(userId, noteId),
+    onSuccess: invalidate,
+    onError: (err) => Alert.alert("Note not deleted", extractErrorMessage(err, "Please try again.")),
+  });
+
+  function confirmDelete(noteId: string) {
+    Alert.alert("Delete note?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteMutation.mutate(noteId) },
+    ]);
+  }
+
+  function startEdit(note: CoachNote) {
+    setEditingId(note.id);
+    setEditDraft(note.body);
+  }
+
+  return (
+    <Card>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Private notes</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
+        Only you can see these — the client never does.
+      </Text>
+
+      {isLoading && <ActivityIndicator color={colors.accent} />}
+      {isError && <ErrorState onRetry={() => refetch()} message="Couldn't load notes." />}
+
+      {notes && notes.length === 0 && (
+        <Text style={{ color: colors.textMuted, marginBottom: spacing.sm }}>No notes yet.</Text>
+      )}
+
+      {notes &&
+        notes.map((note) =>
+          editingId === note.id ? (
+            <View key={note.id} style={{ marginBottom: spacing.sm }}>
+              <TextInput
+                value={editDraft}
+                onChangeText={setEditDraft}
+                multiline
+                autoFocus
+                style={{
+                  color: colors.textPrimary,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.sm,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: spacing.sm,
+                  marginBottom: spacing.xs,
+                }}
+              />
+              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                <Button
+                  label="Save"
+                  onPress={() => updateMutation.mutate(note.id)}
+                  loading={updateMutation.isPending}
+                  disabled={editDraft.trim().length === 0}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  label="Cancel"
+                  variant="secondary"
+                  onPress={() => {
+                    setEditingId(null);
+                    setEditDraft("");
+                  }}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <View
+              key={note.id}
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                paddingTop: spacing.sm,
+                paddingBottom: spacing.sm,
+              }}
+            >
+              <Text style={{ color: colors.textPrimary }}>{note.body}</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: spacing.xs,
+                }}
+              >
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                  {new Date(note.updatedAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+                <View style={{ flexDirection: "row", gap: spacing.md }}>
+                  <Text onPress={() => startEdit(note)} style={{ color: colors.accent, fontSize: 12, fontWeight: "600" }}>
+                    Edit
+                  </Text>
+                  <Text
+                    onPress={() => confirmDelete(note.id)}
+                    style={{ color: colors.danger, fontSize: 12, fontWeight: "600" }}
+                  >
+                    Delete
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ),
+        )}
+
+      <View style={{ marginTop: spacing.sm }}>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Add a private note about this client…"
+          placeholderTextColor={colors.textMuted}
+          multiline
+          style={{
+            color: colors.textPrimary,
+            backgroundColor: colors.surface,
+            borderRadius: radius.sm,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.sm,
+            marginBottom: spacing.xs,
+            minHeight: 44,
+          }}
+        />
+        <Button
+          label="Save note"
+          onPress={() => createMutation.mutate()}
+          loading={createMutation.isPending}
+          disabled={draft.trim().length === 0}
+        />
+      </View>
+    </Card>
   );
 }
 
