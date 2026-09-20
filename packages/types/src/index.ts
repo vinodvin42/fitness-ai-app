@@ -1700,6 +1700,22 @@ export interface CoachClientSummaryData {
 
 export type CoachClientSummary = CoachClientSummaryConsentWithheld | CoachClientSummaryData;
 
+// ---- Coach: Client Recommendation review (Wave 2.4, 20 Sep 2026) ---------
+// The professional-authed counterpart to apps/user-mobile's own
+// WhyThisChangedScreen — a coach reviewing one of their client's real AI
+// Plan Recommendations. See apps/api's plans.service.ts#decideRecommendation
+// doc comment: this wires the `decidedByRole: "professional"` parameter
+// that function has accepted since it was written, via a thin new route
+// (professionalClients.routes.ts) rather than new decision logic. Reuses
+// `Recommendation`/`RecommendationKind`/`RecommendationStatus`/
+// `DecideRecommendationInput` above unchanged — same shape a self-serve
+// user's own decide call already uses.
+
+/** GET /professionals/me/clients/:userId/recommendations — pending (status "active") Recommendations for one client, gated on a real active Relationship. */
+export interface CoachClientRecommendationsResponse {
+  recommendations: Recommendation[];
+}
+
 // ---- Coach ↔ Client Messaging (added 31 Aug 2026) ------------------------
 // Backs the Messages tab in BOTH apps. One flat thread per (User,
 // Professional) pair, gated on an active Relationship. NOT real-time — both

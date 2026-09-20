@@ -2,6 +2,7 @@ import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type {
   CoachClientProfile,
   CoachClientSummary,
@@ -13,6 +14,7 @@ import type {
 } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
+import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
@@ -58,7 +60,7 @@ function sessionLine(item: CoachScheduleItem): string {
  * sharing yet" card instead of a blank/broken-looking section.
  */
 export function ClientProfileScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<ClientsStackParamList, "ClientProfile">>();
   const route = useRoute<RouteProp<ClientsStackParamList, "ClientProfile">>();
   const { userId, fullName } = route.params;
 
@@ -89,7 +91,16 @@ export function ClientProfileScreen() {
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
 
-      {data && <ClientProfileBody profile={data} />}
+      {data && (
+        <>
+          <ClientProfileBody profile={data} />
+          <Button
+            label="Review Recommendations"
+            variant="secondary"
+            onPress={() => navigation.navigate("ClientRecommendations", { userId, fullName })}
+          />
+        </>
+      )}
 
       {isSummaryLoading && <ActivityIndicator color={colors.accent} />}
       {isSummaryError && <ErrorState onRetry={() => refetchSummary()} message="Couldn't load this client's activity." />}

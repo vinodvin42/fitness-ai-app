@@ -7,11 +7,14 @@ import * as plansService from "./plans.service";
 export const plansRouter = Router();
 
 // Plan-Generation / Recommendation Engine (14 Sep 2026) — see
-// plans.service.ts's doc comment for the full design. Consumer-facing
-// only (requireAuth) in this pass — Developer 2's future professional
-// review UI calls decideRecommendation() with decidedByRole: "professional"
-// directly rather than through this router, since that needs professional
-// auth + its own Decision Record, both Developer 2's own scope.
+// plans.service.ts's doc comment for the full design. Consumer-facing only
+// (requireAuth) here. **20 Sep 2026 (Wave 2.4):** the professional review
+// UI this comment used to describe as future work is real now — see
+// apps/api/src/modules/professionalClients/professionalClients.routes.ts's
+// POST /professionals/me/clients/:userId/recommendations/:id/decide, a
+// thin professional-authed route that calls this same module's
+// decideRecommendation() with decidedByRole: "professional" rather than
+// duplicating this router's logic.
 
 plansRouter.post("/plans/generate", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
