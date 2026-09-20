@@ -12,6 +12,7 @@ import {
   verifyTwoFactorChallengeToken,
 } from "../../lib/jwt";
 import { generateUniqueReferralCode } from "../../lib/referralCode";
+import { recordAcquisitionTouchpoint } from "../../lib/acquisition";
 import { isEmailConfigured, sendEmail } from "../../lib/mailer";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -64,6 +65,12 @@ export async function signup(input: SignupInput) {
   if (input.referralCode) {
     await redeemReferralCode(user.id, input.referralCode);
   }
+
+  // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — best-
+  // effort resolution of the raw acquisitionContext string into a real
+  // Touchpoint. See lib/acquisition.ts's own doc comment for the
+  // resolve-then-fallback shape; a no-op when no context was captured.
+  await recordAcquisitionTouchpoint(user.id, input.acquisitionContext);
 
   const tokens = await issueTokenPair(user.id, user.email);
   return { user, tokens };

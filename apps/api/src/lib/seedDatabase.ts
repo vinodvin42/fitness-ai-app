@@ -132,6 +132,32 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     ),
   );
 
+  // Acquisition sources (R2 Wave 1, 20 Sep 2026) — one row per fixed v1
+  // channel (see AcquisitionChannel's own doc comment in schema.prisma
+  // for the taxonomy decision). A lookup/reference table, admin-
+  // manageable in a later wave; seeded here rather than via a separate
+  // mechanism, same "stable-id upsert, safe to re-run" convention every
+  // other table in this file already follows. `channel` is the stable
+  // unique key a Campaign/the acquisition-resolution service FKs
+  // against, so re-seeding never orphans an existing Campaign.
+  const acquisitionSources = await Promise.all(
+    [
+      { channel: "organic" as const, label: "Organic" },
+      { channel: "paid_search" as const, label: "Paid Search" },
+      { channel: "paid_social" as const, label: "Paid Social" },
+      { channel: "referral" as const, label: "Referral" },
+      { channel: "influencer" as const, label: "Influencer" },
+      { channel: "gym_partner" as const, label: "Gym Partner" },
+      { channel: "direct" as const, label: "Direct" },
+    ].map((s) =>
+      prisma.acquisitionSource.upsert({
+        where: { channel: s.channel },
+        create: s,
+        update: { label: s.label },
+      }),
+    ),
+  );
+
   // The catalogue itself lives in ./seedContent — see that directory's
   // modules for the content and this file's doc comment for where the imagery
   // comes from. It moved out of here on 4 Sep 2026, when programs went 8 -> 18,
@@ -204,6 +230,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     // whether the imagery actually made it into the database, without anyone
     // having to open the apps to check.
     `Content imagery: ${seedPrograms.filter((p) => p.imageUrl).length}/${seedPrograms.length} programs, ${seedRecipes.filter((r) => r.imageUrl).length}/${seedRecipes.length} recipes, ${seedExercises.filter((e) => e.mediaUrl).length}/${seedExercises.length} exercises have an image.`,
+    `Seeded ${acquisitionSources.length} acquisition sources.`,
   ];
 
   // 5 Sep 2026 — the `includeAccounts` gate below used to sit HERE,

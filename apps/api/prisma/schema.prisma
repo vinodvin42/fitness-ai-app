@@ -340,11 +340,11 @@ model User {
   checkIns                    CheckIn[]
   // Product-analytics event stream (U7, 15 Sep 2026) — see AnalyticsEvent's
   // own doc comment for why this is a separate model from AuditLog.
-  analyticsEvents              AnalyticsEvent[]
+  analyticsEvents             AnalyticsEvent[]
   // Consent + Safety Escalation (R1 Developer 1, 18 Sep 2026) — see each
   // model's own doc comment above.
-  consents                     Consent[]
-  safetyEscalations            SafetyEscalation[]
+  consents                    Consent[]
+  safetyEscalations           SafetyEscalation[]
   programPurchases            ProgramPurchase[]
   // Plan-Generation / Recommendation Engine (14 Sep 2026) — see Plan's own
   // doc comment.
@@ -381,23 +381,31 @@ model User {
   // Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — see
   // PasswordResetToken's own doc comment below.
   passwordResetTokens         PasswordResetToken[]
+  // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — see
+  // Touchpoint's own doc comment for why this is a distinct sibling model
+  // to AnalyticsEvent/AuditLog, not a repurposing of either. Nullable on
+  // Touchpoint itself (a touchpoint can happen pre-signup), so this is a
+  // one-to-many, not a one-to-one — in practice most users have at most a
+  // couple of real rows (a backfilled-history row plus a real signup-time
+  // row).
+  touchpoints                 Touchpoint[]
 
   @@map("users")
 }
 
 model OnboardingProfile {
-  userId            String         @id
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gender            String?
-  age               Int?
-  weightKg          Float?
-  heightCm          Float?
-  goals             String[]       @default([])
-  trainingLevel     TrainingLevel?
-  dietType          String?
-  allergens         String[]       @default([])
-  medicalConditions String[]       @default([])
-  injuries          String[]       @default([])
+  userId                String         @id
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender                String?
+  age                   Int?
+  weightKg              Float?
+  heightCm              Float?
+  goals                 String[]       @default([])
+  trainingLevel         TrainingLevel?
+  dietType              String?
+  allergens             String[]       @default([])
+  medicalConditions     String[]       @default([])
+  injuries              String[]       @default([])
   // Availability/Schedule (R1 Developer 1, 18 Sep 2026 — closes the "no
   // Availability/schedule screen or field anywhere" gap confirmed by
   // audit). A real, honest self-report of how often and roughly when a
@@ -411,9 +419,9 @@ model OnboardingProfile {
   // a separate, much larger feature this pass doesn't invent (see
   // plans.service.ts's own top comment for the same discipline applied to
   // equipment).
-  trainingDaysPerWeek    Int?
-  preferredTrainingDays  String[] @default([])
-  sessionLengthMinutes   Int?
+  trainingDaysPerWeek   Int?
+  preferredTrainingDays String[]       @default([])
+  sessionLengthMinutes  Int?
   // Equipment/gym-context self-report (R1 Developer 1, 18 Sep 2026). A
   // plain, honest, user-reported string — same "raw, honest, never
   // fabricated" pattern as `User.acquisitionContext` — NOT a foreign key to
@@ -426,8 +434,8 @@ model OnboardingProfile {
   // before this field existed. This IS wired into
   // plans.service.ts#buildSelectionPrompt (unlike the schedule fields
   // above) — see that function's own comment.
-  equipmentContext  String?
-  completedAt       DateTime?
+  equipmentContext      String?
+  completedAt           DateTime?
 
   @@map("onboarding_profiles")
 }
@@ -1021,15 +1029,15 @@ model WaterLog {
 // docs/mobile/07-open-questions-gaps.md for that flagged simplification.
 
 model BodyMeasurement {
-  id       String   @id @default(uuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weightKg Float?
-  chestCm  Float?
-  waistCm  Float?
-  hipsCm   Float?
-  armsCm   Float?
-  thighsCm Float?
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg       Float?
+  chestCm        Float?
+  waistCm        Float?
+  hipsCm         Float?
+  armsCm         Float?
+  thighsCm       Float?
   // Broader Baseline/measurements (R1 Developer 1, 18 Sep 2026) — real,
   // clearly-optional body-fat percentage, most users won't have this
   // precisely so it's never required anywhere it's collected. Same model
@@ -1038,7 +1046,7 @@ model BodyMeasurement {
   // baseline step creates a real row here rather than a second, competing
   // measurements table on OnboardingProfile.
   bodyFatPercent Float?
-  loggedAt DateTime @default(now())
+  loggedAt       DateTime @default(now())
 
   @@index([userId, loggedAt])
   @@map("body_measurements")
@@ -1256,12 +1264,12 @@ model Consent {
 // `SensitiveDataAccessRequest.reviewedAt`/`reviewedByAdminId` — null means
 // genuinely not yet looked at by anyone, not defaulted to "reviewed".
 model SafetyEscalation {
-  id                String    @id @default(uuid())
+  id                String     @id @default(uuid())
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   medicalConditions String[]
   injuries          String[]
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime   @default(now())
   reviewedAt        DateTime?
   reviewedByAdminId String?
   reviewedByAdmin   AdminUser? @relation("SafetyEscalationReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
@@ -2483,7 +2491,12 @@ model Influencer {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  payouts InfluencerPayout[]
+  payouts   InfluencerPayout[]
+  // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — a
+  // Campaign MAY credit this influencer (BR-ACQ-002: "who gets paid" is
+  // tracked here, separately from `channel`'s "how did they hear about
+  // us"). See Campaign's own doc comment.
+  campaigns Campaign[]
 
   @@map("influencers")
 }
@@ -2504,6 +2517,161 @@ model InfluencerPayout {
 
   @@index([influencerId])
   @@map("influencer_payouts")
+}
+
+// ---- Acquisition attribution: Source -> Campaign -> Touchpoint --------
+// (R2 Wave 1, 20 Sep 2026) — Developer 3's real "Acquisition" platform
+// foundation (§8: "Source -> Campaign -> Touchpoint; preserve acquisition
+// journey and versioned commercial attribution"), the model
+// `User.acquisitionContext`'s own doc comment (above, and see
+// apps/user-mobile/src/lib/acquisitionContext.ts) has been naming as a
+// future placeholder-superseder since 14 Sep 2026. `User.acquisitionContext`
+// itself is untouched — still the raw fallback string, still written at
+// signup — this is additive: a real, queryable model signup now ALSO
+// writes into when it can resolve the raw string into something concrete
+// (see auth.service.ts#signup), plus a backfill Touchpoint for every
+// pre-existing user so history isn't lost. See docs/admin/07-open-questions-
+// gaps.md's 20 Sep 2026 entry for the full backfill/scope writeup.
+//
+// BR-ACQ-002: marketing attribution ("how did this user find out about
+// us" — `AcquisitionSource.channel`) and commercial attribution ("who
+// gets paid/credited for this user" — `Campaign.influencerId`/`gymId`)
+// are related but deliberately separate concepts, never collapsed onto
+// one field. A Campaign always has exactly one Source/channel; it MAY
+// separately credit an Influencer and/or (once Gym merges — see below) a
+// Gym, or neither (e.g. a paid_search campaign with no commercial
+// counterparty).
+//
+// Fixed v1 channel taxonomy (product decision already made, not this
+// pass's to re-litigate) — maps §11's Founder Dashboard wishlist
+// ("Gym, Creator, Meta, Google, YouTube, Organic, Referral, Offline,
+// Direct") onto 7 real channels: "Meta"/"Google"/"YouTube" are real
+// Campaigns under paid_social/paid_search, not their own channel values;
+// "Gym" -> gym_partner, "Creator" -> influencer, "Offline" folds into
+// direct (no separate offline-tracking mechanism exists in this build).
+enum AcquisitionChannel {
+  organic
+  paid_search
+  paid_social
+  referral
+  influencer
+  gym_partner
+  direct
+}
+
+// One row per channel — essentially a lookup/reference table (seeded via
+// seedDatabase.ts, the real existing seed convention, not a separate
+// mechanism), admin-manageable in a later wave. `channel` is `@unique`
+// rather than the primary key so `Campaign`/`Touchpoint` can FK to a
+// stable `id` even if a channel's `label` or ordering ever changes.
+model AcquisitionSource {
+  id        String             @id @default(uuid())
+  channel   AcquisitionChannel @unique
+  // Human-readable label for admin UI (a later wave) — e.g. "Gym Partner",
+  // "Paid Social". Distinct from `channel` (the stable enum key).
+  label     String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  campaigns Campaign[]
+
+  @@map("acquisition_sources")
+}
+
+enum CampaignStatus {
+  active
+  inactive
+}
+
+// A real, running acquisition campaign under one Source/channel — e.g.
+// "Instagram Reels — Sep Push" under paid_social, or a specific gym's
+// referral link under gym_partner. `linkCode` is the real shareable
+// code/link identifier (what a QR code or `?ref=`/deep-link param
+// actually carries) — unique so a Touchpoint/signup can resolve a raw
+// code straight back to one Campaign (see auth.service.ts#signup).
+model Campaign {
+  id           String            @id @default(uuid())
+  sourceId     String
+  source       AcquisitionSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  name         String
+  linkCode     String            @unique
+  status       CampaignStatus    @default(active)
+  // Nullable, no `@relation` yet — `Gym` is a separate Wave 1 unit being
+  // built in parallel in a sibling worktree and does not exist in this
+  // schema yet. This column is a plain string FK-shaped placeholder,
+  // intentionally ready for a real `gym Gym? @relation(...)` once that
+  // model merges (a later wave's integration job, out of scope here —
+  // see docs/admin/07-open-questions-gaps.md). Never resolved/validated
+  // against anything in this pass.
+  gymId        String?
+  // Optional commercial-attribution counterparty (BR-ACQ-002) — real FK,
+  // since `Influencer` already exists in this schema (see that model's
+  // own doc comment). A campaign with no influencer credit (most
+  // paid_search/paid_social spend) simply leaves this null.
+  influencerId String?
+  influencer   Influencer?       @relation(fields: [influencerId], references: [id], onDelete: SetNull)
+  createdAt    DateTime          @default(now())
+
+  touchpoints Touchpoint[]
+
+  @@index([sourceId])
+  @@index([influencerId])
+  @@map("campaigns")
+}
+
+// A small, honest set matching what this codebase can actually detect
+// today — deliberately NOT an exhaustive analytics taxonomy (that's a
+// later wave's job once real data is flowing). `link_click` is recorded
+// pre-signup where the client can detect one (currently: none does yet —
+// see the honest-scope note on the backfill in
+// docs/admin/07-open-questions-gaps.md); `signup` and `first_workout` are
+// the two moments this pass or an already-existing instrumented event
+// can reliably produce; `paid_conversion` is reserved for when a paid
+// Subscription/ProgramPurchase is later wired to write one (not done
+// this pass — out of scope per the R2 work package).
+enum TouchpointType {
+  link_click
+  signup
+  first_workout
+  paid_conversion
+}
+
+// Event-level commercial/marketing attribution — conceptually the same
+// "single reusable write-once table" shape as `AnalyticsEvent`, and the
+// same "distinct sibling, not a repurposing" reasoning that model's own
+// doc comment gives for why it isn't `AuditLog`: `AnalyticsEvent` is
+// general product analytics (any user action worth counting),
+// `Touchpoint` is specifically acquisition/commercial attribution (which
+// channel/campaign a user's journey traces back to). A real product
+// event can motivate both an AnalyticsEvent AND a Touchpoint row (e.g.
+// signup) — they are not mutually exclusive, and neither supersedes the
+// other.
+//
+// `userId` is nullable: a touchpoint can happen before signup (a
+// landing-page visit carrying `?ref=<linkCode>`) — this build doesn't yet
+// instrument that pre-signup moment (see TouchpointType's comment), so in
+// practice every Touchpoint this pass creates has a `userId`, but the
+// column is honestly nullable for when that lands. `campaignId` is
+// nullable because not every acquisition is campaign-attributed —
+// organic/direct traffic has a real `channel` but no Campaign.
+model Touchpoint {
+  id             String             @id @default(uuid())
+  userId         String?
+  user           User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  campaignId     String?
+  campaign       Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  // Denormalized off the Campaign's own Source on purpose: a
+  // campaign-less (organic/direct) Touchpoint still needs to say which
+  // channel it belongs to, and a Campaign's Source never changes after
+  // creation in this build, so this is never allowed to drift from
+  // `campaign.source.channel` when a Campaign IS set.
+  channel        AcquisitionChannel
+  touchpointType TouchpointType
+  occurredAt     DateTime           @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([campaignId])
+  @@map("touchpoints")
 }
 
 // ---- Coupons (added 31 Aug 2026) --------------------------------------
