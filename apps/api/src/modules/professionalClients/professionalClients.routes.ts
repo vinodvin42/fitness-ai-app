@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
+import { writeRateLimit } from "../../middleware/rateLimit";
+import { decideRecommendationSchema } from "../plans/plans.schema";
 import * as professionalClientsService from "./professionalClients.service";
 
 /**
@@ -8,6 +10,12 @@ import * as professionalClientsService from "./professionalClients.service";
  * `requireProfessionalAuth` guard as professionalDashboard's routes. See
  * professionalClients.service.ts's doc comment for the authorization and
  * sensitive-data boundaries.
+ *
+ * The `/recommendations` routes below (Wave 2.4, 20 Sep 2026) are the
+ * professional-authed counterpart plans.routes.ts's own top comment named
+ * as future work: reuses `decideRecommendationSchema` from plans.schema.ts
+ * unchanged (same "accept"/"decline"/"modify" body shape a self-serve
+ * user's decide call already uses) rather than duplicating it.
  */
 export const professionalClientsRouter = Router();
 
@@ -32,6 +40,44 @@ professionalClientsRouter.get(
         await professionalClientsService.getClientProfile(
           req.professionalId as string,
           req.params.userId,
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+professionalClientsRouter.get(
+  "/professionals/me/clients/:userId/recommendations",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.json(
+        await professionalClientsService.listClientRecommendations(
+          req.professionalId as string,
+          req.params.userId,
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+professionalClientsRouter.post(
+  "/professionals/me/clients/:userId/recommendations/:id/decide",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = decideRecommendationSchema.parse(req.body);
+      res.json(
+        await professionalClientsService.decideClientRecommendation(
+          req.professionalId as string,
+          req.params.userId,
+          req.params.id,
+          input,
         ),
       );
     } catch (err) {

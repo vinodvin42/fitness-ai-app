@@ -594,18 +594,29 @@ export async function getCurrentRecommendation(userId: string): Promise<Recommen
 
 /**
  * Decides an active Recommendation — the same entry point Developer 2's
- * future professional-review UI is designed to call (passing
- * decidedByRole: "professional" instead of "user"), see this file's own
- * top comment. Accepting a "switch_program" recommendation creates a real
- * new active Plan directly (no second AI call — the choice is already
- * made); "modify" does the same but with an admin/professional-chosen
- * `replacementProgramId` instead of the AI's own suggestion.
+ * professional-review UI calls (passing decidedByRole: "professional"
+ * instead of "user"), see this file's own top comment. Accepting a
+ * "switch_program" recommendation creates a real new active Plan directly
+ * (no second AI call — the choice is already made); "modify" does the
+ * same but with an admin/professional-chosen `replacementProgramId`
+ * instead of the AI's own suggestion.
+ *
+ * `userId` is always the CLIENT who owns the Recommendation (it's
+ * validated against `rec.userId` below regardless of who's deciding) —
+ * for a professional's own identity, pass it separately as
+ * `actorProfessionalId` (added 20 Sep 2026, wiring Wave 2.4's first real
+ * `decidedByRole: "professional"` caller — see
+ * professionalClients.service.ts#decideClientRecommendation). Optional
+ * and additive: omitted, this defaults to `undefined` and every existing
+ * "user" caller's behavior (decidedById on the Recommendation row, and
+ * `recordAudit`'s `actorId`) is unchanged.
  */
 export async function decideRecommendation(
   userId: string,
   recommendationId: string,
   input: DecideRecommendationInput,
   decidedByRole: "user" | "professional" = "user",
+  actorProfessionalId?: string,
 ): Promise<RecommendationDTO> {
   const rec = (await prisma.recommendation.findUnique({ where: { id: recommendationId } })) as RecommendationRow | null;
   if (!rec || rec.userId !== userId) {
@@ -689,7 +700,13 @@ export async function decideRecommendation(
 
   await recordAudit({
     actorId: decidedByRole === "user" ? userId : null,
-    actorProfessionalId: decidedByRole === "professional" ? userId : null,
+    // Was `userId` here before 20 Sep 2026 — that's the CLIENT id (this
+    // function's own `rec.userId !== userId` check above requires it to
+    // be), never a real `Professional.id`, so it violated
+    // AuditLog's `actorProfessionalId` foreign key the moment a real
+    // professional caller (Wave 2.4) first exercised this branch. Fixed
+    // by threading the real actor through as its own parameter instead.
+    actorProfessionalId: decidedByRole === "professional" ? actorProfessionalId ?? null : null,
     action: "recommendation.decided",
     entityType: "Recommendation",
     entityId: recommendationId,

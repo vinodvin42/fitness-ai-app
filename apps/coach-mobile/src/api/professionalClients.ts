@@ -1,4 +1,10 @@
-import type { CoachClientListResponse, CoachClientProfile } from "@fitness-ai-app/types";
+import type {
+  CoachClientListResponse,
+  CoachClientProfile,
+  CoachClientRecommendationsResponse,
+  DecideRecommendationInput,
+  Recommendation,
+} from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 /**
@@ -16,5 +22,23 @@ export function fetchClients() {
 export function fetchClientProfile(userId: string) {
   return apiClient
     .get<CoachClientProfile>(`/professionals/me/clients/${userId}`)
+    .then((r) => r.data);
+}
+
+/**
+ * Client Recommendation review (Wave 2.4, 20 Sep 2026) — the coach-side
+ * counterpart to apps/user-mobile's own recommendations.ts client. See
+ * apps/api's professionalClients.routes.ts for the real active-Relationship
+ * gate behind both calls below.
+ */
+export function fetchClientRecommendations(userId: string) {
+  return apiClient
+    .get<CoachClientRecommendationsResponse>(`/professionals/me/clients/${userId}/recommendations`)
+    .then((r) => r.data.recommendations);
+}
+
+export function decideClientRecommendation(userId: string, recommendationId: string, input: DecideRecommendationInput) {
+  return apiClient
+    .post<Recommendation>(`/professionals/me/clients/${userId}/recommendations/${recommendationId}/decide`, input)
     .then((r) => r.data);
 }

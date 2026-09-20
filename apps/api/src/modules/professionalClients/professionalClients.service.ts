@@ -1,5 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import * as plansService from "../plans/plans.service";
+import type { DecideRecommendationInput } from "../plans/plans.schema";
 
 /**
  * Coach Client Profile (docs/coach/03-screen-inventory.md §D), added 31 Aug
@@ -141,6 +143,25 @@ function toScheduleItem(b: BookingRow) {
   };
 }
 
+/**
+ * The real "does this professional actually coach this user" gate, shared
+ * by every professional-authed endpoint scoped to one client — same
+ * precedent as `getClientProfile` below (a 404, not a 403, so an endpoint
+ * never confirms a userId even exists to a coach with no active
+ * Relationship to it). Kept as its own small helper so
+ * `listClientRecommendations`/`decideClientRecommendation` below (Wave 2.4,
+ * 20 Sep 2026 — coach review of a client's AI Plan Recommendations, see
+ * plans.service.ts#decideRecommendation's own doc comment on the
+ * `decidedByRole: "professional"` parameter this wires up) don't need to
+ * duplicate the relationship query.
+ */
+async function assertActiveRelationship(professionalId: string, userId: string): Promise<void> {
+  const count = await prisma.relationship.count({ where: { professionalId, userId, status: "active" } });
+  if (count === 0) {
+    throw new ApiHttpError(404, "client_not_found", "This client could not be found");
+  }
+}
+
 export async function getClientProfile(professionalId: string, userId: string) {
   const relationships = (await prisma.relationship.findMany({
     where: { professionalId, userId, status: "active" },
@@ -198,4 +219,109 @@ export async function getClientProfile(professionalId: string, userId: string) {
     },
     notAvailable: CLIENT_SENSITIVE_NOT_AVAILABLE,
   };
+}
+
+// ---- Coach review of a client's Plan Recommendations (Wave 2.4, 20 Sep
+// 2026) -----------------------------------------------------------------
+// plans.service.ts's `decideRecommendation()` has accepted a
+// `decidedByRole: "professional"` parameter since it was written (14 Sep
+// 2026) — see that file's own top comment — but nothing ever called it
+// that way, and no coach-mobile screen let a coach actually review one.
+// This is that wiring, not new decision logic: the exact same
+// `decideRecommendation()` a user's own "Why This Changed" screen calls
+// (apps/user-mobile's WhyThisChangedScreen.tsx), gated on the same real
+// active-`Relationship` check every other client-scoped endpoint in this
+// file already uses, and scoped to `active` (the real "awaiting a
+// decision" `RecommendationStatus`) recommendations only.
+
+type ClientRecommendationRow = {
+  id: string;
+  planId: string;
+  kind: string;
+  status: "active" | "accepted" | "modified" | "declined" | "no_change" | "superseded";
+  rationale: string;
+  suggestedProgramId: string | null;
+  decidedByRole: string | null;
+  decidedAt: Date | null;
+  createdAt: Date;
+};
+
+async function toClientRecommendationDTO(r: ClientRecommendationRow) {
+  const suggestedProgramName = r.suggestedProgramId
+    ? (await prisma.program.findUnique({ where: { id: r.suggestedProgramId }, select: { name: true } }))?.name ?? null
+    : null;
+  return {
+    id: r.id,
+    planId: r.planId,
+    kind: r.kind as "no_change" | "switch_program",
+    status: r.status,
+    rationale: r.rationale,
+    suggestedProgramId: r.suggestedProgramId,
+    suggestedProgramName,
+    decidedByRole: r.decidedByRole as "user" | "professional" | null,
+    decidedAt: r.decidedAt,
+    createdAt: r.createdAt,
+  };
+}
+
+/** GET /professionals/me/clients/:userId/recommendations — every pending (real `active`-status) Recommendation for this client, gated on a real active Relationship. Most recent first. */
+export async function listClientRecommendations(professionalId: string, userId: string) {
+  await assertActiveRelationship(professionalId, userId);
+
+  const rows = (await prisma.recommendation.findMany({
+    where: { userId, status: "active" },
+    orderBy: { createdAt: "desc" },
+  })) as ClientRecommendationRow[];
+
+  return { recommendations: await Promise.all(rows.map(toClientRecommendationDTO)) };
+}
+
+/**
+ * POST /professionals/me/clients/:userId/recommendations/:id/decide — a
+ * professional deciding on a client's Recommendation. Calls the SAME
+ * `decideRecommendation()` a self-serve user's own decide endpoint calls
+ * (plans.routes.ts's `POST /recommendations/:id/decide`), just with
+ * `decidedByRole: "professional"` — no duplicated decision logic, no
+ * change to what that function does for existing user callers. The
+ * active-Relationship check above is this endpoint's real authorization;
+ * `decideRecommendation()`'s own `rec.userId !== userId` check (userId
+ * here is the real client id from the route, established as safe to reach
+ * once assertActiveRelationship has passed) still guards against deciding
+ * a recommendation that isn't even this client's.
+ *
+ * Passes `professionalId` through as `decideRecommendation()`'s new
+ * (20 Sep 2026) optional `actorProfessionalId` parameter — that function's
+ * own `userId` argument has to be the CLIENT id (its ownership check
+ * requires it), so without a separate real actor id its audit write
+ * (`recordAudit`'s `actorProfessionalId`) would try to record the
+ * client's own id against `AuditLog.actorProfessionalId`'s FK to
+ * `Professional`, which is a different id space entirely and 500s the
+ * request — a real bug this wave's own integration test caught, since
+ * this was the first real caller ever to exercise that branch. See
+ * plans.service.ts#decideRecommendation's own updated doc comment.
+ */
+export async function decideClientRecommendation(
+  professionalId: string,
+  userId: string,
+  recommendationId: string,
+  input: DecideRecommendationInput,
+): Promise<{
+  id: string;
+  planId: string;
+  kind: "no_change" | "switch_program";
+  status: "active" | "accepted" | "modified" | "declined" | "no_change" | "superseded";
+  rationale: string;
+  suggestedProgramId: string | null;
+  suggestedProgramName: string | null;
+  decidedByRole: string | null;
+  decidedAt: Date | null;
+  createdAt: Date;
+}> {
+  await assertActiveRelationship(professionalId, userId);
+  // Explicit return type above (rather than inferring plansService's own
+  // `RecommendationDTO`) — that interface isn't exported, same
+  // "un-generated Prisma client stub" constraint this file's own top
+  // comment names for Prisma model types; the shape below is structurally
+  // identical to it, not a redefinition of its meaning.
+  return plansService.decideRecommendation(userId, recommendationId, input, "professional", professionalId);
 }
