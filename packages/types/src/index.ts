@@ -1628,6 +1628,78 @@ export interface CoachClientProfile {
   notAvailable: string[];
 }
 
+// ---- Client 360 Summary (Wave 2, 20 Sep 2026) ---------------------------
+// GET /professionals/me/clients/:userId/summary — real assessment/
+// training/nutrition/check-in data, gated on the client's own
+// `health_data_processing` Consent (not just the active-Relationship
+// check `CoachClientProfile` above already enforces). See
+// apps/api's professionalClients.service.ts's getClientSummary doc
+// comment for the full design, including why `ProgressPhoto`/
+// `AiCoachMessage` content is excluded even when consent is granted.
+export interface CoachClientSummaryWorkoutSession {
+  id: string;
+  workoutName: string | null;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface CoachClientSummaryMealLog {
+  id: string;
+  mealType: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  loggedAt: string;
+}
+
+export interface CoachClientSummaryCheckIn {
+  id: string;
+  period: "daily" | "weekly";
+  periodKey: string;
+  energy: number;
+  soreness: number;
+  adherence: number;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface CoachClientSummaryBodyMeasurement {
+  id: string;
+  weightKg: number | null;
+  chestCm: number | null;
+  waistCm: number | null;
+  hipsCm: number | null;
+  armsCm: number | null;
+  thighsCm: number | null;
+  bodyFatPercent: number | null;
+  loggedAt: string;
+}
+
+/** Consent not granted — no health data included. A real, honest state, not an empty screen. */
+export interface CoachClientSummaryConsentWithheld {
+  consentGranted: false;
+}
+
+export interface CoachClientSummaryData {
+  consentGranted: true;
+  training: {
+    completedCount: number;
+    totalCount: number;
+    recentSessions: CoachClientSummaryWorkoutSession[];
+  };
+  nutrition: {
+    recentLogs: CoachClientSummaryMealLog[];
+  };
+  checkIns: CoachClientSummaryCheckIn[];
+  bodyMeasurements: CoachClientSummaryBodyMeasurement[];
+  /** Always ["progressPhotos", "aiCoachConversation"] today — see the service doc comment for why. */
+  notAvailable: string[];
+}
+
+export type CoachClientSummary = CoachClientSummaryConsentWithheld | CoachClientSummaryData;
+
 // ---- Coach ↔ Client Messaging (added 31 Aug 2026) ------------------------
 // Backs the Messages tab in BOTH apps. One flat thread per (User,
 // Professional) pair, gated on an active Relationship. NOT real-time — both
