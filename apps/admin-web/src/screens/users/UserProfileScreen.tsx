@@ -527,6 +527,7 @@ export function UserProfileScreen() {
                       <th className="px-4 py-3 font-normal">Service</th>
                       <th className="px-4 py-3 font-normal">Status</th>
                       <th className="px-4 py-3 font-normal">Since</th>
+                      <th className="px-4 py-3 font-normal" />
                     </tr>
                   </thead>
                   <tbody>
@@ -541,11 +542,20 @@ export function UserProfileScreen() {
                           <StatusBadge status={r.status} />
                         </td>
                         <td className="px-4 py-3 text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          {/* R1 U6, Wave 3 (20 Sep 2026) — End Relationship/Handover live on
+                              04.02's own Relationship Detail screen (RelationshipDetailScreen.tsx),
+                              not duplicated here — this links straight to it rather than a
+                              second copy of those actions on this screen. */}
+                          <Link to={`/relationships/${r.relationshipId}`} className="text-xs text-accent hover:underline">
+                            Manage →
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                     {data.relationships.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
+                        <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
                           No assigned professionals yet.
                         </td>
                       </tr>

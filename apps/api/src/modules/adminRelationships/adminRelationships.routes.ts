@@ -7,6 +7,7 @@ import {
   listRelationshipsQuerySchema,
   reviewChangeRequestSchema,
 } from "./adminRelationships.schema";
+import { handoverRelationshipSchema } from "../relationshipLifecycle/relationshipLifecycle.schema";
 import * as adminRelationshipsService from "./adminRelationships.service";
 
 export const adminRelationshipsRouter = Router();
@@ -98,6 +99,26 @@ adminRelationshipsRouter.post(
       const input = endRelationshipSchema.parse(req.body ?? {});
       const relationship = await adminRelationshipsService.endRelationship(req.adminUserId as string, req.params.id, input);
       res.status(200).json({ relationship });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// R1 U6, Wave 3 (20 Sep 2026) — the admin-initiated real "Handover to
+// Another Coach" action. See relationshipLifecycle.service.ts's own doc
+// comment for why this composes the same endRelationship + createOffer as
+// the coach-mobile professional-initiated version rather than a second
+// implementation.
+adminRelationshipsRouter.post(
+  "/admin/relationships/:id/handover",
+  requireAdminAuth,
+  requirePermission("relationships", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = handoverRelationshipSchema.parse(req.body ?? {});
+      const result = await adminRelationshipsService.handoverRelationship(req.adminUserId as string, req.params.id, input);
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }

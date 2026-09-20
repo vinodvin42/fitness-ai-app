@@ -2,6 +2,8 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { EndRelationshipInput, ListChangeRequestsQuery, ListRelationshipsQuery, ReviewChangeRequestInput } from "./adminRelationships.schema";
+import type { HandoverRelationshipInput } from "../relationshipLifecycle/relationshipLifecycle.schema";
+import * as relationshipLifecycleService from "../relationshipLifecycle/relationshipLifecycle.service";
 
 /**
  * Module 04 — Relationships (docs/admin/03-screen-inventory.md §04), added
@@ -187,35 +189,40 @@ export async function getRelationshipDetail(id: string) {
   };
 }
 
+/**
+ * **Wave 3 (20 Sep 2026):** now a thin wrapper over the real, shared
+ * `relationshipLifecycle.service.ts#endRelationship` — the same function
+ * apps/coach-mobile's new professional-initiated End Relationship action
+ * calls — rather than a second, independent state-transition
+ * implementation. This preserves the existing route/response shape
+ * (`AdminRelationshipListItem`, decorated with user/professional identity)
+ * for its existing admin-web caller; the actual `status`/`endedAt`/
+ * `endReason` mutation and the `recordAudit` write now happen once, in the
+ * shared module.
+ */
 export async function endRelationship(adminId: string, id: string, input: EndRelationshipInput) {
+  await relationshipLifecycleService.endRelationship({ adminId }, id, input.reason);
   const relationship = await getRelationshipOrThrow(id);
+  return toListItem(relationship);
+}
 
-  if (relationship.status === "ended") {
-    throw new ApiHttpError(409, "relationship_already_ended", "This relationship has already ended");
-  }
-
-  const updated = await prisma.relationship.update({
-    where: { id },
-    data: { status: "ended", endedAt: new Date() },
-  });
-
-  await recordAudit({
-    actorAdminId: adminId,
-    action: "admin.relationship.ended",
-    entityType: "Relationship",
-    entityId: id,
-    metadata: { reason: input.reason },
-  });
-
-  return toListItem({
-    id: updated.id,
-    serviceType: updated.serviceType,
-    status: updated.status,
-    createdAt: updated.createdAt,
-    endedAt: updated.endedAt,
-    user: relationship.user,
-    professional: relationship.professional,
-  });
+/**
+ * The admin-initiated real "Handover to Another Coach" action — the exact
+ * same `relationshipLifecycle.service.ts#handoverRelationship` composing
+ * `endRelationship` + `professionalOffers.service.ts#createOffer` that
+ * apps/coach-mobile's professional-initiated Handover action uses, just
+ * with an admin actor. See that module's own top comment for the full
+ * "why a new ProfessionalOffer, not a second transfer model" reasoning.
+ */
+export async function handoverRelationship(adminId: string, id: string, input: HandoverRelationshipInput) {
+  const result = await relationshipLifecycleService.handoverRelationship(
+    { adminId },
+    id,
+    input.reason,
+    input.replacementProfessionalId,
+  );
+  const relationship = await getRelationshipOrThrow(id);
+  return { relationship: toListItem(relationship), offer: result.offer };
 }
 
 export async function reactivateRelationship(adminId: string, id: string) {

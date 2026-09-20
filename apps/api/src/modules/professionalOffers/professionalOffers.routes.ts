@@ -75,6 +75,26 @@ professionalOffersRouter.post(
 
 // ---- coach-mobile (professional-authed) ----------------------------------
 
+// R1 U6, Wave 3 (20 Sep 2026) — the replacement-professional picker for the
+// real Handover action (relationshipLifecycle.service.ts). Reuses this
+// module's own `listAvailableProfessionals` (the exact function admin-web's
+// Propose Professional dropdown already uses) rather than a second "pick a
+// professional" implementation, with the one real addition that picker
+// needs: excluding the calling coach's own id, so a coach can't propose
+// themselves as their own replacement.
+professionalOffersRouter.get(
+  "/professionals/me/available-professionals",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const query = listAvailableProfessionalsQuerySchema.parse(req.query);
+      res.json(await professionalOffersService.listAvailableProfessionals(query, req.professionalId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 professionalOffersRouter.get(
   "/professionals/me/offers",
   requireProfessionalAuth,

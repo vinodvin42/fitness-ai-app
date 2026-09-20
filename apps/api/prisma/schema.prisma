@@ -2135,6 +2135,11 @@ model Professional {
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
   // own doc comment below.
   offersReceived   ProfessionalOffer[]
+  // Wave 3 (20 Sep 2026) — the reverse side of ProfessionalOffer's own new
+  // `proposedByProfessionalId`: offers THIS professional proposed for a
+  // replacement via a Handover action, distinct from `offersReceived`
+  // above (offers proposed FOR this professional by someone else).
+  offersProposed   ProfessionalOffer[]            @relation("ProfessionalOfferProposedBy")
 
   @@map("professionals")
 }
@@ -2443,6 +2448,20 @@ model ProfessionalOffer {
   // schema-modeled-but-not-yet-built proposer for a later wave.
   proposedByAdminId String?
   proposedByAdmin   AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
+  // Wave 3 (20 Sep 2026, R1 U6 handover) — the OTHER real proposer this
+  // model's own top comment already anticipated a later wave would add
+  // ("system"), but this is the genuine one that landed: the ENDING coach
+  // on a Handover action (relationshipLifecycle.service.ts's
+  // `handoverRelationship`), proposing a specific replacement professional
+  // for the same client/service. Exactly one of `proposedByAdminId` /
+  // `proposedByProfessionalId` is set per row — never both, same "pass at
+  // most one actor field" discipline `recordAudit()` already documents.
+  // Named relation (`ProfessionalOfferProposedBy`) since `Professional`
+  // already has an unnamed relation to this model via `professionalId`
+  // above (the professional the offer is FOR) — this is a second, distinct
+  // relation to the same model (the professional the offer is FROM).
+  proposedByProfessionalId String?
+  proposedByProfessional   Professional?      @relation("ProfessionalOfferProposedBy", fields: [proposedByProfessionalId], references: [id], onDelete: SetNull)
   expiresAt         DateTime?
   createdAt         DateTime                @default(now())
   respondedAt       DateTime?

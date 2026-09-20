@@ -10,6 +10,8 @@ import {
   discoverProfessionalsQuerySchema,
 } from "./coaching.schema";
 import * as coachingService from "./coaching.service";
+import { endRelationshipActionSchema, handoverRelationshipSchema } from "../relationshipLifecycle/relationshipLifecycle.schema";
+import * as relationshipLifecycleService from "../relationshipLifecycle/relationshipLifecycle.service";
 
 export const coachingRouter = Router();
 
@@ -73,6 +75,53 @@ coachingRouter.post(
     try {
       const input = declineRelationshipSchema.parse(req.body ?? {});
       res.json(await coachingService.declineRelationship(req.professionalId as string, req.params.id, input.reason));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// R1 U6, Wave 3 (20 Sep 2026) — the real professional-initiated "End
+// Relationship" / "Handover to Another Coach" actions (relationshipLifecycle
+// .service.ts). Grouped with the other professional-authed relationship
+// routes above rather than down by the user-authed change-request route
+// below, same ordering convention this file's own top-of-block comment
+// documents. Handover is End Relationship's real superset — see that
+// module's own doc comment for why there's no separate route for "end vs.
+// handover" business logic, just an optional `replacementProfessionalId`.
+coachingRouter.post(
+  "/professionals/me/relationships/:id/end",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = endRelationshipActionSchema.parse(req.body ?? {});
+      const relationship = await relationshipLifecycleService.endRelationship(
+        { professionalId: req.professionalId as string },
+        req.params.id,
+        input.reason,
+      );
+      res.json({ relationship });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+coachingRouter.post(
+  "/professionals/me/relationships/:id/handover",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = handoverRelationshipSchema.parse(req.body ?? {});
+      const result = await relationshipLifecycleService.handoverRelationship(
+        { professionalId: req.professionalId as string },
+        req.params.id,
+        input.reason,
+        input.replacementProfessionalId,
+      );
+      res.json(result);
     } catch (err) {
       next(err);
     }
