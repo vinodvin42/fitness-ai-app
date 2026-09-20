@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAdminAuth, AdminAuthedRequest } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
 import {
+  adminUpdateMaxActiveClientsSchema,
   listProfessionalsQuerySchema,
   suspendProfessionalSchema,
   verifyCredentialSchema,
@@ -101,6 +102,27 @@ adminProfessionalsRouter.post(
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const professional = await adminProfessionalsService.reactivateProfessional(req.adminUserId as string, req.params.id);
+      res.status(200).json({ professional });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// R2 Wave 1 (20 Sep 2026) — admin-editable capacity cap. See
+// professionalLifecycle.service.ts's updateMaxActiveClients.
+adminProfessionalsRouter.patch(
+  "/admin/professionals/:id/capacity",
+  requireAdminAuth,
+  requirePermission("professionals", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = adminUpdateMaxActiveClientsSchema.parse(req.body);
+      const professional = await adminProfessionalsService.updateMaxActiveClients(
+        req.adminUserId as string,
+        req.params.id,
+        input,
+      );
       res.status(200).json({ professional });
     } catch (err) {
       next(err);

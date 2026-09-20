@@ -1964,6 +1964,44 @@ enum ProfessionalStatus {
   suspended
 }
 
+// R2 Wave 1 (20 Sep 2026) — Developer 2's real R1 work package §2 names the
+// full account-level Professional lifecycle as `APPLICATION -> VERIFICATION
+// -> APPROVED -> AVAILABLE -> ...` (everything from OFFERED onward is about
+// a specific client relationship, already real via `RelationshipStatus`
+// above, not this enum). This enum covers only the first 4 stages plus
+// `suspended`, additive alongside `ProfessionalStatus` above and
+// `ProfessionalCredential.status` — it never replaces either.
+//
+// **How this interacts with `ProfessionalStatus`:** the two fields are
+// orthogonal and can disagree in the DB (e.g. a `suspended`-status
+// professional whose `lifecycleStatus` still reads `available` from before
+// they were suspended) — `Professional.status === "suspended"` is always
+// the authoritative "can this professional do anything on the platform"
+// gate; `lifecycleStatus` only describes how far along their own
+// application/approval journey they've gotten and, past `approved`,
+// whether they're currently open to new clients. Nothing here re-derives
+// `ProfessionalStatus` from `lifecycleStatus` or vice versa outside the
+// explicit transition functions in `professionalLifecycle.service.ts`.
+// `suspendProfessional`/`reactivateProfessional` (adminProfessionals.
+// service.ts) keep both fields in step: suspend snapshots the professional's
+// pre-suspension `lifecycleStatus` into that same AuditLog entry's metadata
+// and sets `lifecycleStatus: suspended`; reactivate restores it from that
+// entry (falling back to a fresh recompute against real signals if no such
+// entry exists, e.g. for an account suspended before this wave shipped).
+//
+// `available` is reachable ONLY when the professional holds at least one
+// `verified` `ProfessionalCredential` — see
+// professionalLifecycle.service.ts's `meetsAvailablePrecondition`. Gym
+// affiliation (a separate, parallel Wave 1 unit, not yet in this schema)
+// never grants any stage here on its own — see BR-PRO-003.
+enum ProfessionalLifecycleStatus {
+  application
+  verification
+  approved
+  available
+  suspended
+}
+
 // Extended 15 Sep 2026 (R1 U6 — Professional relationship request/status/
 // active-state UX, Developer 1's own half of this milestone) from just
 // `active`/`ended` to a real six-stage lifecycle. Before this, a
@@ -2029,6 +2067,21 @@ model Professional {
   // none of that, only the same storage mechanism as everything else here.
   kycDocumentData    String?
   kycStatus          CredentialStatus   @default(not_verified)
+  // R2 Wave 1 (20 Sep 2026) — the professional's own account-level
+  // application/approval journey (Developer 2's R1 work package §2,
+  // APPLICATION -> VERIFICATION -> APPROVED -> AVAILABLE). Additive
+  // alongside `status` above and alongside `ProfessionalCredential.status`
+  // — see this field's enum's own doc comment (above, in this file) for the
+  // real, documented interaction between all three. New signups start at
+  // `application`; see professionalLifecycle.service.ts for every real
+  // transition and this migration's backfill for how existing rows landed.
+  lifecycleStatus    ProfessionalLifecycleStatus @default(application)
+  // Flat cap on the count of currently-`active` `Relationship` rows for
+  // this professional — coach/admin-editable (professionalLifecycle.
+  // service.ts's `updateMaxActiveClients`). Deliberately NOT a calendar-slot
+  // capacity model; R1's own scope for this wave is just the integer gate.
+  // Default 15 per the product decision made for this wave.
+  maxActiveClients  Int                @default(15)
   // Admin review notes for the KYC check (docs/admin/03-screen-inventory.md
   // 03.03's "admin review notes/log" field) — added 21 Aug 2026 for the
   // Credential Verification screen. A single current-notes field, not a

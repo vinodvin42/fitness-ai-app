@@ -1,7 +1,9 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import {
+  AdminUpdateMaxActiveClientsInput,
   ListProfessionalsQuery,
   SuspendProfessionalInput,
   VerifyCredentialInput,
@@ -255,6 +257,17 @@ export async function verifyCredential(
     metadata: { professionalId, adminNotes: input.adminNotes },
   });
 
+  // R2 Wave 1 (20 Sep 2026) — a credential clearing (or a professional's
+  // last verified credential being rejected) can move
+  // `Professional.lifecycleStatus` across the verification->approved
+  // boundary or the approved<->available boundary. See
+  // professionalLifecycle.service.ts's own doc comment for why both are
+  // called unconditionally here rather than only on `verified`: rejecting
+  // a professional's only verified credential needs the same recompute to
+  // demote them back out of `available`.
+  await professionalLifecycleService.maybeAdvanceToApproved(adminId, professionalId);
+  await professionalLifecycleService.recomputeAvailability(professionalId, adminId);
+
   return updated;
 }
 
@@ -276,6 +289,18 @@ export async function verifyKyc(adminId: string, professionalId: string, input: 
     entityId: professionalId,
     metadata: { adminNotes: input.adminNotes },
   });
+
+  // R2 Wave 1 (20 Sep 2026) — KYC clearing is the other half of the
+  // verification -> approved gate (alongside a verified credential, see
+  // verifyCredential above). A KYC rejection can't demote an already-
+  // `approved`/`available` professional on its own (`approved` requires
+  // both to have cleared once, and this wave's decision was not to build a
+  // KYC-expiry/re-check concept) — recomputeAvailability is still safe to
+  // call unconditionally since it only ever moves the approved<->available
+  // boundary off the credential precondition, which this action doesn't
+  // change.
+  await professionalLifecycleService.maybeAdvanceToApproved(adminId, professionalId);
+  await professionalLifecycleService.recomputeAvailability(professionalId, adminId);
 
   return updated;
 }
@@ -299,6 +324,12 @@ export async function suspendProfessional(adminId: string, professionalId: strin
     metadata: { adminNotes: input.adminNotes },
   });
 
+  // R2 Wave 1 (20 Sep 2026) — keeps `lifecycleStatus` in step with `status`
+  // rather than leaving it stale at whatever stage the professional was in
+  // the moment they got suspended. See professionalLifecycle.service.ts's
+  // own doc comment for how this is restored on reactivation.
+  await professionalLifecycleService.suspendLifecycle(adminId, professionalId);
+
   return updated;
 }
 
@@ -320,5 +351,24 @@ export async function reactivateProfessional(adminId: string, professionalId: st
     entityId: professionalId,
   });
 
+  // R2 Wave 1 (20 Sep 2026) — restores `lifecycleStatus` to whatever stage
+  // it was at before suspension (or recomputes it from real signals if no
+  // suspend record exists) instead of leaving it stuck at `suspended`.
+  await professionalLifecycleService.restoreLifecycleAfterReactivation(adminId, professionalId);
+
   return updated;
+}
+
+/**
+ * R2 Wave 1 (20 Sep 2026) — admin-editable capacity, the admin-console
+ * counterpart to professionalLifecycle.routes.ts's own PUT
+ * /professionals/me/capacity (a coach editing their own cap). Same
+ * underlying service function, different actor attribution.
+ */
+export async function updateMaxActiveClients(
+  adminId: string,
+  professionalId: string,
+  input: AdminUpdateMaxActiveClientsInput,
+) {
+  return professionalLifecycleService.updateMaxActiveClients(professionalId, input, { adminId });
 }

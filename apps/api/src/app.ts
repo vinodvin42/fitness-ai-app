@@ -49,6 +49,7 @@ import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
 import { professionalOnboardingRouter } from "./modules/professionalOnboarding/professionalOnboarding.routes";
+import { professionalLifecycleRouter } from "./modules/professionalLifecycle/professionalLifecycle.routes";
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
@@ -271,6 +272,10 @@ export function createApp() {
   // "Phase 5 started" entry.
   app.use("/", professionalAuthRouter);
   app.use("/", professionalOnboardingRouter);
+  // R2 Wave 1 (20 Sep 2026) — Professional R1 lifecycle (application ->
+  // verification -> approved -> available), additive alongside the
+  // onboarding wizard above. See professionalLifecycle.service.ts.
+  app.use("/", professionalLifecycleRouter);
   app.use("/", professionalDashboardRouter);
   // Coach Client Profile (31 Aug 2026) — professional-authed (the coach's
   // own clients). See professionalClients.service.ts's doc comment.
