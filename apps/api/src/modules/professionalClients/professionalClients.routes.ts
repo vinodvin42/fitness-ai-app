@@ -39,3 +39,25 @@ professionalClientsRouter.get(
     }
   },
 );
+
+// Client 360 (Wave 2, 20 Sep 2026) — real assessment/training/nutrition/
+// check-in summaries, gated on the client's own health_data_processing
+// Consent, not just the active-Relationship check above. See
+// professionalClients.service.ts's getClientSummary doc comment for the
+// full design.
+professionalClientsRouter.get(
+  "/professionals/me/clients/:userId/summary",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.json(
+        await professionalClientsService.getClientSummary(
+          req.professionalId as string,
+          req.params.userId,
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
