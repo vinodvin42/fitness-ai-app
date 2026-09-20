@@ -103,3 +103,39 @@ Closes the audited gap that **no `Gym`/`Organization`/`Location`/`Equipment` mod
 - Wave 4: real admin-web screens for gym partner management (application review/approve/suspend, commercial-terms editing, location management, the member-activation dashboard).
 - Wave 5: the Gym Partner Lite portal itself (gym-facing QR/invite display, activity indicators, support/contact surface) — BR-GYM-003's "gym sees only permitted data" boundary is already enforced at the data layer (`getMemberActivationSummary()` returns aggregate counts only, never a member list or any nutrition/medical/photo/AI-conversation data), so Wave 5 has a safe aggregate to build the UI against rather than needing to invent that boundary itself.
 - A real gym-commercial pricing decision to replace the `pricingModel`/`ratePerMemberCents` placeholder, and — once that lands — whether a `GymSettlement` model is warranted.
+
+## 20 Sep 2026 — R2 Wave 1: real `AdminActionItem` model + `createActionItem()` write-path contract
+
+A dedicated audit confirmed what Developer 3's R1 work package §3/§4 implied but no code backed: no real, unified Admin Action Required queue existed anywhere. `DashboardScreen.tsx`'s "Requires Attention" card was a cosmetic, hardcoded 4-row widget (open support tickets, in-progress support tickets, failed payments, open refund requests) with no drill-through, ownership, or resolution tracking, and the actual exception data that DID exist was scattered across five separate, siloed screens (`EscalationsScreen`, `SafetyEscalationsScreen`, `RefundsScreen`, `ChangeRequestQueueScreen`, `CredentialVerificationScreen`) with zero aggregation. This wave built the real aggregation model and write-path every later Wave 4+ admin unit depends on — no UI screen (that's Wave 4's own unit).
+
+**What's real now:**
+- `AdminActionItem` (`apps/api/prisma/schema.prisma`) — a real, persisted row (not a computed-on-the-fly view), assignable and dismissible with a real audit trail. `type` (16 values: the 12 verbatim from work package §4, plus 4 real mappings from the pre-existing siloed sources — see the model's own doc comment), `entityType`/`entityId` (polymorphic, unenforced, same convention as `AuditLog`), `severity` (`low|medium|high`), `status` (`open|resolved`), `assignedToAdminId`/`resolvedAt`/`resolvedByAdminId`/`resolutionNote`, `metadata` (JSON), `createdAt`.
+- **The real write-path contract every later unit should call:**
+  ```ts
+  import { createActionItem } from "apps/api/src/lib/adminActionQueue";
+
+  await createActionItem({
+    type: AdminActionItemType,       // e.g. "payout_failed"
+    entityType: string,              // e.g. "CoachSettlement"
+    entityId: string,
+    severity: "low" | "medium" | "high",
+    metadata?: Record<string, unknown>,
+  });
+  ```
+  Real, simple, write-once — same shape as `lib/analytics.ts`'s `trackEvent()`. Call it AFTER the real mutation it's about has already committed; a failure here must never fail that mutation (see the function's own top comment). No dedup/upsert inside it — every real ongoing call site fires from a genuine one-time creation moment, so duplicates can't structurally occur; a repeatable backfill script guards its own dedup separately.
+- `resolveActionItem(id, adminId, resolutionNote?)` / `assignActionItem(id, actorAdminId, assignToAdminId)` (same file) — real, audited (`recordAudit()`), atomic claim-once discipline for resolve (`updateMany` + `status: "open"` filter, same pattern as `payments.service.ts`'s `activatePayment()`) so two admins can't both resolve the same item — covered by a genuine `Promise.all` concurrency test.
+- `GET /admin/action-items` (filterable by `type`/`severity`/`status`/`assignedToAdminId`), `POST /admin/action-items/:id/assign`, `POST /admin/action-items/:id/resolve` — gated on the `dashboard` permission module (`view` for read, a new `edit` grant added to `super_admin` only this wave — see `adminPermissions.ts`'s own comment on why only that one role for now).
+- **5 real sources wired in for BOTH one-time backfill (`apps/api/scripts/backfillAdminActionItems.ts`) and ongoing creation** (a call to `createActionItem()` added at each source's own real creation code path):
+  1. Open `SupportTicket` → `support_ticket_open` (low), wired in `support.service.ts#createTicket`.
+  2. `Refund` landing `pending` (no live gateway) → `refund_impact` (medium), wired in `adminRefunds.service.ts#createRefund` — a `processed` refund does NOT create an item (nothing left to act on).
+  3. Open `Escalation` → `support_escalation` (medium), wired in `adminSupport.service.ts#escalateSupportTicket`.
+  4. Unreviewed `SafetyEscalation` → `safety_escalation` (high), wired in `users.service.ts#upsertOnboardingProfile`.
+  5. Pending `RelationshipChangeRequest` → `relationship_change_pending` (medium), wired in `coaching.service.ts#createChangeRequest`.
+  6. Pending `ProfessionalCredential` (re-)submission → `credential_verification_pending` (medium), wired in `professionalOnboarding.service.ts#submitCredential`.
+
+**3 enum values defined but deliberately NOT wired this wave** (per this wave's own explicit scope) — real call sites for these depend on later-wave/parallel-unit work landing first:
+- `entitlement_activation_failed` — needs the entitlement-activation-failure integration work of a later wave.
+- `professional_acceptance_stalled` — needs the parallel Professional-lifecycle unit to land first.
+- `relationship_activation_failed` — needs later-wave integration work on the Relationship state machine's own failure modes (distinct from `relationship_change_pending` above, which is real today).
+
+No genuine open product decision was hit this wave beyond what's captured above — the "which non-super_admin roles get `dashboard:edit`" question is real but deliberately deferred to whichever wave builds the real per-role triage UI (Wave 4), not guessed at here.

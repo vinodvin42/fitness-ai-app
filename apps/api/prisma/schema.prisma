@@ -1938,6 +1938,13 @@ model AdminUser {
   // list only because that's how every other "who last touched this
   // config row" relation above is shaped.
   aiCoachSettingsUpdated          AiCoachSettings[]
+  // Admin Action Required Queue (R2 Wave 1, 20 Sep 2026) — two relations,
+  // same shape as Escalation's `escalatedBy`/`resolvedBy` above: the admin
+  // an item is assigned to and the admin who resolved it can legitimately
+  // be the same one, no self-guard needed (same reasoning as Escalation's
+  // own comment).
+  actionItemsAssigned             AdminActionItem[] @relation("AdminActionItemAssignedTo")
+  actionItemsResolved             AdminActionItem[] @relation("AdminActionItemResolvedBy")
 
   @@map("admin_users")
 }
@@ -2976,4 +2983,125 @@ model GymLocation {
 
   @@index([gymId])
   @@map("gym_locations")
+}
+
+// ---- Admin Action Required Queue (R2 Wave 1, 20 Sep 2026) --------------
+// Developer 3's real R1 work package §3 names "Dashboard / Action
+// Required" as its own first-listed admin functional area, and §4 spells
+// out a minimum "Admin Critical Exception Queue". A dedicated audit
+// confirmed no such thing was ever real: DashboardScreen.tsx's "Requires
+// Attention" card is a cosmetic, hardcoded 4-row widget with no
+// drill-through/ownership/resolution, and the actual exception data that
+// DOES exist is scattered, un-aggregated, across five separate screens
+// (EscalationsScreen, SafetyEscalationsScreen, RefundsScreen,
+// ChangeRequestQueueScreen, CredentialVerificationScreen). This is the
+// real, persisted aggregation model those five (and every later wave's
+// new exception source) write into.
+//
+// A REAL table, not a computed-on-the-fly view, on purpose — §4 requires
+// items to be assignable and dismissible with a real audit trail, which
+// only a genuinely mutable, ownable row can carry (the same "not a
+// virtual join" reasoning ContentReview/Escalation/SensitiveDataAccess
+// Request already establish elsewhere in this schema for exactly this
+// shape of problem: a real workflow state layered on top of pre-existing
+// source data).
+//
+// `type` names 16 real categories: the 12 verbatim from work package §4
+// ("payment success + entitlement activation failure; professional
+// acceptance stalled; relationship activation failure; credential/service
+// approval expiry; payout failure; refund impact; chargeback; safety
+// escalation; privacy request requiring action; professional complaint;
+// creator/gym abuse review; access revocation failure") plus 4 more this
+// pass actually wires up from the 5 pre-existing, real, siloed sources
+// that don't cleanly map onto any of those 12: a plain open SupportTicket
+// (`support_ticket_open`), a plain open Escalation
+// (`support_escalation` — distinct from `safety_escalation`, which maps
+// directly onto the real `SafetyEscalation` model), a pending
+// RelationshipChangeRequest (`relationship_change_pending` — distinct
+// from `relationship_activation_failed`, a different later-wave failure
+// mode on the Relationship state machine itself), and a
+// ProfessionalCredential sitting at `pending` verification
+// (`credential_verification_pending` — distinct from `credential_expiring`,
+// which is a later-wave hook off `ProfessionalCredential.expiresAt`, see
+// that field's own doc comment).
+//
+// Three of the 12 §4 types (`entitlement_activation_failed`,
+// `professional_acceptance_stalled`, `relationship_activation_failed`)
+// are defined here but deliberately have NO call site yet — this wave's
+// own scope explicitly excludes wiring them (they depend on the parallel
+// Professional-lifecycle unit landing, and on later-wave integration work
+// per the plan) — see docs/admin/07-open-questions-gaps.md's dated entry
+// for this wave for the full list of what's wired vs. defined-only.
+//
+// `entityType`/`entityId` is a polymorphic, unenforced reference — same
+// convention as `AuditLog.entityType`/`entityId` and `ContentReview
+// .contentType`/`contentId` — since one queue spans Payment/Relationship/
+// SafetyEscalation/Refund/SupportTicket/Escalation/RelationshipChangeRequest/
+// ProfessionalCredential/... without a union of mostly-null FK columns.
+// `metadata` is a flexible JSON bag for whatever real, non-queryable
+// context a given item's creator wants to carry along (same reasoning as
+// `AnalyticsEvent.metadata`/`AuditLog.metadata`), never required.
+//
+// `assignedToAdminId` / the resolve trio mirror the exact same nullable-
+// FK-pair shape `Escalation` already uses for `escalatedByAdmin`/
+// `resolvedByAdmin` — real ownership, real audit trail (`recordAudit()`
+// on every assign/resolve, see `adminActionQueue.ts`), and the same
+// atomic `updateMany` + `status: "open"` claim-once discipline
+// `payments.service.ts`'s `activatePayment()` already established for
+// "exactly one of two concurrent admins can resolve the same row."
+enum AdminActionItemType {
+  // Verbatim from R1 work package §4:
+  entitlement_activation_failed
+  professional_acceptance_stalled
+  relationship_activation_failed
+  credential_expiring
+  payout_failed
+  refund_impact
+  chargeback
+  safety_escalation
+  privacy_request
+  professional_complaint
+  partner_abuse_review
+  access_revocation_failed
+  // Real, wired-in mappings from the 5 pre-existing siloed sources that
+  // don't already match one of the 12 above — see this model's own top
+  // comment for the full reasoning on each:
+  support_ticket_open
+  support_escalation
+  relationship_change_pending
+  credential_verification_pending
+}
+
+enum AdminActionItemSeverity {
+  low
+  medium
+  high
+}
+
+enum AdminActionItemStatus {
+  open
+  resolved
+}
+
+model AdminActionItem {
+  id                String                   @id @default(uuid())
+  type              AdminActionItemType
+  entityType        String
+  entityId          String
+  severity          AdminActionItemSeverity  @default(medium)
+  status            AdminActionItemStatus    @default(open)
+  metadata          Json?
+  assignedToAdminId String?
+  assignedToAdmin   AdminUser?               @relation("AdminActionItemAssignedTo", fields: [assignedToAdminId], references: [id], onDelete: SetNull)
+  resolvedAt        DateTime?
+  resolvedByAdminId String?
+  resolvedByAdmin   AdminUser?               @relation("AdminActionItemResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  resolutionNote    String?
+  createdAt         DateTime                 @default(now())
+
+  @@index([status, severity])
+  @@index([type])
+  @@index([entityType, entityId])
+  @@index([assignedToAdminId])
+  @@map("admin_action_items")
 }

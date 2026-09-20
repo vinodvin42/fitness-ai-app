@@ -2,6 +2,7 @@ import type { User } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import {
@@ -155,6 +156,23 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   if (isNewCompletion && (input.medicalConditions.length > 0 || input.injuries.length > 0)) {
     const escalation = await prisma.safetyEscalation.create({
       data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+    });
+
+    // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — `high`
+    // severity: this is real, user-reported medical/injury data a human
+    // admin should see promptly, not just wait for someone to open the
+    // siloed Safety Escalations screen. A failure here must never fail
+    // onboarding completion — see lib/adminActionQueue.ts's top comment.
+    await createActionItem({
+      type: "safety_escalation",
+      entityType: "SafetyEscalation",
+      entityId: escalation.id,
+      severity: "high",
+      metadata: {
+        userId,
+        medicalConditionsCount: input.medicalConditions.length,
+        injuriesCount: input.injuries.length,
+      },
     });
 
     await trackEvent(
