@@ -4,7 +4,7 @@ import { DashboardScreen } from "../screens/dashboard/DashboardScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
 import { ClientsStack } from "./ClientsStack";
 import { MessagesStack } from "./MessagesStack";
-import { ComingSoonScreen } from "../screens/placeholder/ComingSoonScreen";
+import { MoreStack } from "./MoreStack";
 import { colors } from "../theme/tokens";
 
 /**
@@ -29,8 +29,11 @@ import { colors } from "../theme/tokens";
  * too** — a real Conversations → Thread flow backed by the new CoachMessage
  * model (see MessagesStack.tsx and apps/api's coachMessages.service.ts),
  * scoped honestly as poll-based (not real-time — no websocket/push infra
- * exists) with no attachments. Only More remains unbuilt: it has zero
- * frames anywhere in the reviewed Figma file.
+ * exists) with no attachments. **20 Sep 2026: More has one real
+ * destination now too** — Availability & Capacity (see MoreStack.tsx and
+ * AvailabilityScreen.tsx) — though More itself still has zero Figma frames,
+ * so its own menu layout is this build's own judgment call, not a
+ * Figma-matched design.
  */
 export type MainTabsParamList = {
   Dashboard: undefined;
@@ -56,9 +59,7 @@ export function MainTabs() {
       <Tab.Screen name="Clients" component={ClientsStack} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Messages" component={MessagesStack} />
-      <Tab.Screen name="More">
-        {() => <ComingSoonScreen title="More" subtitle="Not designed in the reviewed Figma file." />}
-      </Tab.Screen>
+      <Tab.Screen name="More" component={MoreStack} />
     </Tab.Navigator>
   );
 }

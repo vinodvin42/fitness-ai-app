@@ -1698,6 +1698,9 @@ export interface AdminProfessionalListItem {
   yearsExperience: number | null;
   services: { serviceType: ProfessionalServiceType; status: CredentialStatus }[];
   activeClients: number;
+  /** R2 Wave 2 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
+  lifecycleStatus: ProfessionalLifecycleStatus;
+  maxActiveClients: number;
 }
 
 /** The shape returned by GET /professionals/me/lifecycle and used by the admin directory's own capacity edit. */

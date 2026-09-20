@@ -1,13 +1,24 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import type { AdminProfessionalDetailResponse } from "@fitness-ai-app/types";
+import type { AdminProfessionalDetailResponse, UpdateMaxActiveClientsInput } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
+
+const MIN_CAPACITY = 1;
+const MAX_CAPACITY = 500;
+
+const LIFECYCLE_PRECONDITION_NOTE: Record<string, string> = {
+  application: "Hasn't submitted a service credential yet.",
+  verification: "Awaiting KYC and/or credential verification (Credentials tab).",
+  approved: "Approved, but not yet Available — needs at least one verified service credential. Moves to Available automatically once one clears.",
+  available: "Open for new-client matching, subject to the capacity below.",
+  suspended: "Account is suspended — overrides lifecycle stage for new-client matching.",
+};
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
@@ -39,12 +50,33 @@ async function fetchDetail(id: string): Promise<AdminProfessionalDetailResponse>
 export function ProfessionalProfileScreen() {
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
+  const [draftCapacity, setDraftCapacity] = useState("");
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-professional-detail", id],
     queryFn: () => fetchDetail(id as string),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (data) setDraftCapacity(String(data.professional.maxActiveClients));
+  }, [data?.professional.maxActiveClients]);
+
+  // R2 Wave 2 (20 Sep 2026) — admin override for `maxActiveClients`, the
+  // same `PATCH /admin/professionals/:id/capacity` endpoint R2 Wave 1
+  // shipped with no UI caller anywhere (`requirePermission("professionals",
+  // "edit")` already gates it server-side, same permission this screen's
+  // Suspend/Reactivate actions already require — no new frontend gating
+  // needed, this mutation just surfaces a 403 the same way those do).
+  const capacityMutation = useMutation({
+    mutationFn: (input: UpdateMaxActiveClientsInput) => apiClient.patch(`/admin/professionals/${id}/capacity`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professional-detail", id] }),
+  });
+
+  const parsedCapacity = Number.parseInt(draftCapacity, 10);
+  const isValidCapacity = Number.isInteger(parsedCapacity) && parsedCapacity >= MIN_CAPACITY && parsedCapacity <= MAX_CAPACITY;
+  const isDirty = data != null && isValidCapacity && parsedCapacity !== data.professional.maxActiveClients;
 
   return (
     <AppShell title="Professional Profile" subNav={PROFESSIONALS_SUB_NAV}>
@@ -66,6 +98,7 @@ export function ProfessionalProfileScreen() {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{data.professional.fullName}</h2>
                 <StatusBadge status={data.professional.status} />
+                <StatusBadge status={data.professional.lifecycleStatus} />
               </div>
               <div className="mt-1 text-sm text-text-secondary">{data.professional.email}</div>
               {data.professional.phone && <div className="text-xs text-text-dim">{data.professional.phone}</div>}
@@ -122,6 +155,66 @@ export function ProfessionalProfileScreen() {
                 <p className="mt-3 text-[11px] text-text-dim">
                   Review and approve/reject KYC from the Credential Verification queue.
                 </p>
+              </div>
+
+              <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">Lifecycle & Capacity</div>
+                  <StatusBadge status={data.professional.lifecycleStatus} />
+                </div>
+                <p className="mt-2 text-xs text-text-secondary">
+                  {LIFECYCLE_PRECONDITION_NOTE[data.professional.lifecycleStatus] ?? ""}
+                </p>
+
+                <div className="mt-4 flex flex-wrap items-end gap-4">
+                  <div>
+                    <div className="text-[11px] text-text-dim">Active clients</div>
+                    <div className="text-sm text-text-primary">
+                      {data.clients.filter((c) => c.status === "active").length} of {data.professional.maxActiveClients}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-text-dim" htmlFor="max-active-clients">
+                      Max active clients (admin override, {MIN_CAPACITY}–{MAX_CAPACITY})
+                    </label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        id="max-active-clients"
+                        type="number"
+                        min={MIN_CAPACITY}
+                        max={MAX_CAPACITY}
+                        step={1}
+                        value={draftCapacity}
+                        onChange={(e) => setDraftCapacity(e.target.value)}
+                        disabled={capacityMutation.isPending}
+                        className="w-24 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                      />
+                      <button
+                        type="button"
+                        disabled={!isDirty || capacityMutation.isPending}
+                        onClick={() => capacityMutation.mutate({ maxActiveClients: parsedCapacity })}
+                        className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                      >
+                        {capacityMutation.isPending ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                    {!isValidCapacity && draftCapacity.length > 0 && (
+                      <p className="mt-1 text-[11px] text-danger">
+                        Enter a whole number between {MIN_CAPACITY} and {MAX_CAPACITY}.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {capacityMutation.isError && (
+                  <p className="mt-3 text-xs text-danger">
+                    {extractErrorMessage(capacityMutation.error, "Couldn't update capacity.")}
+                  </p>
+                )}
+                {capacityMutation.isSuccess && !capacityMutation.isPending && (
+                  <p className="mt-3 text-xs text-accent">Capacity updated.</p>
+                )}
               </div>
             </div>
           )}

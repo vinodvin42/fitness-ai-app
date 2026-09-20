@@ -102,6 +102,9 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       yearsExperience: number | null;
       credentials: CredentialRow[];
       relationships: unknown[];
+      // R2 Wave 2 (20 Sep 2026) — see this function's own return mapping.
+      lifecycleStatus: string;
+      maxActiveClients: number;
     }>
   ).map((p) => ({
     ...p,
@@ -136,6 +139,13 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       yearsExperience: p.yearsExperience,
       services: p.credentials.map((c) => ({ serviceType: c.serviceType, status: c.status })),
       activeClients: p.relationships.length,
+      // R2 Wave 2 (20 Sep 2026) — real Directory-row surfacing of the
+      // account-level lifecycle stage + capacity R2 Wave 1 shipped with no
+      // UI reader anywhere. Already selected on every row above (no
+      // `select` on the underlying `findMany`, so all scalars come back);
+      // this just stops dropping them on the floor before the response.
+      lifecycleStatus: p.lifecycleStatus,
+      maxActiveClients: p.maxActiveClients,
     })),
     counts,
     // Figma-spec'd columns with no backing field — see this file's top

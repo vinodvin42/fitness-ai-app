@@ -114,6 +114,7 @@ export function ProfessionalDirectoryScreen() {
                   <th className="px-4 py-3 font-normal">Active Clients</th>
                   <th className="px-4 py-3 font-normal">Status</th>
                   <th className="px-4 py-3 font-normal">KYC</th>
+                  <th className="px-4 py-3 font-normal">Lifecycle</th>
                   <th className="px-4 py-3 font-normal">Actions</th>
                 </tr>
               </thead>
@@ -140,12 +141,17 @@ export function ProfessionalDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">
                       {p.yearsExperience != null ? `${p.yearsExperience} yrs` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-text-secondary">{p.activeClients}</td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {p.activeClients} / {p.maxActiveClients}
+                    </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.status} />
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.kycStatus} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={p.lifecycleStatus} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -170,7 +176,7 @@ export function ProfessionalDirectoryScreen() {
                 ))}
                 {data.professionals.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
                       {tab === "credentialsExpiring"
                         ? "Not available — ProfessionalCredential has no expiry-date field yet."
                         : "No professionals in this view."}

@@ -66,6 +66,12 @@ const LABELS: Record<string, string> = {
   // (fraud/chargeback/ToS), never a user or lazy-expiry outcome.
   expired: "Expired",
   revoked: "Revoked",
+  // R2 Wave 2 (20 Sep 2026) — ProfessionalLifecycleStatus's remaining
+  // three values ("approved"/"suspended" above are already shared with
+  // Module 04/03's own uses of those same words).
+  application: "Application",
+  verification: "Under Verification",
+  available: "Available",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -103,9 +109,12 @@ const TONE_CLASSES: Record<string, string> = {
   activating: "bg-warning/15 text-warning",
   expired: "bg-surface-raised text-text-dim",
   revoked: "bg-danger/15 text-danger",
+  application: "bg-surface-raised text-text-dim",
+  verification: "bg-warning/15 text-warning",
+  available: "bg-accent/15 text-accent",
 };
 
-const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed"]);
+const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed", "available"]);
 
 /**
  * "Verification status badge (Verified ✓ / Not Verified / Pending,
