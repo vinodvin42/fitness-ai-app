@@ -1525,6 +1525,105 @@ export interface DeclineRelationshipInput {
   reason?: string;
 }
 
+// ---- Professional Offers (R2 Wave 2, 20 Sep 2026) --------------------------
+// The admin/system-proposes-a-specific-pro lifecycle stage
+// (APPROVED -> AVAILABLE -> OFFERED/ASSIGNED -> ACCEPTED -> ...) Developer
+// 2's real R1 work package §2 names, distinct from the user-initiated
+// Relationship request flow above (RelationshipStatus/PendingRelationshipItem).
+// See apps/api's schema.prisma ProfessionalOffer model comment and
+// professionalOffers.service.ts for the full design — a new, parallel
+// model, never merged into RelationshipStatus.
+export type ProfessionalOfferStatus = "offered" | "accepted" | "declined" | "expired";
+
+/** Matches apps/api's professionalOffers.schema.ts's createOfferSchema — POST /admin/professional-offers. */
+export interface CreateProfessionalOfferInput {
+  professionalId: string;
+  userId: string;
+  serviceType: ProfessionalServiceType;
+  /** ISO 8601 — real and enforced once set (shown to the professional), not decorative. See the model's own doc comment. */
+  expiresAt?: string;
+}
+
+/** One row of GET /admin/professional-offers (admin-facing, filterable) and the `offer` field of POST /admin/professional-offers. */
+export interface ProfessionalOffer {
+  offerId: string;
+  professionalId: string;
+  professionalFullName: string;
+  userId: string;
+  userFullName: string;
+  serviceType: ProfessionalServiceType;
+  status: ProfessionalOfferStatus;
+  proposedByAdminId: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export interface CreateProfessionalOfferResponse {
+  offer: {
+    id: string;
+    professionalId: string;
+    userId: string;
+    serviceType: ProfessionalServiceType;
+    status: ProfessionalOfferStatus;
+    proposedByAdminId: string | null;
+    expiresAt: string | null;
+    createdAt: string;
+    respondedAt: string | null;
+  };
+}
+
+export interface ListProfessionalOffersResponse {
+  offers: ProfessionalOffer[];
+}
+
+/** The real "list available professionals" read admin-web's Propose Professional UI needs — GET /admin/professional-offers/available-professionals. */
+export interface AvailableProfessional {
+  id: string;
+  fullName: string;
+  bio: string | null;
+  specializationTags: string[];
+  yearsExperience: number | null;
+}
+
+export interface AvailableProfessionalsResponse {
+  professionals: AvailableProfessional[];
+}
+
+/**
+ * One row of GET /professionals/me/offers — the coach-facing counterpart to
+ * `PendingRelationshipItem` above, backing apps/coach-mobile's "Offers from
+ * PrimeFit" section. Deliberately a distinct type/shape from
+ * PendingRelationshipItem: an offer is a separate row that only creates a
+ * Relationship once accepted, not the same entity under a different name.
+ */
+export interface ProfessionalOfferForCoach {
+  offerId: string;
+  userId: string;
+  userFullName: string;
+  serviceType: ProfessionalServiceType;
+  status: ProfessionalOfferStatus;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface ProfessionalOffersForCoachResponse {
+  offers: ProfessionalOfferForCoach[];
+}
+
+/** Matches professionalOffers.schema.ts's declineOfferSchema — POST /professionals/me/offers/:id/decline's optional body. */
+export interface DeclineOfferInput {
+  reason?: string;
+}
+
+/** The shape returned by POST /professionals/me/offers/:id/accept and /decline. */
+export interface RespondToOfferResponse {
+  id: string;
+  status: ProfessionalOfferStatus;
+  /** Only present on accept — the real Relationship row the accepted offer converged onto. */
+  relationshipId?: string;
+}
+
 /** One row of "My Professional Team" — real last/next session dates computed from Booking. */
 export interface CoachTeamMember {
   relationshipId: string;

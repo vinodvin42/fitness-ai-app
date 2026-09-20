@@ -402,6 +402,10 @@ model User {
   // couple of real rows (a backfilled-history row plus a real signup-time
   // row).
   touchpoints                 Touchpoint[]
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
+  // own doc comment below. This user is always the PROPOSED CLIENT, never
+  // the proposer (only an AdminUser proposes, this wave).
+  professionalOffersReceived  ProfessionalOffer[]
 
   @@map("users")
 }
@@ -1945,6 +1949,10 @@ model AdminUser {
   // own comment).
   actionItemsAssigned             AdminActionItem[] @relation("AdminActionItemAssignedTo")
   actionItemsResolved             AdminActionItem[] @relation("AdminActionItemResolvedBy")
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
+  // own doc comment below. Nullable on that model (a future "system"
+  // proposer needs no AdminUser), so this is a one-to-many, not required.
+  professionalOffersProposed       ProfessionalOffer[]
 
   @@map("admin_users")
 }
@@ -2124,6 +2132,9 @@ model Professional {
   coachMessages    CoachMessage[]
   // Coach Settlements, added 31 Aug 2026 — see the CoachSettlement model.
   settlements      CoachSettlement[]
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
+  // own doc comment below.
+  offersReceived   ProfessionalOffer[]
 
   @@map("professionals")
 }
@@ -2364,6 +2375,81 @@ model RelationshipChangeRequest {
   @@index([relationshipId])
   @@index([userId])
   @@map("relationship_change_requests")
+}
+
+// ---- Professional Offers (R2 Wave 2, 20 Sep 2026) ----------------------
+// Developer 2's real R1 work package §2 names a distinct, earlier stage of
+// the professional lifecycle than the one `Relationship` (above) models:
+// `APPROVED -> AVAILABLE -> OFFERED/ASSIGNED -> ACCEPTED -> AWAITING_PAYMENT
+// -> ...` — an ADMIN or SYSTEM proposes a specific `available` professional
+// to a specific user, distinct from the existing, real, USER-initiated
+// "request a coach I found in Discovery" flow `Relationship.status`'s own
+// `requested` stage already models. This model is that missing earlier
+// stage — a NEW, parallel table, deliberately NOT an extension of
+// `Relationship`/`RelationshipStatus`: that enum is already tuned/tested
+// for the user-initiated journey (see coaching.service.ts's own top
+// comment's changelog), and folding a second, differently-shaped proposal
+// flow into it would mean overloading `requested` with two different real
+// meanings ("a user asked for this coach" vs. "PrimeFit proposed this
+// coach"), which the two flows' own different semantics (a Relationship
+// request already exists as its own row the moment a user taps "Request";
+// an Offer is a separate row that only creates a Relationship once
+// accepted) argue against.
+//
+// **Real product decision made for this wave, not re-decided here:**
+// manual admin-proposes-a-specific-pro only — no auto-matching algorithm.
+// `proposedByAdminId` is nullable, not because "system" auto-propose is
+// built this wave (it explicitly is not — see this wave's own "Explicit
+// out of scope" note), but because the spec's own "OFFERED/ASSIGNED"
+// naming treats a system-computed match as an equally valid proposer for
+// a LATER wave to build without a second migration. Every real row created
+// this wave has `proposedByAdminId` set.
+//
+// `serviceType` is required (unlike the nullable "combined" convenience on
+// `ProfessionalServiceOffering`) because accepting an offer calls straight
+// into `coaching.service.ts#claimRelationship`, which only ever claims one
+// concrete `fitness`/`nutrition` `Relationship` row at a time — an admin
+// proposing a professional for BOTH services creates two offers, the same
+// "one row per concrete pairing" discipline `Relationship` itself already
+// uses.
+//
+// `expiresAt` is real and shown to the professional (not decorative) — a
+// proposed pairing going stale (the admin who proposed it moved on, the
+// user's need changed) should eventually stop being actionable rather than
+// sitting in a coach's queue forever; nullable because not every offer
+// needs one. No background sweep marks a stale offer `expired`
+// automatically this wave (this codebase has no scheduler infra anywhere
+// — see this wave's own "Explicit out of scope" note) — `acceptOffer`/
+// `declineOffer` both refuse an offer whose `expiresAt` has passed even
+// while its stored `status` still reads `offered`, so the field is
+// enforced at the only two points that matter today; a real cron-equivalent
+// to flip `status` to `expired` in bulk is explicitly a later wave's job.
+enum ProfessionalOfferStatus {
+  offered
+  accepted
+  declined
+  expired
+}
+
+model ProfessionalOffer {
+  id                String                  @id @default(uuid())
+  professionalId    String
+  professional      Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceType       ProfessionalServiceType
+  status            ProfessionalOfferStatus @default(offered)
+  // Nullable — see this model's own top comment on why "system" is a valid,
+  // schema-modeled-but-not-yet-built proposer for a later wave.
+  proposedByAdminId String?
+  proposedByAdmin   AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
+  expiresAt         DateTime?
+  createdAt         DateTime                @default(now())
+  respondedAt       DateTime?
+
+  @@index([professionalId, status])
+  @@index([userId])
+  @@map("professional_offers")
 }
 
 // ---- Sensitive Data Access Requests (Module 02 — Users, added 25 Aug

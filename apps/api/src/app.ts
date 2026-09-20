@@ -56,6 +56,7 @@ import { professionalDashboardRouter } from "./modules/professionalDashboard/pro
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
+import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -295,6 +296,13 @@ export function createApp() {
   // Bearer for /coaching/conversations*, Professional Bearer for
   // /professionals/me/conversations*). See coachMessages.service.ts.
   app.use("/", coachMessagesRouter);
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — the admin/system-proposes
+  // -a-specific-pro stage the existing user-initiated Relationship flow
+  // above doesn't model. Mixed auth per route (Admin Bearer for
+  // /admin/professional-offers*, Professional Bearer for
+  // /professionals/me/offers*) — see professionalOffers.service.ts's own
+  // doc comment.
+  app.use("/", professionalOffersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

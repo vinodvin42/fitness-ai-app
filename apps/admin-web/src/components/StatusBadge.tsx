@@ -72,6 +72,11 @@ const LABELS: Record<string, string> = {
   application: "Application",
   verification: "Under Verification",
   available: "Available",
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — ProfessionalOfferStatus's
+  // two new values; "accepted"/"expired" above are already shared with
+  // Module 04's RelationshipStatus/SubscriptionStatus.
+  offered: "Offered",
+  declined: "Declined",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -112,6 +117,8 @@ const TONE_CLASSES: Record<string, string> = {
   application: "bg-surface-raised text-text-dim",
   verification: "bg-warning/15 text-warning",
   available: "bg-accent/15 text-accent",
+  offered: "bg-warning/15 text-warning",
+  declined: "bg-danger/15 text-danger",
 };
 
 const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed", "available"]);
