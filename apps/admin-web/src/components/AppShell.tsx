@@ -170,6 +170,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Finance", path: "/finance", glyph: "◫", builtIn: true },
   { label: "AI Operations", path: "/ai-operations", glyph: "✳", builtIn: true },
   { label: "Admin & System", path: "/admin-system", glyph: "⚙", builtIn: true },
+  // Gym Partner Lite (R2 Wave 4, 20 Sep 2026) — a real 13th nav destination,
+  // not one of the original 12-module Figma IA this file's own top comment
+  // describes. See docs/admin/07-open-questions-gaps.md's Wave 1/Wave 4
+  // entries for the full Gym Partner Lite design.
+  { label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true },
 ];
 
 export function AppShell({

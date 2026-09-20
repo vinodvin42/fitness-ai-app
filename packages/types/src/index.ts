@@ -3763,3 +3763,104 @@ export interface PlanNextWorkout {
   /** True when every workout in the active Plan's Program is already completed. */
   programComplete: boolean;
 }
+
+// ---- Admin: Gym Partner Lite (apps/admin-web) ------------------------------
+// R2 Wave 4 (20 Sep 2026) — real admin-web UI over R2 Wave 1's real
+// gyms.service.ts. See that file's own doc comment for the full model/
+// lifecycle design (application -> approved -> suspended, the
+// ratePerMemberCents "not configured" placeholder semantics, and why
+// getMemberActivationSummary is honest-zero rather than fabricated).
+
+export type GymStatus = "application" | "approved" | "suspended";
+
+export interface AdminGymLocation {
+  id: string;
+  name: string;
+  address: string;
+  equipment: string | null;
+  createdAt: string;
+}
+
+/** One row of GET /admin/gyms. */
+export interface AdminGymListItem {
+  id: string;
+  name: string;
+  status: GymStatus;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  commissionPct: number;
+  pricingModel: string;
+  ratePerMemberCents: number;
+  inviteCode: string;
+  locationCount: number;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface AdminGymDirectoryResponse {
+  gyms: AdminGymListItem[];
+}
+
+/** GET /admin/gyms/:id's `gym` shape — matches gyms.service.ts#getGymDetail. */
+export interface AdminGymDetail {
+  id: string;
+  name: string;
+  status: GymStatus;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  commissionPct: number;
+  pricingModel: string;
+  ratePerMemberCents: number;
+  /** Honest "not configured" signal — see gyms.service.ts#getGymDetail's own comment. `ratePerMemberCents` is 0 exactly when this is false. */
+  ratePerMemberConfigured: boolean;
+  inviteCode: string;
+  createdAt: string;
+  updatedAt: string;
+  locations: AdminGymLocation[];
+}
+
+export interface AdminGymDetailResponse {
+  gym: AdminGymDetail;
+}
+
+export interface AdminGymLocationResponse {
+  location: AdminGymLocation;
+}
+
+export interface CreateGymInput {
+  name: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  commissionPct?: number;
+  pricingModel?: string;
+  ratePerMemberCents?: number;
+  locations?: { name: string; address: string; equipment?: string }[];
+}
+
+export interface AddGymLocationInput {
+  name: string;
+  address: string;
+  equipment?: string;
+}
+
+export interface UpdateGymStatusInput {
+  status: Extract<GymStatus, "approved" | "suspended">;
+  note?: string;
+}
+
+export interface UpdateGymCommercialInput {
+  commissionPct?: number;
+  pricingModel?: string;
+  ratePerMemberCents?: number;
+}
+
+/** GET /admin/gyms/:id/member-activation-summary — matches gyms.service.ts#getMemberActivationSummary. Aggregate counts only, never a member list (BR-GYM-003). */
+export interface AdminGymMemberActivationSummary {
+  gymId: string;
+  memberCount: number;
+  onboardingCompletedCount: number;
+  firstWorkoutCompletedCount: number;
+}

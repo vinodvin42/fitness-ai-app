@@ -46,6 +46,8 @@ import { ReceivablesPayablesScreen } from "./screens/finance/ReceivablesPayables
 import { TaxesScreen } from "./screens/finance/TaxesScreen";
 import { FinancialReportsScreen } from "./screens/finance/FinancialReportsScreen";
 import { AiCoachSettingsScreen } from "./screens/aiOps/AiCoachSettingsScreen";
+import { GymDirectoryScreen } from "./screens/gyms/GymDirectoryScreen";
+import { GymProfileScreen } from "./screens/gyms/GymProfileScreen";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -546,6 +548,27 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <AiCoachSettingsScreen />
+          </RequireAuth>
+        }
+      />
+      {/* Gym Partner Lite admin-web UI (R2 Wave 4, 20 Sep 2026) — the real
+          screens this wave built over R2 Wave 1's real gyms.service.ts/
+          gyms.routes.ts. Directory + Profile (row-click drill-down), same
+          shape as Users/Relationships — no subNav needed for a single
+          top-level screen + detail, same precedent as those two modules. */}
+      <Route
+        path="/gyms"
+        element={
+          <RequireAuth>
+            <GymDirectoryScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/gyms/:id"
+        element={
+          <RequireAuth>
+            <GymProfileScreen />
           </RequireAuth>
         }
       />
