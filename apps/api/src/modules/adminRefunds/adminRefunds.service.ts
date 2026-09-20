@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { CreateRefundInput, ListRefundsQuery } from "./adminRefunds.schema";
 
 /**
@@ -211,6 +212,21 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
     entityId: refund.id,
     metadata: { paymentId, amountCents: input.amountCents, status },
   });
+
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — only a refund
+  // that landed genuinely `pending` (no live gateway to actually move the
+  // money) needs a human admin to follow up; a `processed` refund already
+  // completed the real action there is to take, so it doesn't belong in
+  // an "action required" queue at all.
+  if (status === "pending") {
+    await createActionItem({
+      type: "refund_impact",
+      entityType: "Refund",
+      entityId: refund.id,
+      severity: "medium",
+      metadata: { paymentId, amountCents: input.amountCents },
+    });
+  }
 
   return refund;
 }

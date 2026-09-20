@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { SelectServicesInput, SubmitCredentialInput, SubmitKycInput } from "./professionalOnboarding.schema";
 
 /**
@@ -86,6 +87,19 @@ export async function submitCredential(professionalId: string, input: SubmitCred
     entityType: "ProfessionalCredential",
     entityId: updated.id,
     metadata: { serviceType: input.serviceType },
+  });
+
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — every (re-)
+  // submission resets `status` to `pending` above, i.e. a real new review
+  // cycle a human admin needs to act on (adminProfessionals.service.ts's
+  // verifyCredential) — distinct from `credential_expiring`, which is a
+  // later-wave hook off an already-verified credential's `expiresAt`.
+  await createActionItem({
+    type: "credential_verification_pending",
+    entityType: "ProfessionalCredential",
+    entityId: updated.id,
+    severity: "medium",
+    metadata: { professionalId, serviceType: input.serviceType },
   });
 
   return updated;

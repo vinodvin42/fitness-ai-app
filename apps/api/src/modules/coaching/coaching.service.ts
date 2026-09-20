@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import {
   AvailabilityQuery,
@@ -787,6 +788,18 @@ export async function createChangeRequest(
     entityType: "RelationshipChangeRequest",
     entityId: changeRequest.id,
     metadata: { relationshipId, reason: input.reason },
+  });
+
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — a submitted
+  // Change/Intervention Queue request needs a real admin to review it
+  // (adminRelationships.service.ts's approve/deny), same reasoning as
+  // every other pending-review source wired into this queue.
+  await createActionItem({
+    type: "relationship_change_pending",
+    entityType: "RelationshipChangeRequest",
+    entityId: changeRequest.id,
+    severity: "medium",
+    metadata: { relationshipId, userId, reason: input.reason },
   });
 
   return changeRequest;

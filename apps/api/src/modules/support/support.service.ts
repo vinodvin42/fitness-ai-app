@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { CreateSupportTicketInput, SendSupportTicketMessageInput } from "./support.schema";
 
 /**
@@ -28,6 +29,24 @@ export async function createTicket(userId: string, input: CreateSupportTicketInp
     entityType: "SupportTicket",
     entityId: ticket.id,
     metadata: { category: ticket.category },
+  });
+
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — every newly
+  // opened ticket is a real item a human admin should see in the unified
+  // queue, not just in this module's own siloed list. Severity is a
+  // simple, honest default (`low`) — this queue doesn't yet have a real
+  // triage signal beyond SupportTicket.priority to derive a richer one
+  // from, and inventing a scoring formula here would be exactly the kind
+  // of fabricated-certainty this codebase's own conventions warn against
+  // elsewhere (see FoodEstimate's/Plan's doc comments). A failure here
+  // must never fail ticket creation — see lib/adminActionQueue.ts's top
+  // comment.
+  await createActionItem({
+    type: "support_ticket_open",
+    entityType: "SupportTicket",
+    entityId: ticket.id,
+    severity: "low",
+    metadata: { category: ticket.category, priority: ticket.priority },
   });
 
   return ticket;

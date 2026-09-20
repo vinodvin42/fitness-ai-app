@@ -71,7 +71,15 @@ export const PERMISSION_MATRIX: Record<KnownAdminRole, ModulePermissions> = {
   // in this codebase; not adding them would be a real regression, not a
   // permissions tightening.
   super_admin: {
-    dashboard: ["view", "create", "export"],
+    // `edit` added 20 Sep 2026 (R2 Wave 1, Admin Action Required queue) —
+    // the doc's own matrix pre-dates that queue existing at all; assigning/
+    // resolving a real AdminActionItem is a genuine dashboard mutation, not
+    // a regression the way widening an existing action would be. See
+    // adminActionQueue.routes.ts's own comment for why only super_admin
+    // gets it this wave — which other roles should too is a real,
+    // deliberately deferred ownership question for whoever builds the real
+    // triage UI on top of this (Wave 4).
+    dashboard: ["view", "create", "edit", "export"],
     users: ["view", "create", "edit", "delete", "export"],
     professionals: ["view", "create", "edit", "delete", "export", "approve"],
     relationships: ["view", "create", "edit", "delete", "export"],

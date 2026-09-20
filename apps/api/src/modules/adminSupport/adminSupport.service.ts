@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { createActionItem } from "../../lib/adminActionQueue";
 import {
   EscalateSupportTicketInput,
   ListEscalationsQuery,
@@ -437,6 +438,18 @@ export async function escalateSupportTicket(
     action: "escalation.create",
     entityType: "Escalation",
     entityId: escalation.id,
+    metadata: { supportTicketId, reason: input.reason },
+  });
+
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — an Escalation
+  // is by definition "needs attention beyond first-line support," so it's
+  // a real, `medium`-severity queue item by default (higher than a plain
+  // open ticket, since a human admin has already judged it worth raising).
+  await createActionItem({
+    type: "support_escalation",
+    entityType: "Escalation",
+    entityId: escalation.id,
+    severity: "medium",
     metadata: { supportTicketId, reason: input.reason },
   });
 

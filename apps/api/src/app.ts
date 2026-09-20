@@ -47,6 +47,7 @@ import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
 import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
+import { adminActionQueueRouter } from "./modules/adminActionQueue/adminActionQueue.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
 import { professionalOnboardingRouter } from "./modules/professionalOnboarding/professionalOnboarding.routes";
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
@@ -249,6 +250,10 @@ export function createApp() {
   app.use("/", adminInfluencersRouter);
   app.use("/", adminCouponsRouter);
   app.use("/", adminRefundsRouter);
+  // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — see
+  // schema.prisma's AdminActionItem doc comment and lib/adminActionQueue
+  // .ts's top comment for the full design.
+  app.use("/", adminActionQueueRouter);
   // Module 12.02 — Roles & Permissions (read-only) and 12.04 — Privacy &
   // Data Governance (added 26 Aug 2026), same pass as Module 09.02/09.03
   // and Finance. Neither needed a new Prisma entity: 12.02 reads the
