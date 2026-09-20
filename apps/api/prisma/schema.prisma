@@ -2215,6 +2215,19 @@ model Relationship {
   serviceType    ProfessionalServiceType
   status         RelationshipStatus      @default(requested)
   createdAt      DateTime                @default(now())
+  // Added 20 Sep 2026 (Wave 3 coach nav/stuck-state pass) — every prior
+  // field on this model only ever grew (createdAt, endedAt, endReason);
+  // nothing tracked WHEN a status transition itself happened, so there was
+  // no honest way to tell "just entered `activating`" apart from "has been
+  // stuck in `activating` for hours" (see coaching.service.ts's
+  // claimRelationship doc comment on why a row can be left there after a
+  // real booking-creation failure). `@updatedAt` is Prisma-managed on every
+  // write to this row, same convention most other models already use —
+  // professionalDashboard.service.ts's stuck-relationship detection reads
+  // this to compute "how long has this been activating", not `createdAt`
+  // (which reflects the relationship's original request time, often much
+  // earlier than its most recent `activating` transition).
+  updatedAt      DateTime                @updatedAt
   endedAt        DateTime?
   // Added 16 Sep 2026 (gap §56) alongside the real coach accept/decline
   // gate — set when a coach declines a `requested` relationship (a short,

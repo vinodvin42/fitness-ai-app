@@ -1,10 +1,12 @@
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AuthStack } from "./AuthStack";
 import { OnboardingStack } from "./OnboardingStack";
 import { MainTabs } from "./MainTabs";
+import { NotificationsScreen } from "../screens/notifications/NotificationsScreen";
 import { colors } from "../theme/tokens";
 
 const navigationTheme = {
@@ -19,11 +21,27 @@ const navigationTheme = {
   },
 };
 
+// The root stack once signed in and onboarded — just `MainTabs` plus one
+// sibling screen, `Notifications` (added Wave 3, 20 Sep 2026). Living here,
+// one level above the tab bar, is what lets ScreenContainer.tsx's global
+// "Alerts" header button call `navigation.navigate("Notifications")` from
+// ANY nested screen in ANY of the 5 tabs' own stacks — React Navigation
+// walks up the navigator tree to find a route name it can't resolve
+// locally, so this doesn't need every nested stack's param list threaded
+// with a `Notifications` entry, just this one real registration.
+export type RootStackParamList = {
+  Main: undefined;
+  Notifications: undefined;
+};
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+
 /**
  * Three-way switch: signed out -> AuthStack, signed in but hasn't selected
- * a service yet -> OnboardingStack, otherwise -> MainTabs. No LockScreen
- * step here (see AuthContext's own doc comment on why biometric lock was
- * deliberately not replicated for this first slice).
+ * a service yet -> OnboardingStack, otherwise -> the real root stack (
+ * MainTabs + Notifications). No LockScreen step here (see AuthContext's own
+ * doc comment on why biometric lock was deliberately not replicated for
+ * this first slice).
  */
 export function RootNavigator() {
   const { isAuthenticated, isLoading, onboardingCompleted } = useAuth();
@@ -42,7 +60,12 @@ export function RootNavigator() {
   } else if (!onboardingCompleted) {
     content = <OnboardingStack />;
   } else {
-    content = <MainTabs />;
+    content = (
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Main" component={MainTabs} />
+        <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ presentation: "modal" }} />
+      </RootStack.Navigator>
+    );
   }
 
   return <NavigationContainer theme={navigationTheme}>{content}</NavigationContainer>;

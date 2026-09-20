@@ -35,7 +35,11 @@ export function VerificationStatusScreen() {
   });
 
   return (
-    <ScreenContainer title="Verification Status">
+    // showAlerts=false — the global Notifications route only exists once
+    // onboardingCompleted (see RootNavigator.tsx: OnboardingStack renders
+    // outside the RootStack that registers "Notifications"), so this
+    // pre-onboarding screen can't navigate there yet.
+    <ScreenContainer title="Verification Status" showAlerts={false}>
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{professional?.fullName}</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginBottom: spacing.sm }}>
         {professional?.email}
