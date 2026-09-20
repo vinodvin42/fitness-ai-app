@@ -1378,6 +1378,15 @@ export interface CoachScheduleItem {
   status: BookingStatus;
 }
 
+/** One `Relationship` stuck at `activating` past the read-time detection threshold — see professionalDashboard.service.ts's detectAndQueueStuckRelationships doc comment. Added Wave 3, 20 Sep 2026. */
+export interface StuckRelationshipItem {
+  relationshipId: string;
+  clientFullName: string;
+  serviceType: ProfessionalServiceType;
+  /** ISO timestamp of this relationship's last write — its most recent transition INTO `activating`, not necessarily its original request time. */
+  stuckSince: string;
+}
+
 /** The shape returned by GET /professionals/me/dashboard — see professionalDashboard.service.ts's own doc comment for what's real vs. not-yet-available. */
 export interface ProfessionalDashboardStats {
   services: { serviceType: ProfessionalServiceType; verificationStatus: CredentialStatus }[];
@@ -1386,6 +1395,8 @@ export interface ProfessionalDashboardStats {
   sessionsThisWeek: number;
   /** Real since 26 Aug 2026 — confirmed Bookings scheduled for today (UTC calendar day, same convention as coaching.service.ts's availability grid). */
   todaysSchedule: CoachScheduleItem[];
+  /** Real since 20 Sep 2026 (Wave 3) — Relationships between this professional and a client stuck at `activating` longer than the read-time detection threshold. Each entry also gets (at most one) open AdminActionItem row. Usually empty. */
+  stuckRelationships: StuckRelationshipItem[];
   /** Always ["avgRating"] today — no Review model exists anywhere in this build. sessionsThisWeek/todaysSchedule are no longer in this list as of 26 Aug 2026. */
   notAvailable: string[];
 }

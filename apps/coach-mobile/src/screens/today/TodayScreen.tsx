@@ -38,6 +38,64 @@ function periodLabel(iso: string): string {
  * strict pending -> paid lifecycle (no partial/failed state exists), so
  * this is the full state space, not a subset.
  */
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+const SERVICE_LABEL: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
+
+/**
+ * Stuck-relationship banner (Wave 3, 20 Sep 2026) — the honest signal this
+ * coach app never had (see professionalDashboard.service.ts's
+ * detectAndQueueStuckRelationships doc comment): a `Relationship` left at
+ * `activating` after a real booking-creation failure doesn't show up in the
+ * Clients list at all (professionalClients.service.ts only ever lists
+ * `status: "active"` relationships), so before this, a coach had no way to
+ * even know one of their would-be clients was stuck mid-activation. Mirrors
+ * apps/user-mobile's own honest "not active yet" framing for the same
+ * RelationshipStatus enum (ProfessionalRelationshipScreen.tsx) rather than
+ * inventing new copy — this is presented as a real problem needing outside
+ * help, not a retryable in-app action, because (unlike a failed Payment
+ * activation) there's no retry endpoint for this: coaching.service.ts's own
+ * createBooking doc comment treats a booking-creation failure as "needs a
+ * human", the same discipline payments.service.ts's activatePayment()
+ * explicitly carves booking OUT of its retry path for. An
+ * AdminActionItem is already queued server-side by the time this renders
+ * (the same dashboard read that returns this array creates it) — this
+ * banner is the client-side half of that honesty, not a duplicate report.
+ */
+function StuckRelationshipsBanner({ items }: { items: { relationshipId: string; clientFullName: string; serviceType: string; stuckSince: string }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <Card style={{ borderColor: colors.warning, borderWidth: 1 }}>
+      <Text style={{ color: colors.warning, ...typography.h2, marginBottom: spacing.xs }}>
+        Needs attention — stuck activating
+      </Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.sm }}>
+        {items.length === 1 ? "This client relationship" : `These ${items.length} client relationships`} didn't
+        finish activating and won't show up under Clients yet. This has been flagged to PrimeFit support — no
+        action is required from you, but reach out to support if you expected this to be resolved by now.
+      </Text>
+      <View style={{ gap: spacing.xs }}>
+        {items.map((item) => (
+          <View key={item.relationshipId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
+              {item.clientFullName} · {SERVICE_LABEL[item.serviceType] ?? item.serviceType}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{timeAgo(item.stuckSince)}</Text>
+          </View>
+        ))}
+      </View>
+    </Card>
+  );
+}
+
 function EarningsCard() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-earnings"],
@@ -156,13 +214,13 @@ function timeLabel(iso: string): string {
 }
 
 /**
- * Coach Dashboard (docs/coach/03-screen-inventory.md §C) — one real screen
- * backing all three Figma dashboard variants (fitness-only / nutrition-only
- * / combined), per professionalDashboard.service.ts's own doc comment:
- * service-scoped sections driven by `services`, no separate screen per
- * variant. Real: service verification badges, Active Clients (a genuine
- * `Relationship` count — no longer a permanently-zero placeholder as of
- * 25 Aug 2026's Discovery & Booking pass: confirming a booking in
+ * Coach Today screen (docs/coach/03-screen-inventory.md §C) — one real
+ * screen backing all three Figma dashboard variants (fitness-only /
+ * nutrition-only / combined), per professionalDashboard.service.ts's own
+ * doc comment: service-scoped sections driven by `services`, no separate
+ * screen per variant. Real: service verification badges, Active Clients (a
+ * genuine `Relationship` count — no longer a permanently-zero placeholder as
+ * of 25 Aug 2026's Discovery & Booking pass: confirming a booking in
  * apps/user-mobile now really does upsert a Relationship row, see
  * coaching.service.ts's `ensureRelationship`). **26 Aug 2026: Sessions/Wk
  * and Today's Schedule are real too** — both now join real `Booking` rows
@@ -176,8 +234,16 @@ function timeLabel(iso: string): string {
  * specifically is coach-initiated scheduling into a client's calendar,
  * which is a different, unbuilt flow from the consumer-initiated booking
  * apps/user-mobile's Coaching screens now do — not the same gap.
+ *
+ * **20 Sep 2026 (Wave 3):** renamed from `DashboardScreen`/"Dashboard" to
+ * `TodayScreen`/"Today" — its real content (Today's Schedule, a same-day
+ * preview) already matched the R1 work package's required tab name; only
+ * the tab label and file/export name were stale, not the screen itself.
+ * See MainTabs.tsx's own doc comment for the rest of this wave's tab
+ * restructure. Also gained the stuck-relationship banner below — see
+ * StuckRelationshipsBanner's own doc comment.
  */
-export function DashboardScreen() {
+export function TodayScreen() {
   const { professional, logout } = useAuth();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-dashboard-stats"],
@@ -185,7 +251,7 @@ export function DashboardScreen() {
   });
 
   return (
-    <ScreenContainer title="Dashboard">
+    <ScreenContainer title="Today">
       <View>
         <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{professional?.fullName}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>{professional?.email}</Text>
@@ -193,6 +259,8 @@ export function DashboardScreen() {
 
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
+
+      {data && data.stuckRelationships.length > 0 && <StuckRelationshipsBanner items={data.stuckRelationships} />}
 
       {data && (
         <>
