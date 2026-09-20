@@ -7,6 +7,11 @@ const LABELS: Record<string, string> = {
   pending: "Pending",
   verified: "Verified",
   rejected: "Rejected",
+  // `PayoutStatus` (schema.prisma) — shared by CoachSettlement and
+  // InfluencerPayout, a simple pending -> paid lifecycle. "pending" above
+  // already fits; "paid" added here for coach-mobile's earnings screen
+  // (10 Sep 2026, Wave 3 earnings-view polish).
+  paid: "Paid",
 };
 
 const TONES: Record<string, { bg: string; fg: string }> = {
@@ -14,6 +19,7 @@ const TONES: Record<string, { bg: string; fg: string }> = {
   pending: { bg: "rgba(245,158,11,0.15)", fg: colors.warning },
   verified: { bg: "rgba(34,197,94,0.15)", fg: colors.success },
   rejected: { bg: "rgba(239,68,68,0.15)", fg: colors.danger },
+  paid: { bg: "rgba(34,197,94,0.15)", fg: colors.success },
 };
 
 /**
@@ -28,7 +34,7 @@ export function StatusBadge({ status }: { status: string }) {
     <View style={[styles.badge, { backgroundColor: tone.bg }]}>
       <Text style={[styles.label, { color: tone.fg }]}>
         {LABELS[status] ?? status}
-        {status === "verified" ? " ✓" : ""}
+        {status === "verified" || status === "paid" ? " ✓" : ""}
       </Text>
     </View>
   );
