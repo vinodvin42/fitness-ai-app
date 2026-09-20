@@ -299,6 +299,19 @@ model User {
   // different concept — a peer sharing their own code — not a
   // gym/creator's commercial acquisition link).
   acquisitionContext     String?
+  // Gym Partner Lite R1 (Wave 1, added 20 Sep 2026) — the real relation
+  // `acquisitionContext` above was always a placeholder for. Deliberately
+  // NOT auto-derived from `acquisitionContext` here: parsing that raw
+  // string (e.g. "gym:ABC123") into a resolved `Gym` relation at signup is
+  // explicit later-wave integration work (see gyms.service.ts's own doc
+  // comment and docs/admin/07-open-questions-gaps.md), not something this
+  // wave's schema change should silently perform. Null for every user
+  // today — this column exists so that later wiring has a real FK to
+  // populate rather than needing its own migration, and so
+  // getMemberActivationSummary() below can be built against real (if
+  // currently always-empty) data instead of a fabricated computation.
+  gymId                  String?
+  gym                    Gym?        @relation(fields: [gymId], references: [id], onDelete: SetNull)
   // §L "Security" — Two-Factor Authentication, added 25 Aug 2026 (Phase 4,
   // closing gap §17). TOTP (RFC 6238, authenticator-app style — Google
   // Authenticator/Authy/1Password), not SMS: unlike gap §9's phone+OTP,
@@ -2643,4 +2656,103 @@ model RecoveryLog {
   @@unique([userId, date])
   @@index([userId, date])
   @@map("recovery_logs")
+}
+
+// ---- Gym Partner Lite — R1 Wave 1 (added 20 Sep 2026) ------------------
+// Developer 3's real work package §5 "Gym Partner Lite — R1" + §8 Shared
+// Platform Foundations "Gym" + BR-GYM-002/003/004. Closes the audited gap:
+// no Gym/Organization/Location/Equipment model existed anywhere in this
+// codebase before this wave. This is deliberately a LIGHTWEIGHT partner
+// record — application/status, organization/location profile, a simple
+// equipment description, an invite mechanism, and admin-editable
+// commercial fields — NOT a gym operations system. Per the work package's
+// own explicit scope (§13 Out of Scope): no POS/payroll/accounting/access-
+// control/full membership management is built here, and nothing this wave
+// exposes a gym's own staff to a member's nutrition logs, medical/safety
+// responses, progress photos, or private AI conversations (BR-GYM-003 — a
+// gym sees only what's explicitly permitted, and R1 defines that as the
+// read-only aggregate `getMemberActivationSummary()` computes in
+// gyms.service.ts, nothing else).
+//
+// This wave ships schema + service layer only — no admin-web screens
+// (Wave 4's own scope) and no gym-facing portal (Wave 5's own scope).
+//
+// Real product decisions already made (not re-decided here — see
+// docs/admin/07-open-questions-gaps.md for the dated entry):
+//   - `commissionPct` defaults to 15 (vs. Professional.commissionPct's 20),
+//     same admin-editable-per-partner shape as that field.
+//   - `pricingModel`/`ratePerMemberCents` are an EXPLICIT, DELIBERATE
+//     PRODUCT_DECISION_REQUIRED placeholder — real gym contract pricing
+//     was never specified by the work package. ratePerMemberCents defaults
+//     to 0 (inert — never silently charges anyone) and pricingModel
+//     defaults to the free-text label "per_member_flat_fee". Any future UI
+//     surfacing these MUST visibly show "not configured" while the rate is
+//     0, never imply a real, live billing rate exists.
+enum GymStatus {
+  application
+  approved
+  suspended
+}
+
+model Gym {
+  id                 String    @id @default(uuid())
+  name               String
+  status             GymStatus @default(application)
+  // A real contact person's details (the partner's point of contact), not
+  // a vague generic "gym email" — same convention as Professional's own
+  // email/phone fields.
+  contactName        String
+  contactEmail       String
+  contactPhone       String?
+  // Configurable per-gym commission %, same admin-editable pattern as
+  // Professional.commissionPct — see that field's own doc comment. Applies
+  // to whatever future revenue-share mechanism a later wave builds; not
+  // consumed by anything in this wave (no gym-attributed revenue stream
+  // exists yet, same honest-boundary reasoning as Influencer.commissionPct).
+  commissionPct      Int       @default(15)
+  // PRODUCT_DECISION_REQUIRED placeholder — see the model's own doc
+  // comment above. Free-text label, not an enum, since the real pricing
+  // model (per-member flat fee vs. tiered vs. revenue share, etc.) has not
+  // been decided.
+  pricingModel       String    @default("per_member_flat_fee")
+  // Inert until a real commercial decision sets it — 0 means "not
+  // configured", not "free". Never used to compute a real charge anywhere
+  // in this build.
+  ratePerMemberCents Int       @default(0)
+  // Unique, unguessable invite code — the real mechanism
+  // apps/user-mobile's acquisitionContext.ts already expects to eventually
+  // resolve, as the `code` half of its `"gym:<code>"` captured string (see
+  // that file's own doc comment). Generated once at creation via
+  // gyms.service.ts's generateUniqueGymInviteCode(), same alphabet/
+  // collision-retry discipline as lib/referralCode.ts.
+  inviteCode         String    @unique
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  locations GymLocation[]
+  members   User[]
+
+  @@index([status])
+  @@map("gyms")
+}
+
+// "Organization and location profile" — a Gym can plausibly operate
+// multiple physical locations, so this is a real one-to-many relation, not
+// a single flat address field on Gym itself. `equipment` is a plain text
+// description, NOT a structured inventory/access-control system — the
+// work package explicitly forbids building real equipment
+// inventory/access hardware in R1; a free-text profile field is the
+// honest scope of "equipment inventory/profile" here.
+model GymLocation {
+  id        String   @id @default(uuid())
+  gymId     String
+  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name      String
+  address   String
+  equipment String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gymId])
+  @@map("gym_locations")
 }

@@ -42,6 +42,7 @@ import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegr
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
+import { gymsRouter } from "./modules/gyms/gyms.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
@@ -247,6 +248,7 @@ export function createApp() {
   // Coupon/Refund entity (now built). See each module's own doc comment.
   app.use("/", adminSettlementsRouter);
   app.use("/", adminInfluencersRouter);
+  app.use("/", gymsRouter);
   app.use("/", adminCouponsRouter);
   app.use("/", adminRefundsRouter);
   // Module 12.02 — Roles & Permissions (read-only) and 12.04 — Privacy &
