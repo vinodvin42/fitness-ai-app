@@ -1554,6 +1554,8 @@ export interface ProfessionalOffer {
   serviceType: ProfessionalServiceType;
   status: ProfessionalOfferStatus;
   proposedByAdminId: string | null;
+  /** Wave 3 (20 Sep 2026) — set instead of `proposedByAdminId` when this offer came from a coach's own Handover action, not an admin's Propose Professional. Exactly one of the two is ever non-null. */
+  proposedByProfessionalId: string | null;
   expiresAt: string | null;
   createdAt: string;
   respondedAt: string | null;
@@ -1710,6 +1712,8 @@ export interface CoachClientProfile {
   fullName: string;
   serviceTypes: ProfessionalServiceType[];
   activeSince: string;
+  /** Wave 3 (20 Sep 2026) — the real relationship ids End Relationship/Handover act on, one per active relationship this coach has with this client. */
+  relationships: { relationshipId: string; serviceType: ProfessionalServiceType }[];
   /** Coaching-relevant onboarding fields only — see the block comment above. */
   coaching: {
     goals: string[];
@@ -2056,9 +2060,75 @@ export interface AdminRelationshipDetailResponse {
   notAvailable: string[];
 }
 
-/** Matches adminRelationships.schema.ts's endRelationshipSchema. */
+/** Matches adminRelationships.schema.ts's endRelationshipSchema. Wave 3 (20 Sep 2026): `reason` is now required — BR-ADM-005 applied to this action, same bar as every other ReasonGatedAction in admin-web. */
 export interface AdminEndRelationshipInput {
-  reason?: string;
+  reason: string;
+}
+
+// ---- Relationship Lifecycle — End Relationship / Handover (R1 U6, Wave 3,
+// 20 Sep 2026) --------------------------------------------------------------
+// See apps/api's relationshipLifecycle.service.ts for the full design:
+// Handover is End Relationship plus an optional real ProfessionalOffer for
+// a named replacement, composing coaching.service.ts's Relationship state
+// machine with professionalOffers.service.ts's own createOffer — never a
+// second, parallel "transfer" model. Shared by both real actors: admin
+// (this section) and the professional themselves (RelationshipLifecycle*
+// types further below, used by apps/coach-mobile).
+
+/** Matches apps/api's relationshipLifecycle.schema.ts's handoverRelationshipSchema — POST /admin/relationships/:id/handover and POST /professionals/me/relationships/:id/handover. */
+export interface HandoverRelationshipInput {
+  reason: string;
+  /** Omitted (or a no-op) means this is plainly End Relationship — see this section's own top comment. */
+  replacementProfessionalId?: string;
+}
+
+/** Matches apps/api's relationshipLifecycle.schema.ts's endRelationshipActionSchema — POST /professionals/me/relationships/:id/end. */
+export interface RelationshipEndActionInput {
+  reason: string;
+}
+
+/** The real `Relationship` row shape `relationshipLifecycle.service.ts`'s endRelationship/handoverRelationship return — a generic, undecorated version of AdminRelationshipListItem (no joined user/professional names), used by apps/coach-mobile's own end/handover responses. */
+export interface RelationshipLifecycleRecord {
+  id: string;
+  professionalId: string;
+  userId: string;
+  serviceType: ProfessionalServiceType;
+  status: RelationshipStatus;
+  createdAt: string;
+  endedAt: string | null;
+  endReason: string | null;
+}
+
+/** The bare `ProfessionalOffer` row shape a handover's real offer creation returns — same shape as CreateProfessionalOfferResponse's own `offer` field. */
+export interface RelationshipLifecycleOfferRecord {
+  id: string;
+  professionalId: string;
+  userId: string;
+  serviceType: ProfessionalServiceType;
+  status: ProfessionalOfferStatus;
+  proposedByAdminId: string | null;
+  proposedByProfessionalId: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+/** The shape returned by POST /professionals/me/relationships/:id/end and POST /admin/relationships/:id/end's inner transition (admin's own route re-decorates this into AdminRelationshipListItem — see AdminRelationshipEndResponse below). */
+export interface RelationshipEndResponse {
+  relationship: RelationshipLifecycleRecord;
+}
+
+/** The shape returned by POST /professionals/me/relationships/:id/handover. */
+export interface RelationshipHandoverResponse {
+  relationship: RelationshipLifecycleRecord;
+  /** Null when no replacement was proposed — this was plainly End Relationship. */
+  offer: RelationshipLifecycleOfferRecord | null;
+}
+
+/** The shape returned by POST /admin/relationships/:id/handover — same as RelationshipHandoverResponse but with the decorated AdminRelationshipListItem admin-web already renders everywhere else in this module. */
+export interface AdminRelationshipHandoverResponse {
+  relationship: AdminRelationshipListItem;
+  offer: RelationshipLifecycleOfferRecord | null;
 }
 
 // 04.03 Change/Intervention Queue, added 25 Aug 2026.

@@ -60,6 +60,7 @@ type OfferRow = {
   serviceType: string;
   status: string;
   proposedByAdminId: string | null;
+  proposedByProfessionalId: string | null;
   expiresAt: Date | null;
   createdAt: Date;
   respondedAt: Date | null;
@@ -98,13 +99,26 @@ async function expireIfStale(offer: OfferRow): Promise<OfferRow> {
   return { ...offer, status: "expired" };
 }
 
+type OfferProposer = { adminId: string; professionalId?: undefined } | { adminId?: undefined; professionalId: string };
+
 /**
- * Admin-driven creation — enforces the real `available` precondition via
+ * Shared creation path — enforces the real `available` precondition via
  * `professionalLifecycle.service.ts#isAvailableForNewClients` (the actual
  * gate other modules are meant to call, per that function's own doc
  * comment) rather than re-deriving it from `lifecycleStatus` directly.
+ *
+ * **Wave 3 (20 Sep 2026):** factored out of what used to be `createOffer`'s
+ * own body so a SECOND real proposer — the ending coach on a Handover
+ * action (relationshipLifecycle.service.ts's `handoverRelationship`) —
+ * can create a real offer through the exact same precondition check and
+ * row-creation logic as the admin-driven path, rather than a second,
+ * copy-pasted version of this function. `createOffer` (admin) and
+ * `createOfferAsProfessional` (coach handover) below are both now thin
+ * wrappers over this, preserving `createOffer`'s existing
+ * `(adminId, input)` call signature for its existing callers (the admin
+ * route and this module's own tests).
  */
-export async function createOffer(adminId: string, input: CreateOfferInput) {
+async function createOfferInternal(proposer: OfferProposer, input: CreateOfferInput) {
   const professional = await prisma.professional.findUnique({ where: { id: input.professionalId } });
   if (!professional) {
     throw new ApiHttpError(404, "professional_not_found", "Professional not found");
@@ -130,13 +144,15 @@ export async function createOffer(adminId: string, input: CreateOfferInput) {
       userId: input.userId,
       serviceType: input.serviceType,
       status: "offered",
-      proposedByAdminId: adminId,
+      proposedByAdminId: proposer.adminId ?? null,
+      proposedByProfessionalId: proposer.professionalId ?? null,
       expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
     },
   });
 
   await recordAudit({
-    actorAdminId: adminId,
+    actorAdminId: proposer.adminId ?? null,
+    actorProfessionalId: proposer.professionalId ?? null,
     action: "professional_offer.created",
     entityType: "ProfessionalOffer",
     entityId: offer.id,
@@ -144,6 +160,22 @@ export async function createOffer(adminId: string, input: CreateOfferInput) {
   });
 
   return offer;
+}
+
+/** Admin-driven creation (admin-web's "Propose Professional") — unchanged call signature. */
+export async function createOffer(adminId: string, input: CreateOfferInput) {
+  return createOfferInternal({ adminId }, input);
+}
+
+/**
+ * Coach-driven creation — the new real proposer this wave adds. Only ever
+ * called internally by relationshipLifecycle.service.ts's
+ * `handoverRelationship`, never exposed as its own public "a coach can
+ * propose any offer" route (Handover is the one real product path that
+ * creates one this way — see this wave's own scope note).
+ */
+export async function createOfferAsProfessional(professionalId: string, input: CreateOfferInput) {
+  return createOfferInternal({ professionalId }, input);
 }
 
 /**
@@ -309,6 +341,7 @@ export async function listOffers(query: ListOffersQuery) {
       serviceType: o.serviceType,
       status: o.status,
       proposedByAdminId: o.proposedByAdminId,
+      proposedByProfessionalId: o.proposedByProfessionalId,
       expiresAt: o.expiresAt,
       createdAt: o.createdAt,
       respondedAt: o.respondedAt,
@@ -329,9 +362,20 @@ type AvailableProfessionalRow = {
  * Professional UI needs — a thin wrapper over
  * `isAvailableForNewClients()` + a professional list query, per this
  * wave's own scope note (nothing like this existed before this module).
+ *
+ * **Wave 3 (20 Sep 2026):** also the exact function apps/coach-mobile's new
+ * Handover replacement-professional picker reuses (via a professional-authed
+ * route in this file's router, `GET /professionals/me/available-professionals`)
+ * — same "reuse the one real 'pick a professional' pattern, don't invent a
+ * second one" discipline the R1 U6 work names explicitly. `excludeProfessionalId`
+ * is the one real addition that picker needed: a coach handing off a client
+ * obviously can't propose themselves as their own replacement.
  */
-export async function listAvailableProfessionals(query: ListAvailableProfessionalsQuery) {
+export async function listAvailableProfessionals(query: ListAvailableProfessionalsQuery, excludeProfessionalId?: string) {
   const where: Record<string, unknown> = { lifecycleStatus: "available", status: "active" };
+  if (excludeProfessionalId) {
+    where.id = { not: excludeProfessionalId };
+  }
   if (query.search) {
     where.OR = [
       { fullName: { contains: query.search, mode: "insensitive" } },

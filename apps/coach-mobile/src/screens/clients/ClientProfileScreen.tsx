@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type {
+  AvailableProfessional,
   CoachClientProfile,
   CoachClientSummary,
   CoachClientSummaryBodyMeasurement,
@@ -19,6 +20,11 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
+import {
+  endRelationship,
+  fetchAvailableProfessionalsForHandover,
+  handoverRelationship,
+} from "../../api/relationshipLifecycle";
 import { extractErrorMessage } from "../../lib/apiError";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -61,11 +67,28 @@ function sessionLine(item: CoachScheduleItem): string {
  * server-side (see professionalClients.service.ts's getClientSummary).
  * `consentGranted: false` renders a real, honest "hasn't enabled data
  * sharing yet" card instead of a blank/broken-looking section.
+ *
+ * **Wave 3 (20 Sep 2026, R1 U6): `RelationshipActionsSection` added** — the
+ * real professional-initiated "End Relationship" / "Handover to Another
+ * Coach" actions this build never had (a dedicated audit confirmed no
+ * such flow existed anywhere), backed by apps/api's
+ * relationshipLifecycle.service.ts. A plain required-reason text field
+ * (this app has no shared reason-gated-action component like admin-web's
+ * `ReasonGatedAction` — see that file's own doc comment for why this build
+ * doesn't share one across apps) plus a native `Alert.alert` confirmation,
+ * same "confirm via Alert" precedent PendingRequestsScreen.tsx's own
+ * `confirmDecline`/`confirmDeclineOffer` already use for a destructive
+ * action. Handover's replacement-professional picker reuses
+ * `fetchAvailableProfessionalsForHandover` (professionalOffers.service.ts's
+ * own `listAvailableProfessionals`, minus this coach's own id) — the same
+ * real "available for new clients" list admin-web's Propose Professional
+ * dropdown already established, not a second invented pattern.
  */
 export function ClientProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ClientsStackParamList, "ClientProfile">>();
   const route = useRoute<RouteProp<ClientsStackParamList, "ClientProfile">>();
   const { userId, fullName } = route.params;
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-client", userId],
@@ -81,6 +104,17 @@ export function ClientProfileScreen() {
     queryKey: ["coach-client-summary", userId],
     queryFn: () => fetchClientSummary(userId),
   });
+
+  // Once a relationship-ending action succeeds, this client may no longer
+  // be an active client of this coach's at all (getClientProfile's own
+  // authorization gate is "an active Relationship exists") — rather than
+  // leave the screen showing stale data or a confusing 404, this returns
+  // straight to the Clients list, same as PendingRequestsScreen.tsx's own
+  // "action, then leave the now-irrelevant screen" precedent.
+  const onRelationshipEnded = (message: string) => {
+    queryClient.invalidateQueries({ queryKey: ["coach-clients"] });
+    Alert.alert("Done", message, [{ text: "OK", onPress: () => navigation.goBack() }]);
+  };
 
   return (
     <ScreenContainer title={fullName}>
@@ -102,6 +136,7 @@ export function ClientProfileScreen() {
             variant="secondary"
             onPress={() => navigation.navigate("ClientRecommendations", { userId, fullName })}
           />
+          <RelationshipActionsSection relationships={data.relationships} onComplete={onRelationshipEnded} />
         </>
       )}
 
@@ -111,6 +146,216 @@ export function ClientProfileScreen() {
 
       <NotesSection userId={userId} />
     </ScreenContainer>
+  );
+}
+
+type RelationshipMode = "end" | "handover";
+
+/**
+ * See this screen's own top comment (Wave 3, R1 U6) for the full design.
+ * One relationship row at a time can have its form open
+ * (`openRelationshipId`) — a client with both a fitness and a nutrition
+ * relationship gets two independent rows, since ending one must never
+ * imply ending the other (schema.prisma's own `@@unique([userId,
+ * professionalId, serviceType])` comment already treats these as separate
+ * pairings).
+ */
+function RelationshipActionsSection({
+  relationships,
+  onComplete,
+}: {
+  relationships: CoachClientProfile["relationships"];
+  onComplete: (message: string) => void;
+}) {
+  const [openRelationshipId, setOpenRelationshipId] = useState<string | null>(null);
+  const [mode, setMode] = useState<RelationshipMode>("end");
+  const [reason, setReason] = useState("");
+  const [replacementSearch, setReplacementSearch] = useState("");
+  const [replacementId, setReplacementId] = useState<string | null>(null);
+
+  const availableProfessionalsQuery = useQuery({
+    queryKey: ["coach-available-professionals-for-handover", replacementSearch],
+    queryFn: () => fetchAvailableProfessionalsForHandover(replacementSearch || undefined),
+    enabled: openRelationshipId != null && mode === "handover",
+  });
+
+  const resetForm = () => {
+    setOpenRelationshipId(null);
+    setReason("");
+    setReplacementSearch("");
+    setReplacementId(null);
+  };
+
+  const endMutation = useMutation({
+    mutationFn: (relationshipId: string) => endRelationship(relationshipId, { reason: reason.trim() }),
+    onSuccess: () => {
+      resetForm();
+      onComplete("This relationship has ended.");
+    },
+    onError: (err) => Alert.alert("Couldn't end this relationship", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const handoverMutation = useMutation({
+    mutationFn: (relationshipId: string) =>
+      handoverRelationship(relationshipId, {
+        reason: reason.trim(),
+        replacementProfessionalId: replacementId ?? undefined,
+      }),
+    onSuccess: (result) => {
+      resetForm();
+      onComplete(
+        result.offer
+          ? "This relationship has ended and the replacement coach has been sent an offer for this client."
+          : "This relationship has ended.",
+      );
+    },
+    onError: (err) => Alert.alert("Couldn't complete the handover", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const openForm = (relationshipId: string, nextMode: RelationshipMode) => {
+    resetForm();
+    setOpenRelationshipId(relationshipId);
+    setMode(nextMode);
+  };
+
+  const confirmSubmit = (relationshipId: string) => {
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length === 0) return;
+
+    const isHandoverWithReplacement = mode === "handover" && replacementId != null;
+    Alert.alert(
+      mode === "handover" ? "Confirm handover" : "Confirm end relationship",
+      isHandoverWithReplacement
+        ? "This ends your relationship with this client and sends the replacement coach a real offer for them. This can't be undone from here."
+        : "This ends your relationship with this client. This can't be undone from here.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: mode === "handover" ? "Hand Over" : "End Relationship",
+          style: "destructive",
+          onPress: () =>
+            mode === "handover" ? handoverMutation.mutate(relationshipId) : endMutation.mutate(relationshipId),
+        },
+      ],
+    );
+  };
+
+  if (relationships.length === 0) return null;
+
+  return (
+    <Card>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Relationship</Text>
+      {relationships.map((r) => {
+        const isOpen = openRelationshipId === r.relationshipId;
+        const isBusy =
+          (endMutation.isPending && endMutation.variables === r.relationshipId) ||
+          (handoverMutation.isPending && handoverMutation.variables === r.relationshipId);
+
+        return (
+          <View key={r.relationshipId} style={{ marginBottom: spacing.md }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.xs }}>
+              {SERVICE_LABELS[r.serviceType] ?? r.serviceType}
+            </Text>
+
+            {!isOpen ? (
+              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                <Button
+                  label="End Relationship"
+                  variant="secondary"
+                  onPress={() => openForm(r.relationshipId, "end")}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  label="Handover to Another Coach"
+                  variant="secondary"
+                  onPress={() => openForm(r.relationshipId, "handover")}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            ) : (
+              <View style={{ gap: spacing.sm }}>
+                <TextInput
+                  placeholder="Reason (required)"
+                  placeholderTextColor={colors.textMuted}
+                  value={reason}
+                  onChangeText={setReason}
+                  multiline
+                  style={{
+                    minHeight: 52,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                    color: colors.textPrimary,
+                  }}
+                />
+
+                {mode === "handover" && (
+                  <View>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.xs }}>
+                      Propose a replacement (optional) — leave unselected to just end the relationship.
+                    </Text>
+                    <TextInput
+                      placeholder="Search available professionals…"
+                      placeholderTextColor={colors.textMuted}
+                      value={replacementSearch}
+                      onChangeText={setReplacementSearch}
+                      style={{
+                        height: 44,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surface,
+                        paddingHorizontal: spacing.md,
+                        color: colors.textPrimary,
+                        marginBottom: spacing.xs,
+                      }}
+                    />
+                    {availableProfessionalsQuery.isLoading && <ActivityIndicator color={colors.accent} />}
+                    {(availableProfessionalsQuery.data?.professionals ?? []).map((p: AvailableProfessional) => {
+                      const selected = p.id === replacementId;
+                      return (
+                        <Text
+                          key={p.id}
+                          onPress={() => setReplacementId(selected ? null : p.id)}
+                          style={{
+                            color: selected ? colors.accent : colors.textPrimary,
+                            fontWeight: selected ? "700" : "400",
+                            paddingVertical: 6,
+                          }}
+                        >
+                          {selected ? "✓ " : ""}
+                          {p.fullName}
+                          {p.yearsExperience != null ? ` · ${p.yearsExperience}y exp` : ""}
+                        </Text>
+                      );
+                    })}
+                    {availableProfessionalsQuery.data?.professionals.length === 0 && (
+                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+                        No professionals are currently available for new clients.
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <Button
+                    label={mode === "handover" ? "Hand Over" : "End Relationship"}
+                    onPress={() => confirmSubmit(r.relationshipId)}
+                    disabled={reason.trim().length === 0 || isBusy}
+                    loading={isBusy}
+                    style={{ flex: 1 }}
+                  />
+                  <Button label="Cancel" variant="secondary" onPress={resetForm} style={{ flex: 1 }} disabled={isBusy} />
+                </View>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </Card>
   );
 }
 

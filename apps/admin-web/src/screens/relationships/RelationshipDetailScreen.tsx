@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import type { AdminRelationshipDetailResponse } from "@fitness-ai-app/types";
+import type {
+  AdminRelationshipDetailResponse,
+  AdminRelationshipHandoverResponse,
+  AvailableProfessionalsResponse,
+} from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { ReasonGatedAction } from "../../components/ReasonGatedAction";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { RELATIONSHIPS_SUB_NAV } from "./subNav";
@@ -12,8 +17,15 @@ import { RELATIONSHIPS_SUB_NAV } from "./subNav";
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
 const ACTION_LABELS: Record<string, string> = {
-  "admin.relationship.ended": "Relationship ended",
+  "admin.relationship.ended": "Relationship ended (by admin)",
   "admin.relationship.reactivated": "Relationship reactivated",
+  // Wave 3 (20 Sep 2026) — the real professional-initiated counterpart,
+  // apps/coach-mobile's own End Relationship action. Same AuditLog
+  // entityType/entityId as the admin-initiated action above (unfiltered
+  // by actor — see adminRelationships.service.ts's getRelationshipDetail),
+  // so a coach ending this relationship shows up here too, labeled as such.
+  "professional.relationship.ended": "Relationship ended (by professional)",
+  "relationship.handover": "Handover — replacement professional proposed",
 };
 
 type Tab = "overview" | "history";
@@ -47,15 +59,27 @@ function PartyCard({ label, name, email }: { label: string; name: string; email:
  * **25 Aug 2026:** 04.03's Change/Intervention Queue is real now (its own
  * screen, linked via `RELATIONSHIPS_SUB_NAV`) — reviewing a specific
  * change request there can end THIS relationship as its real effect, same
- * as the "End Relationship" button below. There's still no reassignment
- * picker anywhere in this build (no field captures which new professional
- * a user wanted) — see adminRelationships.service.ts's top comment.
+ * as the "End Relationship" button below.
+ *
+ * **Wave 3 (20 Sep 2026, R1 U6):** "End Relationship" is now a real
+ * `ReasonGatedAction` (required reason, recorded to the audit trail) —
+ * previously an optional plain textarea, the one high-impact action in
+ * this module that predated BR-ADM-005's reason-gating discipline (see
+ * ReasonGatedAction.tsx's own doc comment). A real "Handover to Another
+ * Coach" action is new below it — the reassignment picker this screen's
+ * own comment used to say didn't exist anywhere: ends this pairing and, if
+ * a replacement is picked, creates a real `ProfessionalOffer` for them via
+ * the same admin-web "available professionals" list Propose Professional
+ * (UserProfileScreen.tsx) already established. See apps/api's
+ * relationshipLifecycle.service.ts for why this composes the existing
+ * endRelationship + createOffer rather than a second transfer model.
  */
 export function RelationshipDetailScreen() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("overview");
-  const [reason, setReason] = useState("");
+  const [handoverProfessionalId, setHandoverProfessionalId] = useState("");
+  const [handoverSearch, setHandoverSearch] = useState("");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-relationship-detail", id],
@@ -69,11 +93,34 @@ export function RelationshipDetailScreen() {
   };
 
   const endMutation = useMutation({
-    mutationFn: () => apiClient.post(`/admin/relationships/${id}/end`, { reason: reason || undefined }),
+    mutationFn: (reason: string) => apiClient.post(`/admin/relationships/${id}/end`, { reason }),
+    onSuccess: invalidateAll,
+  });
+
+  const handoverMutation = useMutation({
+    mutationFn: (reason: string) =>
+      apiClient.post<AdminRelationshipHandoverResponse>(`/admin/relationships/${id}/handover`, {
+        reason,
+        replacementProfessionalId: handoverProfessionalId || undefined,
+      }),
     onSuccess: () => {
-      setReason("");
+      setHandoverProfessionalId("");
       invalidateAll();
     },
+  });
+
+  // Reuses the exact same "available for new clients" read Propose
+  // Professional (UserProfileScreen.tsx) already established — see this
+  // screen's own top comment.
+  const availableProfessionalsQuery = useQuery({
+    queryKey: ["admin-available-professionals", handoverSearch],
+    queryFn: async () => {
+      const res = await apiClient.get<AvailableProfessionalsResponse>("/admin/professional-offers/available-professionals", {
+        params: handoverSearch ? { search: handoverSearch } : undefined,
+      });
+      return res.data;
+    },
+    enabled: tab === "overview" && data?.relationship.status === "active",
   });
 
   const reactivateMutation = useMutation({
@@ -156,42 +203,98 @@ export function RelationshipDetailScreen() {
                 subtitle="No backing field exists yet for these Figma-spec'd Overview fields — see adminRelationships.service.ts."
               />
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-sm font-medium">
-                  {relationship.status === "active" ? "End Relationship" : "Reactivate Relationship"}
-                </div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  {relationship.status === "active"
-                    ? "Ends this pairing — reversible from here. There's no reassignment picker (see this screen's own doc comment) — the user finds a new professional themselves via Discovery."
-                    : "Reopens this pairing as active."}
-                </p>
-                {relationship.status === "active" && (
-                  <textarea
-                    placeholder="Reason (optional)"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    rows={2}
+              {relationship.status === "active" ? (
+                <>
+                  <ReasonGatedAction
+                    title="End Relationship"
+                    description="Ends this pairing — reversible via Reactivate below while it's still shown here. The user finds a new professional themselves via Discovery (there's no reassignment picker on this action — for that, use Handover below instead). A reason is required and recorded to the audit trail."
+                    actionLabel="End Relationship"
+                    isPending={endMutation.isPending}
+                    isError={endMutation.isError}
+                    error={endMutation.error}
+                    onConfirm={(reason) => endMutation.mutate(reason)}
                   />
-                )}
-                <button
-                  type="button"
-                  disabled={endMutation.isPending || reactivateMutation.isPending}
-                  onClick={() => (relationship.status === "active" ? endMutation.mutate() : reactivateMutation.mutate())}
-                  className={`mt-3 rounded-md border px-3 py-1.5 text-xs disabled:opacity-40 ${
-                    relationship.status === "active"
-                      ? "border-danger text-danger"
-                      : "border-accent text-accent"
-                  }`}
-                >
-                  {relationship.status === "active" ? "End Relationship" : "Reactivate"}
-                </button>
-                {(endMutation.isError || reactivateMutation.isError) && (
-                  <p className="mt-2 text-xs text-danger">
-                    {extractErrorMessage(endMutation.error ?? reactivateMutation.error, "That action didn't go through.")}
-                  </p>
-                )}
-              </div>
+
+                  {/*
+                    Wave 3 (20 Sep 2026, R1 U6) — the real "Handover to
+                    Another Coach" action: End Relationship above, plus an
+                    optional real ProfessionalOffer for a named replacement
+                    in the same action. Reuses the exact same "available for
+                    new clients" professional picker Propose Professional
+                    (UserProfileScreen.tsx) already established, and the
+                    same ReasonGatedAction reason discipline as End
+                    Relationship above — the picker sits above it since
+                    ReasonGatedAction owns its own reason state internally.
+                  */}
+                  <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                    <div className="text-xs uppercase tracking-wide text-text-dim">Handover to Another Coach</div>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      Ends this pairing and, if you pick a replacement below, creates a real offer for them targeting
+                      the same client/service — the coach still has to accept it before a new Relationship exists.
+                      Leaving no replacement selected below is the same as End Relationship above.
+                    </p>
+
+                    <div className="mt-3">
+                      <label className="text-[11px] text-text-dim">Replacement professional (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="Search by name…"
+                        value={handoverSearch}
+                        onChange={(e) => setHandoverSearch(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                      />
+                      <select
+                        value={handoverProfessionalId}
+                        onChange={(e) => setHandoverProfessionalId(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                      >
+                        <option value="">
+                          {availableProfessionalsQuery.isLoading ? "Loading…" : "No replacement — just end the relationship"}
+                        </option>
+                        {availableProfessionalsQuery.data?.professionals
+                          .filter((p) => p.id !== relationship.professionalId)
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.fullName}
+                              {p.yearsExperience != null ? ` · ${p.yearsExperience}y exp` : ""}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-3">
+                      <ReasonGatedAction
+                        title="Confirm Handover"
+                        description="A reason is required and recorded to the audit trail."
+                        actionLabel={handoverProfessionalId ? "Hand Over" : "End Relationship"}
+                        tone="warning"
+                        isPending={handoverMutation.isPending}
+                        isError={handoverMutation.isError}
+                        error={handoverMutation.error}
+                        onConfirm={(reason) => handoverMutation.mutate(reason)}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="text-sm font-medium">Reactivate Relationship</div>
+                  <p className="mt-1 text-xs text-text-secondary">Reopens this pairing as active.</p>
+                  <button
+                    type="button"
+                    disabled={reactivateMutation.isPending}
+                    onClick={() => reactivateMutation.mutate()}
+                    className="mt-3 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:opacity-40"
+                  >
+                    Reactivate
+                  </button>
+                  {reactivateMutation.isError && (
+                    <p className="mt-2 text-xs text-danger">
+                      {extractErrorMessage(reactivateMutation.error, "That action didn't go through.")}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

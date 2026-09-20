@@ -45,6 +45,7 @@ const CLIENT_SENSITIVE_NOT_AVAILABLE = [
 ];
 
 type RelationshipRow = {
+  id: string;
   userId: string;
   serviceType: string;
   createdAt: Date;
@@ -401,6 +402,12 @@ export async function getClientProfile(professionalId: string, userId: string) {
     fullName: relationships[0].user.fullName,
     serviceTypes: distinctServiceTypes(relationships),
     activeSince: relationships[0].createdAt,
+    // Wave 3 (20 Sep 2026) — the real ids apps/coach-mobile's new End
+    // Relationship/Handover actions need (relationshipLifecycle.service.ts),
+    // one row per active relationship this coach has with this client (a
+    // client may hold both a fitness and a nutrition relationship with the
+    // same coach — see distinctServiceTypes' own comment above).
+    relationships: relationships.map((r) => ({ relationshipId: r.id, serviceType: r.serviceType })),
     coaching: {
       goals: profile?.goals ?? [],
       trainingLevel: profile?.trainingLevel ?? null,

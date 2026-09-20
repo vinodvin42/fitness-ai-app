@@ -23,8 +23,15 @@ export const listRelationshipsQuerySchema = z.object({
 // reassignment action lives in the Change/Intervention Queue schemas
 // below instead, once the `RelationshipChangeRequest` entity existed to
 // back it (25 Aug 2026, see adminRelationships.service.ts's top comment).
+//
+// **Wave 3 (20 Sep 2026):** `reason` is now REQUIRED, not optional —
+// BR-ADM-005 "high-impact actions require reason + audit" (the same rule
+// admin-web's `ReasonGatedAction` component already enforces for every
+// other high-impact admin action) applied to this one too, matching the
+// real, shared `relationshipLifecycle.service.ts#endRelationship` this
+// route now delegates to.
 export const endRelationshipSchema = z.object({
-  reason: z.string().trim().max(2000).optional(),
+  reason: z.string().trim().min(1).max(2000),
 });
 
 // 04.03 Change/Intervention Queue, added 25 Aug 2026 — see
