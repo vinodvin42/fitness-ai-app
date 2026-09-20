@@ -66,6 +66,11 @@ const LABELS: Record<string, string> = {
   // (fraud/chargeback/ToS), never a user or lazy-expiry outcome.
   expired: "Expired",
   revoked: "Revoked",
+  // Professional Offers (R2 Wave 2, 20 Sep 2026) — ProfessionalOfferStatus's
+  // two new values; "accepted"/"expired" above are already shared with
+  // Module 04's RelationshipStatus/SubscriptionStatus.
+  offered: "Offered",
+  declined: "Declined",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -103,6 +108,8 @@ const TONE_CLASSES: Record<string, string> = {
   activating: "bg-warning/15 text-warning",
   expired: "bg-surface-raised text-text-dim",
   revoked: "bg-danger/15 text-danger",
+  offered: "bg-warning/15 text-warning",
+  declined: "bg-danger/15 text-danger",
 };
 
 const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed"]);

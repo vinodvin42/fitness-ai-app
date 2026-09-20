@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
   AdminUserDetailResponse,
+  AvailableProfessionalsResponse,
+  CreateProfessionalOfferResponse,
+  ListProfessionalOffersResponse,
   MembershipTier,
+  ProfessionalServiceType,
   RevokeSubscriptionResponse,
   SensitiveAccessRequestResponse,
 } from "@fitness-ai-app/types";
@@ -130,6 +134,48 @@ export function UserProfileScreen() {
         reason: params.reason,
       }),
     onSuccess: invalidateDetail,
+  });
+
+  // R2 Wave 2 (20 Sep 2026) — "Propose Professional", the admin-driven
+  // OFFERED/ASSIGNED stage (see professionalOffers.service.ts's own doc
+  // comment). Query only runs while the Relationships tab is open (`tab
+  // === "relationships"`) — this dropdown's own data has no reason to load
+  // eagerly on every profile view.
+  const [proposeProfessionalId, setProposeProfessionalId] = useState("");
+  const [proposeServiceType, setProposeServiceType] = useState<ProfessionalServiceType>("fitness");
+  const [proposeSearch, setProposeSearch] = useState("");
+
+  const availableProfessionalsQuery = useQuery({
+    queryKey: ["admin-available-professionals", proposeSearch],
+    queryFn: async () => {
+      const res = await apiClient.get<AvailableProfessionalsResponse>("/admin/professional-offers/available-professionals", {
+        params: proposeSearch ? { search: proposeSearch } : undefined,
+      });
+      return res.data;
+    },
+    enabled: tab === "relationships",
+  });
+
+  const userOffersQuery = useQuery({
+    queryKey: ["admin-professional-offers-for-user", id],
+    queryFn: async () => {
+      const res = await apiClient.get<ListProfessionalOffersResponse>("/admin/professional-offers", { params: { userId: id } });
+      return res.data;
+    },
+    enabled: tab === "relationships" && !!id,
+  });
+
+  const createOfferMutation = useMutation({
+    mutationFn: (params: { professionalId: string; serviceType: ProfessionalServiceType }) =>
+      apiClient.post<CreateProfessionalOfferResponse>("/admin/professional-offers", {
+        professionalId: params.professionalId,
+        userId: id,
+        serviceType: params.serviceType,
+      }),
+    onSuccess: () => {
+      setProposeProfessionalId("");
+      queryClient.invalidateQueries({ queryKey: ["admin-professional-offers-for-user", id] });
+    },
   });
 
   const overviewNotAvailable = (data?.notAvailable ?? []).filter((k) => k !== "activity");
@@ -472,39 +518,152 @@ export function UserProfileScreen() {
           )}
 
           {tab === "relationships" && (
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Professional</th>
-                    <th className="px-4 py-3 font-normal">Service</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Since</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.relationships.map((r) => (
-                    <tr key={r.relationshipId} className="border-b border-border-subtle last:border-0">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-text-primary">{r.professionalFullName}</div>
-                        <div className="text-xs text-text-dim">{r.professionalEmail}</div>
-                      </td>
-                      <td className="px-4 py-3 text-text-secondary">{SERVICE_LABELS[r.serviceType] ?? r.serviceType}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={r.status} />
-                      </td>
-                      <td className="px-4 py-3 text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                      <th className="px-4 py-3 font-normal">Professional</th>
+                      <th className="px-4 py-3 font-normal">Service</th>
+                      <th className="px-4 py-3 font-normal">Status</th>
+                      <th className="px-4 py-3 font-normal">Since</th>
                     </tr>
-                  ))}
-                  {data.relationships.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
-                        No assigned professionals yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.relationships.map((r) => (
+                      <tr key={r.relationshipId} className="border-b border-border-subtle last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-text-primary">{r.professionalFullName}</div>
+                          <div className="text-xs text-text-dim">{r.professionalEmail}</div>
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">{SERVICE_LABELS[r.serviceType] ?? r.serviceType}</td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={r.status} />
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                    {data.relationships.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
+                          No assigned professionals yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/*
+                R2 Wave 2 (20 Sep 2026) — "Propose Professional". Distinct
+                from the table above: those are real, ALREADY-created
+                Relationship rows (a user requested or already has this
+                coach). This proposes a specific `available` professional
+                for THIS user — a separate ProfessionalOffer row that only
+                becomes a Relationship once the coach accepts it. See
+                professionalOffers.service.ts's own doc comment for the
+                full "why a new, parallel model" reasoning.
+              */}
+              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-text-dim">Propose Professional</div>
+                <p className="mt-1 text-xs text-text-secondary">
+                  Manually pair this user with a specific `available` professional (e.g. a VIP user, or a
+                  subscription tier that includes "matched with a coach"). No auto-matching — you pick the exact
+                  professional. The coach still has to accept it before a real Relationship exists.
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[220px]">
+                    <label className="text-[11px] text-text-dim">Available professional</label>
+                    <input
+                      type="text"
+                      placeholder="Search by name…"
+                      value={proposeSearch}
+                      onChange={(e) => setProposeSearch(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                    />
+                    <select
+                      value={proposeProfessionalId}
+                      onChange={(e) => setProposeProfessionalId(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                    >
+                      <option value="">
+                        {availableProfessionalsQuery.isLoading ? "Loading…" : "Select a professional"}
+                      </option>
+                      {availableProfessionalsQuery.data?.professionals.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.fullName}
+                          {p.yearsExperience != null ? ` · ${p.yearsExperience}y exp` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {availableProfessionalsQuery.data?.professionals.length === 0 && (
+                      <p className="mt-1 text-[11px] text-text-dim">
+                        No professionals are currently available for new clients.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-text-dim">Service</label>
+                    <select
+                      value={proposeServiceType}
+                      onChange={(e) => setProposeServiceType(e.target.value as ProfessionalServiceType)}
+                      className="mt-1 rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                    >
+                      <option value="fitness">Fitness</option>
+                      <option value="nutrition">Nutrition</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!proposeProfessionalId || createOfferMutation.isPending}
+                    onClick={() =>
+                      createOfferMutation.mutate({ professionalId: proposeProfessionalId, serviceType: proposeServiceType })
+                    }
+                    className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-canvas disabled:opacity-40"
+                  >
+                    Propose
+                  </button>
+                </div>
+
+                {createOfferMutation.isError && (
+                  <p className="mt-2 text-xs text-danger">
+                    {extractErrorMessage(createOfferMutation.error, "Couldn't create this offer.")}
+                  </p>
+                )}
+                {createOfferMutation.isSuccess && (
+                  <p className="mt-2 text-xs text-accent">Offer created — the professional can now accept or decline it.</p>
+                )}
+
+                {(userOffersQuery.data?.offers.length ?? 0) > 0 && (
+                  <div className="mt-4 overflow-x-auto rounded-md border border-border-subtle">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-border-subtle uppercase tracking-wide text-text-dim">
+                          <th className="px-3 py-2 font-normal">Professional</th>
+                          <th className="px-3 py-2 font-normal">Service</th>
+                          <th className="px-3 py-2 font-normal">Status</th>
+                          <th className="px-3 py-2 font-normal">Proposed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userOffersQuery.data?.offers.map((o) => (
+                          <tr key={o.offerId} className="border-b border-border-subtle last:border-0">
+                            <td className="px-3 py-2 text-text-primary">{o.professionalFullName}</td>
+                            <td className="px-3 py-2 text-text-secondary">{SERVICE_LABELS[o.serviceType] ?? o.serviceType}</td>
+                            <td className="px-3 py-2">
+                              <StatusBadge status={o.status} />
+                            </td>
+                            <td className="px-3 py-2 text-text-secondary">{new Date(o.createdAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
