@@ -311,7 +311,13 @@ export async function updateMaxActiveClients(
     metadata: { from: professional.maxActiveClients, to: input.maxActiveClients },
   });
 
-  return updated;
+  // Found during R2 Wave 2 verification: this returned the raw Prisma row,
+  // leaking passwordHash to both the professional's own PUT /me/capacity
+  // caller and the admin PATCH caller — same "strip passwordHash before it
+  // ever leaves this layer" discipline adminProfessionals.service.ts's own
+  // toProfessionalDetail already established.
+  const { passwordHash: _passwordHash, ...publicProfessional } = updated;
+  return publicProfessional;
 }
 
 /**
