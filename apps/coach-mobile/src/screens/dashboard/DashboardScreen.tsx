@@ -14,34 +14,130 @@ function money(cents: number): string {
   return `₹${(cents / 100).toFixed(2)}`;
 }
 
+function periodLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+/**
+ * Earnings card (31 Aug 2026, polished 20 Sep 2026 — Wave 3 earnings-view
+ * gap pass). Backing endpoint (professionalDashboard.service.ts's
+ * getEarnings) has always returned a `settlements` history array typed by
+ * `CoachEarningsResponse` (packages/types), but this card only ever
+ * rendered `currentMonth` and `lifetimePaidCents` — the real per-period
+ * breakdown existed in the data and was simply never drawn. Also added:
+ * this card's own loading/error handling (previously `if (!data) return
+ * null`, so a slow or failed fetch just silently omitted the whole card —
+ * inconsistent with DashboardScreen's own stats query just above it,
+ * which already uses ActivityIndicator/ErrorState), an honest "no
+ * earnings yet" empty state for a brand-new coach, and a "Pending"
+ * badge — reusing StatusBadge, now extended with a `paid` tone/label to
+ * match `PayoutStatus` (schema.prisma) — making clear the current
+ * month's total is provisional collected revenue, not yet turned into a
+ * settlement (that only happens once the month closes; see
+ * adminSettlements.service.ts). `CoachSettlement.status` itself is a
+ * strict pending -> paid lifecycle (no partial/failed state exists), so
+ * this is the full state space, not a subset.
+ */
 function EarningsCard() {
-  const { data } = useQuery({ queryKey: ["professional-earnings"], queryFn: fetchEarnings });
-  if (!data) return null;
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["professional-earnings"],
+    queryFn: fetchEarnings,
+  });
+
+  const hasNoEarningsYet =
+    !!data && data.currentMonth.grossCents === 0 && data.lifetimePaidCents === 0 && data.settlements.length === 0;
+
   return (
     <Card>
       <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Earnings</Text>
-      <View style={{ flexDirection: "row", gap: spacing.md }}>
-        <View>
-          <Text style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            This month (net)
+
+      {isLoading && <ActivityIndicator color={colors.accent} />}
+      {isError && (
+        <ErrorState
+          message="Couldn't load your earnings. Check your connection and try again."
+          onRetry={() => refetch()}
+        />
+      )}
+
+      {data && hasNoEarningsYet && (
+        <Text style={{ color: colors.textSecondary }}>
+          No earnings yet — this fills in once your first confirmed, paid booking lands.
+        </Text>
+      )}
+
+      {data && !hasNoEarningsYet && (
+        <>
+          <View style={{ flexDirection: "row", gap: spacing.md }}>
+            <View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                <Text
+                  style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}
+                >
+                  This month (net)
+                </Text>
+                <StatusBadge status="pending" />
+              </View>
+              <Text style={{ color: colors.textPrimary, ...typography.metricLarge }}>
+                {money(data.currentMonth.netCents)}
+              </Text>
+            </View>
+            <View style={{ justifyContent: "center" }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                Gross {money(data.currentMonth.grossCents)} · {data.commissionPct}% platform fee
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                Lifetime paid {money(data.lifetimePaidCents)}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.sm }}>
+            Gross is booking value for confirmed sessions this month — a priced session is charged through Razorpay
+            before it's ever booked, so this is real collected revenue, not just delivered value. It's still
+            pending, though: this month's total becomes a real settlement only once the month closes.
           </Text>
-          <Text style={{ color: colors.textPrimary, ...typography.metricLarge }}>
-            {money(data.currentMonth.netCents)}
-          </Text>
-        </View>
-        <View style={{ justifyContent: "center" }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Gross {money(data.currentMonth.grossCents)} · {data.commissionPct}% platform fee
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Lifetime paid {money(data.lifetimePaidCents)}
-          </Text>
-        </View>
-      </View>
-      <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.sm }}>
-        Gross is booking value for confirmed sessions this month — a priced session is charged through Razorpay
-        before it's ever booked, so this is real collected revenue, not just delivered value.
-      </Text>
+
+          <View style={{ marginTop: spacing.md }}>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontSize: 11,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: spacing.xs,
+              }}
+            >
+              Settlement History
+            </Text>
+            {data.settlements.length === 0 ? (
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                No settlements yet — your first one is created once a full month of bookings closes out.
+              </Text>
+            ) : (
+              <View style={{ gap: spacing.sm }}>
+                {data.settlements.map((s) => (
+                  <View
+                    key={s.id}
+                    style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 13 }}>
+                        {periodLabel(s.periodStart)}
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        Gross {money(s.grossCents)} · {s.commissionPct}% fee
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end", gap: 4 }}>
+                      <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{money(s.netCents)}</Text>
+                      <StatusBadge status={s.status} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </Card>
   );
 }
