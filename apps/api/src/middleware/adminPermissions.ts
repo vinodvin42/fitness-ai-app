@@ -43,7 +43,12 @@ export type AdminModule =
   | "support"
   | "admin"
   | "sensitiveData"
-  | "auditLogs";
+  | "auditLogs"
+  // Gym Partner Lite — R1 Wave 1 (added 20 Sep 2026). Its own module
+  // rather than folded into `growth` — partner accounts/status/commercial
+  // terms are closer to `professionals` (an external-party relationship
+  // super_admin manages end to end) than a marketing/acquisition lever.
+  | "gyms";
 
 export type AdminAction = "view" | "create" | "edit" | "delete" | "export" | "approve";
 
@@ -83,6 +88,7 @@ export const PERMISSION_MATRIX: Record<KnownAdminRole, ModulePermissions> = {
     admin: ["view", "create", "edit", "delete", "export", "approve"],
     sensitiveData: ["view", "edit", "approve"],
     auditLogs: ["view", "export"],
+    gyms: ["view", "create", "edit", "delete", "export", "approve"],
   },
 
   // "User management and support" — mirrors super_admin's users + support
