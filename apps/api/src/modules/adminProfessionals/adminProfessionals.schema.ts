@@ -37,7 +37,16 @@ export const suspendProfessionalSchema = z.object({
   adminNotes: z.string().trim().max(2000).optional(),
 });
 
+// R2 Wave 1 (20 Sep 2026) — admin-editable capacity (the same
+// professionalLifecycle.service.ts#updateMaxActiveClients the professional
+// can also call on their own account). 1–500 is a sanity bound, matching
+// professionalLifecycle.schema.ts's own updateMaxActiveClientsSchema.
+export const adminUpdateMaxActiveClientsSchema = z.object({
+  maxActiveClients: z.coerce.number().int().min(1).max(500),
+});
+
 export type ListProfessionalsQuery = z.infer<typeof listProfessionalsQuerySchema>;
 export type VerifyCredentialInput = z.infer<typeof verifyCredentialSchema>;
 export type VerifyKycInput = z.infer<typeof verifyKycSchema>;
 export type SuspendProfessionalInput = z.infer<typeof suspendProfessionalSchema>;
+export type AdminUpdateMaxActiveClientsInput = z.infer<typeof adminUpdateMaxActiveClientsSchema>;

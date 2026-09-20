@@ -1249,6 +1249,17 @@ export type ProfessionalServiceType = "fitness" | "nutrition";
 export type CredentialStatus = "not_verified" | "pending" | "verified" | "rejected";
 export type ProfessionalStatus = "active" | "suspended";
 /**
+ * `Professional.lifecycleStatus` (R2 Wave 1, 20 Sep 2026) — the account-
+ * level slice of Developer 2's R1 work package §2 lifecycle
+ * (`APPLICATION -> VERIFICATION -> APPROVED -> AVAILABLE -> ...`); only
+ * these first 4 stages plus `suspended` exist as real DB state today —
+ * everything from OFFERED onward is `RelationshipStatus` above, a later
+ * wave's scope. Additive alongside `ProfessionalStatus` and
+ * `CredentialStatus` — see apps/api's schema.prisma comment on this same
+ * enum for the full, documented interaction between all three.
+ */
+export type ProfessionalLifecycleStatus = "application" | "verification" | "approved" | "available" | "suspended";
+/**
  * `Relationship.status` (docs/coach/05-data-model.md §3) — added 21 Aug 2026
  * for apps/admin-web's Module 03/04, the Relationship model itself predates
  * this by a day (see prisma/schema.prisma) but had no shared type yet since
@@ -1272,6 +1283,10 @@ export interface Professional {
   yearsExperience: number | null;
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
+  /** R2 Wave 1 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
+  lifecycleStatus: ProfessionalLifecycleStatus;
+  /** R2 Wave 1 (20 Sep 2026) — flat cap on currently-`active` Relationship rows, coach/admin-editable. Default 15. */
+  maxActiveClients: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1685,6 +1700,20 @@ export interface AdminProfessionalListItem {
   activeClients: number;
 }
 
+/** The shape returned by GET /professionals/me/lifecycle and used by the admin directory's own capacity edit. */
+export interface ProfessionalLifecycleSummary {
+  lifecycleStatus: ProfessionalLifecycleStatus;
+  status: ProfessionalStatus;
+  maxActiveClients: number;
+  activeClients: number;
+  isAvailableForNewClients: boolean;
+}
+
+/** Matches professionalLifecycle.schema.ts's updateMaxActiveClientsSchema (and adminProfessionals.schema.ts's admin equivalent). */
+export interface UpdateMaxActiveClientsInput {
+  maxActiveClients: number;
+}
+
 /** The shape returned by GET /admin/professionals. */
 export interface AdminProfessionalDirectoryResponse {
   professionals: AdminProfessionalListItem[];
@@ -1722,6 +1751,9 @@ export interface AdminProfessionalDetailRecord {
   kycStatus: CredentialStatus;
   kycDocumentData: string | null;
   adminNotes: string | null;
+  /** R2 Wave 1 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
+  lifecycleStatus: ProfessionalLifecycleStatus;
+  maxActiveClients: number;
   createdAt: string;
   updatedAt: string;
   credentials: AdminProfessionalCredential[];

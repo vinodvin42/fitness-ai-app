@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { transitionToVerification } from "../professionalLifecycle/professionalLifecycle.service";
 import { SelectServicesInput, SubmitCredentialInput, SubmitKycInput } from "./professionalOnboarding.schema";
 
 /**
@@ -87,6 +88,13 @@ export async function submitCredential(professionalId: string, input: SubmitCred
     entityId: updated.id,
     metadata: { serviceType: input.serviceType },
   });
+
+  // R2 Wave 1 (20 Sep 2026) — the real trigger point for
+  // `Professional.lifecycleStatus`'s system-driven `application ->
+  // verification` move (a no-op for a professional already past
+  // `application`, e.g. this same call on a re-submission). See
+  // professionalLifecycle.service.ts's own doc comment.
+  await transitionToVerification(professionalId);
 
   return updated;
 }
