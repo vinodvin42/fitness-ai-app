@@ -91,6 +91,25 @@ adminUsersRouter.post(
   },
 );
 
+// Consent Management admin view (Wave 4, 20 Sep 2026) — real, read-only
+// wrapper around users.service.ts#listConsents. Same `sensitiveData: view`
+// gate as the rest of 12.04 Privacy & Data Governance — see
+// adminUsers.service.ts#listUserConsents's own comment for the full
+// design and the read-only-vs-override decision.
+adminUsersRouter.get(
+  "/admin/users/:id/consents",
+  requireAdminAuth,
+  requirePermission("sensitiveData", "view"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const result = await adminUsersService.listUserConsents(req.params.id);
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // Module 02.01 Bulk-select + suspend/reactivate, added 26 Aug 2026 —
 // same `requirePermission("users", "edit")` gate and route shape as
 // adminProfessionals.routes.ts's suspend/reactivate.

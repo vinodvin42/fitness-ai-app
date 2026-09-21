@@ -249,6 +249,52 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
     await prisma.relationship.deleteMany({ where: { id: relationship.id } });
   });
 
+  it("a real DSAR data export creates a real, low-severity 'privacy_request' item (Wave 4)", async () => {
+    const email = uniqueEmail("aq-dsar-export");
+    const signupRes = await request(app)
+      .post("/auth/signup")
+      .send({ email, password: "SomePassword1!", fullName: "Action Queue DSAR Export Tester" });
+    const userId = signupRes.body.user.id;
+    cleanupUserIds.push(userId);
+    const token = signupRes.body.tokens.accessToken;
+
+    const exportRes = await request(app).get("/users/me/export").set("Authorization", `Bearer ${token}`);
+    expect(exportRes.status).toBe(200);
+
+    const auditRow = await prisma.auditLog.findFirst({ where: { actorId: userId, action: "user.data_exported" } });
+    expect(auditRow).toBeTruthy();
+
+    const items = await prisma.adminActionItem.findMany({ where: { entityType: "User", entityId: userId, type: "privacy_request" } });
+    expect(items).toHaveLength(1);
+    expect(items[0].severity).toBe("low");
+    expect(items[0].status).toBe("open");
+    expect(items[0].metadata).toMatchObject({ requestType: "data_export" });
+  });
+
+  it("a real DSAR account deletion creates a real, medium-severity 'privacy_request' item (Wave 4)", async () => {
+    const email = uniqueEmail("aq-dsar-delete");
+    const password = "SomePassword1!";
+    const signupRes = await request(app).post("/auth/signup").send({ email, password, fullName: "Action Queue DSAR Delete Tester" });
+    const userId = signupRes.body.user.id;
+    const token = signupRes.body.tokens.accessToken;
+
+    const deleteRes = await request(app)
+      .delete("/users/me")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ password });
+    expect(deleteRes.status).toBe(204);
+
+    // The User row is gone (real hard delete) but the queue item's
+    // entityId is a plain string, same "polymorphic, unenforced FK"
+    // convention AuditLog.entityId already uses — it survives.
+    const items = await prisma.adminActionItem.findMany({ where: { entityType: "User", entityId: userId, type: "privacy_request" } });
+    expect(items).toHaveLength(1);
+    expect(items[0].severity).toBe("medium");
+    expect(items[0].metadata).toMatchObject({ requestType: "account_deletion" });
+
+    await prisma.adminActionItem.deleteMany({ where: { entityType: "User", entityId: userId, type: "privacy_request" } });
+  });
+
   it("a submitted ProfessionalCredential creates a real 'credential_verification_pending' item", async () => {
     const suffix = uniqueSuffix();
     const professional = await prisma.professional.create({

@@ -3487,8 +3487,22 @@ export interface AdminSensitiveAccessLog {
 export interface AdminPrivacyDashboardResponse {
   dsarLog: AdminDsarLog;
   sensitiveAccessLog: AdminSensitiveAccessLog;
-  /** Always ["consentManagement", "dataRetention"] — see adminPrivacy.service.ts. */
+  /** Always ["dataRetention"] as of Wave 4 (20 Sep 2026) — consentManagement is real now, see AdminUserConsentsResponse. */
   notAvailable: string[];
+}
+
+/**
+ * Consent Management admin view (Wave 4, 20 Sep 2026) — GET
+ * /admin/users/:id/consents, a thin admin-authed read wrapper around the
+ * same `Consent` rows `GET /users/me/consents` already exposes to the
+ * user themselves. Read-only by design — see
+ * apps/api's adminUsers.service.ts#listUserConsents doc comment.
+ */
+export interface AdminUserConsentsResponse {
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  consents: Consent[];
 }
 
 // ---- API envelope -----------------------------------------------------

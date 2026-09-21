@@ -36,6 +36,12 @@ export const ADMIN_SYSTEM_SUB_NAV = [
   { label: "Roles & Permissions", path: "/admin-system/roles" },
   { label: "Audit Logs", path: "/admin-system/audit-logs" },
   { label: "Privacy & Data Governance", path: "/admin-system/privacy" },
+  // Consent Management (Wave 4, 20 Sep 2026) — a separate screen from
+  // Privacy & Data Governance rather than a third card there, since it's
+  // naturally scoped to one user at a time (search, then view) rather
+  // than a console-wide table like the DSAR/Sensitive Access logs. See
+  // ConsentManagementScreen.tsx's own doc comment.
+  { label: "Consent Management", path: "/admin-system/consents" },
   { label: "Security", path: "/admin-system/security" },
   { label: "Integrations", path: "/admin-system/integrations" },
 ];
