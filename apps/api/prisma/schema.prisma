@@ -2874,14 +2874,15 @@ model Campaign {
   name         String
   linkCode     String            @unique
   status       CampaignStatus    @default(active)
-  // Nullable, no `@relation` yet — `Gym` is a separate Wave 1 unit being
-  // built in parallel in a sibling worktree and does not exist in this
-  // schema yet. This column is a plain string FK-shaped placeholder,
-  // intentionally ready for a real `gym Gym? @relation(...)` once that
-  // model merges (a later wave's integration job, out of scope here —
-  // see docs/admin/07-open-questions-gaps.md). Never resolved/validated
-  // against anything in this pass.
+  // Real FK as of Wave 4 (20 Sep 2026) — Wave 1's own comment here flagged
+  // this as "intentionally ready for a real `gym Gym? @relation(...)` once
+  // that model merges"; `Gym`/`GymLocation` merged to main in Gym Partner
+  // Lite R1 Wave 1 (also 20 Sep 2026, a separate parallel unit) before this
+  // wave started, so the placeholder is resolved rather than carried
+  // forward. Still optional and separate from `influencerId` below — a
+  // campaign may credit a Gym, an Influencer, both, or neither (BR-ACQ-002).
   gymId        String?
+  gym          Gym?              @relation(fields: [gymId], references: [id], onDelete: SetNull)
   // Optional commercial-attribution counterparty (BR-ACQ-002) — real FK,
   // since `Influencer` already exists in this schema (see that model's
   // own doc comment). A campaign with no influencer credit (most
@@ -2894,6 +2895,7 @@ model Campaign {
 
   @@index([sourceId])
   @@index([influencerId])
+  @@index([gymId])
   @@map("campaigns")
 }
 
@@ -3164,6 +3166,7 @@ model Gym {
 
   locations GymLocation[]
   members   User[]
+  campaigns Campaign[]
 
   @@index([status])
   @@map("gyms")

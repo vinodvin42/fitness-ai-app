@@ -33,6 +33,8 @@ import { EscalationsScreen } from "./screens/support/EscalationsScreen";
 import { SafetyEscalationsScreen } from "./screens/support/SafetyEscalationsScreen";
 import { ReferralsScreen } from "./screens/growth/ReferralsScreen";
 import { InfluencersScreen } from "./screens/growth/InfluencersScreen";
+import { CampaignDirectoryScreen } from "./screens/acquisition/CampaignDirectoryScreen";
+import { AcquisitionReportScreen } from "./screens/acquisition/AcquisitionReportScreen";
 import { UserAnalyticsScreen } from "./screens/analytics/UserAnalyticsScreen";
 import { EngagementScreen } from "./screens/analytics/EngagementScreen";
 import { FitnessNutritionScreen } from "./screens/analytics/FitnessNutritionScreen";
@@ -407,8 +409,8 @@ function AppRoutes() {
           first real slice here — see adminReferrals.service.ts's own doc
           comment. 07.01/07.02 Influencers joined 31 Aug 2026 (routed below,
           under Growth's own subNav — see growth/subNav.ts); 07.04 Campaigns
-          & Attribution still needs a new Campaign entity + attribution
-          pipeline. */}
+          & Attribution joined 20 Sep 2026 (R2 Wave 4), routed further below
+          at /growth/campaigns and /growth/acquisition-report. */}
       <Route
         path="/growth"
         element={
@@ -424,6 +426,29 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <InfluencersScreen />
+          </RequireAuth>
+        }
+      />
+      {/* 07.04 Campaigns & Attribution (20 Sep 2026, R2 Wave 4) — Growth's
+          third and fourth real screens. R2 Wave 1 (same day) shipped the
+          real AcquisitionSource/Campaign/Touchpoint schema + signup-time
+          resolution; this is the admin-web UI over it. See
+          growth/subNav.ts's own doc comment for why these route under
+          Growth despite living in their own screens/acquisition/
+          directory. */}
+      <Route
+        path="/growth/campaigns"
+        element={
+          <RequireAuth>
+            <CampaignDirectoryScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/growth/acquisition-report"
+        element={
+          <RequireAuth>
+            <AcquisitionReportScreen />
           </RequireAuth>
         }
       />

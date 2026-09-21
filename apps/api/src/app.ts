@@ -42,6 +42,7 @@ import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegr
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
+import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
 import { gymsRouter } from "./modules/gyms/gyms.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
@@ -253,6 +254,10 @@ export function createApp() {
   app.use("/", adminSettlementsRouter);
   app.use("/", adminInfluencersRouter);
   app.use("/", gymsRouter);
+  // Module 07.04 Campaigns & Attribution (20 Sep 2026, R2 Wave 4) — real
+  // admin-web reporting over R2 Wave 1's Source/Campaign/Touchpoint schema.
+  // See adminAcquisition.service.ts's own doc comment.
+  app.use("/", adminAcquisitionRouter);
   app.use("/", adminCouponsRouter);
   app.use("/", adminRefundsRouter);
   // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — see

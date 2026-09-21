@@ -112,6 +112,11 @@ const LABELS: Record<string, string> = {
   // adminAnalytics.service.ts's `getUnitEconomics` doc comment.
   acquisitionChannelSplit: "Acquisition Channel Split (donut + leaderboard)",
   unitEconomicsWaterfall: "Unit Economics Waterfall Chart",
+  // Module 07.04 (Campaigns & Attribution) addition, 20 Sep 2026 — see
+  // adminAcquisition.service.ts's own doc comment for why W1/W4 retention
+  // sliced by channel has no existing precedent to reuse in this codebase.
+  w1RetentionByChannel: "Week-1 Retention by Channel",
+  w4RetentionByChannel: "Week-4 Retention by Channel",
 };
 
 const DEFAULT_SUBTITLE =
