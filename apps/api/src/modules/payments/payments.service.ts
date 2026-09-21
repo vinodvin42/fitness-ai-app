@@ -10,6 +10,7 @@ import { purchaseProgram } from "../programPurchases/programPurchases.service";
 import { claimRelationship, createBooking, hasBookingConflict } from "../coaching/coaching.service";
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { CreateOrderInput } from "./payments.schema";
 
 /**
@@ -470,6 +471,52 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         reason: err instanceof ApiHttpError ? err.code : "unknown_error",
       },
     });
+
+    // Admin Action Required queue (Wave 4, 20 Sep 2026) — the real, exact
+    // condition the schema's own `entitlement_activation_failed` doc comment
+    // names ("payment success + entitlement activation failure"): this
+    // branch only runs for subscription/program_purchase (booking rethrows
+    // above, before this point, and keeps its own separate
+    // "booking.payment_captured_but_unfulfilled" audit-only signal — see
+    // that catch's own comment on why it's deliberately not retryable/
+    // queued the same way) and only once `payment.activationFailedAt` has
+    // actually just been set on the row above. `severity: "high"` — money
+    // was captured by Razorpay and the entitlement was not delivered, the
+    // most urgent category this queue has.
+    //
+    // Dedup: unlike most other call sites of createActionItem (each fires
+    // from a genuine one-time creation moment, per adminActionQueue.ts's own
+    // top comment), THIS moment can genuinely recur for the same Payment —
+    // retryActivation() clears activationFailedAt to retry, and can fail
+    // again, re-entering this exact catch block for the same payment.id.
+    // Same "check for an existing open item before creating" discipline as
+    // professionalDashboard.service.ts's detectAndQueueStuckRelationships,
+    // keyed on (type, entityType, entityId, status: "open") so a Payment
+    // stuck in a repeated fail-retry-fail loop surfaces as one open admin
+    // item, not a new row per attempt.
+    const existingOpenItem = await prisma.adminActionItem.findFirst({
+      where: {
+        type: "entitlement_activation_failed",
+        entityType: "Payment",
+        entityId: payment.id,
+        status: "open",
+      },
+      select: { id: true },
+    });
+    if (!existingOpenItem) {
+      await createActionItem({
+        type: "entitlement_activation_failed",
+        entityType: "Payment",
+        entityId: payment.id,
+        severity: "high",
+        metadata: {
+          userId: payment.userId,
+          purpose: payment.purpose,
+          referenceId: payment.referenceId,
+          reason: err instanceof ApiHttpError ? err.code : "unknown_error",
+        },
+      });
+    }
 
     // §8 "entitlement.activation_failed" — the exact BR-COM-011 gap this
     // function's own top comment describes: money captured, entitlement
