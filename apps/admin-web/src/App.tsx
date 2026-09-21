@@ -17,6 +17,7 @@ import { IntegrationsScreen } from "./screens/adminSystem/IntegrationsScreen";
 import { SecurityScreen } from "./screens/adminSystem/SecurityScreen";
 import { RolesPermissionsScreen } from "./screens/adminSystem/RolesPermissionsScreen";
 import { PrivacyScreen } from "./screens/adminSystem/PrivacyScreen";
+import { ConsentManagementScreen } from "./screens/adminSystem/ConsentManagementScreen";
 import { ProgramsDirectoryScreen } from "./screens/programs/ProgramsDirectoryScreen";
 import { ExercisesDirectoryScreen } from "./screens/programs/ExercisesDirectoryScreen";
 import { RecipesDirectoryScreen } from "./screens/programs/RecipesDirectoryScreen";
@@ -229,6 +230,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PrivacyScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin-system/consents"
+        element={
+          <RequireAuth>
+            <ConsentManagementScreen />
           </RequireAuth>
         }
       />

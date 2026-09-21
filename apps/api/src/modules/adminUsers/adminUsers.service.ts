@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { hasPermission } from "../../middleware/adminPermissions";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { listConsents } from "../users/users.service";
 import {
   CreateSensitiveAccessRequestInput,
   ListUsersQuery,
@@ -585,6 +586,46 @@ export async function suspendUser(adminId: string, userId: string, input: Suspen
   });
 
   return updated;
+}
+
+/**
+ * Consent Management admin view (Wave 4, 20 Sep 2026) — closes the gap
+ * `adminPrivacy.service.ts`'s own top comment names: a real `Consent`
+ * model (R1 Developer 1, 18 Sep 2026) with real user-facing read/write
+ * endpoints (`GET`/`PATCH /users/me/consents`) existed with zero
+ * admin-console visibility into it. This is a thin, read-only wrapper
+ * around `users.service.ts#listConsents` — the exact same per-(user,type)
+ * "always return all 3 types, `granted: false` + `updatedAt: null` means
+ * 'never decided', not 'declined'" logic that function already owns, not
+ * duplicated here. No admin-side override/force-change action: consent is
+ * the user's own choice everywhere else in this codebase (the mobile
+ * PrivacySettingsScreen is the only place a Consent row is ever written),
+ * and nothing in the work package asks for an admin to be able to grant
+ * or revoke consent on a user's behalf — see docs/admin/07-open-
+ * questions-gaps.md's dated entry for this wave for the full reasoning.
+ * Gated by `sensitiveData: view` at the route level, same as the rest of
+ * 12.04 Privacy & Data Governance (`adminPrivacy.routes.ts`) — consent
+ * state (especially `health_data_processing`) is privacy-sensitive in the
+ * same sense the DSAR/Sensitive Access logs already are, so this reuses
+ * that existing gate rather than inventing a narrower one.
+ */
+export async function listUserConsents(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, fullName: true, email: true },
+  });
+  if (!user) {
+    throw new ApiHttpError(404, "not_found", "User not found");
+  }
+
+  const consents = await listConsents(userId);
+
+  return {
+    userId: user.id,
+    userFullName: user.fullName,
+    userEmail: user.email,
+    consents,
+  };
 }
 
 export async function reactivateUser(adminId: string, userId: string) {

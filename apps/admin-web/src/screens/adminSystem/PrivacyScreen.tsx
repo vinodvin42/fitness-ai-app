@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AdminPrivacyDashboardResponse } from "@fitness-ai-app/types";
+import { Link } from "react-router-dom";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
@@ -24,10 +25,15 @@ async function fetchPrivacy(): Promise<AdminPrivacyDashboardResponse> {
  * full story, including a mid-build correction): a real **DSAR log**
  * (every self-service data export / account deletion from
  * `apps/user-mobile`'s Security screen, surfaced console-wide for the
- * first time) and a real **Sensitive Data Access Log** (every ADMIN
- * request to view a user's locked sensitive health data, Module 02).
- * Consent management and data retention are honestly not built — no
- * backing entity for either exists anywhere in this schema.
+ * first time, and — as of Wave 4, 20 Sep 2026 — also a real, ownable
+ * `AdminActionItem` in the unified Action Required queue) and a real
+ * **Sensitive Data Access Log** (every ADMIN request to view a user's
+ * locked sensitive health data, Module 02). Consent management moved out
+ * of "not built" this same wave too — see `ConsentManagementScreen.tsx`
+ * (linked below), a separate per-user screen rather than a third card
+ * here, since consent is naturally scoped to one user at a time. Data
+ * retention is still honestly not built — no retention-policy/scheduled-
+ * deletion entity exists anywhere in this schema.
  */
 export function PrivacyScreen() {
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -160,9 +166,23 @@ export function PrivacyScreen() {
               </div>
             </div>
 
+            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-text-dim">Consent Management</div>
+              <p className="mt-1 text-xs text-text-dim">
+                Real, read-only per-user consent state (marketing emails, data analytics, health-data processing) —
+                search for a user to view what they've granted or revoked.
+              </p>
+              <Link
+                to="/admin-system/consents"
+                className="mt-3 inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+              >
+                Open Consent Management →
+              </Link>
+            </div>
+
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="Consent tracking and data-retention policy need entities that don't exist anywhere in this schema."
+              subtitle="Data-retention policy needs an entity that doesn't exist anywhere in this schema."
             />
           </>
         )}

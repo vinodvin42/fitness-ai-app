@@ -334,6 +334,25 @@ export async function exportUserData(userId: string) {
 
   await recordAudit({ actorId: userId, action: "user.data_exported", entityType: "User", entityId: userId });
 
+  // Admin Action Required queue (R2 Wave 1) — Wave 4 wiring (20 Sep 2026).
+  // This IS a real DSAR (Data Subject Access Request): the AuditLog write
+  // just above is what `adminPrivacy.service.ts#getDsarLog` already
+  // surfaces console-wide, but until now that surface was a passive log
+  // with no ownership/resolution tracking — an admin had to remember to
+  // check it. `low` severity: this export already completed synchronously
+  // and returned to the user in this same call, so there's no outstanding
+  // fulfillment step left — the item exists so compliance can see/attest
+  // that this request happened, not because a human needs to act on it.
+  // A failure here must never fail the export itself — see
+  // lib/adminActionQueue.ts's top comment.
+  await createActionItem({
+    type: "privacy_request",
+    entityType: "User",
+    entityId: userId,
+    severity: "low",
+    metadata: { requestType: "data_export" },
+  });
+
   return {
     exportedAt: new Date().toISOString(),
     profile: toPublicUser(user),
@@ -365,6 +384,24 @@ export async function deleteAccount(userId: string, input: DeleteAccountInput) {
   }
 
   await recordAudit({ actorId: userId, action: "user.account_deleted", entityType: "User", entityId: userId });
+
+  // Admin Action Required queue (R2 Wave 1) — Wave 4 wiring (20 Sep 2026),
+  // same real-DSAR reasoning as exportUserData's own call just above.
+  // `medium`, unlike the export's `low`: a deletion is irreversible and
+  // this codebase has no automated purge of this user's data outside the
+  // primary DB (analytics events, third-party integrations, backups) —
+  // worth a human's eye to confirm downstream erasure obligations are
+  // actually met, not just this row. Written BEFORE the delete below so
+  // `entityId: userId` still refers to a row that existed at write time
+  // (same "polymorphic, unenforced FK" convention `AuditLog.entityId`
+  // already uses — this doesn't need the row to still exist afterward).
+  await createActionItem({
+    type: "privacy_request",
+    entityType: "User",
+    entityId: userId,
+    severity: "medium",
+    metadata: { requestType: "account_deletion" },
+  });
 
   await prisma.user.delete({ where: { id: userId } });
 }

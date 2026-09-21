@@ -38,16 +38,32 @@ import { prisma } from "../../db/prisma";
  * `apps/user-mobile`'s new PrivacySettingsScreen.tsx +
  * `users.service.ts#listConsents`/`updateConsent`) — this comment's older
  * "no Consent/opt-in tracking entity anywhere in this schema" claim no
- * longer holds. What that pass built is real user-facing consent
- * management (a real toggle per consent type, backed by real rows), but
- * this admin console's own read side of it — a console-wide consent
- * dashboard/table mirroring the DSAR card just above — wasn't part of
- * that pass's scope and stays genuinely unbuilt here; `notAvailable`
- * below still names `consentManagement` for that reason, now meaning "no
- * admin-console view of it yet" rather than "the underlying capability
- * doesn't exist." Data retention (no retention-policy config or
- * scheduled-deletion job exists) is unrelated and remains as originally
- * described. Both still render via `NotAvailablePanel`.
+ * longer holds.
+ *
+ * **20 Sep 2026 (Wave 4): the admin-console read side is real too now** —
+ * `GET /admin/users/:id/consents` (`adminUsers.routes.ts`/
+ * `adminUsers.service.ts#listUserConsents`), a searchable-by-user Consent
+ * Management screen (`ConsentManagementScreen.tsx`), both a thin
+ * read-only wrapper around `users.service.ts#listConsents` — not
+ * duplicated here in this module, since it's naturally scoped per-user
+ * (search a user, see their consent state) rather than a console-wide
+ * table like the DSAR/Sensitive Access logs above. `notAvailable` below
+ * drops `consentManagement` for that reason. Data retention (no
+ * retention-policy config or scheduled-deletion job exists anywhere) is
+ * unrelated and remains genuinely unbuilt, still rendered via
+ * `NotAvailablePanel`.
+ *
+ * **Also Wave 4: `privacy_request` Admin Action Required wiring** — the
+ * DSAR log above stays a passive read (this file isn't the actionable
+ * queue), but `users.service.ts#exportUserData`/`deleteAccount` — the
+ * two real creation points behind the `user.data_exported`/
+ * `user.account_deleted` AuditLog rows `getDsarLog` reads — now each also
+ * call `createActionItem({ type: "privacy_request", ... })`, so a real
+ * DSAR shows up in the unified `GET /admin/action-items` queue too, not
+ * only in this siloed card. See those functions' own comments for the
+ * severity reasoning (`low` for a self-service export that already
+ * completed, `medium` for an irreversible deletion with downstream
+ * erasure obligations worth a human's eye).
  */
 
 const REQUEST_CAP = 200;
@@ -170,8 +186,9 @@ export async function getPrivacyDashboard() {
   return {
     dsarLog,
     sensitiveAccessLog,
-    // See this file's top comment for why only consent management and
-    // data retention remain genuinely unbuilt.
-    notAvailable: ["consentManagement", "dataRetention"],
+    // See this file's top comment — consent management is real now
+    // (Wave 4, GET /admin/users/:id/consents), only data retention
+    // remains genuinely unbuilt.
+    notAvailable: ["dataRetention"],
   };
 }
