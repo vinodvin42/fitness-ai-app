@@ -20,7 +20,6 @@
     },
     "android": {
       "package": "com.primefit.usermobile",
-      "versionCode": 1,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
