@@ -51,7 +51,35 @@ jobs:
       - run: npm run build --workspace=apps/admin-web
         env:
           VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
-      - run: node scripts/merge-web-deploy.js combined-web-deploy apps/admin-web/dist
+
+      # Gym Partner and Creator portals (21 Sep 2026). They land on this same
+      # site rather than getting their own Static Web Apps, which keeps them
+      # on an origin the API's CORS_ORIGINS already allows — a separate host
+      # per portal would have needed an app-settings change on the API for
+      # each one.
+      #
+      # The mount paths are not a free choice: apps/landing's gyms.html and
+      # creators.html already link to /portal/gym/login and
+      # /portal/creator/login, so anything else would leave the marketing
+      # site's own CTAs pointing at a 404.
+      #
+      # PORTAL_BASE is the bare path, no leading or trailing slash — see each
+      # portal's vite.config.ts for why it is an env var in that shape rather
+      # than `vite build --base=...`.
+      - run: npm run build --workspace=apps/gym-portal
+        env:
+          VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          PORTAL_BASE: portal/gym
+      - run: npm run build --workspace=apps/creator-portal
+        env:
+          VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          PORTAL_BASE: portal/creator
+
+      - run: >-
+          node scripts/merge-web-deploy.js combined-web-deploy
+          apps/admin-web/dist
+          apps/gym-portal/dist:portal/gym
+          apps/creator-portal/dist:portal/creator
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
