@@ -12,12 +12,15 @@ import { prisma } from "../db/prisma";
  * rather than being logged as an anonymous system action — pass at most
  * one of the two (a consumer action vs. a staff action), never both.
  * Same day (Phase 5): accepts `actorProfessionalId` too, for the third
- * `Professional` identity — pass at most one of the three actor fields.
+ * `Professional` identity. R2 Wave 5 (21 Sep 2026): accepts
+ * `actorInfluencerId` too, for the fourth `Influencer`/Creator Portal
+ * identity — pass at most one of the four actor fields.
  */
 export async function recordAudit(params: {
   actorId?: string | null;
   actorAdminId?: string | null;
   actorProfessionalId?: string | null;
+  actorInfluencerId?: string | null;
   action: string;
   entityType: string;
   entityId?: string | null;
@@ -28,6 +31,7 @@ export async function recordAudit(params: {
       actorId: params.actorId ?? null,
       actorAdminId: params.actorAdminId ?? null,
       actorProfessionalId: params.actorProfessionalId ?? null,
+      actorInfluencerId: params.actorInfluencerId ?? null,
       action: params.action,
       entityType: params.entityType,
       entityId: params.entityId ?? null,

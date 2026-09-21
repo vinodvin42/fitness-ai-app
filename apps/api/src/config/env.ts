@@ -45,6 +45,15 @@ const envSchema = z.object({
   PROFESSIONAL_JWT_SECRET: z.string().min(16, "PROFESSIONAL_JWT_SECRET must be at least 16 chars"),
   PROFESSIONAL_JWT_ACCESS_TTL_MIN: z.coerce.number().default(15),
   PROFESSIONAL_JWT_REFRESH_TTL_DAYS: z.coerce.number().default(30),
+  // Creator Portal (R2 Wave 5, 21 Sep 2026) — an Influencer's own
+  // self-service login (apps/creator-portal), the same access+rotating-
+  // refresh-token shape as PROFESSIONAL_JWT_* above, with its own separate
+  // secret so an influencer session token can never be confused with (or
+  // replayed as) a professional/admin/consumer one. Required/fail-fast,
+  // same reasoning as every other identity's JWT secret in this file.
+  INFLUENCER_JWT_SECRET: z.string().min(16, "INFLUENCER_JWT_SECRET must be at least 16 chars"),
+  INFLUENCER_JWT_ACCESS_TTL_MIN: z.coerce.number().default(15),
+  INFLUENCER_JWT_REFRESH_TTL_DAYS: z.coerce.number().default(30),
   CORS_ORIGINS: z
     .string()
     .default("")

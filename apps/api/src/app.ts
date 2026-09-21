@@ -51,6 +51,8 @@ import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
 import { adminActionQueueRouter } from "./modules/adminActionQueue/adminActionQueue.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
+import { influencerAuthRouter } from "./modules/influencerAuth/influencerAuth.routes";
+import { influencerPortalRouter } from "./modules/influencerPortal/influencerPortal.routes";
 import { professionalOnboardingRouter } from "./modules/professionalOnboarding/professionalOnboarding.routes";
 import { professionalLifecycleRouter } from "./modules/professionalLifecycle/professionalLifecycle.routes";
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
@@ -285,6 +287,12 @@ export function createApp() {
   // Coach marketplace (Phase 5) — see docs/coach/07-open-questions-gaps.md's
   // "Phase 5 started" entry.
   app.use("/", professionalAuthRouter);
+  // Creator Portal (R2 Wave 5, 21 Sep 2026) — an Influencer's own
+  // self-service login + dashboard backend (apps/creator-portal). See
+  // influencerAuth.service.ts / influencerPortal.service.ts's own doc
+  // comments.
+  app.use("/", influencerAuthRouter);
+  app.use("/", influencerPortalRouter);
   app.use("/", professionalOnboardingRouter);
   // R2 Wave 1 (20 Sep 2026) — Professional R1 lifecycle (application ->
   // verification -> approved -> available), additive alongside the

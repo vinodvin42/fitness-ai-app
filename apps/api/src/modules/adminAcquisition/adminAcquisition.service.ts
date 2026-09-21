@@ -129,6 +129,29 @@ export async function listCampaigns(query: ListCampaignsQuery) {
   };
 }
 
+/**
+ * Creator Portal (R2 Wave 5, 21 Sep 2026) — the real per-influencer
+ * campaign list `influencerPortal.service.ts`'s `GET /influencer-portal/
+ * campaigns` wraps, reusing this file's own `CampaignRow`/`toCampaignItem`
+ * shape rather than duplicating it. Filters strictly by `influencerId` —
+ * the influencer-portal route handler passes only the id resolved from the
+ * caller's own auth token (`req.influencerId`), never a client-supplied
+ * one, so this never returns another influencer's campaigns.
+ */
+export async function listCampaignsForInfluencer(influencerId: string) {
+  const rows = (await prisma.campaign.findMany({
+    where: { influencerId },
+    include: {
+      source: { select: { id: true, channel: true, label: true } },
+      influencer: { select: { id: true, name: true } },
+      gym: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  })) as CampaignRow[];
+
+  return rows.map(toCampaignItem);
+}
+
 async function assertCounterpartiesExist(input: { influencerId?: string | null; gymId?: string | null }) {
   if (input.influencerId) {
     const inf = await prisma.influencer.findUnique({ where: { id: input.influencerId }, select: { id: true } });

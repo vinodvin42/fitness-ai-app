@@ -33,6 +33,7 @@ async function fetchInfluencer(id: string): Promise<AdminInfluencerDetail> {
 export function InfluencersScreen() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [passwordFormId, setPasswordFormId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
@@ -161,13 +162,22 @@ export function InfluencersScreen() {
                       <StatusBadge status={i.status === "active" ? "active" : "inactive"} />
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(selectedId === i.id ? null : i.id)}
-                        className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                      >
-                        {selectedId === i.id ? "Hide" : "Payouts"}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(selectedId === i.id ? null : i.id)}
+                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                        >
+                          {selectedId === i.id ? "Hide" : "Payouts"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPasswordFormId(passwordFormId === i.id ? null : i.id)}
+                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                        >
+                          {passwordFormId === i.id ? "Cancel" : "Set Portal Password"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -181,6 +191,14 @@ export function InfluencersScreen() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {passwordFormId && (
+          <SetPortalPasswordPanel
+            influencerId={passwordFormId}
+            influencerName={list.data?.influencers.find((i) => i.id === passwordFormId)?.name ?? ""}
+            onDone={() => setPasswordFormId(null)}
+          />
         )}
 
         {selectedId && <PayoutsPanel influencerId={selectedId} />}
@@ -298,5 +316,76 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
         </table>
       )}
     </div>
+  );
+}
+
+/**
+ * Creator Portal (R2 Wave 5, 21 Sep 2026) — the real "Set Portal Password"
+ * admin action: grants (or resets) an influencer's own login for
+ * apps/creator-portal. See adminInfluencers.service.ts's
+ * `setInfluencerPortalPassword` for why this requires the influencer to
+ * already have an email on file.
+ */
+function SetPortalPasswordPanel({
+  influencerId,
+  influencerName,
+  onDone,
+}: {
+  influencerId: string;
+  influencerName: string;
+  onDone: () => void;
+}) {
+  const [password, setPassword] = useState("");
+
+  const setPortalPassword = useMutation({
+    mutationFn: () => apiClient.post(`/admin/influencers/${influencerId}/portal-password`, { password }),
+    onSuccess: () => {
+      setPassword("");
+      onDone();
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setPortalPassword.mutate();
+      }}
+      className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+    >
+      <div className="text-sm font-medium text-text-primary">
+        Set Portal Password{influencerName ? ` — ${influencerName}` : ""}
+      </div>
+      <p className="text-xs text-text-dim">
+        Grants (or resets) this influencer&apos;s login to the Creator Portal. Requires an email on file.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs text-text-dim">
+          New password
+          <input
+            required
+            type="password"
+            minLength={8}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={setPortalPassword.isPending}
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+        >
+          {setPortalPassword.isPending ? "Saving…" : "Set Password"}
+        </button>
+      </div>
+      {setPortalPassword.isError && (
+        <p className="text-xs text-danger">
+          {extractErrorMessage(setPortalPassword.error, "Couldn't set the portal password.")}
+        </p>
+      )}
+      {setPortalPassword.isSuccess && <p className="text-xs text-accent">Portal password set.</p>}
+    </form>
   );
 }

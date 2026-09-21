@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/*
+ * Same design-token convention as apps/admin-web/src/styles/index.css
+ * (docs/admin/04-design-system.md) — copied verbatim so the Creator
+ * Portal looks like part of the same product family, not a bolted-on
+ * third-party tool.
+ */
+@theme {
+  --color-canvas: #0a0d12;
+  --color-surface: #12161c;
+  --color-surface-raised: #161b22;
+  --color-border-subtle: #232a33;
+
+  --color-accent: #12e5a6;
+  --color-danger: #f04438;
+  --color-warning: #f5a623;
+  --color-info: #6b8ff5;
+
+  --color-text-primary: #f5f7fa;
+  --color-text-secondary: #9aa4b2;
+  --color-text-dim: #5b6472;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}

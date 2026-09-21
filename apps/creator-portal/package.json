@@ -1,0 +1,34 @@
+{
+  "name": "@fitness-ai-app/creator-portal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Creator Portal (R2 Wave 5, 21 Sep 2026) — an Influencer's own self-service login + dashboard: their own real Campaign(s)/link code(s), a per-campaign attribution report scoped to just those campaigns, and their own InfluencerPayout history. Copies apps/admin-web's exact Vite/React/TS stack and AuthProvider/RequireAuth pattern, keyed to the separate `Influencer` identity instead of AdminUser — see apps/api's influencerAuth + influencerPortal modules for the real backend.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@fitness-ai-app/types": "*",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.19.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "^7.18.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "~18.2.79",
+    "@types/react-dom": "~18.2.25",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "eslint": "^8.57.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.6.2",
+    "vite": "^8.0.0"
+  }
+}
