@@ -3763,3 +3763,86 @@ export interface PlanNextWorkout {
   /** True when every workout in the active Plan's Program is already completed. */
   programComplete: boolean;
 }
+
+// ---- Acquisition: Campaigns & Attribution (admin 07.04), added 20 Sep
+// 2026 (R2 Wave 4) — real admin-web reporting over R2 Wave 1's real
+// AcquisitionSource/Campaign/Touchpoint schema. See apps/api's
+// adminAcquisition.service.ts for the full real-vs-not breakdown of §11's
+// Founder Dashboard wishlist this covers.
+
+export type AcquisitionChannel =
+  | "organic"
+  | "paid_search"
+  | "paid_social"
+  | "referral"
+  | "influencer"
+  | "gym_partner"
+  | "direct";
+
+export type CampaignStatus = "active" | "inactive";
+
+export interface AdminAcquisitionSource {
+  id: string;
+  channel: AcquisitionChannel;
+  label: string;
+}
+
+export interface AdminAcquisitionSourcesResponse {
+  sources: AdminAcquisitionSource[];
+}
+
+export interface AdminCampaignListItem {
+  id: string;
+  name: string;
+  linkCode: string;
+  status: CampaignStatus;
+  channel: AcquisitionChannel;
+  sourceLabel: string;
+  influencer: { id: string; name: string } | null;
+  gym: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface AdminCampaignListResponse {
+  campaigns: AdminCampaignListItem[];
+  counts: { total: number; active: number };
+}
+
+export interface CreateCampaignInput {
+  name: string;
+  sourceId: string;
+  linkCode: string;
+  status?: CampaignStatus;
+  influencerId?: string;
+  gymId?: string;
+}
+
+/** One row of the acquisition report — shared shape for a channel row and a campaign row (the campaign row adds campaignId/campaignName/linkCode/status). */
+export interface AdminAcquisitionReportRow {
+  registrations: number;
+  registeredUsers: number;
+  activatedUsers: number;
+  usersWithFirstWorkout: number;
+  paidConversions: number;
+}
+
+export interface AdminAcquisitionChannelReportRow extends AdminAcquisitionReportRow {
+  channel: AcquisitionChannel;
+  sourceLabel: string;
+}
+
+export interface AdminAcquisitionCampaignReportRow extends AdminAcquisitionReportRow {
+  campaignId: string;
+  campaignName: string;
+  linkCode: string;
+  status: CampaignStatus;
+  channel: AcquisitionChannel;
+}
+
+export interface AdminAcquisitionReportResponse {
+  period: { start: string; end: string } | null;
+  byChannel: AdminAcquisitionChannelReportRow[];
+  byCampaign: AdminAcquisitionCampaignReportRow[];
+  totals: AdminAcquisitionReportRow;
+  notAvailable: string[];
+}
