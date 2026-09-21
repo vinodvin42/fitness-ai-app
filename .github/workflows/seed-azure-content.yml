@@ -90,5 +90,7 @@ jobs:
           JWT_REFRESH_SECRET: seed-job-placeholder-not-a-real-credential
           ADMIN_JWT_SECRET: seed-job-placeholder-not-a-real-credential
           PROFESSIONAL_JWT_SECRET: seed-job-placeholder-not-a-real-credential
+          GYM_JWT_SECRET: seed-job-placeholder-not-a-real-credential
+          INFLUENCER_JWT_SECRET: seed-job-placeholder-not-a-real-credential
           TWO_FACTOR_ENCRYPTION_KEY: d934205050767c571ac1d980091b6f50ab5a0bfd3490ade4e5b3df136dec0ee7
         run: npm run db:seed --workspace=apps/api -- --content-only
