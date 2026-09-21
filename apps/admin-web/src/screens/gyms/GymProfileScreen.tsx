@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
   AddGymLocationInput,
   AdminGymDetailResponse,
   AdminGymMemberActivationSummary,
+  SetGymPortalPasswordResponse,
   UpdateGymCommercialInput,
 } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -46,6 +47,8 @@ export function GymProfileScreen() {
   const [locationForm, setLocationForm] = useState<AddGymLocationInput>({ name: "", address: "", equipment: "" });
   const [showLocationForm, setShowLocationForm] = useState(false);
   const [commercialForm, setCommercialForm] = useState<UpdateGymCommercialInput | null>(null);
+  const [portalPassword, setPortalPassword] = useState("");
+  const [showPortalPasswordForm, setShowPortalPasswordForm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -91,6 +94,27 @@ export function GymProfileScreen() {
     mutationFn: (reason: string) => apiClient.patch(`/admin/gyms/${id}/status`, { status: "suspended", note: reason }),
     onSuccess: invalidate,
   });
+
+  // Gym Partner Lite portal bootstrap (R2 Wave 5, 21 Sep 2026) — see
+  // gyms.service.ts#setGymPortalPassword's own doc comment for why this
+  // admin-set action, rather than a self-serve invite link, is the real
+  // onboarding mechanism for apps/gym-portal's login this wave. Re-runnable
+  // (rotates the password), so it also doubles as "reset portal password"
+  // for a locked-out gym partner.
+  const portalPasswordMutation = useMutation({
+    mutationFn: (password: string) =>
+      apiClient.post<SetGymPortalPasswordResponse>(`/admin/gyms/${id}/portal-password`, { password }),
+    onSuccess: () => {
+      setPortalPassword("");
+      setShowPortalPasswordForm(false);
+    },
+  });
+
+  function onSubmitPortalPassword(e: FormEvent) {
+    e.preventDefault();
+    if (portalPassword.trim().length < 8) return;
+    portalPasswordMutation.mutate(portalPassword);
+  }
 
   const draft = commercialForm ?? (data ? { commissionPct: data.gym.commissionPct, pricingModel: data.gym.pricingModel, ratePerMemberCents: data.gym.ratePerMemberCents } : null);
   const isLocationFormValid = locationForm.name.trim().length > 0 && locationForm.address.trim().length > 0;
@@ -259,6 +283,61 @@ export function GymProfileScreen() {
                 deferred, not this wave's scope).
               </p>
             </div>
+          </div>
+
+          {/* Gym Partner Lite portal access (R2 Wave 5, 21 Sep 2026) — the real
+              bootstrap for apps/gym-portal's login. See
+              gyms.service.ts#setGymPortalPassword's own doc comment. */}
+          <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase tracking-wide text-text-dim">Gym Portal Access</div>
+              <button
+                type="button"
+                onClick={() => setShowPortalPasswordForm((v) => !v)}
+                className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+              >
+                {showPortalPasswordForm ? "Cancel" : "Set Portal Password"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-text-secondary">
+              Sets or resets the password this gym's own point of contact ({data.gym.contactEmail}) uses to sign in
+              to the separate Gym Partner portal. A gym has no portal access at all until this is set for the first
+              time.
+            </p>
+
+            {showPortalPasswordForm && (
+              <form onSubmit={onSubmitPortalPassword} className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="block">
+                  <div className="text-[11px] text-text-dim">New portal password (min. 8 characters)</div>
+                  <input
+                    type="password"
+                    value={portalPassword}
+                    onChange={(e) => setPortalPassword(e.target.value)}
+                    minLength={8}
+                    required
+                    autoComplete="new-password"
+                    className="mt-1 w-64 rounded-md border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={portalPasswordMutation.isPending || portalPassword.trim().length < 8}
+                  className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                >
+                  {portalPasswordMutation.isPending ? "Saving…" : "Save Password"}
+                </button>
+              </form>
+            )}
+            {portalPasswordMutation.isError && (
+              <p className="mt-2 text-xs text-danger">
+                {extractErrorMessage(portalPasswordMutation.error, "Couldn't set the portal password.")}
+              </p>
+            )}
+            {portalPasswordMutation.isSuccess && !portalPasswordMutation.isPending && (
+              <p className="mt-2 text-xs text-accent">
+                Portal password set — share it with the gym's contact through a secure channel (never over email).
+              </p>
+            )}
           </div>
 
           {/* Locations */}

@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — copied verbatim from apps/admin-web/src/styles/index.css
+ * (docs/admin/04-design-system.md's own approximations) so the two apps
+ * share one visual language, per this wave's brief ("same design-token/
+ * component conventions" as admin-web). Not authoritative — same caveat as
+ * that file's own comment.
+ */
+@theme {
+  --color-canvas: #0a0d12;
+  --color-surface: #12161c;
+  --color-surface-raised: #161b22;
+  --color-border-subtle: #232a33;
+
+  --color-accent: #12e5a6;
+  --color-danger: #f04438;
+  --color-warning: #f5a623;
+  --color-info: #6b8ff5;
+
+  --color-text-primary: #f5f7fa;
+  --color-text-secondary: #9aa4b2;
+  --color-text-dim: #5b6472;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
