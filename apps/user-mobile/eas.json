@@ -1,7 +1,22 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "local"
+    // 21 Sep 2026 — was "local", which meant every APK ever built carried
+    // android.versionCode 1 straight out of app.json. Two things broke as a
+    // result, and both looked like "the new build didn't work":
+    //   - Android decides whether an install is an upgrade by versionCode, so
+    //     installing a newer APK over an older one was not recognised as an
+    //     update.
+    //   - The Support screen shows Constants.expoConfig.version, so every
+    //     build also reported the same "v0.1.0" and there was no way for a
+    //     tester to tell which one they had.
+    //
+    // "remote" hands versionCode to EAS, which stores it per project and,
+    // with autoIncrement below, bumps it on every build — so it can no
+    // longer be forgotten. The human-facing `version` in app.json stays a
+    // deliberate, reviewable choice made at release time; only the build
+    // number is automatic.
+    "appVersionSource": "remote"
   },
   "build": {
     "preview": {
@@ -9,6 +24,9 @@
       "android": {
         "buildType": "apk"
       },
+      // Bumps android.versionCode server-side for each build of this
+      // profile. Without it, "remote" alone would just pin one number.
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://primefit-api-zjcprljmiu7mq.azurewebsites.net"
       }
