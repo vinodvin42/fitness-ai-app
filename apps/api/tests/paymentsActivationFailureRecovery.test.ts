@@ -41,6 +41,7 @@ import { ApiHttpError } from "../src/middleware/errorHandler";
  */
 describe("Payment activation failure recovery: money captured, entitlement retried, never re-charged", () => {
   let userId: string;
+  const paymentIds: string[] = [];
   let previousKeyId: string | undefined;
   let previousKeySecret: string | undefined;
   let previousWebhookSecret: string | undefined;
@@ -69,6 +70,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     env.RAZORPAY_KEY_SECRET = previousKeySecret;
     env.RAZORPAY_WEBHOOK_SECRET = previousWebhookSecret;
 
+    await prisma.adminActionItem.deleteMany({ where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: { in: paymentIds } } });
     await prisma.invoice.deleteMany({ where: { payment: { userId } } });
     await prisma.subscription.deleteMany({ where: { userId } });
     await prisma.payment.deleteMany({ where: { userId } });
@@ -103,6 +105,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
         status: "created",
       },
     });
+    paymentIds.push(payment.id);
 
     // The genuine failure trigger — the plan this payment references
     // vanishes between order-creation (already validated it existed) and
@@ -134,6 +137,18 @@ describe("Payment activation failure recovery: money captured, entitlement retri
 
     const subscriptionsAfterFailure = await prisma.subscription.findMany({ where: { userId, planId } });
     expect(subscriptionsAfterFailure).toHaveLength(0);
+
+    // Admin Action Required queue (Wave 4, 20 Sep 2026) — a real, open
+    // `entitlement_activation_failed` AdminActionItem must land for this
+    // exact Payment, high severity (money captured, entitlement not
+    // delivered), the moment activationFailedAt is set above.
+    const actionItemsAfterFailure = await prisma.adminActionItem.findMany({
+      where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id },
+    });
+    expect(actionItemsAfterFailure).toHaveLength(1);
+    expect(actionItemsAfterFailure[0].severity).toBe("high");
+    expect(actionItemsAfterFailure[0].status).toBe("open");
+    expect(actionItemsAfterFailure[0].metadata).toMatchObject({ purpose: "subscription", referenceId: planId, reason: "plan_not_found" });
 
     // Fix the underlying problem (the plan exists again) and retry — this
     // must NOT create a new Payment/charge, only finish the grant on the
@@ -171,6 +186,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const payment = await prisma.payment.create({
       data: { userId, purpose: "subscription", referenceId: planId, amountCents: 999, currency: "INR", providerOrderId, status: "created" },
     });
+    paymentIds.push(payment.id);
     const razorpayPaymentId = `pay_actfail_noop_${suffix}`;
     const signature = signFor(providerOrderId, razorpayPaymentId);
 
@@ -196,6 +212,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const payment = await prisma.payment.create({
       data: { userId, purpose: "subscription", referenceId: planId, amountCents: 2999, currency: "INR", providerOrderId, status: "created" },
     });
+    paymentIds.push(payment.id);
     const razorpayPaymentId = `pay_actfail_race_${suffix}`;
     const signature = signFor(providerOrderId, razorpayPaymentId);
 
@@ -221,5 +238,61 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const subscriptions = await prisma.subscription.findMany({ where: { userId, planId } });
     expect(subscriptions).toHaveLength(1);
     expect(subscriptions[0].status).toBe("active");
+  });
+
+  it("a repeated fail-retry-fail cycle for the same Payment surfaces as one open AdminActionItem, not a duplicate per attempt", async () => {
+    const suffix = uniqueSuffix();
+    const planId = `test-plan-actfail-${suffix}`;
+    await prisma.subscriptionPlan.create({
+      data: { id: planId, tier: "pro", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
+    });
+    const providerOrderId = `order_actfail_dedup_${suffix}`;
+    const payment = await prisma.payment.create({
+      data: { userId, purpose: "subscription", referenceId: planId, amountCents: 1999, currency: "INR", providerOrderId, status: "created" },
+    });
+    paymentIds.push(payment.id);
+    const razorpayPaymentId = `pay_actfail_dedup_${suffix}`;
+    const signature = signFor(providerOrderId, razorpayPaymentId);
+
+    // First genuine failure — plan missing at capture time.
+    await prisma.subscriptionPlan.delete({ where: { id: planId } });
+    await expect(
+      verifyPayment(userId, { razorpayOrderId: providerOrderId, razorpayPaymentId, razorpaySignature: signature }),
+    ).rejects.toMatchObject({ code: "entitlement_activation_failed" });
+
+    const afterFirstFailure = await prisma.adminActionItem.findMany({
+      where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id },
+    });
+    expect(afterFirstFailure).toHaveLength(1);
+    const firstItemId = afterFirstFailure[0].id;
+
+    // Retry while the underlying problem is STILL broken (plan still
+    // missing) — a real second pass through activatePayment()'s catch
+    // block for the exact same Payment, the repeatable case this dedup
+    // exists for.
+    await expect(retryActivation(userId, payment.id)).rejects.toMatchObject({ code: "entitlement_activation_failed" });
+
+    const afterSecondFailure = await prisma.adminActionItem.findMany({
+      where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id },
+    });
+    // Still exactly one row — the existing OPEN item was reused, not duplicated.
+    expect(afterSecondFailure).toHaveLength(1);
+    expect(afterSecondFailure[0].id).toBe(firstItemId);
+
+    // Fix the plan and let a real retry succeed — the open item is left as
+    // an admin's own thing to resolve (this wave doesn't auto-resolve it;
+    // resolution is the existing, real POST /admin/action-items/:id/resolve
+    // path), matching the rest of this queue's own resolve-is-a-separate-
+    // admin-action convention.
+    await prisma.subscriptionPlan.create({
+      data: { id: planId, tier: "pro", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
+    });
+    await retryActivation(userId, payment.id);
+
+    const stillOneRow = await prisma.adminActionItem.findMany({
+      where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id },
+    });
+    expect(stillOneRow).toHaveLength(1);
+    expect(stillOneRow[0].status).toBe("open");
   });
 });
