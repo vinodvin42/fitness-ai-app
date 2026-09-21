@@ -3763,3 +3763,71 @@ export interface PlanNextWorkout {
   /** True when every workout in the active Plan's Program is already completed. */
   programComplete: boolean;
 }
+
+// ---- Admin Action Required queue (apps/admin-web) --------------------------
+// R2 Wave 1 (20 Sep 2026) shipped the real, persisted `AdminActionItem`
+// model and its write path (apps/api's lib/adminActionQueue.ts) with no UI —
+// that was explicitly left for Wave 4 (this pass, R2 Wave 4). These types
+// match adminActionQueue.schema.ts's Zod shapes and the raw Prisma row
+// shape `listActionItems`/`assignActionItem`/`resolveActionItem` return
+// (no `include` on the admin relations — `assignedToAdminId`/
+// `resolvedByAdminId` are plain ids; the admin-web screen resolves those to
+// names itself from GET /admin/admin-users, the same directory 12.01
+// already fetches, rather than the backend needing a new join for this).
+
+export type AdminActionItemType =
+  // Verbatim from Developer 3's R1 work package §4 — see schema.prisma's
+  // `AdminActionItemType` enum comment.
+  | "entitlement_activation_failed"
+  | "professional_acceptance_stalled"
+  | "relationship_activation_failed"
+  | "credential_expiring"
+  | "payout_failed"
+  | "refund_impact"
+  | "chargeback"
+  | "safety_escalation"
+  | "privacy_request"
+  | "professional_complaint"
+  | "partner_abuse_review"
+  | "access_revocation_failed"
+  // The 5 pre-existing siloed sources actually wired into `createActionItem`
+  // as of R2 Wave 1 + Wave 4's own addition (`relationship_activation_failed`
+  // above, wired by professionalDashboard.service.ts).
+  | "support_ticket_open"
+  | "support_escalation"
+  | "relationship_change_pending"
+  | "credential_verification_pending";
+
+export type AdminActionItemSeverity = "low" | "medium" | "high";
+export type AdminActionItemStatus = "open" | "resolved";
+
+/** Matches `AdminActionItem` (prisma/schema.prisma) exactly — the raw row shape every action-queue endpoint returns. */
+export interface AdminActionItem {
+  id: string;
+  type: AdminActionItemType;
+  entityType: string;
+  entityId: string;
+  severity: AdminActionItemSeverity;
+  status: AdminActionItemStatus;
+  metadata: Record<string, unknown> | null;
+  assignedToAdminId: string | null;
+  resolvedAt: string | null;
+  resolvedByAdminId: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+}
+
+/** The shape returned by GET /admin/action-items. */
+export interface AdminActionItemListResponse {
+  items: AdminActionItem[];
+}
+
+/** Matches apps/api's assignActionItemSchema (Zod). */
+export interface AssignActionItemInput {
+  adminId: string;
+}
+
+/** Matches apps/api's resolveActionItemSchema (Zod). */
+export interface ResolveActionItemInput {
+  resolutionNote?: string;
+}
