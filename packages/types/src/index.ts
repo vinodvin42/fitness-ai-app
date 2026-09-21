@@ -4097,3 +4097,72 @@ export interface AdminAcquisitionReportResponse {
   totals: AdminAcquisitionReportRow;
   notAvailable: string[];
 }
+
+// ---- Creator Portal (apps/creator-portal), added 21 Sep 2026 (R2 Wave 5) --
+// An Influencer's own self-service login + dashboard, mirroring the
+// Professional (coach marketplace) auth response shapes exactly for the
+// separate `Influencer` identity. See apps/api's influencerAuth.service.ts /
+// influencerPortal.service.ts for the real backend.
+
+export interface PublicInfluencer {
+  id: string;
+  name: string;
+  email: string | null;
+  handle: string | null;
+  platform: string | null;
+  commissionPct: number;
+  status: InfluencerStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InfluencerLoginInput {
+  email: string;
+  password: string;
+}
+
+export interface InfluencerAuthResponse {
+  influencer: PublicInfluencer;
+  tokens: AuthTokens;
+}
+
+export interface InfluencerMeResponse {
+  influencer: PublicInfluencer;
+}
+
+// Admin-web's "Set Portal Password" action (adminInfluencers.service.ts's
+// `setInfluencerPortalPassword`).
+export interface SetInfluencerPortalPasswordInput {
+  password: string;
+}
+
+export interface InfluencerPortalCampaignsResponse {
+  campaigns: AdminCampaignListItem[];
+}
+
+// Same per-row shape as AdminAcquisitionCampaignReportRow, but this
+// response never includes a `byChannel` array or platform-wide `totals` —
+// see influencerPortal.service.ts's own doc comment for why (channel-wide
+// numbers aren't this influencer's own data; `totals` here is a real sum
+// over only their own campaign rows).
+export interface InfluencerPortalAcquisitionReportResponse {
+  period: { start: string; end: string } | null;
+  byCampaign: AdminAcquisitionCampaignReportRow[];
+  totals: AdminAcquisitionReportRow;
+  notAvailable: string[];
+}
+
+export interface InfluencerPortalPayout {
+  id: string;
+  amountCents: number;
+  periodLabel: string;
+  status: PayoutStatus;
+  paidAt: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface InfluencerPortalPayoutsResponse {
+  payouts: InfluencerPortalPayout[];
+  counts: { total: number; paidCents: number; pendingCents: number };
+}

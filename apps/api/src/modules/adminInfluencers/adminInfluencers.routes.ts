@@ -6,6 +6,7 @@ import {
   createInfluencerSchema,
   createPayoutSchema,
   listInfluencersQuerySchema,
+  setPortalPasswordSchema,
   updateInfluencerSchema,
 } from "./adminInfluencers.schema";
 
@@ -64,6 +65,24 @@ adminInfluencersRouter.patch(
     try {
       const input = updateInfluencerSchema.parse(req.body);
       res.status(200).json({ influencer: await service.updateInfluencer(req.adminUserId as string, req.params.id, input) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Creator Portal (R2 Wave 5, 21 Sep 2026) — "Set Portal Password". Gated
+// on the same "growth"/"edit" permission as PATCH /admin/influencers/:id
+// (this is an edit to the influencer's own account, not a separate
+// permission module).
+adminInfluencersRouter.post(
+  "/admin/influencers/:id/portal-password",
+  requireAdminAuth,
+  requirePermission("growth", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = setPortalPasswordSchema.parse(req.body);
+      res.status(200).json(await service.setInfluencerPortalPassword(req.adminUserId as string, req.params.id, input));
     } catch (err) {
       next(err);
     }

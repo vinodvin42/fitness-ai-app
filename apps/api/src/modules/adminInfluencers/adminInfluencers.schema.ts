@@ -40,3 +40,12 @@ export const createPayoutSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 export type CreatePayoutInput = z.infer<typeof createPayoutSchema>;
+
+// Creator Portal (R2 Wave 5, 21 Sep 2026) — "Set Portal Password" admin
+// action (adminInfluencers.service.ts's `setInfluencerPortalPassword`).
+// Same min-8 rule as every other password field in this codebase
+// (professionalSignupSchema, auth.schema.ts's signup).
+export const setPortalPasswordSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type SetPortalPasswordInput = z.infer<typeof setPortalPasswordSchema>;

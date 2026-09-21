@@ -1,10 +1,12 @@
 import { prisma } from "../../db/prisma";
+import { hashPassword } from "../../lib/password";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import {
   CreateInfluencerInput,
   CreatePayoutInput,
   ListInfluencersQuery,
+  SetPortalPasswordInput,
   UpdateInfluencerInput,
 } from "./adminInfluencers.schema";
 
@@ -186,6 +188,47 @@ export async function createPayout(actorAdminId: string, influencerId: string, i
     metadata: { influencerId, amountCents: input.amountCents, periodLabel: input.periodLabel },
   });
   return payout;
+}
+
+/**
+ * Creator Portal (R2 Wave 5, 21 Sep 2026) — the real "Set Portal Password"
+ * admin action named in this wave's brief: an `Influencer` starts with NO
+ * self-service login at all (`passwordHash` null, see the model's own doc
+ * comment); this is the only way one is ever granted, deliberately
+ * admin-initiated rather than a self-signup/invite-link flow — the same
+ * bootstrapping decision documented in docs/admin/07-open-questions-gaps.md's
+ * 21 Sep 2026 entry. Requires the influencer to already have a real email
+ * on file (the Creator Portal logs in by email+password, same as every
+ * other identity in this codebase) — `email` is optional on `Influencer`
+ * since most rows are pure admin bookkeeping with no portal need, so this
+ * is the one real precondition worth a clear error rather than silently
+ * creating a password nobody can ever log in with.
+ */
+export async function setInfluencerPortalPassword(
+  actorAdminId: string,
+  influencerId: string,
+  input: SetPortalPasswordInput,
+) {
+  const influencer = await getInfluencerOrThrow(influencerId);
+  if (!influencer.email) {
+    throw new ApiHttpError(
+      422,
+      "influencer_missing_email",
+      "This influencer has no email on file — add one before granting portal access",
+    );
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  await prisma.influencer.update({ where: { id: influencerId }, data: { passwordHash } });
+
+  await recordAudit({
+    actorAdminId,
+    action: "influencer.set_portal_password",
+    entityType: "Influencer",
+    entityId: influencerId,
+  });
+
+  return { ok: true as const };
 }
 
 /**

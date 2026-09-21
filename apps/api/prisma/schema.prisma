@@ -2573,6 +2573,12 @@ model AuditLog {
   actorAdmin          AdminUser?    @relation(fields: [actorAdminId], references: [id], onDelete: SetNull)
   actorProfessionalId String?
   actorProfessional   Professional? @relation(fields: [actorProfessionalId], references: [id], onDelete: SetNull)
+  // Creator Portal (R2 Wave 5, 21 Sep 2026) — the fourth real identity that
+  // can act, alongside User/AdminUser/Professional above. Pass at most one
+  // of the four actor fields per entry, same convention recordAudit()'s
+  // own doc comment already documents for the first three.
+  actorInfluencerId   String?
+  actorInfluencer     Influencer?   @relation(fields: [actorInfluencerId], references: [id], onDelete: SetNull)
   action              String
   entityType          String
   entityId            String?
@@ -2582,6 +2588,7 @@ model AuditLog {
   @@index([actorId])
   @@index([actorAdminId])
   @@index([actorProfessionalId])
+  @@index([actorInfluencerId])
   @@index([entityType, entityId])
   @@map("audit_logs")
 }
@@ -2766,6 +2773,19 @@ model Influencer {
   commissionPct Int              @default(20)
   status        InfluencerStatus @default(active)
   notes         String?
+  // Creator Portal self-service login (R2 Wave 5, 21 Sep 2026) — see
+  // influencerAuth.service.ts's own doc comment. Nullable: an Influencer
+  // is still, first and foremost, an admin-entered record (see this
+  // model's own top comment) — it starts with NO portal access at all
+  // until an admin explicitly grants it via the real "Set Portal
+  // Password" admin-web action (adminInfluencers.service.ts's
+  // `setInfluencerPortalPassword`), same "opt-in, admin-bootstrapped
+  // credential" shape as this codebase has no existing precedent for
+  // (Professional/User both self-signup) — the bootstrapping decision is
+  // written up in docs/admin/07-open-questions-gaps.md's 21 Sep 2026
+  // entry. Same bcrypt hashing as every other password field in this
+  // schema (see lib/password.ts) — never the raw password.
+  passwordHash  String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -2775,8 +2795,31 @@ model Influencer {
   // tracked here, separately from `channel`'s "how did they hear about
   // us"). See Campaign's own doc comment.
   campaigns Campaign[]
+  // Creator Portal sessions (R2 Wave 5) — see InfluencerRefreshToken's
+  // own doc comment.
+  refreshTokens   InfluencerRefreshToken[]
+  auditLogEntries AuditLog[]
 
   @@map("influencers")
+}
+
+// Creator Portal auth session (R2 Wave 5, 21 Sep 2026) — the exact same
+// access+rotating-refresh-token shape as ProfessionalRefreshToken above,
+// for the separate `Influencer` identity (apps/creator-portal). Own table,
+// own token type, never interchangeable with a Professional's or
+// consumer's refresh token, same "distinct identity, distinct session
+// store" precedent every other real login in this schema follows.
+model InfluencerRefreshToken {
+  id           String     @id @default(uuid())
+  influencerId String
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  tokenHash    String     @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([influencerId])
+  @@map("influencer_refresh_tokens")
 }
 
 model InfluencerPayout {
