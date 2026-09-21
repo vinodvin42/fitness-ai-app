@@ -3879,6 +3879,74 @@ export interface AdminGymMemberActivationSummary {
   firstWorkoutCompletedCount: number;
 }
 
+/** Admin-only — sets/rotates a Gym's portal login password. Matches gyms.schema.ts's setGymPortalPasswordSchema. */
+export interface SetGymPortalPasswordInput {
+  password: string;
+}
+
+export interface SetGymPortalPasswordResponse {
+  gymId: string;
+  portalPasswordSet: boolean;
+}
+
+// ---- Gym Partner Lite portal (apps/gym-portal, R2 Wave 5, 21 Sep 2026) -----
+// A Gym's own login, a distinct identity from AdminUser — see
+// gymAuth.service.ts's own doc comment. Matches gymAuth.schema.ts's Zod
+// shapes and gymAuth.service.ts#toPublicGym's real return shape.
+
+/** Matches apps/api's gymLoginSchema (Zod). */
+export interface GymLoginInput {
+  email: string;
+  password: string;
+}
+
+/** toPublicGym()'s shape — never includes gymPasswordHash. */
+export interface GymPortalIdentity {
+  id: string;
+  name: string;
+  status: GymStatus;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  inviteCode: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Flat token/tokenExpiresAt — same shape as AdminLoginResult (single-token, no refresh). */
+export interface GymLoginResult {
+  gym: GymPortalIdentity;
+  token: string;
+  tokenExpiresAt: number;
+}
+
+export interface GymAuthMeResponse {
+  gym: GymPortalIdentity;
+}
+
+/**
+ * GET /gym-portal/me's `gym` shape — getGymDetail()'s fields with
+ * commercial terms (commissionPct/pricingModel/ratePerMemberCents) trimmed
+ * to a single boolean summary — see gyms.routes.ts's own comment on why.
+ */
+export interface GymPortalProfile {
+  id: string;
+  name: string;
+  status: GymStatus;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  commercialConfigured: boolean;
+  inviteCode: string;
+  createdAt: string;
+  updatedAt: string;
+  locations: AdminGymLocation[];
+}
+
+export interface GymPortalProfileResponse {
+  gym: GymPortalProfile;
+}
+
 // ---- Admin Action Required queue (apps/admin-web) --------------------------
 // R2 Wave 1 (20 Sep 2026) shipped the real, persisted `AdminActionItem`
 // model and its write path (apps/api's lib/adminActionQueue.ts) with no UI —

@@ -50,3 +50,11 @@ export type UpdateGymCommercialInput = z.infer<typeof updateGymCommercialSchema>
 
 export const addGymLocationSchema = locationInputSchema;
 export type AddGymLocationInput = z.infer<typeof addGymLocationSchema>;
+
+// Gym Partner Lite portal (R2 Wave 5, 21 Sep 2026) — admin-set bootstrap for
+// a Gym's own portal login. See gyms.service.ts#setGymPortalPassword's own
+// doc comment for the full onboarding-mechanism decision.
+export const setGymPortalPasswordSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type SetGymPortalPasswordInput = z.infer<typeof setGymPortalPasswordSchema>;

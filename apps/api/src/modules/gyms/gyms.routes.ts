@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
+import { GymAuthedRequest, requireGymAuth } from "../../middleware/gymAuth";
 import * as service from "./gyms.service";
 import {
   addGymLocationSchema,
   createGymSchema,
   listGymsQuerySchema,
+  setGymPortalPasswordSchema,
   updateGymCommercialSchema,
   updateGymStatusSchema,
 } from "./gyms.schema";
@@ -115,3 +117,55 @@ gymsRouter.patch(
     }
   },
 );
+
+// Gym Partner Lite portal bootstrap (R2 Wave 5, 21 Sep 2026) — admin sets a
+// Gym's portal login password. Same `gyms`/`edit` permission gate as
+// locations/commercial terms above (a Gym Profile screen action, not a
+// separate module). See gyms.service.ts#setGymPortalPassword's own doc
+// comment for the onboarding-mechanism decision.
+gymsRouter.post(
+  "/admin/gyms/:id/portal-password",
+  requireAdminAuth,
+  requirePermission("gyms", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = setGymPortalPasswordSchema.parse(req.body);
+      res.status(200).json(await service.setGymPortalPassword(req.adminUserId as string, req.params.id, input));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---- Gym-authed portal wrapper routes (R2 Wave 5, 21 Sep 2026) -----------
+// apps/gym-portal's real backend surface — gated by requireGymAuth (never
+// requireAdminAuth), and always scoped to req.gymId from the verified
+// token, never a client-supplied `:id` — a gym can only ever read its own
+// data. Both wrap the exact same Wave 1 service functions the admin routes
+// above already use; neither's aggregation logic is duplicated here.
+gymsRouter.get("/gym-portal/me", requireGymAuth, async (req: GymAuthedRequest, res, next) => {
+  try {
+    const gym = await service.getGymDetail(req.gymId as string);
+    // Commercial terms (commissionPct/pricingModel/ratePerMemberCents) are
+    // negotiated admin<->partner terms, not part of what the work package
+    // asks this portal to show ("Organization and location profile ...
+    // Pilot/commercial status summary" — a status summary, not the raw
+    // negotiated figures) — trimmed here in the route, not in
+    // getGymDetail() itself, so the admin-facing /admin/gyms/:id response
+    // this same function backs is untouched.
+    const { commissionPct: _commissionPct, pricingModel: _pricingModel, ratePerMemberCents: _ratePerMemberCents, ratePerMemberConfigured, ...portalGym } = gym;
+    res.status(200).json({
+      gym: { ...portalGym, commercialConfigured: ratePerMemberConfigured },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+gymsRouter.get("/gym-portal/member-activation-summary", requireGymAuth, async (req: GymAuthedRequest, res, next) => {
+  try {
+    res.status(200).json(await service.getMemberActivationSummary(req.gymId as string));
+  } catch (err) {
+    next(err);
+  }
+});

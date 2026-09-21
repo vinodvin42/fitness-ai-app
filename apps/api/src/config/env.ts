@@ -45,6 +45,18 @@ const envSchema = z.object({
   PROFESSIONAL_JWT_SECRET: z.string().min(16, "PROFESSIONAL_JWT_SECRET must be at least 16 chars"),
   PROFESSIONAL_JWT_ACCESS_TTL_MIN: z.coerce.number().default(15),
   PROFESSIONAL_JWT_REFRESH_TTL_DAYS: z.coerce.number().default(30),
+  // Gym Partner Lite portal (R2 Wave 5, 21 Sep 2026) — a Gym's own login
+  // (apps/gym-portal), never interchangeable with ADMIN_JWT_SECRET or any
+  // other identity's token, same "own secret per identity" discipline as
+  // PROFESSIONAL_JWT_SECRET above. No refresh-token flow — this follows
+  // ADMIN_JWT_SECRET's precedent (see that field's own comment), not
+  // PROFESSIONAL_JWT_SECRET's: a gym's staff/point-of-contact using a
+  // narrow "Lite" internal-facing dashboard is much closer to AdminUser's
+  // "internal tool, re-login on expiry" shape than to Professional's
+  // full consumer mobile-app session. A longer-lived single access token
+  // was the deliberately simple choice for this wave.
+  GYM_JWT_SECRET: z.string().min(16, "GYM_JWT_SECRET must be at least 16 chars"),
+  GYM_JWT_ACCESS_TTL_MIN: z.coerce.number().default(480),
   CORS_ORIGINS: z
     .string()
     .default("")

@@ -3161,6 +3161,20 @@ model Gym {
   // gyms.service.ts's generateUniqueGymInviteCode(), same alphabet/
   // collision-retry discipline as lib/referralCode.ts.
   inviteCode         String    @unique
+  // Gym Partner Lite portal auth (R2 Wave 5, 21 Sep 2026) — a Gym has no
+  // login at all until this is set. Nullable, NOT a required field at
+  // creation: createGym()/gyms.service.ts is untouched by this wave, so a
+  // Gym still starts life as a purely admin-managed record with no portal
+  // access. An admin sets this for real via `POST
+  // /admin/gyms/:id/portal-password` (gymAuth's own bootstrap decision —
+  // see docs/admin/07-open-questions-gaps.md's dated entry for why a
+  // token-based self-serve first-login link was not built this wave), which
+  // bcrypt-hashes it the same way every other password in this codebase is
+  // hashed (lib/password.ts) — never plaintext, never logged. A gym whose
+  // hash is still null cannot log in (gymAuth.service.ts#gymLogin treats
+  // that identically to a wrong password, never a distinct "no portal yet"
+  // error, so this can't be used to enumerate which gyms have portal access).
+  gymPasswordHash    String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

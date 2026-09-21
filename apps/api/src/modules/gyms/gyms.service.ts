@@ -3,12 +3,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { hashPassword } from "../../lib/password";
 import {
   CreateGymInput,
   ListGymsQuery,
   UpdateGymCommercialInput,
   UpdateGymStatusInput,
   AddGymLocationInput,
+  SetGymPortalPasswordInput,
 } from "./gyms.schema";
 
 /**
@@ -16,7 +18,16 @@ import {
  * package §5 + §8 "Gym" + BR-GYM-002/003/004. See the `Gym`/`GymLocation`
  * models' own doc comments in schema.prisma for the full scope/decisions
  * context — this file is the schema + service layer only; no admin-web
- * screens (Wave 4) and no gym-facing portal (Wave 5) ship here.
+ * screens (Wave 4) and no gym-facing portal (Wave 5) shipped in this
+ * original comment's scope.
+ *
+ * **R2 Wave 5 (21 Sep 2026):** added `setGymPortalPassword` (the admin-side
+ * bootstrap for the gym-facing portal's login — see its own doc comment)
+ * as a new export alongside the rest of this file's Wave 1 functions,
+ * which remain untouched. The portal itself (apps/gym-portal) and its auth
+ * module (modules/gymAuth/) are new consumers of `getGymDetail`/
+ * `getMemberActivationSummary` below (via thin gym-authed wrapper routes in
+ * gyms.routes.ts) — neither function's own aggregation logic changed.
  *
  * **Status lifecycle:** application -> approved -> suspended, and
  * suspended -> approved (reactivation) — the "Partner application/status"
@@ -342,6 +353,45 @@ export async function updateGymCommercial(actorAdminId: string, gymId: string, i
   });
 
   return getGymDetail(gymId);
+}
+
+/**
+ * Gym Partner Lite portal bootstrap (R2 Wave 5, 21 Sep 2026) — admin-set
+ * password for a Gym's own portal login (apps/gym-portal). A brand-new Gym
+ * has no `gymPasswordHash` at all (see the model's own doc comment) so it
+ * cannot log in anywhere until an admin runs this once. This was the
+ * genuine, undecided product call this wave named explicitly ("your call,
+ * but keep it simple and real") — an admin-set password on the existing
+ * Gym Profile screen was chosen over a token-based self-serve first-login
+ * link because it needs zero new infrastructure (no email delivery is even
+ * configured in every environment — see lib/mailer.ts/SMTP_HOST's own
+ * "leave blank to run unconfigured" precedent) and matches how every other
+ * *admin-managed* identity in this build already gets its first credential
+ * (AdminUser rows are seed-script/admin-console-created with a real
+ * password from day one, never a self-serve link). Bcrypt-hashed via the
+ * same lib/password.ts every other password in this codebase uses — never
+ * stored or logged in plaintext. Re-runnable (rotates the password), not
+ * one-time-only, so a locked-out gym partner can always be re-onboarded by
+ * an admin without a separate "reset" endpoint.
+ */
+export async function setGymPortalPassword(actorAdminId: string, gymId: string, input: SetGymPortalPasswordInput) {
+  const gym = await prisma.gym.findUnique({ where: { id: gymId }, select: { id: true } });
+  if (!gym) {
+    throw new ApiHttpError(404, "gym_not_found", "Gym not found");
+  }
+
+  const gymPasswordHash = await hashPassword(input.password);
+  await prisma.gym.update({ where: { id: gymId }, data: { gymPasswordHash } });
+
+  await recordAudit({
+    actorAdminId,
+    action: "gym.portal_password_set",
+    entityType: "Gym",
+    entityId: gymId,
+    // Never the password/hash itself in audit metadata.
+  });
+
+  return { gymId, portalPasswordSet: true };
 }
 
 /**
