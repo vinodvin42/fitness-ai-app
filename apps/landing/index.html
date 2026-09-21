@@ -28,13 +28,17 @@
 
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
-      <a class="brand" href="#top">
+      <a class="brand" href="index.html">
         <span class="brand__mark" aria-hidden="true">23</span>
         <span class="brand__word">PrimeFit</span>
       </a>
       <nav class="nav" aria-label="Primary">
-        <a class="nav__link" href="#features">Features</a>
-        <a class="nav__link" href="#download">Download</a>
+        <a class="nav__link" href="index.html" aria-current="page">Home</a>
+        <a class="nav__link" href="features.html">Features</a>
+        <a class="nav__link" href="pricing.html">Pricing</a>
+        <a class="nav__link" href="gyms.html">For Gyms</a>
+        <a class="nav__link" href="creators.html">For Creators</a>
+        <a class="nav__link" href="download.html">Download</a>
         <!-- Go-live hardening (4 Sep 2026) — this landing page is merged
              onto the SAME site as the admin console (apps/admin-web),
              served at /app/, hence the relative link. The coach web
@@ -46,7 +50,7 @@
              hosting split. -->
         <a class="nav__link" href="/app/">Admin Login</a>
         <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="#download">Get the app</a>
+        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
       </nav>
     </div>
   </header>
@@ -73,8 +77,8 @@
             real coach through the marketplace built right in.
           </p>
           <div class="hero__actions">
-            <a class="btn btn--primary btn--lg" href="#download">Get the app</a>
-            <a class="btn btn--ghost btn--lg" href="#features">See what's inside</a>
+            <a class="btn btn--primary btn--lg" href="download.html">Get the app</a>
+            <a class="btn btn--ghost btn--lg" href="features.html">See what's inside</a>
           </div>
           <p class="hero__note">
             Onboarding its first pilot testers now — Android via direct APK, iOS via TestFlight.
@@ -126,16 +130,16 @@
     </section>
 
     <!-- ==================================================================
-         FEATURES
+         FEATURES (teaser — full list lives on features.html)
          ================================================================== -->
     <section class="features" id="features">
       <div class="wrap">
         <div>
           <p class="section-eyebrow">What's actually in the app</p>
-          <h2 class="section-title">Six real pieces, working together</h2>
+          <h2 class="section-title">Three of six real pieces, working together</h2>
           <p class="section-subtitle">
-            No filler modules — every card below describes functionality that's genuinely in the
-            current pilot build, not a roadmap slide.
+            Every card below describes functionality that's genuinely in the current pilot
+            build, not a roadmap slide.
           </p>
         </div>
 
@@ -155,34 +159,6 @@
               Follow real training programs backed by a full exercise library — step-by-step
               instructions, muscle-group and equipment filters, and smart alternatives. Every set
               you log (weight, reps, RPE) feeds your workout history and personal records.
-            </p>
-          </article>
-
-          <article class="feature-card" data-accent="pink">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 7c3.5 0 6 2.7 6 6.2 0 3.6-2.7 6.3-6 6.3s-6-2.7-6-6.3C6 9.7 8.5 7 12 7z"></path>
-                <path d="M12 3c-1 1.8-1 3-.2 4"></path>
-                <path d="M9.6 4.6c1 .25 1.6.95 1.8 1.9"></path>
-              </svg>
-            </div>
-            <h3 class="feature-card__title">Nutrition you'll actually keep logging</h3>
-            <p class="feature-card__body">
-              Log meals, browse recipes, and track water intake in Fuel. A monthly nutrition
-              calendar shows how consistent you've really been — not just today's numbers.
-            </p>
-          </article>
-
-          <article class="feature-card" data-accent="cyan">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 12h3.2l2-5.2 3 10.4 2-7.2 1.4 2h6.4"></path>
-              </svg>
-            </div>
-            <h3 class="feature-card__title">Recovery, tracked honestly</h3>
-            <p class="feature-card__body">
-              Check in daily on resting heart rate, sleep, HRV, soreness, and energy, and see how
-              they trend over the last 30 days — real, self-reported signal, not a guess.
             </p>
           </article>
 
@@ -220,18 +196,47 @@
               instead of it.
             </p>
           </article>
+        </div>
 
-          <article class="feature-card" data-accent="orange">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2.6c.35 3-2.4 3.85-2.4 6.8a2.4 2.4 0 004.8 0c0-.95-.35-1.55-.75-2.15 1.55.8 2.75 2.55 2.75 4.55a4.4 4.4 0 01-8.8 0c0-3.95 2.9-5.25 4.4-9.2z"></path>
-              </svg>
-            </div>
-            <h3 class="feature-card__title">Progress you can actually see</h3>
-            <p class="feature-card__body">
-              Personal records, progress photos, a weight-trend chart, and streaks across
-              training, nutrition, and hydration — plus a Timeline tying every logged workout,
-              meal, and milestone together.
+        <p style="margin-top: var(--space-6)">
+          <a class="btn btn--ghost" href="features.html">See all six features →</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         PARTNERS TEASER
+         ================================================================== -->
+    <section class="content-section content-section--raised">
+      <div class="wrap">
+        <div class="content-section__head">
+          <p class="section-eyebrow">Partner with 23PrimeFit</p>
+          <h2 class="section-title">Built for gyms and coaches too, not just solo users</h2>
+          <p class="section-subtitle">
+            Two partner programs run alongside the consumer app — a gym partner program and a
+            creator/influencer partner program, both commission-based and application-based.
+          </p>
+        </div>
+
+        <div class="step-grid">
+          <article class="step-card">
+            <h3 class="step-card__title">For Gyms</h3>
+            <p class="step-card__body">
+              Apply to become a partner gym, get a real invite code for your members, and track
+              their onboarding activity from a dedicated gym portal.
+            </p>
+            <p style="margin-top: var(--space-4)">
+              <a class="btn btn--ghost btn--sm" href="gyms.html">Learn more →</a>
+            </p>
+          </article>
+          <article class="step-card">
+            <h3 class="step-card__title">For Creators</h3>
+            <p class="step-card__body">
+              Apply to become a creator partner, get a real referral/discount code for your
+              audience, and see your referral activity from a dedicated creator portal.
+            </p>
+            <p style="margin-top: var(--space-4)">
+              <a class="btn btn--ghost btn--sm" href="creators.html">Learn more →</a>
             </p>
           </article>
         </div>
@@ -239,7 +244,7 @@
     </section>
 
     <!-- ==================================================================
-         DOWNLOAD
+         DOWNLOAD (condensed — full detail lives on download.html)
          ================================================================== -->
     <section class="download" id="download">
       <div class="wrap">
@@ -247,71 +252,13 @@
           <p class="section-eyebrow">Get the app</p>
           <h2 class="section-title">23PrimeFit is in pilot right now</h2>
           <p class="section-subtitle">
-            It isn't on an app store yet. Here's exactly how each platform will get it.
+            It isn't on an app store yet, so the download page walks through exactly how each
+            platform gets it.
           </p>
         </div>
-
-        <div class="download-grid">
-          <!-- Android APK live as of 4 Sep 2026 — built via
-               `eas build --platform android --profile preview`, real
-               artifact confirmed (200, application/octet-stream, ~65MB)
-               before wiring this link in. Update this href again whenever
-               a new preview build replaces it. -->
-          <article class="platform-card">
-            <div class="platform-card__top">
-              <span class="platform-card__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="6" y="2.5" width="12" height="19" rx="2.5"></rect>
-                  <path d="M10 19h4"></path>
-                </svg>
-              </span>
-              <span class="pill pill--live"><span class="pill__dot"></span>Live</span>
-            </div>
-            <div>
-              <h3 class="platform-card__title">Android</h3>
-              <p class="platform-card__subtitle">Direct APK download</p>
-            </div>
-            <p class="platform-card__body">
-              A direct <code>.apk</code> install — no Google Play listing, no review wait.
-              ~65MB.
-            </p>
-            <a
-              class="btn btn--primary btn--block"
-              href="https://expo.dev/artifacts/eas/hreAWj7uefrQ0uGjqZQaAw5GnQ70iFGEZnhLKId1T4g.apk"
-            >
-              Download APK
-            </a>
-            <p class="platform-card__footnote">
-              Android will ask permission to "install from this source" the first time you open
-              the file — that's expected for a direct install, not a warning sign.
-            </p>
-          </article>
-
-          <article class="platform-card">
-            <div class="platform-card__top">
-              <span class="platform-card__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="6" y="2.5" width="12" height="19" rx="2.5"></rect>
-                  <path d="M10 19h4"></path>
-                </svg>
-              </span>
-              <span class="pill pill--pending"><span class="pill__dot"></span>Coming soon</span>
-            </div>
-            <div>
-              <h3 class="platform-card__title">iOS</h3>
-              <p class="platform-card__subtitle">Coming soon via TestFlight</p>
-            </div>
-            <p class="platform-card__body">
-              iOS testers will get a TestFlight invite once that channel opens. There's no direct
-              download for iOS — Apple doesn't allow that outside the App Store — so there's
-              nothing to link to here yet.
-            </p>
-            <button type="button" class="btn btn--block is-pending" disabled aria-disabled="true">
-              Coming Soon
-            </button>
-            <p class="platform-card__footnote">Watch for a TestFlight invite email once testing opens.</p>
-          </article>
-        </div>
+        <p style="margin-top: var(--space-6)">
+          <a class="btn btn--primary btn--lg" href="download.html">Go to Download</a>
+        </p>
       </div>
     </section>
 
@@ -321,7 +268,7 @@
     <section class="cta-strip">
       <div class="wrap cta-strip__inner">
         <h2 class="cta-strip__title">Training, nutrition, and recovery — ready when the pilot opens.</h2>
-        <a class="btn btn--primary btn--lg" href="#download">Jump to download</a>
+        <a class="btn btn--primary btn--lg" href="download.html">Jump to download</a>
       </div>
     </section>
   </main>
@@ -338,20 +285,29 @@
           publicly available.
         </p>
       </div>
-      <div class="footer__legal">
-        <p class="footer__legal-title">Legal</p>
-        <!--
-          legal/privacy-policy.md and legal/terms-of-service.md exist in the
-          repo as drafts (both still have unresolved [bracketed] placeholders
-          and haven't had a lawyer's review), but neither is published as a
-          viewable web page anywhere yet — so these are intentionally listed
-          as plain, non-linked text rather than pointing at a page that
-          doesn't exist. Turn these into real <a href> links once those pages
-          are actually hosted somewhere.
-        -->
-        <p class="footer__legal-item">Privacy Policy <span class="footer__legal-note">(in preparation)</span></p>
-        <p class="footer__legal-item">Terms of Service <span class="footer__legal-note">(in preparation)</span></p>
-      </div>
+      <nav class="footer__nav" aria-label="Footer">
+        <div>
+          <p class="footer__col-title">Product</p>
+          <a class="footer__col-link" href="features.html">Features</a>
+          <a class="footer__col-link" href="pricing.html">Pricing</a>
+          <a class="footer__col-link" href="download.html">Download</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Partners</p>
+          <a class="footer__col-link" href="gyms.html">For Gyms</a>
+          <a class="footer__col-link" href="creators.html">For Creators</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Company</p>
+          <a class="footer__col-link" href="about.html">About</a>
+          <a class="footer__col-link" href="support.html">Support</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Legal</p>
+          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
+          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+        </div>
+      </nav>
     </div>
     <div class="wrap">
       <p class="footer__copy">© <span id="year">2026</span> 23PrimeFit. Not a substitute for professional medical advice.</p>

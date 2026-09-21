@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Download — 23PrimeFit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Download 23PrimeFit. Android is a direct APK install today; iOS access opens via TestFlight." />
+  <meta name="theme-color" content="#0B0C10" />
+  <meta name="color-scheme" content="dark" />
+
+  <meta property="og:title" content="Download — 23PrimeFit" />
+  <meta property="og:description" content="Android via direct APK, iOS coming soon via TestFlight." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" id="siteHeader">
+    <div class="wrap site-header__inner">
+      <a class="brand" href="index.html">
+        <span class="brand__mark" aria-hidden="true">23</span>
+        <span class="brand__word">PrimeFit</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a class="nav__link" href="index.html">Home</a>
+        <a class="nav__link" href="features.html">Features</a>
+        <a class="nav__link" href="pricing.html">Pricing</a>
+        <a class="nav__link" href="gyms.html">For Gyms</a>
+        <a class="nav__link" href="creators.html">For Creators</a>
+        <a class="nav__link" href="download.html" aria-current="page">Download</a>
+        <a class="nav__link" href="/app/">Admin Login</a>
+        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
+        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap page-hero__inner">
+        <p class="eyebrow">
+          <span class="eyebrow__mark">DOWNLOAD</span>
+          <span aria-hidden="true">·</span>
+          <span>Pilot access</span>
+        </p>
+        <h1 class="page-hero__title">23PrimeFit is in pilot right now.</h1>
+        <p class="page-hero__subtitle">
+          It isn't on an app store yet. Here's exactly how each platform will get it.
+        </p>
+      </div>
+    </section>
+
+    <section class="download">
+      <div class="wrap">
+        <div class="download-grid">
+          <!-- Android APK live as of 4 Sep 2026 — built via
+               `eas build --platform android --profile preview`, real
+               artifact confirmed (200, application/octet-stream, ~65MB)
+               before wiring this link in. Update this href again whenever
+               a new preview build replaces it. -->
+          <article class="platform-card">
+            <div class="platform-card__top">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="2.5" width="12" height="19" rx="2.5"></rect>
+                  <path d="M10 19h4"></path>
+                </svg>
+              </span>
+              <span class="pill pill--live"><span class="pill__dot"></span>Live</span>
+            </div>
+            <div>
+              <h3 class="platform-card__title">Android</h3>
+              <p class="platform-card__subtitle">Direct APK download</p>
+            </div>
+            <p class="platform-card__body">
+              A direct <code>.apk</code> install — no Google Play listing, no review wait.
+              ~65MB.
+            </p>
+            <a
+              class="btn btn--primary btn--block"
+              href="https://expo.dev/artifacts/eas/hreAWj7uefrQ0uGjqZQaAw5GnQ70iFGEZnhLKId1T4g.apk"
+            >
+              Download APK
+            </a>
+            <p class="platform-card__footnote">
+              Android will ask permission to "install from this source" the first time you open
+              the file — that's expected for a direct install, not a warning sign.
+            </p>
+          </article>
+
+          <article class="platform-card">
+            <div class="platform-card__top">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="2.5" width="12" height="19" rx="2.5"></rect>
+                  <path d="M10 19h4"></path>
+                </svg>
+              </span>
+              <span class="pill pill--pending"><span class="pill__dot"></span>Coming soon</span>
+            </div>
+            <div>
+              <h3 class="platform-card__title">iOS</h3>
+              <p class="platform-card__subtitle">Coming soon via TestFlight</p>
+            </div>
+            <p class="platform-card__body">
+              iOS testers will get a TestFlight invite once that channel opens. There's no direct
+              download for iOS — Apple doesn't allow that outside the App Store — so there's
+              nothing to link to here yet.
+            </p>
+            <button type="button" class="btn btn--block is-pending" disabled aria-disabled="true">
+              Coming Soon
+            </button>
+            <p class="platform-card__footnote">Watch for a TestFlight invite email once testing opens.</p>
+          </article>
+        </div>
+
+        <div class="note-box">
+          Need help installing, or have a question first? See <a href="support.html" style="color: var(--accent); text-decoration: underline dotted;">Support</a>,
+          or check what's actually in the app on the <a href="features.html" style="color: var(--accent); text-decoration: underline dotted;">Features page</a>.
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-strip">
+      <div class="wrap cta-strip__inner">
+        <h2 class="cta-strip__title">Training, nutrition, and recovery — ready when the pilot opens.</h2>
+        <a class="btn btn--primary btn--lg" href="pricing.html">See pricing</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer__inner">
+      <div class="footer__brand">
+        <span class="brand">
+          <span class="brand__mark" aria-hidden="true">23</span>
+          <span class="brand__word">PrimeFit</span>
+        </span>
+        <p class="footer__tagline">
+          Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
+          publicly available.
+        </p>
+      </div>
+      <nav class="footer__nav" aria-label="Footer">
+        <div>
+          <p class="footer__col-title">Product</p>
+          <a class="footer__col-link" href="features.html">Features</a>
+          <a class="footer__col-link" href="pricing.html">Pricing</a>
+          <a class="footer__col-link" href="download.html">Download</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Partners</p>
+          <a class="footer__col-link" href="gyms.html">For Gyms</a>
+          <a class="footer__col-link" href="creators.html">For Creators</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Company</p>
+          <a class="footer__col-link" href="about.html">About</a>
+          <a class="footer__col-link" href="support.html">Support</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Legal</p>
+          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
+          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+        </div>
+      </nav>
+    </div>
+    <div class="wrap">
+      <p class="footer__copy">© <span id="year">2026</span> 23PrimeFit. Not a substitute for professional medical advice.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

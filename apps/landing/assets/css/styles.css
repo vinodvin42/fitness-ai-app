@@ -355,7 +355,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 50;
-  height: var(--header-h);
+  min-height: var(--header-h);
   display: flex;
   align-items: center;
   background: rgba(11, 12, 16, 0.6);
@@ -364,6 +364,7 @@ button {
   border-bottom: 1px solid transparent;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   padding-top: env(safe-area-inset-top);
+  padding-block: 0.6rem;
 }
 
 .site-header.is-scrolled {
@@ -375,7 +376,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
 }
 
 .brand {
@@ -411,6 +413,8 @@ button {
 .nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
   gap: var(--space-4);
 }
 
@@ -427,10 +431,413 @@ button {
   color: var(--text-primary);
 }
 
+.nav__link[aria-current="page"] {
+  color: var(--accent);
+}
+
 @media (max-width: 480px) {
   .nav__link {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Inner-page hero (no floating instrument cards)                         */
+/* ---------------------------------------------------------------------- */
+
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(3rem, 5vw + 1rem, 4.5rem) clamp(2.5rem, 4vw + 1rem, 3.5rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-hero__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 44rem;
+}
+
+.page-hero__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
+  color: var(--text-primary);
+}
+
+.page-hero__subtitle {
+  margin-top: var(--space-4);
+  font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.1875rem);
+  color: var(--text-secondary);
+  max-width: 38rem;
+}
+
+.page-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Generic content section                                                */
+/* ---------------------------------------------------------------------- */
+
+.content-section {
+  padding-block: clamp(3.5rem, 5vw, 5.5rem);
+  border-top: 1px solid var(--border);
+}
+
+.content-section--raised {
+  background: var(--surface);
+}
+
+.content-section__head {
+  max-width: 44rem;
+}
+
+/* Simple numbered step list (used on partner pages) */
+.step-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .step-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+.step-card__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: var(--space-3);
+}
+
+.step-card__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+}
+
+.step-card__body {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+/* Stat row (used on partner + about pages) */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: left;
+}
+
+.stat-card__value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+.stat-card__label {
+  margin-top: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Pricing                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .pricing-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pricing-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+.pricing-card--highlight {
+  background: var(--surface-raised);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-card);
+}
+
+.pricing-card__badge {
+  position: absolute;
+  top: -0.75rem;
+  left: var(--space-5);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.3em 0.75em;
+  border-radius: var(--radius-pill);
+}
+
+.pricing-card__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.pricing-card__price {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 2.25rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.pricing-card__price span {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.pricing-card__annual {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.pricing-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.pricing-card__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.pricing-card__list li::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 0.55em;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.note-box {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: var(--space-6);
+}
+
+.note-box strong {
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Legal / long-form content                                              */
+/* ---------------------------------------------------------------------- */
+
+.legal {
+  padding-block: clamp(3rem, 5vw, 4.5rem);
+}
+
+.legal__wrap {
+  max-width: 44rem;
+}
+
+.legal__updated {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.legal h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.375rem;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-3);
+}
+
+.legal h2:first-of-type {
+  margin-top: 0;
+}
+
+.legal h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+}
+
+.legal p {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+}
+
+.legal ul {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legal li {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.legal li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.legal a {
+  color: var(--accent);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.legal strong {
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Support / contact                                                      */
+/* ---------------------------------------------------------------------- */
+
+.support-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .support-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.faq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  max-width: 48rem;
+}
+
+.faq-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.faq-item summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  float: right;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.faq-item[open] summary::after {
+  content: "\2212";
+}
+
+.faq-item p {
+  margin-top: var(--space-3);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -932,13 +1339,14 @@ button {
 @media (min-width: 720px) {
   .footer__inner {
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: flex-start;
   }
 }
 
 .footer__brand {
-  max-width: 26rem;
+  max-width: 22rem;
 }
 
 .footer__tagline {
@@ -947,7 +1355,13 @@ button {
   color: var(--text-secondary);
 }
 
-.footer__legal-title {
+.footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5) var(--space-6);
+}
+
+.footer__col-title {
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.75rem;
@@ -955,6 +1369,19 @@ button {
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: var(--space-3);
+}
+
+.footer__col-link {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-top: 0.5rem;
+  transition: color 0.15s ease;
+}
+
+.footer__col-link:hover {
+  color: var(--text-primary);
 }
 
 .footer__legal-item {
