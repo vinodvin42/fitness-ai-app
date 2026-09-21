@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
+import { ActionRequiredScreen } from "./screens/dashboard/ActionRequiredScreen";
 import { ProfessionalDirectoryScreen } from "./screens/professionals/ProfessionalDirectoryScreen";
 import { ProfessionalProfileScreen } from "./screens/professionals/ProfessionalProfileScreen";
 import { CredentialVerificationScreen } from "./screens/professionals/CredentialVerificationScreen";
@@ -114,6 +115,23 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <DashboardScreen />
+          </RequireAuth>
+        }
+      />
+      {/* R2 Wave 4 (20 Sep 2026) — Developer 3's §3 first-listed "Dashboard /
+          Action Required" functional area, closing the gap R2 Wave 1's own
+          comment on adminActionQueue.routes.ts left open ("the real
+          dashboard screen is Wave 4's own unit"). Replaces the Executive
+          Dashboard's old cosmetic, hardcoded "Requires Attention" widget —
+          see DashboardScreen.tsx's own doc comment. Shares DASHBOARD_SUB_NAV
+          with "/" now that Dashboard has a second nav-level screen, same
+          "subNav appears once a module ships more than one screen" pattern
+          as every other module. */}
+      <Route
+        path="/action-required"
+        element={
+          <RequireAuth>
+            <ActionRequiredScreen />
           </RequireAuth>
         }
       />

@@ -1,14 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { AdminDashboardStats } from "@fitness-ai-app/types";
+import type { AdminActionItemListResponse, AdminDashboardStats } from "@fitness-ai-app/types";
 import { AppShell } from "../components/AppShell";
 import { StatCard } from "../components/StatCard";
 import { NotAvailablePanel } from "../components/NotAvailablePanel";
 import { apiClient } from "../lib/api";
 import { extractErrorMessage } from "../lib/apiError";
+import { DASHBOARD_SUB_NAV } from "./dashboard/subNav";
 
 async function fetchDashboardStats(): Promise<AdminDashboardStats> {
   const res = await apiClient.get<AdminDashboardStats>("/admin/dashboard/stats");
+  return res.data;
+}
+
+async function fetchOpenActionItems(): Promise<AdminActionItemListResponse> {
+  const res = await apiClient.get<AdminActionItemListResponse>("/admin/action-items", {
+    params: { status: "open" },
+  });
   return res.data;
 }
 
@@ -19,6 +28,19 @@ async function fetchDashboardStats(): Promise<AdminDashboardStats> {
  * real aggregate query — see that file's own doc comment for exactly
  * which spec'd KPIs are cut from this slice and why (rendered below via
  * NotAvailablePanel, not silently dropped).
+ *
+ * **R2 Wave 4 (20 Sep 2026):** the old "Requires Attention" card here used
+ * to be a cosmetic, hardcoded 4-row widget reading straight off
+ * `data.requiresAttention` (support tickets/failed payments/refunds only,
+ * no drill-through, no severity, no assign/resolve). It's retired — this
+ * wave built the real, unified `AdminActionItem` queue (`ActionRequiredScreen`
+ * at "/action-required", see that file's own doc comment) as the honest
+ * "Dashboard / Action Required" functional area Developer 3's §3 names
+ * first. What replaces it here is a small, real open-item-count-by-severity
+ * summary (its own GET /admin/action-items?status=open call) that links
+ * straight through to the full queue — not a second copy of the queue
+ * itself, so there's exactly one place severity/type/assignment filtering
+ * actually lives.
  */
 export function DashboardScreen() {
   const { data, isLoading, isError, error } = useQuery({
@@ -26,8 +48,13 @@ export function DashboardScreen() {
     queryFn: fetchDashboardStats,
   });
 
+  const actionItems = useQuery({
+    queryKey: ["admin-action-items", "dashboard-summary"],
+    queryFn: fetchOpenActionItems,
+  });
+
   return (
-    <AppShell title="Executive Dashboard">
+    <AppShell title="Executive Dashboard" subNav={DASHBOARD_SUB_NAV}>
       {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
 
       {isError && (
@@ -108,15 +135,35 @@ export function DashboardScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Requires Attention</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-wide text-text-dim">Requires Attention</div>
+                <Link to="/action-required" className="text-xs text-accent hover:underline">
+                  View queue →
+                </Link>
+              </div>
               <div className="mt-3 space-y-2 text-sm">
-                <AttentionRow label="Open support tickets" count={data.requiresAttention.openSupportTickets} />
-                <AttentionRow
-                  label="In-progress support tickets"
-                  count={data.requiresAttention.inProgressSupportTickets}
-                />
-                <AttentionRow label="Failed payments" count={data.requiresAttention.failedPayments} />
-                <AttentionRow label="Open refund requests" count={data.requiresAttention.openRefundRequests} />
+                {actionItems.isLoading && <p className="text-text-dim">Loading…</p>}
+                {actionItems.isError && <p className="text-danger">Couldn't load the action queue.</p>}
+                {actionItems.data && (
+                  <>
+                    <AttentionRow
+                      label="Open action items"
+                      count={actionItems.data.items.length}
+                    />
+                    <AttentionRow
+                      label="High severity"
+                      count={actionItems.data.items.filter((i) => i.severity === "high").length}
+                    />
+                    <AttentionRow
+                      label="Medium severity"
+                      count={actionItems.data.items.filter((i) => i.severity === "medium").length}
+                    />
+                    <AttentionRow
+                      label="Low severity"
+                      count={actionItems.data.items.filter((i) => i.severity === "low").length}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
