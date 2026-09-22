@@ -674,6 +674,33 @@ export async function getPaymentForUser(userId: string, paymentId: string) {
  * for a payment that was never paid, or one with nothing to retry (already
  * active, or a booking — see activatePayment()'s own comment on why
  * booking is excluded from this retry path).
+ *
+ * **Fixed R2 Wave 7 (22 Sep 2026), found while building this wave's own
+ * capstone integration test:** the `payment.purpose === "booking"` check
+ * below used to sit AFTER the `!payment.activationFailedAt` check. Since
+ * activatePayment()'s own booking branch deliberately NEVER sets
+ * `activationFailedAt` (see that function's top comment and
+ * schema.prisma's `Payment.activationFailedAt` doc comment — "Scoped to
+ * subscription/program_purchase only"), a stuck booking payment's
+ * `activationFailedAt` is always null, so the old ordering meant the
+ * `!payment.activationFailedAt` guard fired FIRST for every single real
+ * booking-purpose call — the dedicated `booking_retry_unsupported` branch
+ * right below it, with its own specific "contact support with your
+ * payment ID" message, could never actually run; it was real, reachable-
+ * looking code that was in fact permanently dead. The user-visible bug:
+ * tapping Retry on a stuck-but-genuinely-paid booking returned the
+ * generic, misleading `activation_not_failed` ("This payment doesn't have
+ * a failed activation to retry") — which reads as "everything's fine"
+ * for a booking that very much did fail to activate — instead of the
+ * honest, specific, already-written refusal this endpoint was clearly
+ * built to give. Reordering the two checks (purpose gate before the
+ * activationFailedAt gate) is the minimal fix: it makes the existing,
+ * already-correct `booking_retry_unsupported` branch reachable for the
+ * one real case it exists for, with no change to the
+ * subscription/program_purchase behavior every other test in this suite
+ * (paymentsActivationFailureRecovery.test.ts) already covers — those
+ * still fail with `activation_not_failed` exactly as before whenever
+ * `activationFailedAt` is null, since `purpose !== "booking"` for them.
  */
 export async function retryActivation(userId: string, paymentId: string) {
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
@@ -683,15 +710,15 @@ export async function retryActivation(userId: string, paymentId: string) {
   if (payment.status !== "paid") {
     throw new ApiHttpError(409, "payment_not_captured", "This payment was never captured — nothing to retry");
   }
-  if (!payment.activationFailedAt) {
-    throw new ApiHttpError(409, "activation_not_failed", "This payment doesn't have a failed activation to retry");
-  }
   if (payment.purpose === "booking") {
     throw new ApiHttpError(
       409,
       "booking_retry_unsupported",
       "A captured booking payment can't be auto-retried — contact support with your payment ID",
     );
+  }
+  if (!payment.activationFailedAt) {
+    throw new ApiHttpError(409, "activation_not_failed", "This payment doesn't have a failed activation to retry");
   }
 
   const { booking } = await activatePayment(payment);
