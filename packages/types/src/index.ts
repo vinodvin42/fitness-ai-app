@@ -693,6 +693,32 @@ export interface LogWaterInput {
   glasses?: number;
 }
 
+// ---- Nutrition: Barcode scan lookup ---------------------------------------
+// R2 Wave (22 Sep 2026) — GET /nutrition/barcode/:code, a real server-side
+// proxy to Open Food Facts (see apps/api's lib/openFoodFactsClient.ts for
+// the full design and why OFF was the chosen provider). Deliberately NOT a
+// new logging path or data model: the mobile Barcode Scanner screen calls
+// this to look up a scanned code, then pre-fills the EXISTING Log Meal
+// manual-entry card (LogMealInput above) with the result for the user to
+// confirm/edit and submit through the existing POST /meal-logs — there is
+// no BarcodeLog/BarcodeScan row anywhere.
+
+export interface BarcodeProduct {
+  name: string;
+  brand: string | null;
+  imageUrl: string | null;
+  servingSize: string | null;
+  /** Whether calories/macros below are per-serving or per-100g — see openFoodFactsClient.ts's own doc comment. */
+  basis: "serving" | "100g";
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+/** Response body for GET /nutrition/barcode/:code. A real "not found" (OFF doesn't have every product) is a normal, honest outcome — not an error. */
+export type BarcodeLookupResult = { found: true; product: BarcodeProduct } | { found: false };
+
 // ---- Progress & Body: logged BodyMeasurement + computed PersonalRecord ----
 // docs/mobile/03-screen-inventory.md §F: Progress Overview, Body
 // Measurements, Log Measurements. Added Phase 2 (19 Aug 2026) alongside

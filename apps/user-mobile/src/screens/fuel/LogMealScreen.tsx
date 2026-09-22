@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -35,6 +35,14 @@ const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "
  * the user is typing exact numbers they're asserting as true, not
  * reviewing an AI guess, so there's no "estimate" for BR-DAT-003 to apply
  * to. Logging it stays a single step, same as before this pass.
+ *
+ * Barcode scan (R2 Wave, 22 Sep 2026) reuses this SAME manual-entry card
+ * rather than being a third, parallel logging path: Barcode Scanner
+ * navigates back here with a `barcodePrefill` param (a real Open Food
+ * Facts result via the backend proxy — see api/nutrition.ts's
+ * lookupBarcode), and the effect below just pre-fills the manual fields
+ * from it, exactly as if the user had typed them. Submitting still goes
+ * through the exact same onSubmit -> POST /meal-logs below.
  */
 export function LogMealScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
@@ -47,6 +55,26 @@ export function LogMealScreen({ route, navigation }: Props) {
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scannedLabel, setScannedLabel] = useState<string | null>(null);
+
+  const barcodePrefill = route.params?.barcodePrefill;
+  useEffect(() => {
+    if (!barcodePrefill) return;
+    setName(barcodePrefill.brand ? `${barcodePrefill.name} (${barcodePrefill.brand})` : barcodePrefill.name);
+    setCalories(String(barcodePrefill.calories));
+    setProtein(String(barcodePrefill.proteinG));
+    setCarbs(String(barcodePrefill.carbsG));
+    setFat(String(barcodePrefill.fatG));
+    setScannedLabel(
+      `From barcode scan — ${barcodePrefill.basis === "serving" ? `per serving${barcodePrefill.servingSize ? ` (${barcodePrefill.servingSize})` : ""}` : "per 100g"}. Review before logging.`,
+    );
+    // Consume the param once so re-focusing this screen doesn't re-apply it
+    // over edits the user has since made. Deliberately depends only on
+    // `barcodePrefill` (not `navigation`, a stable ref that would be a
+    // false trigger anyway) — this effect's whole point is "run again only
+    // when a NEW scan result arrives".
+    navigation.setParams({ barcodePrefill: undefined });
+  }, [barcodePrefill]);
 
   const canSubmit = name.trim().length > 0 && calories.trim().length > 0;
   const canEstimate = description.trim().length > 0;
@@ -126,7 +154,18 @@ export function LogMealScreen({ route, navigation }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Manual entry</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary }}>Manual entry</Text>
+          <Button
+            label="Scan Barcode"
+            variant="secondary"
+            onPress={() => navigation.navigate("BarcodeScanner", { mealType })}
+            style={{ height: 36, paddingHorizontal: spacing.md }}
+          />
+        </View>
+        {scannedLabel ? (
+          <Text style={{ color: colors.accent, ...typography.caption, marginBottom: spacing.sm }}>{scannedLabel}</Text>
+        ) : null}
         <TextInput
           style={styles.input}
           placeholder="What did you eat?"

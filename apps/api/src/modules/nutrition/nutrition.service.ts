@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
+import { lookupBarcode, BarcodeLookupResult } from "../../lib/openFoodFactsClient";
 import { ConfirmFoodEstimateInput, CreateFoodEstimateInput, LogMealInput, LogWaterInput } from "./nutrition.schema";
 
 /**
@@ -387,4 +388,41 @@ export async function confirmFoodEstimate(userId: string, estimateId: string, in
   await trackEvent(userId, "meal.logged", { mealLogId: mealLog.id }, { metadata: { source: "ai_estimate", mealType: estimate.mealType, edited: wasEdited } });
 
   return mealLog;
+}
+
+// ---- Barcode scan lookup (R2 Wave, 22 Sep 2026) ----------------------------
+// See lib/openFoodFactsClient.ts's own doc comment for the full design.
+// This is a read-only proxy, not a new input method's write path — a
+// found barcode just becomes numbers the mobile Log Meal screen pre-fills
+// its EXISTING manual-entry card with; the user still confirms/edits and
+// submits through the existing POST /meal-logs (logMeal above), so there's
+// no second MealLog-creation path and no persisted row for a scan itself.
+
+/**
+ * Looks up a barcode against Open Food Facts. A transient failure from the
+ * client (timeout, network error, non-2xx) is turned into a clean 502 here
+ * rather than a generic 500 — same "tell the user honestly what happened,
+ * point at the real fallback" discipline as createFoodEstimate's own
+ * upstream-error handling above, except there's no row to persist for a
+ * lookup that never becomes a MealLog on its own.
+ */
+export async function lookupBarcodeProduct(userId: string, code: string): Promise<BarcodeLookupResult> {
+  let result: BarcodeLookupResult;
+  try {
+    result = await lookupBarcode(code);
+  } catch (err) {
+    throw new ApiHttpError(
+      502,
+      "barcode_lookup_failed",
+      "Couldn't reach the barcode database — try again, or log this meal manually instead",
+      { cause: err instanceof Error ? err.message : String(err) },
+    );
+  }
+
+  // §8 "barcode.scanned" — a lightweight product-analytics event (not an
+  // audit-log entry: nothing was written yet, same reasoning
+  // food-estimate creation uses for trackEvent vs. recordAudit).
+  await trackEvent(userId, "barcode.scanned", { barcode: code }, { metadata: { found: result.found } });
+
+  return result;
 }
