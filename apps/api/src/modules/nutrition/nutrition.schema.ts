@@ -60,3 +60,18 @@ export const confirmFoodEstimateSchema = z.object({
 });
 
 export type ConfirmFoodEstimateInput = z.infer<typeof confirmFoodEstimateSchema>;
+
+// Barcode scan (R2 Wave, 22 Sep 2026) — GET /nutrition/barcode/:code, see
+// lib/openFoodFactsClient.ts for the full design. Real EAN-8/UPC-E (8/6
+// digits, rare) through EAN-13/UPC-A (13/12 digits, the common case) up to
+// GTIN-14 (14 digits) barcode formats — digits only, no separators, same
+// as how a camera barcode-scan API and Open Food Facts' own lookup both
+// represent a barcode.
+export const barcodeParamSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6,14}$/, "Barcode must be 6-14 digits"),
+});
+
+export type BarcodeParamInput = z.infer<typeof barcodeParamSchema>;

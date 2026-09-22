@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { writeRateLimit } from "../../middleware/rateLimit";
-import { confirmFoodEstimateSchema, createFoodEstimateSchema, logMealSchema, logWaterSchema } from "./nutrition.schema";
+import { writeRateLimit, barcodeRateLimit } from "../../middleware/rateLimit";
+import {
+  barcodeParamSchema,
+  confirmFoodEstimateSchema,
+  createFoodEstimateSchema,
+  logMealSchema,
+  logWaterSchema,
+} from "./nutrition.schema";
 import * as nutritionService from "./nutrition.service";
 
 export const nutritionRouter = Router();
@@ -78,3 +84,20 @@ nutritionRouter.post(
     }
   },
 );
+
+// Barcode scan (R2 Wave, 22 Sep 2026) — see nutrition.service.ts's
+// lookupBarcodeProduct and lib/openFoodFactsClient.ts for the full design.
+// A real server-side proxy to Open Food Facts' public API: the mobile
+// client never calls OFF directly, matching this codebase's
+// backend-mediated third-party call convention (aiClient.ts). Read-only —
+// no write, no rate-limit tied to spend like aiCoachRateLimit, just
+// per-user abuse/good-citizenship bounding (see barcodeRateLimit's own
+// comment).
+nutritionRouter.get("/nutrition/barcode/:code", requireAuth, barcodeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const { code } = barcodeParamSchema.parse(req.params);
+    res.json(await nutritionService.lookupBarcodeProduct(req.userId!, code));
+  } catch (err) {
+    next(err);
+  }
+});

@@ -80,3 +80,22 @@ export const twoFactorRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many attempts — try again in a few minutes" } },
 });
+
+// Barcode scan lookup (R2 Wave, 22 Sep 2026) — GET /nutrition/barcode/:code
+// proxies a real outbound call to Open Food Facts (see
+// lib/openFoodFactsClient.ts) for every cache miss. Not a money cost like
+// aiCoachRateLimit's LLM calls, but a real third-party dependency this app
+// doesn't control the availability of — bounding how fast one account can
+// hammer it is good citizenship toward a free, donation-run API as much as
+// abuse prevention. Keyed by user like aiCoachRateLimit, same reasoning:
+// this only ever runs after requireAuth, and per-account is what matters,
+// not per-IP. Looser than aiCoachRateLimit since scanning several items in
+// a row while grocery shopping is a completely normal real use case.
+export const barcodeRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
+  message: { error: { code: "too_many_requests", message: "Too many barcode scans — try again in a few minutes" } },
+});

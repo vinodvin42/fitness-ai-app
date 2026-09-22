@@ -1,4 +1,5 @@
 import type {
+  BarcodeLookupResult,
   ConfirmFoodEstimateInput,
   CreateFoodEstimateInput,
   FoodEstimate,
@@ -44,4 +45,15 @@ export function createFoodEstimate(input: CreateFoodEstimateInput) {
 /** Confirms (no fields) or edits (any changed field) an estimate into a real, logged MealLog — the BR-DAT-003 gate. */
 export function confirmFoodEstimate(estimateId: string, input: ConfirmFoodEstimateInput = {}) {
   return apiClient.post<MealLog>(`/food-estimates/${estimateId}/confirm`, input).then((r) => r.data);
+}
+
+/**
+ * Barcode scan lookup (R2 Wave, 22 Sep 2026) — a real proxy call to the
+ * backend's GET /nutrition/barcode/:code, which itself proxies to Open
+ * Food Facts (see apps/api's lib/openFoodFactsClient.ts). The mobile app
+ * never calls Open Food Facts directly. Resolves normally (never throws)
+ * for an honest "not found" — only a real transport/HTTP failure rejects.
+ */
+export function lookupBarcode(code: string) {
+  return apiClient.get<BarcodeLookupResult>(`/nutrition/barcode/${encodeURIComponent(code)}`).then((r) => r.data);
 }
