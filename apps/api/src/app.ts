@@ -62,6 +62,7 @@ import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
+import { adminSearchRouter } from "./modules/adminSearch/adminSearch.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -327,6 +328,10 @@ export function createApp() {
   // /professionals/me/offers*) — see professionalOffers.service.ts's own
   // doc comment.
   app.use("/", professionalOffersRouter);
+
+  // Global cross-entity admin search (R1 Wave 6, 22 Sep 2026) — see
+  // adminSearch.service.ts's own doc comment for the full scope.
+  app.use("/", adminSearchRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

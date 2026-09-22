@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { GlobalSearch } from "./GlobalSearch";
 
 /**
  * The shared shell (docs/admin/02-information-architecture.md §1) — fixed
@@ -143,6 +144,17 @@ import { useAuth } from "../lib/auth";
  * Dashboard/Growth/Analytics before they grew a second screen) — see
  * `screens/aiOps/AiCoachSettingsScreen.tsx`'s own doc comment for the
  * full real-vs-not breakdown. No module in this sidebar is still inert.
+ *
+ * **22 Sep 2026, Global cross-entity search (R1 Wave 6):** a dedicated
+ * audit found no global search anywhere in this console — every directory
+ * screen has its own local, independent search, but nothing let an admin
+ * find "this user/professional/gym/campaign by name/email/id" from one
+ * place. `GlobalSearch` (own file, `./GlobalSearch.tsx`) now lives in this
+ * shared header — not a per-screen element, so it works from every route —
+ * over the real `GET /admin/search` endpoint. See that component's and
+ * adminSearch.service.ts's own doc comments for the full scope (exact/
+ * prefix match only, permission-gated per entity type, Relationships
+ * deliberately excluded).
  */
 
 interface NavItem {
@@ -257,6 +269,7 @@ export function AppShell({
           </div>
 
           <div className="flex items-center gap-4">
+            <GlobalSearch />
             <div className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-secondary">
               🌐 All regions
             </div>

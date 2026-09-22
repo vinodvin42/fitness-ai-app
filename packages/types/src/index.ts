@@ -4167,3 +4167,27 @@ export interface InfluencerPortalPayoutsResponse {
   payouts: InfluencerPortalPayout[];
   counts: { total: number; paidCents: number; pendingCents: number };
 }
+
+/**
+ * Global cross-entity admin search (R1 Wave 6, 22 Sep 2026) — matches
+ * apps/api/src/modules/adminSearch/adminSearch.service.ts#globalSearch's
+ * real response shape. `type` distinguishes which of the four searched
+ * entities (Relationship is deliberately excluded — see that file's own
+ * doc comment) a result is; `path` is always a real, working admin-web
+ * route (campaigns have no detail route, so their `path` points at the
+ * Campaign Directory screen with their linkCode as a `q` param instead).
+ */
+export type AdminSearchResultType = "user" | "professional" | "gym" | "campaign";
+
+export interface AdminSearchResultItem {
+  id: string;
+  type: AdminSearchResultType;
+  label: string;
+  sublabel: string | null;
+  path: string;
+}
+
+export interface AdminSearchResponse {
+  query: string;
+  results: AdminSearchResultItem[];
+}
