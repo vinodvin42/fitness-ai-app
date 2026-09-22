@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { isAvailableForNewClients } from "../professionalLifecycle/professionalLifecycle.service";
 import { acceptRelationship, claimRelationship } from "../coaching/coaching.service";
 import {
@@ -52,6 +53,106 @@ import {
  */
 
 const ACTIONABLE_OFFER_STATUS = "offered";
+
+const HOUR_MS = 60 * 60 * 1000;
+
+// Stalled-offer detection (Wave 6, 22 Sep 2026) — `AdminActionItemType`
+// already named `professional_acceptance_stalled` since R2 Wave 1, never
+// wired up (its own doc comment named this as depending on this module
+// landing first — see schema.prisma's AdminActionItemType comment). Mirrors
+// professionalDashboard.service.ts's `detectAndQueueStuckRelationships`
+// exactly: read-time detection (no scheduler/cron infra in this codebase,
+// same documented precedent), dedup-before-create against an existing open
+// AdminActionItem, run inside an already-polled read path rather than a
+// background sweep.
+//
+// The threshold itself is deliberately NOT the stuck-relationship unit's
+// 15 minutes — that threshold times a fully automated, sub-second sequence
+// of DB writes (claimRelationship -> booking.create -> updateMany), so
+// anything still mid-flight 15 minutes later is a genuine system failure.
+// An offer sitting at `offered` is waiting on a real HUMAN decision by the
+// professional, not a system step — 15 minutes would flag nearly every
+// offer ever created. 72 hours (3 days) is the threshold instead: long
+// enough that a professional checking their app once a day still has a
+// full response window, short enough that a client proposed a coach isn't
+// left waiting indefinitely with no admin visibility. This is intentionally
+// a DIFFERENT, later signal than `expiresAt` (professionalOffers.schema.ts's
+// own optional field, enforced lazily by `expireIfStale` below): `expiresAt`
+// is a per-offer, admin-chosen hard cutoff after which the offer can no
+// longer be accepted at all; `stalled` is a "no response yet" admin nudge
+// that fires independently of whether an expiry was even set — most offers
+// today set no `expiresAt`, which is exactly the case with no other signal
+// this closes. An offer already past its own `expiresAt` is excluded here
+// (it's "expired", not "stalled" — a semantically different, already-real
+// terminal state) rather than double-signaled.
+const STALLED_OFFER_THRESHOLD_MS = 72 * HOUR_MS;
+
+type StalledOfferRow = {
+  id: string;
+  professionalId: string;
+  userId: string;
+  serviceType: string;
+  createdAt: Date;
+  expiresAt: Date | null;
+  professional: { fullName: string };
+  user: { fullName: string };
+};
+
+/**
+ * Read-time detection + admin-queue write for `ProfessionalOffer` rows
+ * still `offered` past STALLED_OFFER_THRESHOLD_MS — see this file's own
+ * const comment above for the full reasoning. Idempotent per offer, same
+ * "at most one open AdminActionItem per real stuck thing" discipline
+ * `detectAndQueueStuckRelationships` uses: checks for an existing
+ * (type, entityType, entityId) row with `status: "open"` before creating.
+ * Run from `listOffers` (the admin-facing read this wires visibility
+ * into), not from the coach-facing `listOffersForProfessional` — the
+ * professional isn't the audience for "an admin should look at this."
+ */
+async function detectAndQueueStalledOffers(): Promise<void> {
+  const cutoff = new Date(Date.now() - STALLED_OFFER_THRESHOLD_MS);
+  const stalled = await prisma.professionalOffer.findMany({
+    where: {
+      status: ACTIONABLE_OFFER_STATUS,
+      createdAt: { lt: cutoff },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    include: {
+      professional: { select: { fullName: true } },
+      user: { select: { fullName: true } },
+    },
+  });
+  const rows = stalled as StalledOfferRow[];
+
+  for (const offer of rows) {
+    const existingOpen = await prisma.adminActionItem.findFirst({
+      where: {
+        type: "professional_acceptance_stalled",
+        entityType: "ProfessionalOffer",
+        entityId: offer.id,
+        status: "open",
+      },
+      select: { id: true },
+    });
+    if (existingOpen) continue;
+
+    await createActionItem({
+      type: "professional_acceptance_stalled",
+      entityType: "ProfessionalOffer",
+      entityId: offer.id,
+      severity: "medium",
+      metadata: {
+        professionalId: offer.professionalId,
+        professionalFullName: offer.professional.fullName,
+        userId: offer.userId,
+        userFullName: offer.user.fullName,
+        serviceType: offer.serviceType,
+        offeredSince: offer.createdAt.toISOString(),
+        expiresAt: offer.expiresAt ? offer.expiresAt.toISOString() : null,
+      },
+    });
+  }
+}
 
 type OfferRow = {
   id: string;
@@ -313,8 +414,19 @@ type OfferWithProfessionalAndUserRow = OfferRow & {
   user: { fullName: string };
 };
 
-/** Admin-facing listing — Module 03/04's own Directory-style filter shape. */
+/**
+ * Admin-facing listing — Module 03/04's own Directory-style filter shape.
+ * Also the real read-time trigger for `detectAndQueueStalledOffers` (see
+ * its own doc comment above) — every admin read of the offers queue is a
+ * chance to catch a newly-stalled offer, same "runs on every poll of the
+ * already-real read path" discipline `getDashboardStats` uses for stuck
+ * relationships. Fired unconditionally (not scoped to this call's own
+ * `query` filters) since a stalled offer should surface regardless of what
+ * filter the admin happened to apply.
+ */
 export async function listOffers(query: ListOffersQuery) {
+  await detectAndQueueStalledOffers();
+
   const where: Record<string, unknown> = {};
   if (query.status) where.status = query.status;
   if (query.professionalId) where.professionalId = query.professionalId;
