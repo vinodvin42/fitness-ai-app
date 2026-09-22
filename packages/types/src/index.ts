@@ -693,6 +693,27 @@ export interface LogWaterInput {
   glasses?: number;
 }
 
+// ---- Mindfulness log (22 Sep 2026, gap §29) --------------------------
+// The real "Log Mindfulness Session" action on the Recovery screen — see
+// apps/api's MindfulnessLog model (schema.prisma) and progress.service.ts's
+// own doc comment for the full design. Mirrors WaterLog above exactly:
+// append-only, no edit/delete.
+
+export interface MindfulnessLog {
+  id: string;
+  userId: string;
+  durationMinutes: number;
+  type: string | null;
+  note: string | null;
+  loggedAt: string;
+}
+
+export interface LogMindfulnessInput {
+  durationMinutes: number;
+  type?: string;
+  note?: string;
+}
+
 // ---- Progress & Body: logged BodyMeasurement + computed PersonalRecord ----
 // docs/mobile/03-screen-inventory.md §F: Progress Overview, Body
 // Measurements, Log Measurements. Added Phase 2 (19 Aug 2026) alongside
@@ -767,12 +788,12 @@ export interface ProgressOverview {
 // heatmap (calendar-style), and a per-category streak list (training,
 // nutrition, mindfulness, hydration)." Added 19 Aug 2026, computed
 // server-side (GET /progress/streaks) from real WorkoutSession/MealLog/
-// WaterLog dates already logged — not a stored StreakRecord table, same
-// "computed, not stored" precedent as PersonalRecord above. "mindfulness"
-// is NOT one of the categories here — no mindfulness feature or data model
-// exists anywhere in this app, see gap §29.
+// WaterLog/MindfulnessLog dates already logged — not a stored StreakRecord
+// table, same "computed, not stored" precedent as PersonalRecord above.
+// "mindfulness" joined the other three categories 22 Sep 2026, once
+// MindfulnessLog (above) gave it a real data source — see gap §29.
 
-export type StreakCategory = "training" | "nutrition" | "hydration";
+export type StreakCategory = "training" | "nutrition" | "hydration" | "mindfulness";
 
 export interface CategoryStreak {
   category: StreakCategory;

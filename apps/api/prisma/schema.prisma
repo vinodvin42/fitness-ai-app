@@ -351,6 +351,9 @@ model User {
   progressPhotos              ProgressPhoto[]
   // Check-In (U5, 15 Sep 2026) — see CheckIn's own doc comment.
   checkIns                    CheckIn[]
+  // Mindfulness streak category (22 Sep 2026) — see MindfulnessLog's own
+  // doc comment.
+  mindfulnessLogs             MindfulnessLog[]
   // Product-analytics event stream (U7, 15 Sep 2026) — see AnalyticsEvent's
   // own doc comment for why this is a separate model from AuditLog.
   analyticsEvents             AnalyticsEvent[]
@@ -1038,6 +1041,32 @@ model WaterLog {
 
   @@index([userId, loggedAt])
   @@map("water_logs")
+}
+
+// ---- Mindfulness: MindfulnessLog ---------------------------------------
+// Streak Tracker (docs/mobile/03-screen-inventory.md §F) named "mindfulness"
+// as a fourth habit category alongside training/nutrition/hydration, but
+// gap §29 flagged that no real data source for it existed anywhere in this
+// schema, so getStreaks() (progress.service.ts) only ever computed the
+// other three. Closing that gap (22 Sep 2026): a new, honest, minimal
+// self-report log — timestamp + duration + optional type/note — same
+// append-only "one row per real logged activity, no edit/delete" shape as
+// WaterLog right above, deliberately NOT a meditation-content library or
+// guided-session player (out of scope — this is a log, not a content
+// feature). durationMinutes has no DB-level cap; the Zod schema
+// (progress.schema.ts's logMindfulnessSchema) is the real validation gate,
+// same division of responsibility as WaterLog's glasses field.
+model MindfulnessLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  durationMinutes Int
+  type            String?
+  note            String?
+  loggedAt        DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("mindfulness_logs")
 }
 
 // ---- Progress & Body: logged BodyMeasurement -------------------------

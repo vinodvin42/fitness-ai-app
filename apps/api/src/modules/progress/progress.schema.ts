@@ -54,3 +54,17 @@ export const submitCheckInSchema = z.object({
 });
 
 export type SubmitCheckInInput = z.infer<typeof submitCheckInSchema>;
+
+// Mindfulness log (22 Sep 2026, gap §29) — the real "Log Mindfulness
+// Session" action on the Recovery screen. Same append-only, no-edit-no-
+// delete shape as nutrition.schema.ts's logWaterSchema: durationMinutes is
+// the one required field (a session with zero known duration isn't really
+// loggable), type/note are optional. Capped generously (12 hours) as a
+// sanity ceiling, not a real product limit.
+export const logMindfulnessSchema = z.object({
+  durationMinutes: z.number().int().positive().max(720),
+  type: z.string().trim().min(1).max(60).optional(),
+  note: z.string().trim().max(280).optional(),
+});
+
+export type LogMindfulnessInput = z.infer<typeof logMindfulnessSchema>;

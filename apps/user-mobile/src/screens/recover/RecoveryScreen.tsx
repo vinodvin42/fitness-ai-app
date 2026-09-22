@@ -8,6 +8,7 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchRecovery, upsertRecovery } from "../../api/recovery";
+import { fetchTodayMindfulnessLogs, logMindfulness } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -48,6 +49,8 @@ const inputStyle = {
   paddingVertical: spacing.sm,
 } as const;
 
+const EMPTY_MINDFULNESS = { durationMinutes: "", type: "", note: "" };
+
 /**
  * Recovery & Devices — manual-entry stopgap (docs/mobile Phase 2 §E), added
  * 31 Aug 2026. Real self-reported metrics (resting HR / sleep / HRV /
@@ -55,12 +58,26 @@ const inputStyle = {
  * recent history — honestly labelled as self-reported rather than a device
  * feed (no HealthKit/Google Fit exists here). Same "real stopgap, not a
  * faked device list" precedent as Progress Photos' base64 storage.
+ *
+ * Also (22 Sep 2026, gap §29) the "Log Mindfulness Session" action — the
+ * real data-logging mechanism behind Streak Tracker's mindfulness
+ * category. Recovery is the closest existing real screen for a quick
+ * self-report entry (same class of manual, honest, non-device signal as
+ * the metrics above), so it lives here rather than a new standalone
+ * screen. A simple duration + optional type/note, POSTed to
+ * `/mindfulness-logs` (progress.service.ts's `logMindfulness`) — see that
+ * file's own doc comment for the full design.
  */
 export function RecoveryScreen({ navigation: _navigation }: Props) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [mindfulForm, setMindfulForm] = useState(EMPTY_MINDFULNESS);
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["recovery"], queryFn: fetchRecovery });
+  const { data: todayMindfulness } = useQuery({
+    queryKey: ["progress", "mindfulness-logs", "today"],
+    queryFn: fetchTodayMindfulnessLogs,
+  });
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -83,10 +100,31 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
     onError: (err) => Alert.alert("Couldn't save", extractErrorMessage(err, "Please try again.")),
   });
 
+  const mindfulnessMutation = useMutation({
+    mutationFn: () => {
+      const duration = Number(mindfulForm.durationMinutes);
+      return logMindfulness({
+        durationMinutes: duration,
+        type: mindfulForm.type.trim() || undefined,
+        note: mindfulForm.note.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      setMindfulForm(EMPTY_MINDFULNESS);
+      queryClient.invalidateQueries({ queryKey: ["progress", "mindfulness-logs", "today"] });
+      queryClient.invalidateQueries({ queryKey: ["progress", "streaks"] });
+    },
+    onError: (err) => Alert.alert("Couldn't save", extractErrorMessage(err, "Please try again.")),
+  });
+
   const set = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
   const hasAny =
     [form.restingHeartRate, form.sleepHours, form.hrvMs, form.soreness, form.energyLevel].some((v) => v.trim() !== "") ||
     form.notes.trim() !== "";
+
+  const mindfulDuration = Number(mindfulForm.durationMinutes);
+  const mindfulValid = mindfulForm.durationMinutes.trim() !== "" && Number.isInteger(mindfulDuration) && mindfulDuration > 0;
+  const todayMindfulTotal = (todayMindfulness ?? []).reduce((sum, log) => sum + log.durationMinutes, 0);
 
   return (
     <ScreenContainer title="Recovery">
@@ -119,6 +157,49 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
           onPress={() => mutation.mutate()}
           loading={mutation.isPending}
           disabled={!hasAny || mutation.isPending}
+          style={{ marginTop: spacing.md }}
+        />
+      </Card>
+
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>
+          Log Mindfulness Session
+        </Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
+          {todayMindfulTotal > 0
+            ? `${todayMindfulTotal} min logged today — logging again adds another session.`
+            : "A quick self-report — how long, and what kind (optional)."}
+        </Text>
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <LabeledInput
+            label="Duration"
+            unit="min"
+            value={mindfulForm.durationMinutes}
+            onChange={(v) => setMindfulForm((p) => ({ ...p, durationMinutes: v }))}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>Type (optional)</Text>
+            <TextInput
+              value={mindfulForm.type}
+              onChangeText={(v) => setMindfulForm((p) => ({ ...p, type: v }))}
+              placeholder="e.g. breathing"
+              placeholderTextColor={colors.textMuted}
+              style={{ ...inputStyle, marginTop: 4 }}
+            />
+          </View>
+        </View>
+        <TextInput
+          value={mindfulForm.note}
+          onChangeText={(v) => setMindfulForm((p) => ({ ...p, note: v }))}
+          placeholder="Note (optional)"
+          placeholderTextColor={colors.textMuted}
+          style={{ ...inputStyle, marginTop: spacing.sm }}
+        />
+        <Button
+          label="Log session"
+          onPress={() => mindfulnessMutation.mutate()}
+          loading={mindfulnessMutation.isPending}
+          disabled={!mindfulValid || mindfulnessMutation.isPending}
           style={{ marginTop: spacing.md }}
         />
       </Card>

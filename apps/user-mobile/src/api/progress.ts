@@ -4,6 +4,8 @@ import type {
   CheckInStatus,
   CreateProgressPhotoInput,
   LogMeasurementInput,
+  LogMindfulnessInput,
+  MindfulnessLog,
   ProgressOverview,
   ProgressPhoto,
   StreakSummary,
@@ -52,4 +54,13 @@ export function fetchCheckIns() {
 
 export function submitCheckIn(input: SubmitCheckInInput) {
   return apiClient.post<CheckIn>("/check-ins", input).then((r) => r.data);
+}
+
+/** Mindfulness log (22 Sep 2026, gap §29) — the Recovery screen's "Log Mindfulness Session" action, and the source for Streak Tracker's mindfulness category. */
+export function fetchTodayMindfulnessLogs() {
+  return apiClient.get<{ items: MindfulnessLog[] }>("/mindfulness-logs/today").then((r) => r.data.items);
+}
+
+export function logMindfulness(input: LogMindfulnessInput) {
+  return apiClient.post<MindfulnessLog>("/mindfulness-logs", input).then((r) => r.data);
 }

@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { createProgressPhotoSchema, logMeasurementSchema, submitCheckInSchema } from "./progress.schema";
+import {
+  createProgressPhotoSchema,
+  logMeasurementSchema,
+  logMindfulnessSchema,
+  submitCheckInSchema,
+} from "./progress.schema";
 import * as progressService from "./progress.service";
 
 export const progressRouter = Router();
@@ -92,6 +97,28 @@ progressRouter.post("/check-ins", requireAuth, async (req: AuthedRequest, res, n
     const input = submitCheckInSchema.parse(req.body);
     const checkIn = await progressService.submitCheckIn(req.userId!, input);
     res.status(201).json(checkIn);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Mindfulness log (22 Sep 2026, gap §29) — see progress.service.ts's own
+// doc comment. No writeRateLimit — same class as POST /water-logs and
+// POST /check-ins above.
+
+progressRouter.get("/mindfulness-logs/today", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ items: await progressService.getTodayMindfulnessLogs(req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+progressRouter.post("/mindfulness-logs", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = logMindfulnessSchema.parse(req.body);
+    const mindfulnessLog = await progressService.logMindfulness(req.userId!, input);
+    res.status(201).json(mindfulnessLog);
   } catch (err) {
     next(err);
   }

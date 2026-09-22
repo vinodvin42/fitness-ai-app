@@ -23,12 +23,14 @@ const CATEGORY_LABELS: Record<StreakCategory, string> = {
   training: "Training",
   nutrition: "Nutrition",
   hydration: "Hydration",
+  mindfulness: "Mindfulness",
 };
-const CATEGORY_ORDER: StreakCategory[] = ["training", "nutrition", "hydration"];
+const CATEGORY_ORDER: StreakCategory[] = ["training", "nutrition", "hydration", "mindfulness"];
 const CATEGORY_META: Record<StreakCategory, { icon: IconName; tint: string; tintSoft: string }> = {
   training: { icon: "dumbbell", tint: colors.accent, tintSoft: colors.accentSoft },
   nutrition: { icon: "utensils", tint: colors.success, tintSoft: colors.successSoft },
   hydration: { icon: "droplet", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)" },
+  mindfulness: { icon: "moon", tint: colors.aiAccent, tintSoft: "rgba(155,135,255,0.16)" },
 };
 
 function dayLabel(n: number): string {
@@ -58,11 +60,11 @@ function heatColor(level: number): string {
  * is a plain numeral + label (no icon library installed — see gap §29,
  * same substitution class as gaps §24/§25's ring/icon replacements), and
  * the heatmap shades each day's cell by accent-color opacity based on how
- * many of the three built categories were active that day (0-3), rather
- * than a separate icon per category. **"mindfulness" is not one of the
- * three categories shown** — no mindfulness feature or data model exists
- * anywhere in this app, so faking a streak for it would be exactly the
- * kind of non-functional UI this project avoids; see gap §29.
+ * many of the four categories were active that day (0-4), rather than a
+ * separate icon per category. "mindfulness" joined the other three
+ * categories 22 Sep 2026, once a real `MindfulnessLog` (logged from the
+ * Recovery screen's "Log Mindfulness Session" action) gave it a genuine
+ * data source — see gap §29 for the full before/after.
  */
 export function StreakTrackerScreen(_props: Props) {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -217,9 +219,6 @@ export function StreakTrackerScreen(_props: Props) {
             </View>
           );
         })}
-        <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-          Mindfulness isn't tracked yet — no mindfulness feature exists in this app.
-        </Text>
       </Card>
     </ScreenContainer>
   );
