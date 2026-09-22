@@ -25,6 +25,11 @@ type Props = NativeStackScreenProps<TrainStackParamList, "TrainDashboard">;
  * (`Program.imageUrl`) instead of a generic dumbbell tile. The tile is
  * still the fallback — `imageUrl` is nullable and an admin-authored
  * program may not have one — so the card layout is identical either way.
+ *
+ * 22 Sep 2026: added a "Browse All Programs" entry to ProgramsMarketplace
+ * (trn-02) — this screen's own inline Programs list below stays as a short,
+ * unfiltered preview; the marketplace screen is the real searchable/
+ * filterable catalog.
  */
 export function TrainScreen({ navigation }: Props) {
   const programsQuery = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
@@ -32,6 +37,14 @@ export function TrainScreen({ navigation }: Props) {
   return (
     <ScreenContainer title="Train" scroll={false}>
       <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+        <ListRow
+          icon="search"
+          title="Browse All Programs"
+          subtitle="Search & filter the full catalog"
+          tint={colors.accent}
+          tintSoft={colors.accentSoft}
+          onPress={() => navigation.navigate("ProgramsMarketplace")}
+        />
         <ListRow
           icon="target"
           title="My Programs"

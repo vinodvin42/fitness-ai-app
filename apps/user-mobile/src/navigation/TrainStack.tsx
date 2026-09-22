@@ -2,6 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TrainScreen } from "../screens/train/TrainScreen";
 import { ProgramDetailScreen } from "../screens/train/ProgramDetailScreen";
+import { ProgramsMarketplaceScreen } from "../screens/train/ProgramsMarketplaceScreen";
 import { WorkoutDetailScreen } from "../screens/train/WorkoutDetailScreen";
 import { ActiveWorkoutScreen } from "../screens/train/ActiveWorkoutScreen";
 import { SetRestTrackerScreen } from "../screens/train/SetRestTrackerScreen";
@@ -16,22 +17,25 @@ import { WorkoutHistoryScreen } from "../screens/train/WorkoutHistoryScreen";
 // docs/mobile/03-screen-inventory.md §C: Train Dashboard -> Training
 // Programs -> Program Detail -> Workout Detail -> Active Workout ->
 // Workout Complete. "Training Programs" (a separate marketplace/browse
-// screen, trn-02) isn't built yet — Train Dashboard's program list stands
-// in for it in Phase 1. §I (Phase 3, pulled forward): Train Dashboard ->
-// My Programs -> Program Progress (active) or Program Completion
-// (finished), and Program Detail's real Purchase flow. Active Workout ->
-// Set/Rest Tracker (trn-08, later Phase 1) is presented modally per
-// docs/mobile/02-information-architecture.md §4's "without leaving the
-// workout session" framing. Train Dashboard -> Exercise Library ->
-// Exercise Detail (trn-05/06, added 19 Aug 2026) — Exercise Detail can
-// push another instance of itself via its "alternatives" section, hence
-// `navigation.push` rather than `navigate` in that screen. Train Dashboard
-// -> Workout History (trn-11, added 19 Aug 2026) — history rows navigate
-// to the existing WorkoutDetail screen rather than a dedicated "session
-// detail" screen, since none exists in the 82-screen inventory (see gap
-// §27).
+// screen, trn-02) shipped 22 Sep 2026 as ProgramsMarketplaceScreen,
+// reachable from Train Dashboard's new "Browse All Programs" entry —
+// Train Dashboard's own inline program list stays as-is (a short, unfiltered
+// preview) alongside the real browse/search/filter screen. §I (Phase 3,
+// pulled forward): Train Dashboard -> My Programs -> Program Progress
+// (active) or Program Completion (finished), and Program Detail's real
+// Purchase flow. Active Workout -> Set/Rest Tracker (trn-08, later Phase 1)
+// is presented modally per docs/mobile/02-information-architecture.md §4's
+// "without leaving the workout session" framing. Train Dashboard ->
+// Exercise Library -> Exercise Detail (trn-05/06, added 19 Aug 2026) —
+// Exercise Detail can push another instance of itself via its
+// "alternatives" section, hence `navigation.push` rather than `navigate` in
+// that screen. Train Dashboard -> Workout History (trn-11, added 19 Aug
+// 2026) — history rows navigate to the existing WorkoutDetail screen
+// rather than a dedicated "session detail" screen, since none exists in
+// the 82-screen inventory (see gap §27).
 export type TrainStackParamList = {
   TrainDashboard: undefined;
+  ProgramsMarketplace: undefined;
   ProgramDetail: { programId: string };
   WorkoutDetail: { workoutId: string };
   ActiveWorkout: { workoutId: string; sessionId: string };
@@ -51,6 +55,7 @@ export function TrainStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="TrainDashboard" component={TrainScreen} />
+      <Stack.Screen name="ProgramsMarketplace" component={ProgramsMarketplaceScreen} />
       <Stack.Screen name="ProgramDetail" component={ProgramDetailScreen} />
       <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
       <Stack.Screen name="ActiveWorkout" component={ActiveWorkoutScreen} options={{ gestureEnabled: false }} />
