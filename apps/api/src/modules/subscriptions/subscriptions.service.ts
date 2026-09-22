@@ -335,3 +335,81 @@ export async function revokeSubscription(actorAdminId: string, subscriptionId: s
 
   return revoked;
 }
+
+/**
+ * Real admin un-revoke (gap §57 follow-up, 22 Sep 2026) — reverses a
+ * mistaken or since-resolved `revoked` force-revoke (dispute overturned,
+ * fraud finding reversed, or the original revoke was a genuine admin
+ * error). Same `commerce: approve` gate as `revokeSubscription` itself
+ * (see adminSubscriptions.routes.ts) and the same BR-ADM-005
+ * reason-required discipline (`unrevokeSubscriptionSchema`, 10-char
+ * minimum, mirrors `revokeSubscriptionSchema`).
+ *
+ * The one real decision this needed: what status to land on. NOT an
+ * unconditional flip back to `active` — the row has no memory of what its
+ * status was the instant before it was revoked, and time has passed since
+ * (the entitlement period this subscription actually paid for may have
+ * already run out while it sat revoked). The honest answer is to compute,
+ * for real, what this subscription's status would naturally be right now
+ * had it never been revoked at all — exactly the same question
+ * `maybeExpireLapsed` above already answers for the lazy-expiry path, just
+ * evaluated once here instead of on every read:
+ *   - `renewsAt` unset, or still in the future → the paid-for period
+ *     hasn't lapsed → restore to `active`.
+ *   - `renewsAt` in the past → the period is over and nothing renewed it
+ *     while this row was revoked → land in `expired`, not `active`, since
+ *     handing back an already-lapsed entitlement would be dishonest.
+ * `cancelAtPeriodEnd` is left exactly as it was — un-revoking doesn't
+ * change whether the user had asked to cancel; if it was already true and
+ * the period is still current, the row correctly comes back as an
+ * `active` subscription still scheduled to lapse at `renewsAt`, and the
+ * normal `maybeExpireLapsed` mechanism picks it up from there same as any
+ * other cancel-at-period-end row.
+ *
+ * Atomic claim-once transition, same discipline as every other one-time
+ * state transition in this codebase (see markPayoutPaid in
+ * adminInfluencers.service.ts for the exact template this mirrors):
+ * `updateMany` with a `status: "revoked"` filter makes the claim itself
+ * atomic, so two concurrent un-revoke calls on the same row can't both
+ * succeed — only the one whose `updateMany` actually affects a row goes
+ * on to report success; the other 409s.
+ */
+export async function unrevokeSubscription(actorAdminId: string, subscriptionId: string, reason: string) {
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing) {
+    throw new ApiHttpError(404, "not_found", "Subscription not found");
+  }
+  if (existing.status !== "revoked") {
+    throw new ApiHttpError(
+      409,
+      "not_revoked",
+      "This subscription isn't currently revoked — nothing to un-revoke",
+    );
+  }
+
+  const restoredStatus = existing.renewsAt != null && existing.renewsAt.getTime() < Date.now() ? "expired" : "active";
+
+  const claimed = await prisma.subscription.updateMany({
+    where: { id: subscriptionId, status: "revoked" },
+    data: { status: restoredStatus, revokedAt: null, revokedReason: null },
+  });
+  if (claimed.count === 0) {
+    // A concurrent call already un-revoked (or re-revoked) it between our read above and now.
+    throw new ApiHttpError(409, "not_revoked", "This subscription isn't currently revoked — nothing to un-revoke");
+  }
+
+  const restored = await prisma.subscription.findUniqueOrThrow({
+    where: { id: subscriptionId },
+    include: { plan: true },
+  });
+
+  await recordAudit({
+    actorAdminId,
+    action: "subscription.unrevoked",
+    entityType: "Subscription",
+    entityId: restored.id,
+    metadata: { userId: restored.userId, planId: restored.planId, reason, restoredStatus },
+  });
+
+  return restored;
+}

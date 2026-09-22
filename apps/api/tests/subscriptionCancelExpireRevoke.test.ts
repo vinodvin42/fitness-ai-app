@@ -257,4 +257,153 @@ describe("Subscription cancel-at-period-end, lazy expiry, and admin force-revoke
       expect(res.body.error.code).toBe("already_revoked");
     });
   });
+
+  describe("admin un-revoke (gap §57 follow-up)", () => {
+    const adminPassword = "AdminOnlyPass9!";
+    let financeAdminEmail: string;
+
+    beforeAll(async () => {
+      const passwordHash = await hashPassword(adminPassword);
+      const financeAdmin = await prisma.adminUser.create({
+        data: {
+          email: uniqueEmail("admin-finance-unrevoke"),
+          passwordHash,
+          fullName: "Finance Role Admin (unrevoke test)",
+          role: "finance",
+          status: "active",
+        },
+      });
+      financeAdminEmail = financeAdmin.email;
+      adminUserIds.push(financeAdmin.id);
+    });
+
+    async function adminToken(email: string): Promise<string> {
+      const res = await request(app).post("/admin/auth/login").send({ email, password: adminPassword });
+      expect(res.status).toBe(200);
+      return res.body.token as string;
+    }
+
+    it("restores to 'active' when the current period (renewsAt) hasn't lapsed", async () => {
+      const { userId } = await signupUser("unrevoke-active");
+      const subscription = await prisma.subscription.create({
+        data: {
+          userId,
+          planId,
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedReason: "Confirmed chargeback — later reversed",
+          renewsAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // still current
+        },
+      });
+      const token = await adminToken(financeAdminEmail);
+
+      const res = await request(app)
+        .post(`/admin/subscriptions/${subscription.id}/unrevoke`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ reason: "Chargeback dispute resolved in the user's favor" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.subscription.status).toBe("active");
+      expect(res.body.subscription.revokedAt).toBeNull();
+      expect(res.body.subscription.revokedReason).toBeNull();
+
+      const row = await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } });
+      expect(row.status).toBe("active");
+      expect(row.revokedAt).toBeNull();
+      expect(row.revokedReason).toBeNull();
+
+      const audit = await prisma.auditLog.findFirst({
+        where: { entityType: "Subscription", entityId: subscription.id, action: "subscription.unrevoked" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(audit).not.toBeNull();
+      expect((audit?.metadata as Record<string, unknown> | null)?.restoredStatus).toBe("active");
+      expect((audit?.metadata as Record<string, unknown> | null)?.reason).toBe(
+        "Chargeback dispute resolved in the user's favor",
+      );
+    });
+
+    it("restores to 'expired' when the current period (renewsAt) has already passed", async () => {
+      const { userId } = await signupUser("unrevoke-expired");
+      const subscription = await prisma.subscription.create({
+        data: {
+          userId,
+          planId,
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedReason: "Revoked in error",
+          renewsAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // already lapsed
+        },
+      });
+      const token = await adminToken(financeAdminEmail);
+
+      const res = await request(app)
+        .post(`/admin/subscriptions/${subscription.id}/unrevoke`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ reason: "Revoke was a genuine admin error, reversing it" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.subscription.status).toBe("expired");
+
+      const row = await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } });
+      expect(row.status).toBe("expired");
+
+      const audit = await prisma.auditLog.findFirst({
+        where: { entityType: "Subscription", entityId: subscription.id, action: "subscription.unrevoked" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect((audit?.metadata as Record<string, unknown> | null)?.restoredStatus).toBe("expired");
+    });
+
+    it("rejects un-revoking a subscription that isn't currently revoked", async () => {
+      const { userId } = await signupUser("unrevoke-not-revoked");
+      const subscription = await prisma.subscription.create({
+        data: { userId, planId, status: "active", renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+      });
+      const token = await adminToken(financeAdminEmail);
+
+      const res = await request(app)
+        .post(`/admin/subscriptions/${subscription.id}/unrevoke`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ reason: "Trying to un-revoke something that was never revoked" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("not_revoked");
+
+      const row = await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } });
+      expect(row.status).toBe("active");
+    });
+
+    it("atomic claim-once: exactly one of two concurrent un-revoke calls wins", async () => {
+      const { userId } = await signupUser("unrevoke-concurrent");
+      const subscription = await prisma.subscription.create({
+        data: {
+          userId,
+          planId,
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedReason: "Concurrency test setup",
+          renewsAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        },
+      });
+      const token = await adminToken(financeAdminEmail);
+
+      const [resA, resB] = await Promise.all([
+        request(app)
+          .post(`/admin/subscriptions/${subscription.id}/unrevoke`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ reason: "Concurrent un-revoke attempt A" }),
+        request(app)
+          .post(`/admin/subscriptions/${subscription.id}/unrevoke`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ reason: "Concurrent un-revoke attempt B" }),
+      ]);
+
+      const statuses = [resA.status, resB.status].sort();
+      expect(statuses).toEqual([200, 409]);
+
+      const row = await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } });
+      expect(row.status).toBe("active");
+    });
+  });
 });

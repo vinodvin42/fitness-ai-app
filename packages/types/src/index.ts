@@ -895,6 +895,15 @@ export interface RevokeSubscriptionResponse {
   subscription: SubscriptionDetail;
 }
 
+/** Gap §57 follow-up (22 Sep 2026) — matches apps/api's unrevokeSubscriptionSchema (Zod), POST /admin/subscriptions/:id/unrevoke. */
+export interface UnrevokeSubscriptionInput {
+  reason: string;
+}
+
+export interface UnrevokeSubscriptionResponse {
+  subscription: SubscriptionDetail;
+}
+
 // ---- Payments (Razorpay integration, added 20 Aug 2026) -------------------
 // Closes gap §14 — see apps/api/src/modules/payments's own doc comment for
 // the full order/verify/webhook flow. Shared by both Subscription &
