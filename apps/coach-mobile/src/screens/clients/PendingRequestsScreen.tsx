@@ -27,6 +27,19 @@ function relativeDay(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Same 72-hour "stalled" threshold as apps/api's professionalOffers.service
+// .ts#STALLED_OFFER_THRESHOLD_MS (Wave 6, 22 Sep 2026) — deliberately the
+// same number so this client-side note and the admin queue's own
+// `professional_acceptance_stalled` item agree on what "stalled" means,
+// rather than inventing a second, different definition here. Purely
+// informational (an honest "you haven't responded yet" nudge) — doesn't
+// change accept/decline behavior or gate anything.
+const STALLED_OFFER_THRESHOLD_MS = 72 * 60 * 60 * 1000;
+
+function isStalled(createdAtIso: string): boolean {
+  return Date.now() - new Date(createdAtIso).getTime() >= STALLED_OFFER_THRESHOLD_MS;
+}
+
 /**
  * Pending Requests (gap §56, added 16 Sep 2026) — the real coach-side
  * review gate this build never had: before this, `claimRelationship()`
@@ -219,6 +232,11 @@ export function PendingRequestsScreen() {
                   {SERVICE_LABELS[item.serviceType] ?? item.serviceType} · Proposed {relativeDay(item.createdAt)}
                   {item.expiresAt ? ` · Expires ${relativeDay(item.expiresAt)}` : ""}
                 </Text>
+                {isStalled(item.createdAt) && (
+                  <Text style={{ color: colors.warning, fontSize: 12, marginTop: 2 }}>
+                    You haven't responded to this yet — PrimeFit support can see this too.
+                  </Text>
+                )}
                 <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
                   <Button
                     label="Accept"

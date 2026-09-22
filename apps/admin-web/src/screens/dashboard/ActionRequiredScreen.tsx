@@ -54,12 +54,15 @@ function SeverityBadge({ severity }: { severity: AdminActionItemSeverity }) {
 }
 
 /**
- * Real drill-through targets for the 7 sources already wired into
- * `createActionItem` as of R2 Wave 1 + Wave 4's own addition (see
- * apps/api's lib/adminActionQueue.ts call sites). Two of the seven resolve
- * to a real per-entity detail route (Relationship, and ProfessionalCredential
- * via its metadata.professionalId — the credential itself has no detail
- * route, but the professional it belongs to does); the other five have a
+ * Real drill-through targets for the sources already wired into
+ * `createActionItem` as of R2 Wave 1 + Wave 4's own addition + Wave 6's
+ * `professional_acceptance_stalled` (see apps/api's lib/adminActionQueue.ts
+ * call sites). Three resolve to a real per-entity detail route (Relationship;
+ * ProfessionalCredential via its metadata.professionalId — the credential
+ * itself has no detail route, but the professional it belongs to does; and
+ * ProfessionalOffer via its metadata.userId — no per-offer detail route
+ * exists, but the proposing user's profile shows the offer inline, see
+ * UserProfileScreen.tsx's "Propose Professional" section); the rest have a
  * real queue/list screen but no id-addressable detail route yet, so they
  * link to that list rather than a broken per-row URL — "show the available
  * context inline rather than a broken link," per this wave's own brief.
@@ -70,6 +73,17 @@ function getDrillThrough(item: AdminActionItem): { label: string; to: string; ex
   switch (item.entityType) {
     case "Relationship":
       return { label: "Open relationship", to: `/relationships/${item.entityId}`, exact: true };
+    case "ProfessionalOffer": {
+      // No per-offer detail route exists (ProfessionalOffer rows are shown
+      // inline on the proposing user's own profile — see UserProfileScreen
+      // .tsx's "Propose Professional" section) — link to that user's real
+      // profile, where the offer itself (professional, service, status) is
+      // already visible in its own table.
+      const userId = typeof meta.userId === "string" ? meta.userId : null;
+      return userId
+        ? { label: "Open user profile", to: `/users/${userId}`, exact: true }
+        : null;
+    }
     case "ProfessionalCredential": {
       const professionalId = typeof meta.professionalId === "string" ? meta.professionalId : null;
       return professionalId

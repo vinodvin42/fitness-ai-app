@@ -3291,12 +3291,17 @@ model GymLocation {
 // that field's own doc comment).
 //
 // Three of the 12 §4 types (`entitlement_activation_failed`,
-// `professional_acceptance_stalled`, `relationship_activation_failed`)
-// are defined here but deliberately have NO call site yet — this wave's
-// own scope explicitly excludes wiring them (they depend on the parallel
+// `professional_acceptance_stalled`, `relationship_activation_failed`) were
+// defined here with NO call site yet as of this wave — this wave's own
+// scope explicitly excluded wiring them (they depended on the parallel
 // Professional-lifecycle unit landing, and on later-wave integration work
-// per the plan) — see docs/admin/07-open-questions-gaps.md's dated entry
-// for this wave for the full list of what's wired vs. defined-only.
+// per the plan). All three are now real: `relationship_activation_failed`
+// (Wave 3, professionalDashboard.service.ts#detectAndQueueStuckRelationships),
+// `entitlement_activation_failed` (Wave 4.4, payments.service.ts's
+// activatePayment() failure path), and `professional_acceptance_stalled`
+// (Wave 6, professionalOffers.service.ts#detectAndQueueStalledOffers) — see
+// docs/admin/07-open-questions-gaps.md's dated entries for the full
+// per-wave write-up.
 //
 // `entityType`/`entityId` is a polymorphic, unenforced reference — same
 // convention as `AuditLog.entityType`/`entityId` and `ContentReview
