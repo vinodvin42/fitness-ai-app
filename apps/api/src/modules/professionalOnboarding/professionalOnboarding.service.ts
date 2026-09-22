@@ -79,6 +79,11 @@ export async function submitCredential(professionalId: string, input: SubmitCred
       // submission always starts the review queue over, not stuck at
       // whatever status a prior submission left it in.
       status: "pending",
+      // R2 Wave 6.2 (22 Sep 2026) — a fresh submission is, by definition,
+      // not verified yet, so any `expiresAt` a PRIOR verification stamped
+      // on this row is stale and cleared here. It's only ever re-set by a
+      // real future verifyCredential approval (adminProfessionals.service.ts).
+      expiresAt: null,
     },
   });
 

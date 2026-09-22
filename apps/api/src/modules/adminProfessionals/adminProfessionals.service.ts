@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import {
   AdminUpdateMaxActiveClientsInput,
@@ -52,16 +53,89 @@ import {
  * Prisma model types — same reasoning as users.service.ts's toPublicUser.
  */
 
-type CredentialRow = { serviceType: string; status: string };
+type CredentialRow = { id: string; serviceType: string; status: string; expiresAt: Date | null };
 
-function computeDirectoryBucket(professional: {
-  status: string;
-  kycStatus: string;
-  credentials: CredentialRow[];
-}): { pendingVerification: boolean; active: boolean; rejected: boolean; suspended: boolean } {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Credential-expiry admin warning window (R2 Wave 6.2, 22 Sep 2026) — the
+// later-wave hook `ProfessionalCredential.expiresAt`'s own schema comment
+// named ("surfaces a real Admin Action Required item 30 days ahead"). This
+// is a READ, not a write, of the policy that field's comment already
+// defines: 12 months validity from verification, soft-only (never
+// auto-suspends, see that comment) — this wave only adds visibility.
+const CREDENTIAL_EXPIRY_WARNING_WINDOW_MS = 30 * DAY_MS;
+const CREDENTIAL_VALIDITY_MONTHS = 12;
+
+function isExpiringSoon(credential: CredentialRow, cutoff: Date): boolean {
+  return credential.status === "verified" && !!credential.expiresAt && credential.expiresAt.getTime() <= cutoff.getTime();
+}
+
+/**
+ * Read-time detection + admin-queue write for a `ProfessionalCredential`
+ * that's `verified` and within (or past) CREDENTIAL_EXPIRY_WARNING_WINDOW_MS
+ * of `expiresAt`. Mirrors professionalDashboard.service.ts's
+ * `detectAndQueueStuckRelationships` exactly: computed at READ time (this
+ * codebase has no scheduler/cron infra anywhere — same documented
+ * precedent), idempotent via a dedup check against an existing OPEN
+ * AdminActionItem for the same (type, entityType, entityId) before
+ * creating a new one, so a directory that's polled repeatedly can't spawn
+ * duplicate queue rows for the same expiring credential.
+ *
+ * Runs across ALL professionals (unlike the per-coach stuck-relationship
+ * sweep) because its call site, `listProfessionals`, is itself the
+ * admin-wide directory read — there's no equivalent "this one coach's own
+ * dashboard" scope to detect within here.
+ *
+ * Severity: `high` once a credential has actually lapsed (`expiresAt` is
+ * already in the past) — genuinely more urgent than one still inside the
+ * warning window, which gets `medium` (matching `credential_verification_
+ * pending`'s own severity for "needs an admin look, not yet urgent").
+ */
+async function detectAndQueueExpiringCredentials(cutoff: Date, now: Date): Promise<void> {
+  const expiring = await prisma.professionalCredential.findMany({
+    where: { status: "verified", expiresAt: { lte: cutoff } },
+    select: { id: true, professionalId: true, serviceType: true, expiresAt: true },
+  });
+
+  for (const credential of expiring as Array<{
+    id: string;
+    professionalId: string;
+    serviceType: string;
+    expiresAt: Date | null;
+  }>) {
+    const existingOpen = await prisma.adminActionItem.findFirst({
+      where: { type: "credential_expiring", entityType: "ProfessionalCredential", entityId: credential.id, status: "open" },
+      select: { id: true },
+    });
+    if (existingOpen) continue;
+
+    const alreadyExpired = !!credential.expiresAt && credential.expiresAt.getTime() < now.getTime();
+    await createActionItem({
+      type: "credential_expiring",
+      entityType: "ProfessionalCredential",
+      entityId: credential.id,
+      severity: alreadyExpired ? "high" : "medium",
+      metadata: {
+        professionalId: credential.professionalId,
+        serviceType: credential.serviceType,
+        expiresAt: credential.expiresAt?.toISOString() ?? null,
+      },
+    });
+  }
+}
+
+function computeDirectoryBucket(
+  professional: {
+    status: string;
+    kycStatus: string;
+    credentials: CredentialRow[];
+  },
+  expiryCutoff: Date,
+): { pendingVerification: boolean; active: boolean; rejected: boolean; suspended: boolean; credentialsExpiring: boolean } {
   const hasPending = professional.credentials.some((c) => c.status === "pending") || professional.kycStatus === "pending";
   const hasVerified = professional.credentials.some((c) => c.status === "verified");
   const hasRejected = professional.credentials.some((c) => c.status === "rejected") || professional.kycStatus === "rejected";
+  const hasExpiring = professional.credentials.some((c) => isExpiringSoon(c, expiryCutoff));
 
   return {
     pendingVerification: hasPending,
@@ -72,10 +146,20 @@ function computeDirectoryBucket(professional: {
     active: professional.status === "active" && hasVerified,
     rejected: hasRejected,
     suspended: professional.status === "suspended",
+    credentialsExpiring: hasExpiring,
   };
 }
 
 export async function listProfessionals(query: ListProfessionalsQuery) {
+  const now = new Date();
+  const expiryCutoff = new Date(now.getTime() + CREDENTIAL_EXPIRY_WARNING_WINDOW_MS);
+
+  // Credential-expiry sweep (R2 Wave 6.2) — read-time detection off this
+  // same directory read, the sensible endpoint per this wave's own scope
+  // (no scheduler infra exists to run it any other way). See
+  // detectAndQueueExpiringCredentials's own doc comment.
+  await detectAndQueueExpiringCredentials(expiryCutoff, now);
+
   const professionals = await prisma.professional.findMany({
     where: query.search
       ? {
@@ -86,7 +170,7 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
         }
       : undefined,
     include: {
-      credentials: { select: { serviceType: true, status: true } },
+      credentials: { select: { id: true, serviceType: true, status: true, expiresAt: true } },
       relationships: { where: { status: "active" }, select: { id: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -108,7 +192,7 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
     }>
   ).map((p) => ({
     ...p,
-    bucket: computeDirectoryBucket(p),
+    bucket: computeDirectoryBucket(p, expiryCutoff),
   }));
 
   const counts = {
@@ -117,17 +201,18 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
     active: rows.filter((r) => r.bucket.active).length,
     rejected: rows.filter((r) => r.bucket.rejected).length,
     suspended: rows.filter((r) => r.bucket.suspended).length,
-    // See this file's top comment — no expiry field exists to compute this
-    // from, so it's always 0, not fabricated.
-    credentialsExpiring: 0,
+    // R2 Wave 6.2 (22 Sep 2026) — real now that `expiresAt` is actually
+    // written (verifyCredential below) and read (computeDirectoryBucket
+    // above), no longer hardcoded to 0.
+    credentialsExpiring: rows.filter((r) => r.bucket.credentialsExpiring).length,
   };
 
   const filtered =
     query.tab === "all"
       ? rows
-      : query.tab === "credentialsExpiring"
-        ? []
-        : rows.filter((r) => r.bucket[query.tab as "pendingVerification" | "active" | "rejected" | "suspended"]);
+      : rows.filter(
+          (r) => r.bucket[query.tab as "pendingVerification" | "active" | "rejected" | "suspended" | "credentialsExpiring"],
+        );
 
   return {
     professionals: filtered.map((p) => ({
@@ -137,7 +222,7 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       status: p.status,
       kycStatus: p.kycStatus,
       yearsExperience: p.yearsExperience,
-      services: p.credentials.map((c) => ({ serviceType: c.serviceType, status: c.status })),
+      services: p.credentials.map((c) => ({ serviceType: c.serviceType, status: c.status, expiresAt: c.expiresAt })),
       activeClients: p.relationships.length,
       // R2 Wave 2 (20 Sep 2026) — real Directory-row surfacing of the
       // account-level lifecycle stage + capacity R2 Wave 1 shipped with no
@@ -254,9 +339,25 @@ export async function verifyCredential(
 ) {
   await getCredentialOrThrow(professionalId, credentialId);
 
+  // Expiry write path (R2 Wave 6.2, 22 Sep 2026) — the real moment
+  // `ProfessionalCredential.expiresAt`'s own schema comment names ("only
+  // ever set the moment verifyCredential actually approves a credential"):
+  // 12 months from THIS approval, flat policy per that comment (no
+  // per-certifying-body validity concept exists, out of scope per both R1
+  // work packages). A rejection leaves `expiresAt` untouched — it's not a
+  // verified credential either way, so there's nothing to (re)expire.
+  const expiresAt =
+    input.status === "verified"
+      ? (() => {
+          const next = new Date();
+          next.setMonth(next.getMonth() + CREDENTIAL_VALIDITY_MONTHS);
+          return next;
+        })()
+      : undefined;
+
   const updated = await prisma.professionalCredential.update({
     where: { id: credentialId },
-    data: { status: input.status, adminNotes: input.adminNotes ?? undefined },
+    data: { status: input.status, adminNotes: input.adminNotes ?? undefined, ...(expiresAt ? { expiresAt } : {}) },
   });
 
   await recordAudit({

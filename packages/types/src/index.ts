@@ -1925,7 +1925,8 @@ export interface AdminProfessionalListItem {
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
   yearsExperience: number | null;
-  services: { serviceType: ProfessionalServiceType; status: CredentialStatus }[];
+  /** `expiresAt` (R2 Wave 6.2, 22 Sep 2026) — null until a credential is actually verified once; see adminProfessionals.service.ts's verifyCredential. */
+  services: { serviceType: ProfessionalServiceType; status: CredentialStatus; expiresAt: string | null }[];
   activeClients: number;
   /** R2 Wave 2 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
   lifecycleStatus: ProfessionalLifecycleStatus;

@@ -20,6 +20,30 @@ const TABS: { key: ProfessionalDirectoryTab; label: string }[] = [
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
+// Capacity oversight (R2 Wave 6.2, 22 Sep 2026) — client-side sort over the
+// same rows `listProfessionals` (apps/api's adminProfessionals.service.ts)
+// already returns with `activeClients`/`maxActiveClients`/`lifecycleStatus`
+// per row (R2 Wave 2's own addition, previously only ever rendered as the
+// static "X / Y" cell below). A real audit found no admin-wide view could
+// answer "who's at/over capacity, who has headroom, who's stuck at 0
+// despite being available" across the whole roster at once — this is that
+// view: a sort control over already-fetched data, not a new aggregation
+// endpoint (see this wave's docs/admin/07-open-questions-gaps.md entry for
+// why a whole second directory screen would have been redundant here).
+type CapacitySort = "recent" | "utilizationDesc" | "utilizationAsc";
+
+const SORT_OPTIONS: { key: CapacitySort; label: string }[] = [
+  { key: "recent", label: "Newest" },
+  { key: "utilizationDesc", label: "Capacity: Fullest first" },
+  { key: "utilizationAsc", label: "Capacity: Most headroom first" },
+];
+
+/** `activeClients / maxActiveClients`, treated as +Infinity when `maxActiveClients` is 0 (over capacity by definition) so a 0-cap row with any active client always sorts to the very top of "fullest first". */
+function utilizationRatio(p: { activeClients: number; maxActiveClients: number }): number {
+  if (p.maxActiveClients <= 0) return p.activeClients > 0 ? Infinity : 0;
+  return p.activeClients / p.maxActiveClients;
+}
+
 async function fetchDirectory(tab: ProfessionalDirectoryTab, search: string): Promise<AdminProfessionalDirectoryResponse> {
   const res = await apiClient.get<AdminProfessionalDirectoryResponse>("/admin/professionals", {
     params: { tab, search: search || undefined },
@@ -49,6 +73,7 @@ async function fetchDirectory(tab: ProfessionalDirectoryTab, search: string): Pr
 export function ProfessionalDirectoryScreen() {
   const [tab, setTab] = useState<ProfessionalDirectoryTab>("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<CapacitySort>("recent");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -60,6 +85,17 @@ export function ProfessionalDirectoryScreen() {
     mutationFn: (id: string) => apiClient.post(`/admin/professionals/${id}/reactivate`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professionals"] }),
   });
+
+  // Capacity oversight sort — see this file's top comment. Sorts the
+  // already-fetched page of rows client-side; doesn't touch the query/tab
+  // filtering above.
+  const sortedProfessionals = data
+    ? [...data.professionals].sort((a, b) => {
+        if (sort === "utilizationDesc") return utilizationRatio(b) - utilizationRatio(a);
+        if (sort === "utilizationAsc") return utilizationRatio(a) - utilizationRatio(b);
+        return 0; // "recent" — keep the server's own createdAt-desc order
+      })
+    : [];
 
   return (
     <AppShell title="Professional Directory" subNav={PROFESSIONALS_SUB_NAV}>
@@ -83,13 +119,27 @@ export function ProfessionalDirectoryScreen() {
             ))}
           </div>
 
-          <input
-            type="search"
-            placeholder="Search name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64 rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as CapacitySort)}
+              aria-label="Sort by capacity utilization"
+              className="rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-xs text-text-secondary outline-none focus:border-accent"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              placeholder="Search name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-64 rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+            />
+          </div>
         </div>
 
         {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
@@ -119,67 +169,93 @@ export function ProfessionalDirectoryScreen() {
                 </tr>
               </thead>
               <tbody>
-                {data.professionals.map((p) => (
-                  <tr key={p.id} className="border-b border-border-subtle last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-text-primary">{p.fullName}</div>
-                      <div className="text-xs text-text-dim">{p.email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {p.services.length === 0 && <span className="text-xs text-text-dim">—</span>}
-                        {p.services.map((s) => (
-                          <span
-                            key={s.serviceType}
-                            className="rounded-full border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary"
-                          >
-                            {SERVICE_LABELS[s.serviceType] ?? s.serviceType}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {p.yearsExperience != null ? `${p.yearsExperience} yrs` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary">
-                      {p.activeClients} / {p.maxActiveClients}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={p.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={p.kycStatus} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={p.lifecycleStatus} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link to={`/professionals/${p.id}`} className="text-xs text-accent hover:underline">
-                          View →
-                        </Link>
-                        {p.status === "suspended" && (
-                          <button
-                            type="button"
-                            disabled={reactivateMutation.isPending && reactivateMutation.variables === p.id}
-                            onClick={() => reactivateMutation.mutate(p.id)}
-                            className="text-xs text-accent hover:underline disabled:opacity-50"
-                          >
-                            {reactivateMutation.isPending && reactivateMutation.variables === p.id
-                              ? "Reactivating…"
-                              : "Reactivate"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {data.professionals.length === 0 && (
+                {sortedProfessionals.map((p) => {
+                  const ratio = utilizationRatio(p);
+                  // Capacity oversight color coding — see this file's top
+                  // comment. Three real signals an admin scanning the whole
+                  // roster cares about: over capacity (ratio >= 1, real
+                  // over-booking risk), zero clients despite being
+                  // `available` (real dead capacity — the coach is
+                  // marketplace-visible but getting nothing), and everyone
+                  // else (no flag needed).
+                  const overCapacity = p.maxActiveClients > 0 && ratio >= 1;
+                  const idleDespiteAvailable = p.activeClients === 0 && p.lifecycleStatus === "available";
+                  const capacityClass = overCapacity
+                    ? "text-danger font-medium"
+                    : idleDespiteAvailable
+                      ? "text-warning font-medium"
+                      : "text-text-secondary";
+                  return (
+                    <tr key={p.id} className="border-b border-border-subtle last:border-0">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-text-primary">{p.fullName}</div>
+                        <div className="text-xs text-text-dim">{p.email}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {p.services.length === 0 && <span className="text-xs text-text-dim">—</span>}
+                          {p.services.map((s) => {
+                            const expiringSoon =
+                              s.expiresAt != null && new Date(s.expiresAt).getTime() <= Date.now() + 30 * 24 * 60 * 60 * 1000;
+                            return (
+                              <span
+                                key={s.serviceType}
+                                title={s.expiresAt ? `Expires ${new Date(s.expiresAt).toLocaleDateString()}` : undefined}
+                                className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                                  expiringSoon
+                                    ? "border-warning/50 bg-warning/10 text-warning"
+                                    : "border-border-subtle text-text-secondary"
+                                }`}
+                              >
+                                {SERVICE_LABELS[s.serviceType] ?? s.serviceType}
+                                {expiringSoon ? " ⚠" : ""}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {p.yearsExperience != null ? `${p.yearsExperience} yrs` : "—"}
+                      </td>
+                      <td className={`px-4 py-3 ${capacityClass}`} title={idleDespiteAvailable ? "Available but has zero active clients" : overCapacity ? "At or over capacity" : undefined}>
+                        {p.activeClients} / {p.maxActiveClients}
+                        {overCapacity ? " ⚠" : idleDespiteAvailable ? " ○" : ""}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={p.status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={p.kycStatus} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={p.lifecycleStatus} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Link to={`/professionals/${p.id}`} className="text-xs text-accent hover:underline">
+                            View →
+                          </Link>
+                          {p.status === "suspended" && (
+                            <button
+                              type="button"
+                              disabled={reactivateMutation.isPending && reactivateMutation.variables === p.id}
+                              onClick={() => reactivateMutation.mutate(p.id)}
+                              className="text-xs text-accent hover:underline disabled:opacity-50"
+                            >
+                              {reactivateMutation.isPending && reactivateMutation.variables === p.id
+                                ? "Reactivating…"
+                                : "Reactivate"}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {sortedProfessionals.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
-                      {tab === "credentialsExpiring"
-                        ? "Not available — ProfessionalCredential has no expiry-date field yet."
-                        : "No professionals in this view."}
+                      No professionals in this view.
                     </td>
                   </tr>
                 )}
