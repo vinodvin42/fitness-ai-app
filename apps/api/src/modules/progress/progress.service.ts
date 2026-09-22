@@ -3,7 +3,12 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { CreateProgressPhotoInput, LogMeasurementInput, SubmitCheckInInput } from "./progress.schema";
+import {
+  CreateProgressPhotoInput,
+  LogMeasurementInput,
+  LogMindfulnessInput,
+  SubmitCheckInInput,
+} from "./progress.schema";
 
 /**
  * Progress & Body (docs/mobile/03-screen-inventory.md §F). Phase 2 scope:
@@ -11,9 +16,10 @@ import { CreateProgressPhotoInput, LogMeasurementInput, SubmitCheckInInput } fro
  * computed from real training data already logged in Phase 1
  * (ExerciseSetLog) — not a calculated 1RM, just the heaviest set actually
  * logged per exercise, with when it happened. Also (19 Aug 2026)
- * getStreaks — per-category (training/nutrition/hydration) streaks
- * computed from WorkoutSession/MealLog/WaterLog dates, see its own comment
- * below and gap §29 for why "mindfulness" isn't one of the categories. Also
+ * getStreaks — per-category (training/nutrition/hydration/mindfulness)
+ * streaks computed from WorkoutSession/MealLog/WaterLog/MindfulnessLog
+ * dates, see its own comment below (mindfulness joined 22 Sep 2026, closing
+ * gap §29 — see its own section further down for the new log itself). Also
  * (19 Aug 2026) real Progress Photos CRUD — see the ProgressPhoto model's
  * doc comment in schema.prisma and gap §34 for the base64-in-Postgres
  * storage tradeoff. Also (R1 Developer 1 U5, 15 Sep 2026) Check-In — the
@@ -84,12 +90,16 @@ export async function getPersonalRecords(userId: string) {
 
 // ---- Streak Tracker --------------------------------------------------
 // docs/mobile/03-screen-inventory.md §F: per-habit-category streaks
-// (training/nutrition/hydration — NOT mindfulness, see gap §29), computed
-// from real dates already logged in WorkoutSession/MealLog/WaterLog. Same
+// (training/nutrition/hydration/mindfulness), computed from real dates
+// already logged in WorkoutSession/MealLog/WaterLog/MindfulnessLog. Same
 // "computed, not stored" precedent as getPersonalRecords above — no new
 // StreakRecord table, even though docs/mobile/05-data-model.md sketched
 // one, since deriving from real logs is more honest than a second source
-// of truth that could drift from it.
+// of truth that could drift from it. Mindfulness joined 22 Sep 2026 (gap
+// §29) once MindfulnessLog gave it a real data source — it reuses the
+// exact same computeStreak() "consecutive real calendar days with at least
+// one real qualifying log" algorithm every other category already uses,
+// not a bespoke one.
 
 function toDateKey(d: Date): string {
   // UTC day boundary — same convention as nutrition.service.ts's
@@ -135,10 +145,11 @@ function computeStreak(dateKeys: Set<string>): { current: number; longest: numbe
 }
 
 export async function getStreaks(userId: string) {
-  const [sessions, mealLogs, waterLogs] = await Promise.all([
+  const [sessions, mealLogs, waterLogs, mindfulnessLogs] = await Promise.all([
     prisma.workoutSession.findMany({ where: { userId }, select: { startedAt: true } }),
     prisma.mealLog.findMany({ where: { userId }, select: { loggedAt: true } }),
     prisma.waterLog.findMany({ where: { userId }, select: { loggedAt: true } }),
+    prisma.mindfulnessLog.findMany({ where: { userId }, select: { loggedAt: true } }),
   ]);
 
   // Explicit param + return types below, and an explicit Set<string>
@@ -149,11 +160,17 @@ export async function getStreaks(userId: string) {
   const trainingDates = new Set<string>(sessions.map((s: { startedAt: Date }): string => toDateKey(s.startedAt)));
   const nutritionDates = new Set<string>(mealLogs.map((m: { loggedAt: Date }): string => toDateKey(m.loggedAt)));
   const hydrationDates = new Set<string>(waterLogs.map((w: { loggedAt: Date }): string => toDateKey(w.loggedAt)));
+  const mindfulnessDates = new Set<string>(
+    mindfulnessLogs.map((m: { loggedAt: Date }): string => toDateKey(m.loggedAt)),
+  );
 
   const training = computeStreak(trainingDates);
   const nutrition = computeStreak(nutritionDates);
   const hydration = computeStreak(hydrationDates);
-  const overall = computeStreak(new Set([...trainingDates, ...nutritionDates, ...hydrationDates]));
+  const mindfulness = computeStreak(mindfulnessDates);
+  const overall = computeStreak(
+    new Set([...trainingDates, ...nutritionDates, ...hydrationDates, ...mindfulnessDates]),
+  );
 
   return {
     categories: [
@@ -175,9 +192,50 @@ export async function getStreaks(userId: string) {
         longestStreak: hydration.longest,
         activeDates: Array.from(hydrationDates),
       },
+      {
+        category: "mindfulness" as const,
+        currentStreak: mindfulness.current,
+        longestStreak: mindfulness.longest,
+        activeDates: Array.from(mindfulnessDates),
+      },
     ],
     overall: { currentStreak: overall.current, longestStreak: overall.longest },
   };
+}
+
+// ---- Mindfulness log (22 Sep 2026, gap §29) ----------------------------
+// The real, minimal data source Streak Tracker's "mindfulness" category
+// (above) reads from. Mirrors nutrition.service.ts's logWater/
+// getTodayWaterLogs exactly — append-only, no edit/delete, an audit entry
+// on create, no rate limit (same "simple, non-AI, non-financial personal
+// write" class as POST /water-logs and POST /check-ins).
+
+export function getTodayMindfulnessLogs(userId: string) {
+  return prisma.mindfulnessLog.findMany({
+    where: { userId, loggedAt: { gte: new Date(`${toDateKey(new Date())}T00:00:00.000Z`) } },
+    orderBy: { loggedAt: "asc" },
+  });
+}
+
+export async function logMindfulness(userId: string, input: LogMindfulnessInput) {
+  const mindfulnessLog = await prisma.mindfulnessLog.create({
+    data: {
+      userId,
+      durationMinutes: input.durationMinutes,
+      type: input.type ?? null,
+      note: input.note ?? null,
+    },
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: "mindfulness_log.created",
+    entityType: "MindfulnessLog",
+    entityId: mindfulnessLog.id,
+    metadata: { durationMinutes: input.durationMinutes, type: input.type ?? null },
+  });
+
+  return mindfulnessLog;
 }
 
 export async function getProgressOverview(userId: string) {
