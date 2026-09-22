@@ -10,3 +10,14 @@ export const revokeSubscriptionSchema = z.object({
 });
 
 export type RevokeSubscriptionInput = z.infer<typeof revokeSubscriptionSchema>;
+
+// Gap §57 follow-up (22 Sep 2026) — real admin un-revoke, the reverse of
+// force-revoke. Same reason-required discipline (BR-ADM-005) as the
+// original revoke — reversing a high-impact action is itself high-impact
+// and needs its own reason on the audit trail, not a blank re-use of the
+// original revoke reason.
+export const unrevokeSubscriptionSchema = z.object({
+  reason: z.string().trim().min(10).max(1000),
+});
+
+export type UnrevokeSubscriptionInput = z.infer<typeof unrevokeSubscriptionSchema>;

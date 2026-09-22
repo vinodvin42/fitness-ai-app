@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
-import { revokeSubscriptionSchema } from "./adminSubscriptions.schema";
+import { revokeSubscriptionSchema, unrevokeSubscriptionSchema } from "./adminSubscriptions.schema";
 import * as subscriptionsService from "../subscriptions/subscriptions.service";
 
 export const adminSubscriptionsRouter = Router();
@@ -23,6 +23,32 @@ adminSubscriptionsRouter.post(
     try {
       const input = revokeSubscriptionSchema.parse(req.body);
       const subscription = await subscriptionsService.revokeSubscription(
+        req.adminUserId as string,
+        req.params.id,
+        input.reason,
+      );
+      res.status(200).json({ subscription });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * Gap §57 follow-up (22 Sep 2026) — real admin un-revoke, reversing a
+ * mistaken or since-resolved force-revoke. Same `commerce: approve` gate
+ * as the revoke route above (see subscriptions.service.ts's
+ * `unrevokeSubscription` for the full status-restoration reasoning and
+ * atomic claim-once discipline).
+ */
+adminSubscriptionsRouter.post(
+  "/admin/subscriptions/:id/unrevoke",
+  requireAdminAuth,
+  requirePermission("commerce", "approve"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = unrevokeSubscriptionSchema.parse(req.body);
+      const subscription = await subscriptionsService.unrevokeSubscription(
         req.adminUserId as string,
         req.params.id,
         input.reason,

@@ -10,6 +10,7 @@ import type {
   ProfessionalServiceType,
   RevokeSubscriptionResponse,
   SensitiveAccessRequestResponse,
+  UnrevokeSubscriptionResponse,
 } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -131,6 +132,19 @@ export function UserProfileScreen() {
   const revokeSubscriptionMutation = useMutation({
     mutationFn: (params: { subscriptionId: string; reason: string }) =>
       apiClient.post<RevokeSubscriptionResponse>(`/admin/subscriptions/${params.subscriptionId}/revoke`, {
+        reason: params.reason,
+      }),
+    onSuccess: invalidateDetail,
+  });
+
+  // Gap §57 follow-up (22 Sep 2026) — real admin un-revoke, reversing a
+  // mistaken or since-resolved force-revoke. Same `commerce: approve` gate
+  // (`data.canForceRevoke` — reused rather than a second permission flag,
+  // since un-revoke is exactly as high-impact as revoke and this codebase
+  // grants both off the same `commerce: approve` capability server-side).
+  const unrevokeSubscriptionMutation = useMutation({
+    mutationFn: (params: { subscriptionId: string; reason: string }) =>
+      apiClient.post<UnrevokeSubscriptionResponse>(`/admin/subscriptions/${params.subscriptionId}/unrevoke`, {
         reason: params.reason,
       }),
     onSuccess: invalidateDetail,
@@ -478,6 +492,29 @@ export function UserProfileScreen() {
                     }
                   />
                 )}
+
+              {/*
+                Gap §57 follow-up (22 Sep 2026) — Un-revoke. Only rendered
+                when the current subscription's real status is `revoked` —
+                the previous force-revoke card above only ever shows for
+                NON_TERMINAL statuses, so the two are mutually exclusive on
+                this screen. `tone="warning"` (not "danger"): this reverses
+                a prior action rather than causing new, irreversible harm.
+              */}
+              {data.canForceRevoke && data.currentSubscription && data.currentSubscription.status === "revoked" && (
+                <ReasonGatedAction
+                  title="Un-revoke Subscription"
+                  description="Reverses a force-revoke — for a chargeback/fraud dispute later resolved in the user's favor, or a revocation made in error. Restores the subscription to active if its billing period is still current, or expired if that period has already passed — never silently reinstated for free beyond what was actually paid for. A reason is required and is recorded to the audit trail."
+                  actionLabel="Un-revoke Subscription"
+                  tone="warning"
+                  isPending={unrevokeSubscriptionMutation.isPending}
+                  isError={unrevokeSubscriptionMutation.isError}
+                  error={unrevokeSubscriptionMutation.error}
+                  onConfirm={(reason) =>
+                    unrevokeSubscriptionMutation.mutate({ subscriptionId: data.currentSubscription!.id, reason })
+                  }
+                />
+              )}
             </div>
           )}
 
