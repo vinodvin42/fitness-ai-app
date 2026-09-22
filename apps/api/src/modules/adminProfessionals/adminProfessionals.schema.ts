@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 // docs/admin/03-screen-inventory.md 03.01's tab strip. "credentialsExpiring"
-// is accepted here (so the frontend can request it like any other tab
-// without a special case) but always returns an empty list server-side —
-// see adminProfessionals.service.ts's own comment for why (no expiry-date
-// field exists on ProfessionalCredential).
+// is real as of R2 Wave 6.2 (22 Sep 2026) — filters to professionals with a
+// `verified` ProfessionalCredential inside (or past) the 30-day admin
+// warning window off `expiresAt`. See adminProfessionals.service.ts's
+// detectAndQueueExpiringCredentials/computeDirectoryBucket.
 export const professionalDirectoryTabs = [
   "all",
   "pendingVerification",
