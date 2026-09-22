@@ -21,6 +21,7 @@ import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
+import { mealPlansRouter } from "./modules/mealPlans/mealPlans.routes";
 import { analyticsEventsRouter } from "./modules/analyticsEvents/analyticsEvents.routes";
 import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
 import { adminDashboardRouter } from "./modules/adminDashboard/adminDashboard.routes";
@@ -147,6 +148,7 @@ export function createApp() {
   // plans.service.ts's own doc comment for why this exists and who it's
   // for (shared platform logic, not any one R1 work package's own scope).
   app.use("/", plansRouter);
+  app.use("/", mealPlansRouter);
   // Product-analytics events (U7, 15 Sep 2026) — the client-facing half of
   // apps/api/src/lib/analytics.ts's trackEvent() pipeline, for the handful
   // of §8 events that only exist client-side. See analyticsEventsRouter's

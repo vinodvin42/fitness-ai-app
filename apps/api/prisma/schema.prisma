@@ -363,6 +363,9 @@ model User {
   // doc comment.
   plans                       Plan[]
   recommendations             Recommendation[]
+  // Meal-Plan Generation Engine (22 Sep 2026) — see MealPlan's own doc
+  // comment.
+  mealPlans                   MealPlan[]
   reminders                   Reminder[]
   supportTickets              SupportTicket[]
   // Support Ticket Messages (added 3 Sep 2026) — see that model's own doc
@@ -863,9 +866,108 @@ model Recipe {
   updatedAt        DateTime      @updatedAt
 
   mealLogs MealLog[]
+  // Meal-Plan Generation Engine (22 Sep 2026) — see MealPlan's own doc
+  // comment.
+  mealPlanItems MealPlanItem[]
 
   @@index([createdByAdminId])
   @@map("recipes")
+}
+
+// ---- Meal-Plan Generation Engine (22 Sep 2026) -----------------------------
+// The nutrition sibling of the Plan/Recommendation engine above
+// (plans.service.ts's own doc comment explains that engine's full design —
+// this mirrors it, deliberately, rather than inventing a new AI-calling
+// pattern). That engine is an AI-driven SELECTION of one real Program from
+// the catalog; this is an AI-driven SELECTION of real Recipe rows into a
+// multi-day meal schedule — never AI-authored/free-text meal content. Same
+// discipline: the LLM answers in a strict, parseable format, every recipe id
+// it names is validated against the real eligible-Recipe catalog before
+// being trusted, and an unparseable or out-of-catalog answer is a real,
+// honest `failed` state, never silently coerced into *some* plan.
+//
+// **Real design decision made, not left implicit — why a new `MealPlan`
+// model instead of reusing `Plan`:** `Plan` is shaped around exactly ONE
+// selected `Program` per version (`Plan.programId`), because a training
+// program IS a multi-day thing already (`Workout.order` inside
+// `Program`) — one selection is the whole plan. A meal plan has no
+// equivalent single-entity home: it is fundamentally an ORDERED SET of
+// Recipe picks (one per day per meal slot), which `Plan`'s single nullable
+// `programId` column has no honest way to hold without either overloading
+// it with a JSON blob (this codebase's own convention elsewhere, e.g.
+// AuditLog.metadata, is JSON for opaque/variable data, not for a queryable
+// core relation like "which Recipe is Day 3 Lunch") or bolting a parallel
+// `mealPlanItems` relation onto a model whose entire shape/doc-comment
+// says "one Program selection." A separate `MealPlan` + `MealPlanItem`
+// pair keeps each row real and queryable (join straight to `Recipe`, index
+// by day) at the honest cost of a second, structurally similar state
+// machine — the same generating/generated/failed shape `Plan` already
+// uses, since a meal plan can fail exactly the same ways (AI unconfigured,
+// upstream error, unparseable/out-of-catalog answer, empty catalog).
+enum MealPlanStatus {
+  generating
+  generated
+  failed
+}
+
+model MealPlan {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Monotonically increasing per user, same "new version, never mutate
+  // history in place" convention as Plan.version above.
+  version       Int
+  status        MealPlanStatus @default(generating)
+  // How many days this plan covers. Always 7 today (see
+  // mealPlans.service.ts's own comment on why that's not yet a
+  // user-configurable input) but kept as a real column, not a hardcoded
+  // constant callers must know, since MealPlanItem.dayNumber is only
+  // meaningful relative to it.
+  durationDays  Int            @default(7)
+  // AI-generated, grounded explanation of the day-by-day selection —
+  // references the user's actual dietType/allergens/goals, never a
+  // generic template. Null until generated. Same field as Plan.rationale.
+  rationale     String?
+  // Set only when status is "failed" — a real error, not swallowed. Same
+  // convention as Plan.failureReason.
+  failureReason String?
+  // Exactly one active MealPlan per user at a time — the one Fuel reads
+  // from. Same semantics as Plan.isActive.
+  isActive      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  items MealPlanItem[]
+
+  @@unique([userId, version])
+  @@index([userId, isActive])
+  @@map("meal_plans")
+}
+
+// One real Recipe pick for one day/meal-slot of a MealPlan. `recipeId` is
+// a hard FK (onDelete: Cascade off the MealPlan, Restrict-by-default off
+// the Recipe — see below) rather than a plain string, unlike
+// Recommendation.suggestedProgramId's SetNull: an admin retiring a Recipe
+// out from under an already-generated day's selection is a real content-
+// management concern this pass doesn't attempt to solve (no admin Recipe
+// delete flow exists in this build — see adminPrograms.service.ts), so the
+// default FK behavior (block the delete) is the honest choice until that
+// gap is addressed, rather than silently leaving a day with no recipe at
+// all.
+model MealPlanItem {
+  id         String   @id @default(uuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  // 1-based day index, 1..MealPlan.durationDays.
+  dayNumber  Int
+  mealType   MealType
+  recipeId   String
+  recipe     Recipe   @relation(fields: [recipeId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([mealPlanId, dayNumber, mealType])
+  @@index([mealPlanId, dayNumber])
+  @@map("meal_plan_items")
 }
 
 // 05.05 Review / Approval, added 25 Aug 2026. Polymorphic on purpose —
