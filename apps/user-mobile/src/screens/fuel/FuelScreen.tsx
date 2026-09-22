@@ -198,6 +198,14 @@ export function FuelScreen({ navigation }: Props) {
           tintSoft={colors.warningSoft}
           onPress={() => navigation.navigate("NutritionCalendar")}
         />
+        <ListRow
+          icon="sparkles"
+          title="Meal Plan"
+          subtitle="AI-generated, from real recipes"
+          tint={colors.success}
+          tintSoft={colors.successSoft}
+          onPress={() => navigation.navigate("MealPlan")}
+        />
       </View>
     </ScreenContainer>
   );

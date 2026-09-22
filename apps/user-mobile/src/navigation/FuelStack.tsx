@@ -7,6 +7,7 @@ import { RecipeDetailScreen } from "../screens/fuel/RecipeDetailScreen";
 import { LogMealScreen } from "../screens/fuel/LogMealScreen";
 import { ConfirmFoodEstimateScreen } from "../screens/fuel/ConfirmFoodEstimateScreen";
 import { NutritionCalendarScreen } from "../screens/fuel/NutritionCalendarScreen";
+import { MealPlanScreen } from "../screens/fuel/MealPlanScreen";
 
 // docs/mobile/03-screen-inventory.md §D: Nutrition Dashboard -> Recipes ->
 // Recipe Detail -> Log Meal, mirroring the Train tab's stack pattern
@@ -27,6 +28,10 @@ export type FuelStackParamList = {
   LogMeal: { mealType?: MealType } | undefined;
   ConfirmFoodEstimate: { estimate: FoodEstimate };
   NutritionCalendar: undefined;
+  // Meal Plan (22 Sep 2026) — the real AI-generated multi-day meal plan,
+  // wired to apps/api's new Meal-Plan Generation Engine. See
+  // MealPlanScreen's own doc comment.
+  MealPlan: undefined;
 };
 
 const Stack = createNativeStackNavigator<FuelStackParamList>();
@@ -40,6 +45,7 @@ export function FuelStack() {
       <Stack.Screen name="LogMeal" component={LogMealScreen} />
       <Stack.Screen name="ConfirmFoodEstimate" component={ConfirmFoodEstimateScreen} />
       <Stack.Screen name="NutritionCalendar" component={NutritionCalendarScreen} />
+      <Stack.Screen name="MealPlan" component={MealPlanScreen} />
     </Stack.Navigator>
   );
 }

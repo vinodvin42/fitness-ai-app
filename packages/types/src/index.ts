@@ -3779,6 +3779,43 @@ export interface PlanNextWorkout {
   programComplete: boolean;
 }
 
+// ---- Meal-Plan Generation Engine (22 Sep 2026) -----------------------------
+// The nutrition sibling of Plan/PlanStatus above — see apps/api's
+// mealPlans.service.ts doc comment for the full design (an AI-driven
+// SELECTION of real Recipe rows into a 7-day, per-meal-slot schedule,
+// mirroring Plan's own "select, don't invent" discipline).
+
+export type MealPlanStatus = "generating" | "generated" | "failed";
+
+export interface MealPlanItem {
+  id: string;
+  dayNumber: number;
+  mealType: MealType;
+  recipeId: string;
+  recipeName: string;
+  recipeImageUrl: string | null;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+export interface MealPlan {
+  id: string;
+  version: number;
+  status: MealPlanStatus;
+  /** Always 7 today — see mealPlans.service.ts's own comment on why this isn't yet user-configurable. */
+  durationDays: number;
+  /** AI-generated, grounded in the user's real dietType/allergens/goals. Null until generated. */
+  rationale: string | null;
+  /** Set only when status is "failed" — a real error, never silently swallowed. */
+  failureReason: string | null;
+  /** Exactly one MealPlan per user has this true at a time — the one Fuel reads from. */
+  isActive: boolean;
+  createdAt: string;
+  items: MealPlanItem[];
+}
+
 // ---- Admin: Gym Partner Lite (apps/admin-web) ------------------------------
 // R2 Wave 4 (20 Sep 2026) — real admin-web UI over R2 Wave 1's real
 // gyms.service.ts. See that file's own doc comment for the full model/
