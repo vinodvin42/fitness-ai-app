@@ -511,26 +511,60 @@ never emitted. A test that can only pass is worse than no test.
 
 ### Still open
 
-Unchanged from the review above, in the order the review recommends:
+After a second implementation pass, in the order the review recommends:
 
-1. **The two portals.** `gym-portal` is 3 screens and `creator-portal` is 2, against
-   roughly 25 screens of spec. This remains the largest single build.
-2. **User checkout (U-M1/2/3).** No checkout screen exists; payment is a Razorpay modal
-   invoked from Subscription. Needs the GST line (D3) and "Have a code?" at checkout.
-3. **The Website's R1 pages.** Roughly four of eleven have a counterpart; the gym-invite
-   and creator-referral landings, Early Access, Learn, FAQ, 404 and the cookie banner
-   (W-M3) do not exist.
-4. **i18n.** Language preference persists across ten languages; every string is still
-   inline. This gets more expensive per screen added.
-5. **Provider adapters and deep links.** Razorpay and OpenFoodFacts remain hard-wired;
-   no payout or SMS provider; no deep-link provider at all (D6), which keeps F2 and F3
-   broken and W-M2 unbuildable.
-6. **Infrastructure.** No Redis/BullMQ (the in-memory rate limiter still caps the API at
-   one instance) and no object storage for evidence, meal photos or exports.
-7. **Professional app gaps** P-M1 through P-M16, notably the whole earnings surface.
-8. **Health-data encryption.** The consent record is real; `medicalConditions` and
-   `injuries` are still plain columns.
+1. **i18n.** Language preference persists across ten languages; every string is still
+   inline. This is now the largest single piece of remaining work, and it gets more
+   expensive with each screen added — the eleven screens added in the second pass all
+   carry inline copy that will have to move.
+2. **Redis/BullMQ and object storage.** The in-memory rate limiter still caps the API at
+   one instance, and there is no object storage for professional evidence uploads, meal
+   photos or generated exports. Both are deployment-shaped rather than feature-shaped,
+   and both block real scale rather than any single R1 screen.
+3. **Professional app (P-M1 to P-M16).** Still 19 screens. The whole earnings surface,
+   the multi-step application form, MFA and forgot-password, the offers list with decline
+   reasons, incoming handover, and the safety flag are all absent. This is the largest
+   remaining *screen* build.
+4. **The remaining Website R1 pages.** How it works, Programs, Professional Guidance,
+   For Professionals with its application form, Learn's Nutrition and Understand
+   categories, FAQ, Safety & Privacy, and Early Access with its four states. The
+   invite/referral landings, cookie banner and 404 landed; these did not.
+5. **Real providers.** The adapter seams exist and the mocks are honest, but D4 (payment),
+   D5 (payout), D6 (deep links) and D8 (food data) all still need a real vendor decision.
+   D5 and D6 report themselves unconfigured, which is why a payout run records intent
+   rather than settlement and an install still loses its attribution.
+6. **Dropping the plaintext health columns.** The encrypted columns and the backfill are
+   live; the two plaintext columns stay until the backfill has run in every environment,
+   then need a follow-up migration.
+7. **Admin screens for what the second pass built.** Payout runs, privacy requests, gym
+   help requests and commission disputes all have working APIs and action-queue items,
+   but only the assignment queue got a screen.
+8. **Accessibility.** Still not audited. The DoD requires WCAG 2.1 AA contrast, 44x44pt
+   targets and screen-reader labels throughout.
 
-The four structural decisions in §A are now *implemented to the spec's answer behind
+The four structural decisions in §A remain *implemented to the spec's answer behind
 flags*, not settled. Flipping any of them back is a config change; deleting the
 superseded code is still a product decision, and deliberately not taken here.
+
+### Second implementation pass
+
+Six further commits, same verification bar. The suite went from **281 tests in 45 files**
+at the start of this work to **403 in 57 files**.
+
+| Area | What landed |
+|---|---|
+| **Provider adapters (D4, D5, D6, D8)** | `src/providers` with Razorpay + mock payments, a payout placeholder, Open Food Facts + an offline seed list, and a deep-link resolver. Two honesty bugs caught in review: the payment selector originally fell back to the mock when credentials were missing (a production deploy that lost its keys would have "accepted" payments), and the payout mock originally reported itself configured (it would have told an admin money moved when none did). |
+| **Checkout (U-M1/2/3), U-M4, U-M22** | Server-side pricing with an exact GST-inclusive split, "Have a code?" that degrades rather than failing, a processing state that replaces the pay button, `pending`/`suspended` subscription states with `expiring` derived on read, and refund status finally visible to the user who paid. |
+| **Health data encrypted at rest (§10)** | AES-256-GCM, lists encrypted as one blob so the count cannot leak, decryption failure throwing rather than returning an empty list, and one shared accessor because a missed decrypt site fails *quietly*. Backfill exercised against a real legacy row. |
+| **Gym Partner Lite** | 3 screens to 7: equipment profile with the CURRENT/STALE cycle, invite QR, partnership status with a reason line per end state, and trainer help requests whose model deliberately has no member link. |
+| **Creator Partner Lite** | 2 screens to 7: commission ledger with C-M2's payout-failure reason (which needed a ledger fix, not just a screen), referral tools with per-link liveness, and agreement/account pages that say plainly what D5 and D13 have not settled. |
+| **Website (W-M2, W-M3, 404)** | Invite and referral landings that resolve codes against the API before promising anything, a cookie banner that actually gates a consent flag, and a real 404 with a real status. |
+
+Worth recording, because it is the pattern rather than the exception: **three bugs in the
+website work were found only by driving the real pages in a browser against a real API** —
+relative asset paths breaking under a path rewrite, CORS blocking the public link
+endpoints, and then two successive fixes that each shipped an open CORS origin *together
+with* credentials. Typecheck and the test suite were green throughout. The equivalent
+lesson from the first pass was an event-registry test that passed vacuously. Both suggest
+the same thing: the checks that catch real defects here are the ones that exercise the
+running system, not the ones that read it.
