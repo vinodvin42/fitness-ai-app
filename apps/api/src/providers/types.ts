@@ -128,3 +128,42 @@ export interface DeepLinkProvider {
   isConfigured(): boolean;
   build(target: DeepLinkTarget): DeepLink;
 }
+
+// ---- Object storage -------------------------------------------------
+
+export type StoredObject = {
+  /** Opaque key the caller persists; never a filesystem path. */
+  key: string;
+  /** Where the object can be fetched, valid for `expiresInSeconds`. */
+  url: string;
+  expiresAt: Date;
+};
+
+export type PutObjectInput = {
+  /** Logical folder, e.g. "evidence" or "exports". Not user-controlled. */
+  namespace: "evidence" | "meal-photos" | "exports";
+  /** Original filename, used only to derive an extension. */
+  filename: string;
+  contentType: string;
+  body: Buffer;
+};
+
+/**
+ * Spec §11: "File storage — S3-compatible (evidence uploads, meal
+ * photos, exports)".
+ *
+ * There is no real implementation yet — a vendor has not been chosen —
+ * so `isConfigured()` reports false everywhere today and callers must
+ * branch on it rather than assume a file was stored. The local
+ * implementation exists so the upload paths can be built and tested
+ * without one, and it is explicit about being unsuitable for more than
+ * one instance.
+ */
+export interface ObjectStorageProvider {
+  readonly name: string;
+  isConfigured(): boolean;
+  put(input: PutObjectInput): Promise<StoredObject>;
+  /** Refreshes an expiring link without re-uploading. */
+  signedUrl(key: string, expiresInSeconds?: number): Promise<string>;
+  delete(key: string): Promise<void>;
+}

@@ -128,6 +128,20 @@ const envSchema = z.object({
   // Defaults to the REAL gateway, never to the mock. An environment that
   // simply lacks credentials must 503 rather than quietly pretend to
   // take money; choosing the mock is always explicit.
+  // Shared rate-limit store (spec §11's Redis). Optional: a single
+  // instance works without it. REQUIRED once API_INSTANCE_COUNT > 1 —
+  // see lib/redis.ts's assertRateLimitStoreIsSafe for why that is a boot
+  // failure rather than a warning.
+  // Where the local-disk storage provider writes. Development only —
+  // see providers/localObjectStorage.ts on why it reports itself
+  // unconfigured regardless.
+  LOCAL_STORAGE_DIR: z.string().optional(),
+  REDIS_URL: z.string().url().optional(),
+  // How many instances of this API are running behind the load balancer.
+  // Declared rather than detected because nothing in-process can know
+  // it, and getting it wrong silently multiplies every rate limit.
+  API_INSTANCE_COUNT: z.coerce.number().int().min(1).default(1),
+
   PAYMENT_PROVIDER: z.enum(["razorpay", "mock"]).default("razorpay"),
   // `seed` is the offline four-product list; `openfoodfacts` is the real
   // vendor. Defaults to the real one — a network blip must never

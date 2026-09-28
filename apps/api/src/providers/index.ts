@@ -7,7 +7,14 @@ import {
   seedFoodDataProvider,
   webFallbackDeepLinkProvider,
 } from "./mockProviders";
-import type { DeepLinkProvider, FoodDataProvider, PaymentProvider, PayoutProvider } from "./types";
+import { localObjectStorage } from "./localObjectStorage";
+import type {
+  DeepLinkProvider,
+  FoodDataProvider,
+  ObjectStorageProvider,
+  PaymentProvider,
+  PayoutProvider,
+} from "./types";
 
 export * from "./types";
 export { mockPaymentSignature } from "./mockProviders";
@@ -48,6 +55,9 @@ export const paymentProvider: PaymentProvider = pickPaymentProvider();
 export const payoutProvider: PayoutProvider = mockPayoutProvider;
 export const foodDataProvider: FoodDataProvider = pickFoodDataProvider();
 export const deepLinkProvider: DeepLinkProvider = webFallbackDeepLinkProvider;
+// §11's "S3-compatible" storage. No vendor chosen, so this is the
+// local-disk stand-in and it reports itself unconfigured.
+export const objectStorage: ObjectStorageProvider = localObjectStorage;
 
 /** Shown on the Admin integrations screen, so staff can see what is live. */
 export function providerStatus() {
@@ -56,5 +66,6 @@ export function providerStatus() {
     payout: { name: payoutProvider.name, configured: payoutProvider.isConfigured() },
     foodData: { name: foodDataProvider.name, configured: foodDataProvider.isConfigured() },
     deepLink: { name: deepLinkProvider.name, configured: deepLinkProvider.isConfigured() },
+    objectStorage: { name: objectStorage.name, configured: objectStorage.isConfigured() },
   };
 }

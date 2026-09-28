@@ -8,11 +8,24 @@ initSentry();
 import { createApp } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./db/prisma";
+import { assertRateLimitStoreIsSafe, disconnectRedis, isRedisConfigured } from "./lib/redis";
+
+// Refuses to boot a multi-instance deployment whose rate limits would
+// be enforced per instance. Deliberately before createApp(): starting
+// and then discovering the limiter is weaker than configured is worse
+// than not starting, because nothing would ever surface it at runtime.
+assertRateLimitStoreIsSafe();
 
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   console.log(`[api] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
+  // Stated at boot so an operator can see which store is live without
+  // reading config — the failure mode this guards against is invisible
+  // at runtime, so it has to be visible at startup.
+  console.log(
+    `[api] rate-limit store: ${isRedisConfigured() ? "redis (shared)" : "in-memory (single instance only)"}`,
+  );
 });
 
 // Go-live hardening (25 Aug 2026) — previously nothing handled SIGTERM,
@@ -23,8 +36,7 @@ const server = app.listen(env.PORT, () => {
 function shutdown(signal: string) {
   console.log(`[api] ${signal} received, shutting down`);
   server.close(() => {
-    prisma
-      .$disconnect()
+    Promise.all([prisma.$disconnect(), disconnectRedis()])
       .catch((err: unknown) => captureException(err))
       .finally(() => process.exit(0));
   });
