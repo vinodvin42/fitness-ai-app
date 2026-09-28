@@ -2,6 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
+import { PayoutRunsScreen } from "./screens/finance/PayoutRunsScreen";
+import { PrivacyRequestsScreen } from "./screens/adminSystem/PrivacyRequestsScreen";
+import { GymHelpRequestsScreen } from "./screens/gyms/GymHelpRequestsScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { ActionRequiredScreen } from "./screens/dashboard/ActionRequiredScreen";
 import { ProfessionalDirectoryScreen } from "./screens/professionals/ProfessionalDirectoryScreen";
@@ -264,6 +267,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PrivacyScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin-system/privacy-requests"
+        element={
+          <RequireAuth>
+            <PrivacyRequestsScreen />
           </RequireAuth>
         }
       />
@@ -573,6 +584,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/finance/payout-runs"
+        element={
+          <RequireAuth>
+            <PayoutRunsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/finance/invoices"
         element={
           <RequireAuth>
@@ -625,6 +644,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <GymDirectoryScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/gyms/help-requests"
+        element={
+          <RequireAuth>
+            <GymHelpRequestsScreen />
           </RequireAuth>
         }
       />

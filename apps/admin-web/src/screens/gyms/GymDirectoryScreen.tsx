@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import { GYMS_SUB_NAV } from "./subNav";
 
 const STATUS_FILTERS: { key: GymStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -72,7 +73,7 @@ export function GymDirectoryScreen() {
   const isFormValid = form.name.trim().length > 0 && form.contactName.trim().length > 0 && form.contactEmail.trim().length > 0;
 
   return (
-    <AppShell title="Gym Partners">
+    <AppShell title="Gym Partners" subNav={GYMS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">

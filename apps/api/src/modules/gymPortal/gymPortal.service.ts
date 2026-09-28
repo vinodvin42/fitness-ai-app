@@ -252,3 +252,64 @@ export async function createHelpRequest(
 
   return created;
 }
+
+// ---- Admin side ------------------------------------------------------
+
+/**
+ * The staff queue for gym help requests. Built alongside the gym-facing
+ * side rather than after it, because a request form with no queue behind
+ * it is worse than no form: it collects a promise nobody can keep.
+ */
+export async function listHelpRequestsForAdmin(filter: { status?: string }) {
+  return prisma.gymHelpRequest.findMany({
+    where: filter.status ? { status: filter.status as never } : undefined,
+    orderBy: { createdAt: "asc" },
+    take: 200,
+    include: {
+      gym: { select: { id: true, name: true, contactName: true, contactEmail: true } },
+      location: { select: { id: true, name: true } },
+      resolvedByAdmin: { select: { fullName: true } },
+    },
+  });
+}
+
+/**
+ * Staff replies to a request. The note goes back to the gym verbatim, so
+ * it is written for them, not for an internal audience — unlike the
+ * refund/privacy `reason` fields, which are staff-facing and deliberately
+ * never surfaced to the other party.
+ */
+export async function respondToHelpRequest(
+  adminId: string,
+  id: string,
+  input: { status: "in_progress" | "resolved"; resolutionNote: string },
+) {
+  const existing = await prisma.gymHelpRequest.findUnique({ where: { id } });
+  if (!existing) throw new ApiHttpError(404, "help_request_not_found", "Request not found");
+  if (existing.status === "resolved") {
+    throw new ApiHttpError(409, "already_resolved", "This request is already resolved");
+  }
+
+  const updated = await prisma.gymHelpRequest.update({
+    where: { id },
+    data: {
+      status: input.status,
+      resolutionNote: input.resolutionNote,
+      resolvedByAdminId: adminId,
+      ...(input.status === "resolved" ? { resolvedAt: new Date() } : {}),
+    },
+  });
+
+  await recordAudit({
+    actorAdminId: adminId,
+    action: input.status === "resolved" ? "gym.help_request_resolved" : "gym.help_request_updated",
+    entityType: "GymHelpRequest",
+    entityId: id,
+    ruleId: "BR-GYM-003",
+    stateBefore: { status: existing.status },
+    stateAfter: { status: input.status },
+    metadata: { gymId: existing.gymId },
+  });
+
+  return updated;
+}

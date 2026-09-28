@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireGymAuth, GymAuthedRequest } from "../../middleware/gymAuth";
+import { requireAdminAuth, AdminAuthedRequest } from "../../middleware/adminAuth";
+import { requirePermission } from "../../middleware/adminPermissions";
 import * as service from "./gymPortal.service";
 
 export const gymPortalRouter = Router();
@@ -99,3 +101,45 @@ gymPortalRouter.post("/gym-portal/help-requests", requireGymAuth, async (req: Gy
     next(err);
   }
 });
+
+// ---- Admin queue -----------------------------------------------------
+
+const respondSchema = z.object({
+  status: z.enum(["in_progress", "resolved"]),
+  resolutionNote: z.string().trim().min(5).max(4000),
+});
+
+/**
+ * Gated on `gyms: edit` — the same module the rest of the partner
+ * actions use. A help request is partner-relationship work, not support
+ * ticketing, and folding it into the Support module would put it in
+ * front of staff who handle consumer tickets and know nothing about
+ * gym commercial context.
+ */
+gymPortalRouter.get(
+  "/admin/gym-help-requests",
+  requireAdminAuth,
+  requirePermission("gyms", "view"),
+  async (req, res, next) => {
+    try {
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
+      res.json(await service.listHelpRequestsForAdmin({ status }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+gymPortalRouter.post(
+  "/admin/gym-help-requests/:id/respond",
+  requireAdminAuth,
+  requirePermission("gyms", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = respondSchema.parse(req.body);
+      res.json(await service.respondToHelpRequest(req.adminUserId as string, req.params.id, input));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
