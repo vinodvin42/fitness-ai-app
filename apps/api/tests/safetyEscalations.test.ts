@@ -80,7 +80,68 @@ describe("BR-SAF-004 Safety Escalations", () => {
     expect(events).toHaveLength(1);
     expect(events[0].ruleId).toBe("BR-SAF-004");
     expect((events[0].entityIds as Record<string, unknown>).safetyEscalationId).toBe(rows[0].id);
-    expect(events[0].metadata).toEqual({ medicalConditionsCount: 1, injuriesCount: 1 });
+    // D14 tiering: asthma is not a Safety Pause condition, so this is
+    // the WARNING tier — still a real escalation row and a real event
+    // (the safety team must see reported health data either way), but
+    // the user is not stopped.
+    expect(events[0].metadata).toEqual({ medicalConditionsCount: 1, injuriesCount: 1, outcome: "warning" });
+    expect(res.body.safetyOutcome).toBe("warning");
+  });
+
+  it("acceptance test 5: a SERIOUS condition pauses, with a high-severity queue item", async () => {
+    // A separate user, because the escalation only fires on first
+    // completion and the fixture user above already completed.
+    const email = `safety-pause-${Date.now()}@example.com`;
+    const signup = await request(app)
+      .post("/auth/signup")
+      .send({ email, password: "Testpass123!", fullName: "Safety Pause Probe" });
+    const token = signup.body.tokens.accessToken;
+    const pauseUserId = signup.body.user.id as string;
+
+    const res = await request(app)
+      .put("/users/me/onboarding")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        goals: ["strength"],
+        trainingLevel: "beginner",
+        medicalConditions: ["diagnosed heart condition"],
+        injuries: [],
+      });
+    expect(res.status).toBe(200);
+    // D14: "Heart condition -> Pause". This is what the client branches
+    // on to show the Safety Pause screen.
+    expect(res.body.safetyOutcome).toBe("pause");
+
+    const events = await prisma.analyticsEvent.findMany({
+      where: { userId: pauseUserId, name: "safety.escalated" },
+    });
+    expect(events).toHaveLength(1);
+    expect((events[0].metadata as Record<string, unknown>).outcome).toBe("pause");
+
+    const escalation = await prisma.safetyEscalation.findFirst({ where: { userId: pauseUserId } });
+    const items = await prisma.adminActionItem.findMany({
+      where: { entityType: "SafetyEscalation", entityId: escalation!.id },
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].severity).toBe("high");
+
+    await prisma.adminActionItem.deleteMany({ where: { entityType: "SafetyEscalation", entityId: escalation!.id } });
+    await prisma.user.deleteMany({ where: { id: pauseUserId } });
+  });
+
+  it("a user who reports nothing gets neither a pause nor a warning", async () => {
+    const email = `safety-none-${Date.now()}@example.com`;
+    const signup = await request(app)
+      .post("/auth/signup")
+      .send({ email, password: "Testpass123!", fullName: "Safety None Probe" });
+    const res = await request(app)
+      .put("/users/me/onboarding")
+      .set("Authorization", `Bearer ${signup.body.tokens.accessToken}`)
+      .send({ goals: ["strength"], trainingLevel: "beginner", medicalConditions: [], injuries: [] });
+
+    expect(res.body.safetyOutcome).toBe("none");
+    expect(await prisma.safetyEscalation.count({ where: { userId: signup.body.user.id } })).toBe(0);
+    await prisma.user.deleteMany({ where: { id: signup.body.user.id } });
   });
 
   it("does NOT fire again on a second PUT (re-submission is not a new completion)", async () => {

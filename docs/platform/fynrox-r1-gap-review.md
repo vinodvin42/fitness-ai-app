@@ -1,6 +1,12 @@
 # FynroX R1 — Spec vs. Codebase Review
 
-**Reviewed:** 24 Sep 2026 · **Branch:** `claude/ecstatic-fermat-9wf1gj` · **Commit:** `3fd444d`
+**Reviewed:** 24 Sep 2026 · **Implementation pass:** 28 Sep 2026 · **Branch:** `claude/ecstatic-fermat-9wf1gj`
+
+> **Status.** The review below is the original assessment against commit `3fd444d`,
+> kept as written so the reasoning stays auditable. A four-commit implementation pass
+> has since closed a large part of it — see **[What has been closed](#what-has-been-closed)**
+> at the end for exactly what changed, what is still open, and the two corrections the
+> implementation forced on this review's own findings.
 
 ## Source documents
 
@@ -450,3 +456,81 @@ partner portals (~25 screens) → website R1 pages + deep-link adapter (D6) → 
 **Do not** treat §7's "both portals are complete apart from small items" or §5's "Professional App is
 85% complete" as descriptions of this repository. They describe the Figma files. Against the code,
 those two surfaces are the largest remaining builds.
+
+
+---
+
+## What has been closed
+
+Four commits on this branch, each verified with typecheck across all six workspaces,
+lint at zero errors, and the full `apps/api` suite. The suite went from **281 tests
+in 45 files** to **343 tests in 52 files**; every pre-existing test still passes,
+and the four that were changed are noted below with why.
+
+### Closed
+
+| Finding | What landed |
+|---|---|
+| **B — Brand** | `packages/config` is a real source package with `BRAND_NAME`, the fynrox.app / fynrox.com domains and lowercase link builders. 101 files swept. Structural usages (TOTP issuer, gateway display name, User-Agent, reset email, AI prompt) read the constant. **Q12**: user codes now carry `FX-`, with a lookup that accepts either shape so old codes keep working. |
+| **G — config-flagged D-defaults** | `r1Flags` carries all of D1–D14 as env-overridable settings, defaulting to the handoff's own build-to answers. |
+| **A1 — marketplace vs controlled assignment** | New `GuidanceRequest` gives a user a way to ask for help without naming a professional; `POST /admin/guidance-requests/:id/match` turns it into an offer. Journey **F5 now connects end to end**, with D11's re-match limit and §10's one-active-professional-per-service rule enforced. Discovery, profiles and booking are gated off by default rather than deleted. |
+| **A2 — gamification** | Streak Tracker hidden behind `GAMIFICATION_ENABLED` (default off). |
+| **A4 — navigation** | Recover is a tab; Progress moved into More with the Progress card on Today that §2 requires. |
+| **C3 — earning/commission states** | `CreatorCommission` (per-payment, with DISPUTED/REVERSED), `PayoutBatch`, and the full earning lifecycle. |
+| **C4 — privacy requests** | `PrivacyRequest` with the §10 lifecycle, a cancellable 30-day deletion window, and an admin verify → start → complete/reject flow. |
+| **C4 — partner / professional / relationship / equipment states** | All the missing enum values, including relationship `completed` with a real `completeRelationship()`. |
+| **D — audit columns** | `AuditLog` gains `stateBefore`, `stateAfter`, `ruleId` as real columns, populated by every path touched. |
+| **D — events** | `lib/eventRegistry.ts` maps all 60 spec events to emitted names, with a test that fails when a claimed emitter disappears. Ten genuinely-missing events now emitted. |
+| **A-M1** | Admin assignment queue screen, over the API that already existed. |
+| **A-M3** | Payout run: preview, approve, batch with race-safe claiming, settle with per-row failures. |
+| **U-M5 / U-M7** | `RequestGuidanceScreen` — request form, live status, and an honest "no match found" state. |
+| **Acceptance test 5** | D14's tiering is real: a heart condition pauses, anything else warns. Previously **any** declared condition escalated, which made this test vacuously true and the warning path unreachable. |
+| **Acceptance test 12** | `access.revoked` now emitted on both end and completion. The 403 half was always real. |
+| **Acceptance test 14** | Was already true with nothing guarding it. Now has a shape-based regression guard that walks partner responses for forbidden keys at any depth — plus a test that the guard itself still catches a planted leak. |
+| **Acceptance test 15** | A full refund reverses the linked commission, a partial one disputes it, and the payment stays `paid`. |
+| **Acceptance test 16** | `assertHighImpactConfirmed` — reason of at least 10 characters plus an exact typed `RESOLVE`, enforced in the service as well as the schema. |
+| **Acceptance test 17** | Deletion through the tracked request removes owned rows and leaves the audit row with a null actor. |
+
+### Corrections to this review
+
+Two findings above were wrong, and the implementation is what surfaced them:
+
+- **W-M1 and W-M7 do not apply to this repository.** §F said the website's nav copy
+  defect and store buttons "both still apply". They do not: `apps/landing` never lists
+  the app's tabs anywhere, and `download.html` and `about.html` already state plainly
+  that FynroX is not on an app store. Both were Figma-only defects.
+- **The Recover/Progress swap was not an oversight.** §A4 called it a defect. It was a
+  deliberate 14 Sep decision, correct under the work package's BR-USR-001/002 at the
+  time; the handoff then explicitly changed those two rules. The finding stands, the
+  characterisation did not.
+
+One process note worth keeping: the event-registry coverage test **passed vacuously on
+first draft**, because it grepped for emitted names across a source tree that included
+the registry naming all of them. Excluding the registry revealed nine events claimed but
+never emitted. A test that can only pass is worse than no test.
+
+### Still open
+
+Unchanged from the review above, in the order the review recommends:
+
+1. **The two portals.** `gym-portal` is 3 screens and `creator-portal` is 2, against
+   roughly 25 screens of spec. This remains the largest single build.
+2. **User checkout (U-M1/2/3).** No checkout screen exists; payment is a Razorpay modal
+   invoked from Subscription. Needs the GST line (D3) and "Have a code?" at checkout.
+3. **The Website's R1 pages.** Roughly four of eleven have a counterpart; the gym-invite
+   and creator-referral landings, Early Access, Learn, FAQ, 404 and the cookie banner
+   (W-M3) do not exist.
+4. **i18n.** Language preference persists across ten languages; every string is still
+   inline. This gets more expensive per screen added.
+5. **Provider adapters and deep links.** Razorpay and OpenFoodFacts remain hard-wired;
+   no payout or SMS provider; no deep-link provider at all (D6), which keeps F2 and F3
+   broken and W-M2 unbuildable.
+6. **Infrastructure.** No Redis/BullMQ (the in-memory rate limiter still caps the API at
+   one instance) and no object storage for evidence, meal photos or exports.
+7. **Professional app gaps** P-M1 through P-M16, notably the whole earnings surface.
+8. **Health-data encryption.** The consent record is real; `medicalConditions` and
+   `injuries` are still plain columns.
+
+The four structural decisions in §A are now *implemented to the spec's answer behind
+flags*, not settled. Flipping any of them back is a config change; deleting the
+superseded code is still a product decision, and deliberately not taken here.

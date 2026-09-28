@@ -1,4 +1,5 @@
 import type { User } from "@prisma/client";
+import { classifySafetyOutcome } from "@fitness-ai-app/config";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
@@ -153,7 +154,22 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // editOnboardingProfileSchema's own comment), so it's structurally
   // incapable of reaching this branch. A real escalation only fires once,
   // at the one real moment this data is first reported.
-  if (isNewCompletion && (input.medicalConditions.length > 0 || input.injuries.length > 0)) {
+  // D14 — "Which health conditions trigger Safety Pause vs a warning";
+  // build-to default "Heart condition -> Pause; others -> warning +
+  // consent". Until R1 this branch escalated on ANY declared condition
+  // or injury, which made acceptance test 5 ("selecting a SERIOUS health
+  // condition shows the Safety Pause screen") vacuously true and left
+  // the warning path unreachable — a user reporting mild asthma got the
+  // same full stop as one reporting a cardiac event.
+  //
+  // Injuries alone never pause: they are a plan-personalisation input,
+  // and the handoff routes only "serious conditions" to Safety Pause.
+  const safetyOutcome = classifySafetyOutcome(input.medicalConditions);
+  const shouldEscalate = isNewCompletion && safetyOutcome === "pause";
+  const shouldWarn =
+    isNewCompletion && safetyOutcome === "warning" && input.medicalConditions.length + input.injuries.length > 0;
+
+  if (shouldEscalate) {
     const escalation = await prisma.safetyEscalation.create({
       data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
     });
@@ -184,12 +200,56 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
         metadata: {
           medicalConditionsCount: input.medicalConditions.length,
           injuriesCount: input.injuries.length,
+          outcome: "pause",
+        },
+      },
+    );
+  } else if (shouldWarn) {
+    // The warning tier. A real SafetyEscalation row is still written —
+    // this IS reported health data and the safety team should be able
+    // to see it — but at `low` severity and without the Pause, so the
+    // user continues onboarding with a warning and a consent step
+    // rather than being stopped. Recording it as an escalation the
+    // console can filter is the honest middle ground between "full
+    // stop" and "no trace at all".
+    const escalation = await prisma.safetyEscalation.create({
+      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+    });
+
+    await createActionItem({
+      type: "safety_escalation",
+      entityType: "SafetyEscalation",
+      entityId: escalation.id,
+      severity: "low",
+      metadata: {
+        userId,
+        medicalConditionsCount: input.medicalConditions.length,
+        injuriesCount: input.injuries.length,
+        outcome: "warning",
+      },
+    });
+
+    await trackEvent(
+      userId,
+      "safety.escalated",
+      { safetyEscalationId: escalation.id, onboardingProfileId: profile.userId },
+      {
+        ruleId: "BR-SAF-004",
+        metadata: {
+          medicalConditionsCount: input.medicalConditions.length,
+          injuriesCount: input.injuries.length,
+          outcome: "warning",
         },
       },
     );
   }
 
-  return profile;
+  // D14's outcome travels with the response so the client knows whether
+  // to show the Safety Pause screen or a warning + consent step. Derived
+  // server-side rather than re-derived in each client: which conditions
+  // are serious is a safety rule, and BR-SAF-004 plus the Definition of
+  // Done both require rules to be enforced by the API, not the UI.
+  return { ...profile, safetyOutcome };
 }
 
 /**

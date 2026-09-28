@@ -40,8 +40,12 @@ usersRouter.patch("/me", requireAuth, async (req: AuthedRequest, res, next) => {
 usersRouter.put("/me/onboarding", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const input = onboardingProfileSchema.parse(req.body);
-    const profile = await usersService.upsertOnboardingProfile(req.userId!, input);
-    res.json({ onboardingProfile: profile });
+    const { safetyOutcome, ...profile } = await usersService.upsertOnboardingProfile(req.userId!, input);
+    // D14's outcome is lifted out of the profile object rather than left
+    // nested inside it: it is a decision about this submission ("pause"
+    // / "warning" / "none"), not a stored attribute of the profile, and
+    // the client branches on it to choose the Safety Pause screen.
+    res.json({ onboardingProfile: profile, safetyOutcome });
   } catch (err) {
     next(err);
   }

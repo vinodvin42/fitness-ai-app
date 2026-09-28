@@ -147,7 +147,10 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
     const res = await request(app)
       .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
-      .send({ goals: ["strength"], trainingLevel: "beginner", medicalConditions: ["asthma"], injuries: [] });
+      // D14: a heart condition is the Safety Pause tier, which is what
+      // makes this a HIGH-severity queue item. "asthma" (the previous
+      // fixture) is now correctly the low-severity warning tier.
+      .send({ goals: ["strength"], trainingLevel: "beginner", medicalConditions: ["heart condition"], injuries: [] });
     expect(res.status).toBe(200);
 
     const escalation = await prisma.safetyEscalation.findFirst({ where: { userId } });
