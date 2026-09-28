@@ -10,9 +10,8 @@ import { Chip } from "../../components/Chip";
 import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
-import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } from "../../api/subscriptions";
-import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
+import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -182,24 +181,18 @@ export function SubscriptionScreen({ navigation }: Props) {
     ]);
 
   const { configured: paymentsConfigured } = usePaymentsConfigured();
-  const { order, purchase, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
-    onVerified: refresh,
-    // §M Payment Success / Failed screens (31 Aug 2026) — dedicated result
-    // screens instead of the default inline Alert.
-    onSuccess: () => navigation.navigate("PaymentResult", { status: "success" }),
-    onError: (message) => navigation.navigate("PaymentResult", { status: "failed", message }),
-    // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — payment
-    // captured, entitlement grant failed: a distinct, recoverable screen
-    // with a Retry action, never the plain "Payment Failed" one above.
-    onActivationFailed: (paymentId, message) =>
-      navigation.navigate("PaymentResult", { status: "activation_failed", message, paymentId }),
-  });
+  // U-M1 (28 Sep 2026): the Razorpay order/modal/verify sequence moved to
+  // CheckoutScreen, which is now the single paid-purchase path — it owns
+  // the price breakdown, the GST line and the "Have a code?" field that
+  // decision #7 and D3 require, none of which fit in a bare gateway
+  // modal. This screen keeps only the free-plan activation below, so the
+  // hook and the modal are deliberately gone rather than kept as an
+  // unused second copy of a payment flow.
 
-  // Basic (free) still activates directly, no payment step needed — see
-  // this screen's own doc comment. Any paid plan routes through a real
-  // Razorpay order + Checkout instead; useRazorpayPurchase's `purchase()`
-  // handles its own errors internally (shows its own Alert on failure),
-  // so the try/catch below only ever fires for the free path.
+  // A free plan still activates directly — there is nothing to pay, so
+  // sending the user to a checkout screen showing ₹0.00 would be
+  // ceremony. Every paid plan navigates to CheckoutScreen, which owns
+  // the order, the modal and the result handoff from there.
   const onSubscribe = async (plan: SubscriptionPlan) => {
     setPendingPlanId(plan.id);
     try {
@@ -207,7 +200,12 @@ export function SubscriptionScreen({ navigation }: Props) {
         await subscribe({ planId: plan.id });
         await refresh();
       } else {
-        await purchase("subscription", plan.id, couponCode.trim() || undefined);
+        // U-M1: a paid plan now goes through the real checkout screen
+        // (price and GST from the Commerce API, payment method, "Have a
+        // code?") rather than straight into the gateway modal. The modal
+        // showed a total with no breakdown and no way to enter a code,
+        // which is what decision #7 and D3 are about.
+        navigation.navigate("Checkout", { purpose: "subscription", referenceId: plan.id });
       }
     } catch (err) {
       Alert.alert("Couldn't subscribe", extractErrorMessage(err, "Check your connection and try again."));
@@ -418,7 +416,6 @@ export function SubscriptionScreen({ navigation }: Props) {
         style={{ marginTop: spacing.lg }}
       />
 
-      <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
     </ScreenContainer>
   );
 }

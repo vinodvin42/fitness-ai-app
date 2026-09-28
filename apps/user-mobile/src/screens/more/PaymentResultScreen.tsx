@@ -123,8 +123,22 @@ export function PaymentResultScreen({ route, navigation }: Props) {
             ? "Your subscription is now active. Enjoy FynroX."
             : pendingActivation
               ? (message ?? "Your payment went through, but we couldn't finish activating it yet. You have not been charged again.")
-              : (message ?? "Your payment didn't go through. You haven't been charged.")}
+              : (message ?? "Your payment didn't go through.")}
         </Text>
+        {/* U-M3 explicitly names this line: a failed payment must say
+            "you were not charged". It used to be part of the default
+            message, which meant a gateway-supplied `message` REPLACED
+            it — dropping the reassurance in exactly the case where the
+            user is most worried, and most likely to try paying again.
+            It is now always shown on failure, alongside any specific
+            reason. */}
+        {!success && !pendingActivation ? (
+          <Text
+            style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm, textAlign: "center" }}
+          >
+            You haven't been charged.
+          </Text>
+        ) : null}
       </Card>
 
       {pendingActivation ? (

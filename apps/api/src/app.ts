@@ -17,6 +17,7 @@ import { remindersRouter } from "./modules/reminders/reminders.routes";
 import { supportRouter } from "./modules/support/support.routes";
 import { referralsRouter } from "./modules/referrals/referrals.routes";
 import { paymentsRouter, razorpayWebhookHandler } from "./modules/payments/payments.routes";
+import { checkoutRouter } from "./modules/checkout/checkout.routes";
 import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
@@ -139,6 +140,9 @@ export function createApp() {
   app.use("/", supportRouter);
   app.use("/", referralsRouter);
   app.use("/", paymentsRouter);
+  // U-M1 / U-M22 — the checkout quote (price, GST, "Have a code?")
+  // and purchase history with refund status.
+  app.use("/", checkoutRouter);
   // Coupons — consumer validate endpoint (31 Aug 2026). See coupons.service.ts.
   app.use("/", couponsRouter);
   app.use("/", aiRouter);

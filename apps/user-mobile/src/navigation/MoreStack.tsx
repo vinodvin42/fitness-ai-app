@@ -27,6 +27,8 @@ import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailSc
 import { ReferralScreen } from "../screens/more/ReferralScreen";
 import { ProfessionalRelationshipScreen } from "../screens/coaching/ProfessionalRelationshipScreen";
 import { RequestGuidanceScreen } from "../screens/coaching/RequestGuidanceScreen";
+import { CheckoutScreen } from "../screens/more/CheckoutScreen";
+import { PurchaseHistoryScreen } from "../screens/more/PurchaseHistoryScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
 import { BookingServiceSelectionScreen } from "../screens/coaching/BookingServiceSelectionScreen";
@@ -89,6 +91,10 @@ export type MoreStackParamList = {
   ProgressTab: NavigatorScreenParams<ProgressStackParamList> | undefined;
   /** U-M5 / U-M7 — the controlled-assignment request flow. */
   RequestGuidance: undefined;
+  /** U-M1 — checkout, with the price and GST line served by the API. */
+  Checkout: { purpose: "subscription" | "program_purchase"; referenceId: string };
+  /** U-M22 — purchase history with refund status. */
+  Purchases: undefined;
   MoreHub: undefined;
   Profile: undefined;
   EditProfile: undefined;
@@ -167,6 +173,8 @@ export function MoreStack() {
       <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="ProfessionalRelationship" component={ProfessionalRelationshipScreen} />
       <Stack.Screen name="RequestGuidance" component={RequestGuidanceScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="Purchases" component={PurchaseHistoryScreen} />
       <Stack.Screen name="CoachDiscovery" component={CoachDiscoveryScreen} />
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />
       <Stack.Screen name="BookingServiceSelection" component={BookingServiceSelectionScreen} />

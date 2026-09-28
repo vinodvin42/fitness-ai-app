@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
-import { revokeSubscriptionSchema, unrevokeSubscriptionSchema } from "./adminSubscriptions.schema";
+import {
+  highImpactSubscriptionSchema,
+  revokeSubscriptionSchema,
+  unrevokeSubscriptionSchema,
+} from "./adminSubscriptions.schema";
 import * as subscriptionsService from "../subscriptions/subscriptions.service";
 
 export const adminSubscriptionsRouter = Router();
@@ -52,6 +56,55 @@ adminSubscriptionsRouter.post(
         req.adminUserId as string,
         req.params.id,
         input.reason,
+      );
+      res.status(200).json({ subscription });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * U-M4 — suspend and reactivate, §10's reversible ACTIVE <-> SUSPENDED
+ * pair. Deliberately separate from revoke/un-revoke above: revoke is
+ * terminal and un-revoke undoes a mistake, whereas suspension is a hold
+ * an admin expects to lift. Collapsing them would force an admin
+ * investigating a chargeback to use the irreversible action.
+ *
+ * Both are high-impact under BR-ADM-005 (they remove or restore access
+ * someone paid for), so both take a written reason and a typed
+ * confirmation, enforced in the service.
+ */
+adminSubscriptionsRouter.post(
+  "/admin/subscriptions/:id/suspend",
+  requireAdminAuth,
+  requirePermission("commerce", "approve"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = highImpactSubscriptionSchema.parse(req.body);
+      const subscription = await subscriptionsService.suspendSubscription(
+        req.adminUserId as string,
+        req.params.id,
+        input,
+      );
+      res.status(200).json({ subscription });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminSubscriptionsRouter.post(
+  "/admin/subscriptions/:id/reactivate",
+  requireAdminAuth,
+  requirePermission("commerce", "approve"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = highImpactSubscriptionSchema.parse(req.body);
+      const subscription = await subscriptionsService.reactivateSubscription(
+        req.adminUserId as string,
+        req.params.id,
+        input,
       );
       res.status(200).json({ subscription });
     } catch (err) {

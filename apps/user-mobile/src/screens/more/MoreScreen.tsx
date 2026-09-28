@@ -15,6 +15,7 @@ type MoreTarget =
   | "Profile"
   | "ProgressTab"
   | "Subscription"
+  | "Purchases"
   | "TimelineOverview"
   | "Reminders"
   | "SettingsHub"
@@ -38,6 +39,8 @@ const ROWS: Array<{ label: string; subtitle: string; icon: IconName; tint: strin
   { label: "Timeline", subtitle: "Milestones & PRs", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
   { label: "Coaching", subtitle: "Request, status & your team", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
   { label: "Subscription", subtitle: "Plan & payments", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },
+  // U-M22 — receipts and refund status, previously invisible to the user.
+  { label: "Purchases", subtitle: "Receipts & refund status", icon: "calendar", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Purchases" },
   { label: "Reminders", subtitle: "Workout, meal & water nudges", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Reminders" },
   { label: "Refer & Invite", subtitle: "Earn free months", icon: "sparkles", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "Referral" },
   { label: "Settings", subtitle: "Account, security, language", icon: "settings", tint: colors.textSecondary, tintSoft: colors.surfaceHigh, target: "SettingsHub" },

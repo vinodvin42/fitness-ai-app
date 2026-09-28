@@ -141,6 +141,24 @@ enum SubscriptionStatus {
   canceled
   expired
   revoked
+  // Spec §10's entitlement machine, filling the two states this enum
+  // genuinely lacked. Both are set by real events, so both are stored:
+  //   `pending`   — payment succeeded, activation has not completed yet.
+  //                 BR-COM-011: "Payment success never unlocks features;
+  //                 only entitlement ACTIVE does." Without this, the gap
+  //                 between the two was invisible in the data.
+  //   `suspended` — chargeback or an admin hold, reversible back to
+  //                 active. Distinct from `revoked`, which is terminal.
+  //
+  // §10's EXPIRING is deliberately NOT here. It is a time-derived state
+  // ("7 days before end") and this codebase has no scheduled worker to
+  // flip it on the day — see getSubscriptionForDisplay's own comment on
+  // lazy expiry for why that constraint is real rather than an excuse.
+  // A stored `expiring` would be wrong for every subscription nobody
+  // happened to read in the window. It is computed on read instead, and
+  // the display layer reports it honestly.
+  pending
+  suspended
 }
 
 enum WorkoutPhase {
