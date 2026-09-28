@@ -5,40 +5,44 @@ import { TodayScreen } from "../screens/today/TodayScreen";
 import { TrainStack } from "./TrainStack";
 import type { TrainStackParamList } from "./TrainStack";
 import { FuelStack } from "./FuelStack";
-import { ProgressStack } from "./ProgressStack";
-import type { ProgressStackParamList } from "./ProgressStack";
+import { RecoverStack } from "./RecoverStack";
+import type { RecoverStackParamList } from "./RecoverStack";
 import { MoreStack } from "./MoreStack";
 import type { MoreStackParamList } from "./MoreStack";
 import { Icon, IconName } from "../components/Icon";
 import { colors, typography } from "../theme/tokens";
 
 // The persistent 5-tab bottom bar — docs/mobile/02-information-architecture.md §2.
-// **R1 Developer 1 U1 (14 Sep 2026):** this tab set used to be
-// Today/Train/Fuel/Recover/More (a prior, documented decision — see git
-// history). The R1 work package's BR-USR-001/BR-USR-002 name a different
-// required set — Today | Train | Fuel | Progress | More, with Recovery
-// contextual rather than a primary tab — so this pass swaps Recover for
-// Progress: the real Progress screens (Log Measurement/Measurement
-// History/Streak Tracker/Progress Photos, all previously nested three
-// levels deep inside MoreStack) are promoted to their own top-level
-// ProgressStack, and Recover's own two real screens (AI Coach, Recovery &
-// Devices) move into MoreStack, reachable from More's "Recover" row and
-// from contextual entry points on Today (see TodayScreen.tsx and
-// ProgressStack.tsx/MoreStack.tsx's own comments).
 //
-// `Train`/`Progress`/`More` are typed as `NavigatorScreenParams<...>`
-// (not `undefined`) so other screens can deep-link straight into a
-// specific nested screen rather than just switching tabs and leaving the
-// user to find it themselves — `Train` for Today's "Continue Workout"
-// card (19 Aug 2026, the first such cross-tab deep-link in this app);
-// `More` newly for Today's AI Coach banner / Recover quick-link (14 Sep
-// 2026), now that AiCoach/RecoverHub live under More instead of their
-// own tab. `Fuel` stays `undefined` since nothing needs one yet.
+// **FynroX R1 (28 Sep 2026):** Today | Train | Fuel | Recover | More, per
+// the handoff's §2 decision #1 ("Progress lives in More, plus a Progress
+// card on Today").
+//
+// This is the second swap of these two tabs, so the history is worth
+// stating plainly. The original nav had Recover as a tab. On 14 Sep 2026
+// it was swapped for Progress, correctly, because the R1 work package's
+// BR-USR-001/BR-USR-002 named that set. The design handoff then
+// explicitly changed those two rules — its §2 records "BR-USR-001 and
+// BR-USR-002 change (Recover becomes a tab, Progress moves to More)" —
+// and the handoff outranks the work package in the stated source-of-truth
+// order, so it goes back. Anyone tempted to swap it a third time should
+// check which document is on top of that order first.
+//
+// Progress was not dismantled to do this: `ProgressStack` is mounted
+// whole inside `MoreStack`, so its screens keep their own param list and
+// every existing deep link into Progress still resolves.
+//
+// `Train`/`Recover`/`More` are typed as `NavigatorScreenParams<...>` (not
+// `undefined`) so other screens can deep-link straight into a specific
+// nested screen rather than just switching tabs and leaving the user to
+// find it themselves — `Train` for Today's "Continue Workout" card,
+// `More` for Today's Progress card, and `Recover` for Today's AI Coach
+// banner. `Fuel` stays `undefined` since nothing needs one yet.
 export type MainTabsParamList = {
   Today: undefined;
   Train: NavigatorScreenParams<TrainStackParamList> | undefined;
   Fuel: undefined;
-  Progress: NavigatorScreenParams<ProgressStackParamList> | undefined;
+  Recover: NavigatorScreenParams<RecoverStackParamList> | undefined;
   More: NavigatorScreenParams<MoreStackParamList> | undefined;
 };
 
@@ -48,7 +52,7 @@ const TAB_ICONS: Record<keyof MainTabsParamList, IconName> = {
   Today: "home",
   Train: "dumbbell",
   Fuel: "utensils",
-  Progress: "trending-up",
+  Recover: "heart-pulse",
   More: "menu",
 };
 
@@ -76,7 +80,7 @@ export function MainTabs() {
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Train" component={TrainStack} />
       <Tab.Screen name="Fuel" component={FuelStack} />
-      <Tab.Screen name="Progress" component={ProgressStack} />
+      <Tab.Screen name="Recover" component={RecoverStack} />
       <Tab.Screen name="More" component={MoreStack} />
     </Tab.Navigator>
   );

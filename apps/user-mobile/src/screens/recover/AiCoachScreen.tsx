@@ -21,9 +21,9 @@ import { Chip } from "../../components/Chip";
 import { fetchAiCoachMessages, fetchAiProviderStatus, sendAiCoachMessage } from "../../api/aiCoach";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "AiCoach">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "AiCoach">;
 
 // docs/mobile/03-screen-inventory.md §H: "guidance-topic chips ... quick-
 // reply suggestion chips below the thread". This build ships one set as

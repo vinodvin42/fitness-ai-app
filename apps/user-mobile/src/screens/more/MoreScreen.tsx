@@ -13,7 +13,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "MoreHub">;
 
 type MoreTarget =
   | "Profile"
-  | "RecoverHub"
+  | "ProgressTab"
   | "Subscription"
   | "TimelineOverview"
   | "Reminders"
@@ -25,14 +25,16 @@ type MoreTarget =
  * More Menu — docs/mobile/03-screen-inventory.md §L/N/O. 31 Aug 2026 design
  * polish: a profile card + iconized ListRows. See git history for the
  * feature-level notes on which rows are real vs. the one inert "Programs"
- * placeholder. **R1 Developer 1 U1 (14 Sep 2026):** "Progress & Body"
- * removed from this list — Progress is its own primary tab now (see
- * MainTabs.tsx/ProgressStack.tsx), not a More sub-screen. "Recover" added
- * in its place — AI Coach + Recovery & Devices moved here from their own
- * former tab (BR-USR-002: Recovery is contextual, not a primary tab).
+ * placeholder.
+ *
+ * **FynroX R1 (28 Sep 2026):** "Progress" is back in this list and
+ * "Recover" is out, reversing the 14 Sep swap — the handoff's §2 decision
+ * #1 puts Recover in the tab bar and Progress in More, and explicitly
+ * changes the BR-USR-001/002 rules that drove the 14 Sep version. See
+ * MainTabs.tsx's own comment for the full history.
  */
 const ROWS: Array<{ label: string; subtitle: string; icon: IconName; tint: string; tintSoft: string; target: MoreTarget }> = [
-  { label: "Recover", subtitle: "AI Coach & recovery log", icon: "heart-pulse", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "RecoverHub" },
+  { label: "Progress", subtitle: "Measurements, photos & check-ins", icon: "trending-up", tint: colors.accent, tintSoft: colors.accentSoft, target: "ProgressTab" },
   { label: "Timeline", subtitle: "Milestones & PRs", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
   { label: "Coaching", subtitle: "Request, status & your team", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
   { label: "Subscription", subtitle: "Plan & payments", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },

@@ -12,6 +12,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCheckInStatus, fetchProgressOverview } from "../../api/progress";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
+import { r1Flags } from "@fitness-ai-app/config";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
 
@@ -165,7 +166,14 @@ export function ProgressOverviewScreen({ navigation }: Props) {
         />
         <ListRow icon="plus" title="Log Measurement" tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("LogMeasurement")} />
         <ListRow icon="calendar" title="Measurement History" tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("MeasurementHistory")} />
-        <ListRow icon="flame" title="Streak Tracker" tint={colors.orange} tintSoft="rgba(251,146,60,0.16)" onPress={() => navigation.navigate("StreakTracker")} />
+        {/* Handoff §2 decision #13 and the Overview's "Gamification: None
+            in R1 (no streaks, badges, achievements)". Hidden behind the
+            R1 flag rather than deleted — the screen, its API and its
+            tests still work, so restoring it is a config change if the
+            decision is revisited. Default is off, i.e. spec-compliant. */}
+        {r1Flags.GAMIFICATION_ENABLED ? (
+          <ListRow icon="flame" title="Streak Tracker" tint={colors.orange} tintSoft="rgba(251,146,60,0.16)" onPress={() => navigation.navigate("StreakTracker")} />
+        ) : null}
         <ListRow icon="heart" title="Progress Photos" tint={colors.pink} tintSoft="rgba(236,72,153,0.16)" onPress={() => navigation.navigate("ProgressPhotos")} />
       </View>
     </ScreenContainer>

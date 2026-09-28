@@ -10,6 +10,7 @@ import { CredentialVerificationScreen } from "./screens/professionals/Credential
 import { RelationshipDirectoryScreen } from "./screens/relationships/RelationshipDirectoryScreen";
 import { RelationshipDetailScreen } from "./screens/relationships/RelationshipDetailScreen";
 import { ChangeRequestQueueScreen } from "./screens/relationships/ChangeRequestQueueScreen";
+import { AssignmentQueueScreen } from "./screens/relationships/AssignmentQueueScreen";
 import { UserDirectoryScreen } from "./screens/users/UserDirectoryScreen";
 import { UserProfileScreen } from "./screens/users/UserProfileScreen";
 import { AdminUsersScreen } from "./screens/adminSystem/AdminUsersScreen";
@@ -185,6 +186,17 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <ChangeRequestQueueScreen />
+          </RequireAuth>
+        }
+      />
+      {/* A-M1. Declared before "/relationships/:id" so the literal path
+          wins — the same ordering caution the directory route above
+          already documents. */}
+      <Route
+        path="/relationships/assignment-queue"
+        element={
+          <RequireAuth>
+            <AssignmentQueueScreen />
           </RequireAuth>
         }
       />

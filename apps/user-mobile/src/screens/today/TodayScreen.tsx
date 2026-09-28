@@ -134,7 +134,7 @@ export function TodayScreen({ navigation }: Props) {
         title="Your AI Coach is ready"
         body="Ask FynroX AI for training, nutrition, or recovery guidance grounded in your real progress."
         ctaLabel="Open chat"
-        onPress={() => navigation.navigate("More", { screen: "AiCoach" })}
+        onPress={() => navigation.navigate("Recover", { screen: "AiCoach" })}
       />
 
       {isPlanError ? (
@@ -227,6 +227,27 @@ export function TodayScreen({ navigation }: Props) {
       </Card>
       )}
 
+      {/* Handoff §2 decision #1: "Progress lives in More, plus a Progress
+          card on Today." Moving Progress off the tab bar without this
+          card would bury it two levels down, which is the burial the
+          14 Sep swap was originally trying to fix — the card is what
+          makes the move safe rather than a regression. */}
+      <Card>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1, paddingRight: spacing.md }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Progress</Text>
+            <Text style={{ color: colors.textMuted, ...typography.body, marginTop: 2 }}>
+              Measurements, photos and your weekly check-in
+            </Text>
+          </View>
+          <Button
+            label="Open"
+            variant="secondary"
+            onPress={() => navigation.navigate("More", { screen: "ProgressTab" })}
+          />
+        </View>
+      </Card>
+
       <View>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Quick links</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -235,7 +256,7 @@ export function TodayScreen({ navigation }: Props) {
           <QuickLink
             icon="heart-pulse"
             label="Recover"
-            onPress={() => navigation.navigate("More", { screen: "RecoverHub" })}
+            onPress={() => navigation.navigate("Recover", { screen: "RecoverHub" })}
             tint={colors.aiAccent}
             tintSoft={colors.aiAccentSoft}
           />

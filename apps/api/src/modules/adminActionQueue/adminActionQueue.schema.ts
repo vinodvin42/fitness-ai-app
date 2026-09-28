@@ -5,6 +5,7 @@ import { z } from "zod";
 // the full design.
 export const adminActionItemTypes = [
   "entitlement_activation_failed",
+  "professional_assignment_pending",
   "professional_acceptance_stalled",
   "relationship_activation_failed",
   "credential_expiring",

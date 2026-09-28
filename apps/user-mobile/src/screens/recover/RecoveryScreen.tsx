@@ -11,9 +11,9 @@ import { fetchRecovery, upsertRecovery } from "../../api/recovery";
 import { fetchTodayMindfulnessLogs, logMindfulness } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "Recovery">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "Recovery">;
 
 interface FormState {
   restingHeartRate: string;

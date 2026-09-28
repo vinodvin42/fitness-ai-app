@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { markFulfilled, returnToQueue } from "../guidanceRequests/guidanceRequests.service";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
@@ -193,8 +194,12 @@ async function expireIfStale(offer: OfferRow): Promise<OfferRow> {
       action: "professional_offer.expired",
       entityType: "ProfessionalOffer",
       entityId: offer.id,
+      ruleId: "BR-PRO-014",
+      stateBefore: { status: "offered" },
+      stateAfter: { status: "expired" },
       metadata: { professionalId: offer.professionalId, userId: offer.userId },
     });
+    await settleGuidanceRequestFor(offer.id, (id) => returnToQueue(id, "expired"));
   }
 
   return { ...offer, status: "expired" };
@@ -331,8 +336,16 @@ export async function acceptOffer(professionalId: string, offerId: string) {
     action: "professional_offer.accepted",
     entityType: "ProfessionalOffer",
     entityId: offerId,
+    ruleId: "BR-PRO-014",
+    stateBefore: { status: "offered" },
+    stateAfter: { status: "accepted", relationshipId: relationship.id },
     metadata: { userId: existing.userId, serviceType: existing.serviceType, relationshipId: relationship.id },
   });
+
+  // Close the guidance request this offer came from, if any. Offers can
+  // also originate from a handover, which has no request behind it —
+  // hence the lookup rather than a required link.
+  await settleGuidanceRequestFor(offerId, (id) => markFulfilled(id, relationship.id));
 
   return { id: offerId, status: "accepted", relationshipId: relationship.id };
 }
@@ -366,8 +379,15 @@ export async function declineOffer(professionalId: string, offerId: string, reas
     action: "professional_offer.declined",
     entityType: "ProfessionalOffer",
     entityId: offerId,
+    ruleId: "BR-PRO-014",
+    stateBefore: { status: "offered" },
+    stateAfter: { status: "declined" },
     metadata: { userId: existing.userId, serviceType: existing.serviceType, reason: reason ?? null },
   });
+
+  // D11: a decline returns the request to A-M1's queue for re-match,
+  // up to the re-match limit. U-M7 renders both outcomes.
+  await settleGuidanceRequestFor(offerId, (id) => returnToQueue(id, "declined"));
 
   return { id: offerId, status: "declined" };
 }
@@ -515,4 +535,23 @@ export async function listAvailableProfessionals(query: ListAvailableProfessiona
         yearsExperience: p.yearsExperience,
       })),
   };
+}
+
+
+/**
+ * Runs `settle` against whichever GuidanceRequest points at this offer,
+ * if any. Offers created by a handover have no request behind them, so
+ * a missing row is the normal case, not an error.
+ *
+ * Never allowed to fail the offer action that triggered it: a
+ * professional's accept or decline must land even if the request
+ * bookkeeping behind it does not.
+ */
+async function settleGuidanceRequestFor(offerId: string, settle: (requestId: string) => Promise<unknown>) {
+  try {
+    const req = await prisma.guidanceRequest.findFirst({ where: { offerId } });
+    if (req) await settle(req.id);
+  } catch {
+    // Swallowed deliberately — see above.
+  }
 }

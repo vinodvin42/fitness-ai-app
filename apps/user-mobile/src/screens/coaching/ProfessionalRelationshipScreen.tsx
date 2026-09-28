@@ -13,6 +13,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchRelationshipStatus } from "../../api/coaching";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { r1Flags } from "@fitness-ai-app/config";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "ProfessionalRelationship">;
 
@@ -116,8 +117,12 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
         <EmptyState
           title="No professional relationship yet"
           subtitle="Request guidance from a verified fitness or nutrition professional to get started."
-          actionLabel="Find a Professional"
-          onAction={() => navigation.navigate("CoachDiscovery", undefined)}
+          actionLabel={r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED ? "Find a Professional" : "Request guidance"}
+          onAction={() =>
+            r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
+              ? navigation.navigate("CoachDiscovery", undefined)
+              : navigation.navigate("RequestGuidance")
+          }
         />
       ) : (
         <View style={{ gap: spacing.md }}>
@@ -129,7 +134,8 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                   key={r.relationshipId}
                   item={r}
                   onContinuePayment={
-                    r.status === "accepted" || r.status === "awaiting_payment"
+                    (r.status === "accepted" || r.status === "awaiting_payment") &&
+                    r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
                       ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })
                       : undefined
                   }
@@ -160,10 +166,21 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
         </View>
       )}
 
+      {/* Handoff §2 decision #4: "Controlled assignment via 'Request
+          professional guidance'. No browsing, ratings or per-session
+          prices." With the marketplace flag off (the R1 default), the
+          only route into a relationship is a request an admin matches.
+          The browse path is kept behind the flag rather than deleted —
+          it is working, tested code, and whether to retire it is the
+          product team's call, not this change's. */}
       <Button
-        label="Find a Professional"
+        label={r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED ? "Find a Professional" : "Request professional guidance"}
         variant="secondary"
-        onPress={() => navigation.navigate("CoachDiscovery", undefined)}
+        onPress={() =>
+          r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
+            ? navigation.navigate("CoachDiscovery", undefined)
+            : navigation.navigate("RequestGuidance")
+        }
         style={{ marginTop: spacing.lg }}
       />
     </ScreenContainer>
