@@ -10,6 +10,10 @@ import { useAuth } from "../lib/auth";
  */
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/", glyph: "▦" },
+  { label: "Invite members", path: "/invite", glyph: "▢" },
+  { label: "Equipment", path: "/equipment", glyph: "▣" },
+  { label: "Trainer help", path: "/help", glyph: "◉" },
+  { label: "Partnership", path: "/partnership", glyph: "◈" },
   { label: "Support", path: "/support", glyph: "◑" },
 ];
 
@@ -22,7 +26,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
         <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
+            FX
           </div>
           <div>
             <div className="text-sm font-semibold tracking-wide">FYNROX</div>

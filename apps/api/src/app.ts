@@ -48,6 +48,7 @@ import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluenc
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
 import { gymsRouter } from "./modules/gyms/gyms.routes";
 import { gymAuthRouter } from "./modules/gymAuth/gymAuth.routes";
+import { gymPortalRouter } from "./modules/gymPortal/gymPortal.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
@@ -274,6 +275,9 @@ export function createApp() {
   // login, a distinct identity from AdminUser. See gymAuth.service.ts's own
   // doc comment.
   app.use("/", gymAuthRouter);
+  // Gym Partner Lite's own surface — equipment profile with
+  // stale/reconfirm, invite QR, partnership status, help requests.
+  app.use("/", gymPortalRouter);
   // Module 07.04 Campaigns & Attribution (20 Sep 2026, R2 Wave 4) — real
   // admin-web reporting over R2 Wave 1's Source/Campaign/Touchpoint schema.
   // See adminAcquisition.service.ts's own doc comment.

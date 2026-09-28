@@ -2134,6 +2134,7 @@ model AdminUser {
   payoutBatches                   PayoutBatch[]
   privacyRequestsVerified         PrivacyRequest[]             @relation("PrivacyRequestVerifiedBy")
   privacyRequestsResolved         PrivacyRequest[]             @relation("PrivacyRequestResolvedBy")
+  gymHelpRequestsResolved         GymHelpRequest[]
 
   @@map("admin_users")
 }
@@ -3473,9 +3474,10 @@ model Gym {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  locations GymLocation[]
-  members   User[]
-  campaigns Campaign[]
+  locations    GymLocation[]
+  members      User[]
+  campaigns    Campaign[]
+  helpRequests GymHelpRequest[]
 
   @@index([status])
   @@map("gyms")
@@ -3506,6 +3508,7 @@ model GymLocation {
   equipmentConfirmedAt DateTime?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
+  helpRequests         GymHelpRequest[]
 
   @@index([gymId])
   @@map("gym_locations")
@@ -3605,6 +3608,9 @@ enum AdminActionItemType {
   // this surfaces on IS the assignment queue — a separate admin
   // inbox would be a second place to forget to look.
   professional_assignment_pending
+  // A gym partner asking for help. Operational, never clinical —
+  // see GymHelpRequest's own comment on why it holds no member link.
+  gym_help_request
 }
 
 enum AdminActionItemSeverity {
@@ -3898,4 +3904,62 @@ enum GuidanceRequestStatus {
   cancelled
   /// Out of re-matches (D11) — needs a human, not another auto-retry.
   exhausted
+}
+
+/// Gym Partner Lite — "trainer help requests + request detail", which the
+/// handoff lists among the portal's complete-as-designed screens.
+///
+/// A gym asking FynroX for help with a member's programme is an
+/// OPERATIONAL request, and BR-GYM-003 is the constraint that shapes this
+/// model: "Gyms see operational aggregates only ... never health,
+/// nutrition logs, photos or AI chats." So a request carries the gym's
+/// own description of what it needs and nothing about the member beyond
+/// an optional free-text reference the gym itself writes. There is
+/// deliberately no userId relation: a foreign key here would be a
+/// standing invitation to join it to member data.
+model GymHelpRequest {
+  id    String @id @default(uuid())
+  gymId String
+  gym   Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  /// Which location this concerns, when the gym has more than one.
+  locationId String?
+  location   GymLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  category GymHelpCategory
+  subject  String
+  body     String
+
+  /// The gym's own note for its own records, e.g. "the 6am group".
+  /// Free text the gym wrote, never a member identifier we resolved.
+  gymReference String?
+
+  status GymHelpRequestStatus @default(open)
+
+  /// Staff reply, visible to the gym.
+  resolutionNote    String?
+  resolvedByAdminId String?
+  resolvedByAdmin   AdminUser? @relation(fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  @@index([gymId, status])
+  @@index([status, createdAt])
+  @@map("gym_help_requests")
+}
+
+enum GymHelpCategory {
+  trainer_support
+  equipment
+  member_onboarding
+  billing
+  other
+}
+
+enum GymHelpRequestStatus {
+  open
+  in_progress
+  resolved
 }

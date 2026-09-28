@@ -2,12 +2,32 @@ const LABELS: Record<string, string> = {
   application: "Application Pending",
   approved: "Approved Partner",
   suspended: "Suspended",
+  // G-M2 — the §10 partner lifecycle's remaining end states, which had
+  // no label because the enum values did not exist until R1.
+  more_info: "More Information Needed",
+  rejected: "Application Declined",
+  ended: "Partnership Ended",
+  // Equipment profile (§10) — CURRENT / STALE.
+  current: "Up to date",
+  stale: "Needs confirming",
+  // Help request lifecycle.
+  open: "Open",
+  in_progress: "In Progress",
+  resolved: "Resolved",
 };
 
 const TONE_CLASSES: Record<string, string> = {
   application: "bg-warning/15 text-warning",
   approved: "bg-accent/15 text-accent",
   suspended: "bg-danger/15 text-danger",
+  more_info: "bg-warning/15 text-warning",
+  rejected: "bg-danger/15 text-danger",
+  ended: "bg-surface-raised text-text-dim",
+  current: "bg-accent/15 text-accent",
+  stale: "bg-warning/15 text-warning",
+  open: "bg-warning/15 text-warning",
+  in_progress: "bg-accent/15 text-accent",
+  resolved: "bg-surface-raised text-text-dim",
 };
 
 /**
