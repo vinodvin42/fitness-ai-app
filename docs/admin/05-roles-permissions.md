@@ -15,7 +15,7 @@ Source: screen **12.02 Roles & Permissions** ("Role-Based Access Control (RBAC)"
 | Analytics | Read-only analytics and reports | 2 |
 | Support | Ticket management and user assistance | 5 |
 
-Sample role assignment shown for Super Admin: **Siddharth Mehta** — Owner / Primary Admin (`siddharth@primefit.io`); **Ananya Roy** — CTO / Technical Admin (`ananya@primefit.io`).
+Sample role assignment shown for Super Admin: **Siddharth Mehta** — Owner / Primary Admin (`siddharth@fynrox.com`); **Ananya Roy** — CTO / Technical Admin (`ananya@fynrox.io`).
 
 The screen also exposes **"Create New Role"** and **"Edit Role Schemas"** actions, implying roles and the permission schema itself are both admin-configurable, not hardcoded.
 

@@ -24,14 +24,14 @@ import * as secureStore from "./secureStore";
  * the newest link to be the one that works, not a stale one from
  * earlier in the same session.
  *
- * URL shape recognized: `primefit://reset-password?token=<token>` (see
+ * URL shape recognized: `fynrox://reset-password?token=<token>` (see
  * apps/api's auth.service.ts forgotPassword(), the one place that
  * builds this exact link).
  */
 
 const STORAGE_KEY = "pendingResetPasswordToken";
 
-/** Parses a `primefit://reset-password?token=...` URL into the raw token. Returns null for any URL that isn't this shape; never throws on a malformed URL. */
+/** Parses a `fynrox://reset-password?token=...` URL into the raw token. Returns null for any URL that isn't this shape; never throws on a malformed URL. */
 export function parseResetPasswordToken(url: string): string | null {
   let parsed: ReturnType<typeof Linking.parse>;
   try {

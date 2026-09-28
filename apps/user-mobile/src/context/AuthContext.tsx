@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const enableBiometricLock = async (): Promise<boolean> => {
-    const success = await promptBiometricUnlock("Enable Face ID / Touch ID to unlock 23PrimeFit");
+    const success = await promptBiometricUnlock("Enable Face ID / Touch ID to unlock FynroX");
     if (!success) return false;
     await setBiometricLockEnabled(true);
     setIsBiometricLockEnabledState(true);
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const unlock = async (): Promise<boolean> => {
-    const success = await promptBiometricUnlock("Unlock 23PrimeFit");
+    const success = await promptBiometricUnlock("Unlock FynroX");
     if (success) setIsUnlocked(true);
     return success;
   };

@@ -2,7 +2,7 @@
   "name": "@fitness-ai-app/landing",
   "version": "0.0.0",
   "private": true,
-  "description": "Public marketing/landing page for 23PrimeFit — plain static HTML/CSS/vanilla JS, no build step. Deploys to Azure Static Web Apps.",
+  "description": "Public marketing/landing page for FynroX — plain static HTML/CSS/vanilla JS, no build step. Deploys to Azure Static Web Apps.",
   "scripts": {
     "dev": "node serve.js",
     "start": "node serve.js"

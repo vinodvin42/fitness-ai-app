@@ -1,7 +1,7 @@
 import axios from "axios";
 import { apiBaseUrl } from "./env";
 
-const TOKEN_KEY = "primefit-gym-portal.token";
+const TOKEN_KEY = "fynrox-gym-portal.token";
 
 export const apiClient = axios.create({ baseURL: apiBaseUrl });
 

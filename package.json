@@ -1,7 +1,7 @@
 {
   "name": "fitness-ai-app",
   "private": true,
-  "description": "PrimeFit / 23PrimeFit — monorepo. apps/api (backend) + apps/user-mobile (Expo/RN, Phases 0-4) + apps/admin-web (Vite/React, Phase 6 start, 20 Aug 2026) + apps/coach-mobile (Expo/RN, Phase 5 start, 20 Aug 2026). See docs/platform/roadmap.md for build order.",
+  "description": "FynroX / FynroX — monorepo. apps/api (backend) + apps/user-mobile (Expo/RN, Phases 0-4) + apps/admin-web (Vite/React, Phase 6 start, 20 Aug 2026) + apps/coach-mobile (Expo/RN, Phase 5 start, 20 Aug 2026). See docs/platform/roadmap.md for build order.",
   "workspaces": [
     "apps/*",
     "packages/*"

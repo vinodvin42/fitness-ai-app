@@ -37,7 +37,7 @@ databases:
 
 services:
   - type: web
-    name: primefit-api
+    name: fynrox-api
     runtime: node
     plan: starter
     region: oregon
@@ -112,7 +112,7 @@ services:
       # Read once, by scripts/seed.ts (step 2.6 of DEPLOY-RUNBOOK.md), not
       # by the running server — but set here anyway so Render prompts for
       # a real value up front instead of it being easy to forget. Without
-      # these, the seed script falls back to admin@23primefit.com /
+      # these, the seed script falls back to admin@fynrox.com /
       # ChangeMe123! — a default published in this repo's own
       # RUN-LOCALLY.md, which must never be the real credential on a
       # production database. Rotate it via PATCH /admin/auth/password

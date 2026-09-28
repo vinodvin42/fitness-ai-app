@@ -40,7 +40,7 @@ export function LockScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.logo}>23PrimeFit</Text>
+        <Text style={styles.logo}>FynroX</Text>
         <Text style={styles.subtitle}>Unlock with Face ID or Touch ID to continue.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>

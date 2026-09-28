@@ -1,4 +1,4 @@
-# Deploy runbook — PrimeFit go-live
+# Deploy runbook — FynroX go-live
 
 > **3 Sep 2026 — Azure is now the live plan.** The product owner chose
 > Azure over this Render+Vercel path, knowing that means new
@@ -88,7 +88,7 @@ terminal on your machine (not a sandboxed one):
 cd fitness-ai-app
 git init
 git add -A
-git commit -m "Initial commit: PrimeFit at go-live readiness"
+git commit -m "Initial commit: FynroX at go-live readiness"
 git remote add origin https://github.com/<your-username>/<repo-name>.git
 git branch -M main
 git push -u origin main
@@ -117,7 +117,7 @@ shouldn't hit.
 
 1. Render dashboard -> **New** -> **Blueprint** -> connect the GitHub repo
    from step 1. Render reads `render.yaml` from the repo root automatically
-   and shows you two resources: `primefit-db` (Postgres) and `primefit-api`
+   and shows you two resources: `primefit-db` (Postgres) and `fynrox-api`
    (web service).
 2. Before clicking Apply, Render will prompt for every env var marked
    `sync: false` in `render.yaml`. Generate real values now:
@@ -148,7 +148,7 @@ shouldn't hit.
      later (no redeploy-breaking change either way).
    - **`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — do not leave these
      blank.** Pick a real email and a strong password now. Without them,
-     step 6 below seeds `admin@23primefit.com` / `ChangeMe123!` onto your
+     step 6 below seeds `admin@fynrox.com` / `ChangeMe123!` onto your
      live database — that exact credential is published in this repo's
      own `RUN-LOCALLY.md`, so it's not a placeholder you're meant to
      change later, it's a real account anyone who's read this repo could
@@ -165,14 +165,14 @@ shouldn't hit.
    service is live. A `prisma generate` failure here despite a green CI
    run would point at something specific to Render's network rather than
    the code — worth flagging either way.
-5. Once healthy, copy the service's `https://primefit-api-<hash>.onrender.com`
+5. Once healthy, copy the service's `https://fynrox-api-<hash>.onrender.com`
    URL — steps 3 and beyond need it.
 6. Seed the database (real admin login, sample content) by running
    Render's **Shell** tab on the service, or a **one-off Job**:
    `npm run db:seed --workspace=apps/api`. This reads the
    `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` you set in step 2 — confirm
    the log line it prints shows your real email, not
-   `admin@23primefit.com`, before moving on.
+   `admin@fynrox.com`, before moving on.
 
 ## 3. Vercel — admin-web and user-mobile
 
@@ -211,7 +211,7 @@ though they live in one repo.
 ## 4. Close the loop on CORS
 
 Now that both Vercel URLs exist: go back to the Render dashboard,
-`primefit-api` -> **Environment**, set `CORS_ORIGINS` to both URls
+`fynrox-api` -> **Environment**, set `CORS_ORIGINS` to both URls
 comma-separated, save — Render redeploys automatically. Without this step
 the API is up but both frontends will fail every request with a CORS
 error, so don't skip it.
@@ -245,7 +245,7 @@ error, so don't skip it.
   ever pasted into chat, a screenshot, or anywhere outside Render's own
   environment-variable UI.
 - Point a real domain at both Vercel projects and the Render service if
-  you want `primefit.app`-style URLs instead of the generated ones —
+  you want `fynrox.app`-style URLs instead of the generated ones —
   Vercel and Render both support this from their dashboards, no code
   changes needed.
 

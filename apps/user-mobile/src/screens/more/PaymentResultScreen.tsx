@@ -120,7 +120,7 @@ export function PaymentResultScreen({ route, navigation }: Props) {
         </Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           {success
-            ? "Your subscription is now active. Enjoy 23PrimeFit."
+            ? "Your subscription is now active. Enjoy FynroX."
             : pendingActivation
               ? (message ?? "Your payment went through, but we couldn't finish activating it yet. You have not been charged again.")
               : (message ?? "Your payment didn't go through. You haven't been charged.")}

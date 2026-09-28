@@ -1,4 +1,4 @@
-# Azure deploy runbook — PrimeFit go-live
+# Azure deploy runbook — FynroX go-live
 
 Written 3 Sep 2026. The product owner explicitly chose Azure over the
 existing Render+Vercel path (see `DEPLOY-RUNBOOK.md`), knowing that means
@@ -53,8 +53,8 @@ references it.)
   | What | Resource | Reachable at |
   |---|---|---|
   | API | App Service `primefit-api-zjcprljmiu7mq` | `https://primefit-api-zjcprljmiu7mq.azurewebsites.net` |
-  | Database | Postgres Flexible Server `primefit-pg-zjcprljmiu7mq` | (private, via the firewall rule in step 3) |
-  | Landing + admin | Static Web App `primefit-admin-web` | `https://purple-sea-0edcdc910.6.azurestaticapps.net` (landing at `/`, admin at `/app/`) |
+  | Database | Postgres Flexible Server `fynrox-pg-zjcprljmiu7mq` | (private, via the firewall rule in step 3) |
+  | Landing + admin | Static Web App `fynrox-admin-web` | `https://purple-sea-0edcdc910.6.azurestaticapps.net` (landing at `/`, admin at `/app/`) |
   | Coach app | Static Web App `primefit-user-mobile` | `https://calm-ground-04d678410.3.azurestaticapps.net` |
 
   Note the second Static Web App's name is a leftover: it is called
@@ -239,7 +239,7 @@ These two are **not** in `env.ts`'s schema at all (they're read directly
 via `process.env` by `apps/api/scripts/seed.ts`, not validated at server
 boot — same as `render.yaml`'s own comment on this exact pair). Without
 real values, running the seed script (step 4) seeds
-`admin@23primefit.com` / `ChangeMe123!` onto your live database — a
+`admin@fynrox.com` / `ChangeMe123!` onto your live database — a
 credential published in this repo's own `RUN-LOCALLY.md`, not a
 placeholder you're meant to rotate later. Pick a real email and a strong
 password now:
@@ -378,7 +378,7 @@ because GitHub Actions itself never holds anything else to steal.
 **3.1 Create an App Registration + Service Principal:**
 
 ```bash
-APP_ID=$(az ad app create --display-name "primefit-github-deploy" --query appId -o tsv)
+APP_ID=$(az ad app create --display-name "fynrox-github-deploy" --query appId -o tsv)
 az ad sp create --id "$APP_ID"
 echo "$APP_ID"   # this is AZURE_CLIENT_ID — save it
 ```
@@ -457,7 +457,7 @@ rule you add yourself:
 ```bash
 az postgres flexible-server firewall-rule create \
   --resource-group rg-primefit-prod \
-  --name <postgres server name, e.g. primefit-pg-xxxxxxxx> \
+  --name <postgres server name, e.g. fynrox-pg-xxxxxxxx> \
   --rule-name AllowGitHubActionsCI \
   --start-ip-address 0.0.0.0 \
   --end-ip-address 255.255.255.255
@@ -533,7 +533,7 @@ npm run db:seed --workspace=apps/api
 ```
 
 Confirm the log line it prints shows your real email, not
-`admin@23primefit.com`, before moving on. The seed never overwrites an
+`admin@fynrox.com`, before moving on. The seed never overwrites an
 existing account's password, so a second run cannot reset it.
 
 **Every seed after that: the `Seed content to Azure` workflow.** Actions
@@ -694,7 +694,7 @@ Render path's own step 4.
   confirmed a manual run works end-to-end — deliberately left manual-only
   for this pass, see that file's own top comment.
 - Point real custom domains at the App Service and both Static Web Apps if
-  you want `primefit.app`-style URLs instead of the generated
+  you want `fynrox.app`-style URLs instead of the generated
   `azurewebsites.net`/`azurestaticapps.net` ones — all three support this
   from their own Azure Portal blades, no code changes needed. Remember to
   add any new domain to `CORS_ORIGINS` (step 6) too.

@@ -278,7 +278,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   const coaches = [
     {
       id: "coach-alex-rivera",
-      email: "alex.rivera@coach.23primefit.demo",
+      email: "alex.rivera@coach.fynrox.demo",
       fullName: "Alex Rivera",
       bio: "Strength & conditioning coach focused on sustainable progressive overload for lifters at any stage.",
       specializationTags: ["Strength Training", "HIIT"],
@@ -290,7 +290,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     },
     {
       id: "coach-priya-nair",
-      email: "priya.nair@coach.23primefit.demo",
+      email: "priya.nair@coach.fynrox.demo",
       fullName: "Priya Nair",
       bio: "Registered nutrition coach specializing in sustainable weight management and sports nutrition.",
       specializationTags: ["Weight Management", "Sports Nutrition"],
@@ -302,7 +302,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     },
     {
       id: "coach-jordan-blake",
-      email: "jordan.blake@coach.23primefit.demo",
+      email: "jordan.blake@coach.fynrox.demo",
       fullName: "Jordan Blake",
       bio: "Dual-certified fitness and nutrition coach helping clients train and eat as one connected plan.",
       specializationTags: ["Strength Training", "Nutrition Coaching", "Injury Recovery"],
@@ -333,7 +333,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
             professionalId: coach.id,
             serviceType,
             certificationName: "Demo Certification",
-            certifyingBody: "23PrimeFit Demo Data",
+            certifyingBody: "FynroX Demo Data",
             yearObtained: 2020,
             status: "verified",
           },
@@ -361,7 +361,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     // validated by config/env.ts), which is exactly the risk this flag
     // guards against: a GitHub Actions runner has no visibility into the
     // real App Service's app settings, so a full seed run from CI would
-    // silently fall back to the "admin@23primefit.com" default below —
+    // silently fall back to the "admin@fynrox.com" default below —
     // a DIFFERENT address from whatever the real deployment's
     // SEED_ADMIN_EMAIL actually is — and upsert a second super_admin
     // rather than updating the real one. content-only mode exists so a
@@ -370,7 +370,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     return summary;
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@23primefit.com";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@fynrox.com";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
   const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
   await prisma.adminUser.upsert({

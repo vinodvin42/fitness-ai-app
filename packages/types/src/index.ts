@@ -92,7 +92,7 @@ export interface ForgotPasswordResponse {
   emailSent: boolean;
 }
 
-/** `token` is the raw value from a `primefit://reset-password?token=...` deep link (see apps/user-mobile's App.tsx deep-link capture). */
+/** `token` is the raw value from a `fynrox://reset-password?token=...` deep link (see apps/user-mobile's App.tsx deep-link capture). */
 export interface ResetPasswordInput {
   token: string;
   newPassword: string;
@@ -1662,7 +1662,7 @@ export interface AvailableProfessionalsResponse {
 /**
  * One row of GET /professionals/me/offers — the coach-facing counterpart to
  * `PendingRelationshipItem` above, backing apps/coach-mobile's "Offers from
- * PrimeFit" section. Deliberately a distinct type/shape from
+ * FynroX" section. Deliberately a distinct type/shape from
  * PendingRelationshipItem: an offer is a separate row that only creates a
  * Relationship once accepted, not the same entity under a different name.
  */

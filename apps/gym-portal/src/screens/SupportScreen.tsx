@@ -21,7 +21,7 @@ export function SupportScreen() {
     <AppShell title="Support">
       <div className="max-w-lg space-y-4">
         <div className="rounded-lg border border-border-subtle bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text-primary">Contact PrimeFit Partner Support</h2>
+          <h2 className="text-sm font-semibold text-text-primary">Contact FynroX Partner Support</h2>
           <p className="mt-2 text-sm text-text-secondary">
             For anything about your partner account — commercial terms, adding or updating a location, resetting
             your portal password, or a question about your invite code — reach out directly and a real person will
@@ -32,8 +32,8 @@ export function SupportScreen() {
             <div>
               <dt className="text-[11px] uppercase tracking-wide text-text-dim">Email</dt>
               <dd>
-                <a href="mailto:partners@23primefit.com" className="text-accent hover:underline">
-                  partners@23primefit.com
+                <a href="mailto:partners@fynrox.com" className="text-accent hover:underline">
+                  partners@fynrox.com
                 </a>
               </dd>
             </div>
@@ -45,7 +45,7 @@ export function SupportScreen() {
         </div>
 
         <div className="rounded-lg border border-border-subtle bg-surface p-5 text-xs text-text-dim">
-          PrimeFit never shares your members' nutrition logs, medical or safety information, progress photos, or
+          FynroX never shares your members' nutrition logs, medical or safety information, progress photos, or
           private AI Coach conversations with your gym — support requests about a specific member's health data will
           always be declined, by policy, no matter how they're submitted.
         </div>

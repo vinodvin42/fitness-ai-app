@@ -2,8 +2,8 @@ import axios from "axios";
 import Constants from "expo-constants";
 import * as SecureStore from "../lib/secureStore";
 
-const ACCESS_TOKEN_KEY = "primefit.accessToken";
-const REFRESH_TOKEN_KEY = "primefit.refreshToken";
+const ACCESS_TOKEN_KEY = "fynrox.accessToken";
+const REFRESH_TOKEN_KEY = "fynrox.refreshToken";
 
 // Go-live hardening (25 Aug 2026) — EXPO_PUBLIC_API_BASE_URL is a build-time
 // env var Expo inlines automatically (no app.config changes needed), so a

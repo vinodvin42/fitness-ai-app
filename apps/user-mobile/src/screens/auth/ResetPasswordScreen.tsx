@@ -12,7 +12,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "ResetPassword">;
 
 /**
  * Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — reached from
- * SplashScreen when a `primefit://reset-password?token=...` deep link
+ * SplashScreen when a `fynrox://reset-password?token=...` deep link
  * was captured (see src/lib/resetPasswordLink.ts and SplashScreen.tsx's
  * own effect). `route.params.token` is the raw token; the server hashes
  * it and looks up the real, unexpired, unused match (POST

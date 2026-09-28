@@ -83,7 +83,7 @@ export function SupportScreen({ navigation }: Props) {
   );
 
   const onEmailSupport = () => {
-    Linking.openURL("mailto:support@23primefit.app?subject=23PrimeFit%20Support");
+    Linking.openURL("mailto:support@fynrox.com?subject=FynroX%20Support");
   };
 
   return (
@@ -93,7 +93,7 @@ export function SupportScreen({ navigation }: Props) {
       <ListRow
         icon="mail"
         title="Email Support"
-        subtitle="support@23primefit.app"
+        subtitle="support@fynrox.com"
         tint={colors.accent}
         tintSoft={colors.accentSoft}
         onPress={onEmailSupport}
@@ -154,7 +154,7 @@ export function SupportScreen({ navigation }: Props) {
       </Card>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.lg }}>
-        23PrimeFit v{Constants.expoConfig?.version ?? "—"}
+        FynroX v{Constants.expoConfig?.version ?? "—"}
       </Text>
     </ScreenContainer>
   );

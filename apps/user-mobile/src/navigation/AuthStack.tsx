@@ -18,7 +18,7 @@ export type AuthStackParamList = {
   // Forgot/Reset Password (18 Sep 2026, gap §53). ForgotPassword is
   // reached from LoginScreen and only ever submits an email.
   // ResetPassword is reached from SplashScreen when a
-  // `primefit://reset-password?token=` link was captured — see
+  // `fynrox://reset-password?token=` link was captured — see
   // src/lib/resetPasswordLink.ts — the real path a user actually takes
   // (tapping the link in the email ForgotPassword triggered).
   ForgotPassword: undefined;

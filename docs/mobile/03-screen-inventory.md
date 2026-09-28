@@ -8,7 +8,7 @@ All 82 screens are 390×844 iOS frames on a single Figma page. Node IDs are in [
 
 A linear, no-back-nav-bar flow with a 5-step progress indicator from step 3 onward.
 
-- **Splash/Welcome** — logo animation area, "23PrimeFit — Your Complete Wellness Operating System" tagline, "Get Started" primary CTA, "Sign In" link for returning users.
+- **Splash/Welcome** — logo animation area, "FynroX — Your Complete Wellness Operating System" tagline, "Get Started" primary CTA, "Sign In" link for returning users.
 - **Login/Register** — a Login/Sign Up mode toggle; sign-up form: full name, phone number (+91 default, OTP-based), optional recovery email, terms/privacy checkbox, "Get OTP" CTA.
 - **OTP Verification** — 4-digit OTP box entry, resend timer, "Verify" CTA.
 - **Setup: About You** — gender selection cards (male/female/other), and stepper inputs for age/weight/height.
@@ -99,7 +99,7 @@ A "premium" life/fitness journey log — headers are tagged `premium-header`, su
 
 ## H. AI Coach (1 screen)
 
-- **AI Coach Chat** (branded "23Prime AI") — an online-status header, guidance-topic chips (Training Plan, Exercise Form, Nutrition Advice, Recovery — truncated list, likely more), a message thread (user bubbles + AI bubbles with avatar), quick-reply suggestion chips below the thread, and a composer with attach/mic/send. Carries an explicit disclaimer: *"AI Coach provides general fitness and wellness guidance only. Not a substitute for professional medical advice."*
+- **AI Coach Chat** (branded "FynroX AI") — an online-status header, guidance-topic chips (Training Plan, Exercise Form, Nutrition Advice, Recovery — truncated list, likely more), a message thread (user bubbles + AI bubbles with avatar), quick-reply suggestion chips below the thread, and a composer with attach/mic/send. Carries an explicit disclaimer: *"AI Coach provides general fitness and wellness guidance only. Not a substitute for professional medical advice."*
 
 ---
 

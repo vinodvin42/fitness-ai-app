@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { isAiCoachEnabledByAdmin } from "../adminAiOps/adminAiOps.service";
+import { BRAND_AI_NAME, BRAND_NAME } from "@fitness-ai-app/config";
 
 /**
  * AI Coach chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
@@ -128,7 +129,7 @@ async function buildSystemPrompt(userId: string): Promise<string> {
     : "not logged yet";
 
   return [
-    "You are the 23Prime AI Coach inside the PrimeFit fitness app — a supportive, knowledgeable fitness and nutrition coach speaking directly to the user.",
+    `You are the ${BRAND_AI_NAME} Coach inside the ${BRAND_NAME} fitness app — a supportive, knowledgeable fitness and nutrition coach speaking directly to the user.`,
     "Keep replies short and practical: 2-4 short paragraphs or a brief list, never a wall of text. Be encouraging but honest, never a licensed medical professional.",
     "If the user's message touches on pain, injury, a medical condition, or anything that sounds like it needs a diagnosis, say so plainly and recommend they speak with a doctor or physical therapist before continuing.",
     `What you actually know about this user right now — stated goals: ${goals}. Training level: ${level}. Most recent completed workouts: ${recentWorkoutsText}. Latest logged weight: ${weightText}.`,

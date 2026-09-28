@@ -1,8 +1,8 @@
-# Product Requirements — 23PrimeFit User Mobile App
+# Product Requirements — FynroX User Mobile App
 
 ## 1. Summary
 
-This covers the second Figma file reviewed for this project: **v1-user** (`fileKey: goXnXRimiQom0cq8p8Mvtj`), a single page ("01 - Design System") containing **82 mobile screens** for the consumer-facing iOS app, branded **"23PrimeFit"** — the same product family as the Super Admin Console documented in [../01-product-requirements.md](../admin/01-product-requirements.md), confirmed by the shared "23" logo mark and PrimeFit wordmark. Where the admin console is the internal back office, this app is what end users actually use day to day: onboarding, training, nutrition, recovery, progress tracking, an AI coach, a human-coach marketplace, and subscription/payments.
+This covers the second Figma file reviewed for this project: **v1-user** (`fileKey: goXnXRimiQom0cq8p8Mvtj`), a single page ("01 - Design System") containing **82 mobile screens** for the consumer-facing iOS app, branded **"FynroX"** — the same product family as the Super Admin Console documented in [../01-product-requirements.md](../admin/01-product-requirements.md), confirmed by the shared "23" logo mark and FynroX wordmark. Where the admin console is the internal back office, this app is what end users actually use day to day: onboarding, training, nutrition, recovery, progress tracking, an AI coach, a human-coach marketplace, and subscription/payments.
 
 All 82 frames are fixed at 390×844 (iOS mobile viewport, notch-style status bar + home indicator throughout) — this is an **iOS-first, phone-only** design; no tablet or Android-specific frames were found.
 
@@ -19,7 +19,7 @@ An **AI Coach floating action button** ("ai-coach-fab") appears on nearly every 
 - **AI nutrition suggestions** and an **AI-generated meal plan** (`user-meal-plan`) with a "sparkles" banner.
 - **AI Recovery Insight** on the recovery dashboard.
 - **AI Insights** — a dedicated predictive screen (`user-ai-insights`) with a "core prediction," a plateau warning, a forecast row, and an anomalies list.
-- A full **AI Coach chat** screen (`user-ai-coach-chat`) branded "23Prime AI" with guidance chips (Training Plan, Exercise Form, Nutrition Advice, Recovery) and a disclaimer footer: *"AI Coach provides general fitness and wellness guidance only. Not a substitute for professional medical advice."*
+- A full **AI Coach chat** screen (`user-ai-coach-chat`) branded "FynroX AI" with guidance chips (Training Plan, Exercise Form, Nutrition Advice, Recovery) and a disclaimer footer: *"AI Coach provides general fitness and wellness guidance only. Not a substitute for professional medical advice."*
 
 This directly corresponds to the Admin Console's **AI Operations** module (11.01–11.03), which manages exactly these capabilities as named, versioned models with rollout/latency/error-rate controls (e.g. "FitGPT Workout Plan Generator", "PrimeVision Photo Diet Log", "AI Health Score Forecaster") — see [06-cross-app-integration.md](06-cross-app-integration.md).
 

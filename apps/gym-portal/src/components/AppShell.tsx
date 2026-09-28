@@ -25,7 +25,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
             PF
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
             <div className="text-[10px] uppercase tracking-widest text-text-dim">Gym Partner Portal</div>
           </div>
         </div>

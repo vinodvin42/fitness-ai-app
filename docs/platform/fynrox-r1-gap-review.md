@@ -9,7 +9,7 @@
    §2, its locked decisions override the R1 work package.
 
 Both documents are written as *greenfield* build instructions ("Start with Phase 0: propose the
-Prisma schema…"). The repository is **not** greenfield: it is a mature PrimeFit/23PrimeFit build
+Prisma schema…"). The repository is **not** greenfield: it is a mature FynroX/FynroX build
 with 254 API source files, a 3,508-line Prisma schema, 281 backend tests and four clients. This
 review therefore reads the documents as an **acceptance specification against existing code**
 rather than a build order.
@@ -113,8 +113,8 @@ no Recover copy at all.
 
 ## B. Brand (Q1, Q4, Q5) — not started
 
-`grep -ri fynrox` over the repo returns **zero hits**. 100 files still carry PrimeFit / 23PrimeFit /
-23PRIME, including `package.json`, `README.md`, `legal/privacy-policy.md`, `legal/terms-of-service.md`,
+`grep -ri fynrox` over the repo returns **zero hits**. 100 files still carry FynroX / FynroX /
+FYNROX, including `package.json`, `README.md`, `legal/privacy-policy.md`, `legal/terms-of-service.md`,
 all 10 landing pages, `apps/*/index.html`, `apps/coach-mobile/app.json`, and API service files.
 
 The spec requires a single `BRAND_NAME` constant in `packages/config` and one logo component.
@@ -430,7 +430,7 @@ tested code that the spec says should not exist. Building the U-M professional s
 settled risks building them twice.
 
 **Step 1 — the config/brand foundation.** Make `packages/config` a real package with `BRAND_NAME`
-and a D-defaults flag layer; sweep the 100 PrimeFit files; add the `FX-` referral prefix. Nothing
+and a D-defaults flag layer; sweep the 100 FynroX files; add the `FX-` referral prefix. Nothing
 downstream is safe to write before this exists.
 
 **Step 2 — the four data-model gaps that block whole features**, in this order: earning/commission

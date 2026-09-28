@@ -64,5 +64,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`23PrimeFit landing page → http://localhost:${PORT}`);
+  console.log(`FynroX landing page → http://localhost:${PORT}`);
 });

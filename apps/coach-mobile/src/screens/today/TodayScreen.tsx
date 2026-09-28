@@ -79,7 +79,7 @@ function StuckRelationshipsBanner({ items }: { items: { relationshipId: string; 
       </Text>
       <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.sm }}>
         {items.length === 1 ? "This client relationship" : `These ${items.length} client relationships`} didn't
-        finish activating and won't show up under Clients yet. This has been flagged to PrimeFit support — no
+        finish activating and won't show up under Clients yet. This has been flagged to FynroX support — no
         action is required from you, but reach out to support if you expected this to be resolved by now.
       </Text>
       <View style={{ gap: spacing.xs }}>

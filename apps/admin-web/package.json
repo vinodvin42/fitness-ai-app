@@ -12,6 +12,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@fitness-ai-app/config": "*",
     "@fitness-ai-app/types": "*",
     "@tanstack/react-query": "^5.101.0",
     "axios": "^1.19.0",

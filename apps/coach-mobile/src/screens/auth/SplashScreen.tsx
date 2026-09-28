@@ -13,7 +13,7 @@ export function SplashScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.logo}>23PrimeFit Coach</Text>
+        <Text style={styles.logo}>FynroX Coach</Text>
         <Text style={styles.tagline}>Join as a Professional — connect with clients and grow your practice.</Text>
       </View>
 

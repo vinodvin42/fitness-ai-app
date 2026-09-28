@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { generateSecret as generateOtpSecret, generateURI, verify as verifyOtp } from "otplib";
 import QRCode from "qrcode";
 import { env } from "../config/env";
+import { BRAND_NAME } from "@fitness-ai-app/config";
 
 /**
  * Two-Factor Authentication (25 Aug 2026, Phase 4, closes gap §17) — TOTP
@@ -27,7 +28,7 @@ import { env } from "../config/env";
  * actually requires rather than "at least 16 chars."
  */
 
-const ISSUER = "23PrimeFit";
+const ISSUER = BRAND_NAME;
 const ALGORITHM = "aes-256-gcm";
 const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // same no-0/O-1/I alphabet as referralCode.ts
 const RECOVERY_CODE_LENGTH = 10;

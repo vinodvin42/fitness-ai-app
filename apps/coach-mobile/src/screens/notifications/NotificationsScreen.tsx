@@ -104,7 +104,7 @@ export function NotificationsScreen() {
         <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
           <Text style={{ color: colors.warning, ...typography.h2 }}>Needs attention — stuck activating</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Already flagged to PrimeFit support — no action required from you.
+            Already flagged to FynroX support — no action required from you.
           </Text>
           {stuck.map((item) => (
             <Card key={item.relationshipId} style={{ borderColor: colors.warning, borderWidth: 1 }}>

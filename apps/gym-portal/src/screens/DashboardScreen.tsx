@@ -39,7 +39,7 @@ async function fetchMemberActivationSummary(): Promise<AdminGymMemberActivationS
  * lib/twoFactor.ts's TOTP-setup QR), reused here rather than introducing a
  * second QR library into this build. Encodes the exact deep-link shape
  * apps/user-mobile's acquisitionContext.ts already expects
- * (`primefit://join?source=gym&code=<code>`) — see gyms.service.ts's own
+ * (`fynrox://join?source=gym&code=<code>`) — see gyms.service.ts's own
  * doc comment on the invite code for why that string, not a bare code, is
  * what's meaningful to scan.
  */
@@ -61,7 +61,7 @@ export function DashboardScreen() {
       setQrDataUrl(null);
       return;
     }
-    const deepLink = `primefit://join?source=gym&code=${data.gym.inviteCode}`;
+    const deepLink = `fynrox://join?source=gym&code=${data.gym.inviteCode}`;
     let cancelled = false;
     QRCode.toDataURL(deepLink, { margin: 1, width: 200 })
       .then((url) => {
@@ -102,12 +102,12 @@ export function DashboardScreen() {
             {data.gym.status === "application" && (
               <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
                 Your partner application is still under review — your invite code and dashboard are ready, but
-                they'll go live for real signups once PrimeFit approves your account.
+                they'll go live for real signups once FynroX approves your account.
               </p>
             )}
             {data.gym.status === "suspended" && (
               <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
-                Your partner account is currently suspended. Contact PrimeFit support (see the Support tab) to
+                Your partner account is currently suspended. Contact FynroX support (see the Support tab) to
                 resolve this.
               </p>
             )}
@@ -118,7 +118,7 @@ export function DashboardScreen() {
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">Member Invite</div>
               <p className="mt-2 text-sm text-text-secondary">
-                Share this code or QR with your members so PrimeFit signups can be attributed to your gym.
+                Share this code or QR with your members so FynroX signups can be attributed to your gym.
               </p>
               <div className="mt-3 flex items-center gap-4">
                 {qrDataUrl && (
@@ -148,7 +148,7 @@ export function DashboardScreen() {
                 </dl>
               )}
               <p className="mt-3 text-[11px] text-text-dim">
-                Aggregate counts only — PrimeFit never shares a member list, individual activity, nutrition logs,
+                Aggregate counts only — FynroX never shares a member list, individual activity, nutrition logs,
                 medical/safety data, or private conversations with your gym.
               </p>
             </div>
@@ -169,7 +169,7 @@ export function DashboardScreen() {
               ))}
               {data.gym.locations.length === 0 && (
                 <p className="text-sm text-text-dim">
-                  No locations on file yet — contact PrimeFit support to add one.
+                  No locations on file yet — contact FynroX support to add one.
                 </p>
               )}
             </div>
@@ -182,8 +182,8 @@ export function DashboardScreen() {
             <div className="text-xs uppercase tracking-wide text-text-dim">Commercial Status</div>
             <p className="mt-2 text-sm text-text-secondary">
               {data.gym.commercialConfigured
-                ? "Your commercial terms are configured. Contact your PrimeFit account manager for details."
-                : "Commercial terms have not been configured yet — reach out to your PrimeFit account manager."}
+                ? "Your commercial terms are configured. Contact your FynroX account manager for details."
+                : "Commercial terms have not been configured yet — reach out to your FynroX account manager."}
             </p>
           </div>
         </div>

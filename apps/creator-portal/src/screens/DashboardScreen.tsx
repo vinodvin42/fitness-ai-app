@@ -52,7 +52,7 @@ export function DashboardScreen() {
     <div className="min-h-screen bg-canvas px-4 py-6 sm:px-8">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <div className="text-sm font-semibold tracking-wide text-text-primary">PRIMEFIT CREATOR PORTAL</div>
+          <div className="text-sm font-semibold tracking-wide text-text-primary">FYNROX CREATOR PORTAL</div>
           <div className="text-xs text-text-dim">{influencer?.name}</div>
         </div>
         <button
@@ -95,7 +95,7 @@ export function DashboardScreen() {
           </div>
         )}
         {campaigns.data && campaigns.data.campaigns.length === 0 && (
-          <p className="text-sm text-text-dim">No campaigns are credited to you yet — ask your PrimeFit contact.</p>
+          <p className="text-sm text-text-dim">No campaigns are credited to you yet — ask your FynroX contact.</p>
         )}
         {campaigns.data && campaigns.data.campaigns.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">

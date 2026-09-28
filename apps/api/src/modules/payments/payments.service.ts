@@ -12,6 +12,7 @@ import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { CreateOrderInput } from "./payments.schema";
+import { BRAND_NAME } from "@fitness-ai-app/config";
 
 /**
  * Razorpay integration (20 Aug 2026), closing gap §14's "no payment
@@ -278,7 +279,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     amountCents,
     currency: env.RAZORPAY_CURRENCY,
     keyId: env.RAZORPAY_KEY_ID,
-    name: "23PrimeFit",
+    name: BRAND_NAME,
     description,
     couponCode,
     discountCents,

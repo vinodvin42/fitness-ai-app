@@ -19,6 +19,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@fitness-ai-app/config": "*",
     "@fitness-ai-app/types": "*",
     "@prisma/client": "^5.20.0",
     "@sentry/node": "^10.71.0",

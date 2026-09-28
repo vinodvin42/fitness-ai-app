@@ -1,6 +1,6 @@
 # Cross-App Integration — How the Mobile App and Admin Console Fit Together
 
-The two Figma files reviewed for this project are two faces of one product: **v1-user** (this app) is what end users experience; **vi-admin** (documented in [../](../)) is how PrimeFit staff operate the business behind it. This document maps the two together so backend/data-model work isn't duplicated or built as two disconnected systems.
+The two Figma files reviewed for this project are two faces of one product: **v1-user** (this app) is what end users experience; **vi-admin** (documented in [../](../)) is how FynroX staff operate the business behind it. This document maps the two together so backend/data-model work isn't duplicated or built as two disconnected systems.
 
 ## 1. Direct module correspondences
 

@@ -210,7 +210,7 @@ export function AppShell({
             PF
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
             <div className="text-[10px] uppercase tracking-widest text-text-dim">Super Admin</div>
           </div>
         </div>

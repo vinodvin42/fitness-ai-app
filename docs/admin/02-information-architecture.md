@@ -5,7 +5,7 @@
 Every screen shares the same shell: a fixed **240px left sidebar** and a fluid **content area** to its right (1200px on the 1440px desktop canvas).
 
 **Sidebar, top to bottom:**
-1. **Logo block** — mark + "PRIMEFIT" wordmark + "SUPER ADMIN" subtitle.
+1. **Logo block** — mark + "FYNROX" wordmark + "SUPER ADMIN" subtitle.
 2. **Primary nav rail** — one entry per top-level module (icon + label): Dashboard, Users, Professionals, Relationships, Programs, Commerce, Growth, Analytics, (AI Operations — see note below), Support.
 3. Either a **"System & Operations" flyout** (a chevron-triggered secondary menu, collapsed by default, holding Content, Notifications, Admin Users, Roles & Permissions, Audit Logs, Settings) **or** a **"SYSTEM STATUS" pill** ("All nodes online") — the two later screens (Finance, AI Operations) use the status pill instead of the flyout; see the note on inconsistency below.
 

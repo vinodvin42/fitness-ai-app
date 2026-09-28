@@ -36,7 +36,7 @@ export function LoginScreen() {
             PF
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
             <div className="text-[10px] uppercase tracking-widest text-text-dim">Gym Partner Portal</div>
           </div>
         </div>
@@ -83,7 +83,7 @@ export function LoginScreen() {
           </button>
 
           <p className="text-center text-[11px] text-text-dim">
-            No portal access yet, or forgot your password? Contact PrimeFit support — your account manager can set or
+            No portal access yet, or forgot your password? Contact FynroX support — your account manager can set or
             reset it.
           </p>
         </form>

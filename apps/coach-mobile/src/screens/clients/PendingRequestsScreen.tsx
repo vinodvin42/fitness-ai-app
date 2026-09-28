@@ -61,7 +61,7 @@ function isStalled(createdAtIso: string): boolean {
  * Messages/Clients themselves.
  *
  * **R2 Wave 2 (20 Sep 2026):** a second, real section — "Offers from
- * PrimeFit" — added below Client Requests, backing the new admin-proposes-
+ * FynroX" — added below Client Requests, backing the new admin-proposes-
  * a-specific-pro flow (professionalOffers.service.ts). Deliberately a
  * SECOND section on this same screen, not merged into one indistinguishable
  * list with Client Requests above: a Relationship request already exists as
@@ -138,7 +138,7 @@ export function PendingRequestsScreen() {
   const confirmDeclineOffer = (item: ProfessionalOfferForCoach) => {
     Alert.alert(
       "Decline this offer?",
-      `PrimeFit proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
+      `FynroX proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -204,9 +204,9 @@ export function PendingRequestsScreen() {
         </View>
       )}
 
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.xl }}>Offers from PrimeFit</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.xl }}>Offers from FynroX</Text>
       <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-        PrimeFit proposed you as this client's coach — accepting creates the relationship.
+        FynroX proposed you as this client's coach — accepting creates the relationship.
       </Text>
 
       {offersQuery.isLoading && <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} />}
@@ -215,7 +215,7 @@ export function PendingRequestsScreen() {
       {offersQuery.data && offersQuery.data.offers.length === 0 && (
         <EmptyState
           title="No offers right now"
-          subtitle="When PrimeFit proposes you as a coach for a specific client, it'll show up here for you to accept or decline."
+          subtitle="When FynroX proposes you as a coach for a specific client, it'll show up here for you to accept or decline."
         />
       )}
 
@@ -234,7 +234,7 @@ export function PendingRequestsScreen() {
                 </Text>
                 {isStalled(item.createdAt) && (
                   <Text style={{ color: colors.warning, fontSize: 12, marginTop: 2 }}>
-                    You haven't responded to this yet — PrimeFit support can see this too.
+                    You haven't responded to this yet — FynroX support can see this too.
                   </Text>
                 )}
                 <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>

@@ -279,7 +279,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
     try {
       const data = await fetchDataExport();
       await Share.share({
-        title: "My 23PrimeFit data",
+        title: "My FynroX data",
         message: JSON.stringify(data, null, 2),
       });
     } catch (err) {

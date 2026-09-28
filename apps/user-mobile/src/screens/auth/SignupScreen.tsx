@@ -64,7 +64,7 @@ export function SignupScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Start your fitness journey with 23PrimeFit.</Text>
+        <Text style={styles.subtitle}>Start your fitness journey with FynroX.</Text>
 
         {acquisitionContext && describeAcquisitionContext(acquisitionContext) ? (
           <View style={styles.acquisitionBanner}>

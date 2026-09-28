@@ -1,6 +1,6 @@
-# 23PrimeFit — Landing Page
+# FynroX — Landing Page
 
-Public marketing/landing page for 23PrimeFit. Plain static HTML/CSS/vanilla
+Public marketing/landing page for FynroX. Plain static HTML/CSS/vanilla
 JS — no build step, no framework, no npm dependencies. Deploys to Azure
 Static Web Apps alongside `apps/admin-web` and `apps/user-mobile`.
 

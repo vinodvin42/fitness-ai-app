@@ -38,7 +38,7 @@ export function LoginScreen() {
             PF
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
             <div className="text-[10px] uppercase tracking-widest text-text-dim">Creator Portal</div>
           </div>
         </div>
@@ -86,7 +86,7 @@ export function LoginScreen() {
         </form>
 
         <p className="mt-6 text-center text-[11px] text-text-dim">
-          No portal access yet? Ask your PrimeFit contact to grant one.
+          No portal access yet? Ask your FynroX contact to grant one.
         </p>
       </div>
     </div>

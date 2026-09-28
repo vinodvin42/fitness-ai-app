@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "23PrimeFit",
+    "name": "FynroX",
     "slug": "23primefit-user-mobile",
     "version": "0.3.0",
     "orientation": "portrait",
-    "scheme": "primefit",
+    "scheme": "fynrox",
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#0B0C10"
@@ -30,14 +30,14 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "23PrimeFit uses Face ID to unlock the app when Biometric Unlock is turned on in Settings."
+          "faceIDPermission": "FynroX uses Face ID to unlock the app when Biometric Unlock is turned on in Settings."
         }
       ],
       [
         "expo-image-picker",
         {
-          "cameraPermission": "23PrimeFit uses your camera to take a Progress Photo.",
-          "photosPermission": "23PrimeFit uses your photo library so you can upload a Progress Photo.",
+          "cameraPermission": "FynroX uses your camera to take a Progress Photo.",
+          "photosPermission": "FynroX uses your photo library so you can upload a Progress Photo.",
           "microphonePermission": false
         }
       ]

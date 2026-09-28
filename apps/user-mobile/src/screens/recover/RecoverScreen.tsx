@@ -35,7 +35,7 @@ export function RecoverScreen({ navigation }: Props) {
   return (
     <ScreenContainer title="Recover" subtitle="Rest, recovery & AI guidance">
       <AIBanner
-        title="Chat with 23Prime AI"
+        title="Chat with FynroX AI"
         body="Training, nutrition, and recovery guidance grounded in your real goals and progress."
         ctaLabel="Open chat"
         onPress={() => navigation.navigate("AiCoach")}

@@ -1,5 +1,5 @@
 /*
- * 23PrimeFit landing page — small progressive-enhancement script.
+ * FynroX landing page — small progressive-enhancement script.
  *
  * Nothing here is required for the page to work: with JS disabled the page
  * is still fully readable and navigable (all content is in the HTML, all

@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { findUserByReferralCode } from "../../lib/referralCode";
 
 /**
  * §O "Refer & Invite" (docs/mobile/03-screen-inventory.md) — real
@@ -24,10 +25,11 @@ import { ApiHttpError } from "../../middleware/errorHandler";
  * surface to design for.
  */
 export async function redeemReferralCode(newUserId: string, rawCode: string) {
-  const code = rawCode.trim().toUpperCase();
-  if (!code) return;
-
-  const referrer = await prisma.user.findUnique({ where: { referralCode: code } });
+  // Q12: user codes now carry an `FX-` prefix, but codes issued before
+  // that change do not, and a user typing one in rarely reproduces it
+  // exactly. `findUserByReferralCode` accepts either shape, so an old
+  // code on printed collateral and a new prefixed one both resolve.
+  const referrer = await findUserByReferralCode(rawCode);
   if (!referrer) return;
 
   const referral = await prisma.referral.create({ data: { referrerId: referrer.id, refereeId: newUserId } });

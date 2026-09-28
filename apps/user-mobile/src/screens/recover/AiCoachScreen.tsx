@@ -51,7 +51,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
   const isUser = message.role === "user";
   return (
     <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
-      {!isUser && <Text style={styles.assistantLabel}>23Prime AI</Text>}
+      {!isUser && <Text style={styles.assistantLabel}>FynroX AI</Text>}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         <Text style={isUser ? styles.bubbleTextUser : styles.bubbleTextAssistant}>{message.content}</Text>
       </View>
@@ -65,7 +65,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
 /**
  * AI Coach Chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
  * Phase 2 §H) — the screen half of gap §13, now that
- * apps/api/src/modules/aiCoach is real. Branded "23Prime AI" per the
+ * apps/api/src/modules/aiCoach is real. Branded "FynroX AI" per the
  * design doc. **R1 Developer 1 U1 (14 Sep 2026):** relocated from its own
  * former Recover tab into MoreStack (see that file's own comment) — "AI
  * is global" per the R1 work package's own nav rule, so the real entry
@@ -157,7 +157,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+          <Text style={styles.headerTitle}>FynroX AI</Text>
         </View>
         <View style={{ padding: spacing.md }}>
           <Card>
@@ -177,7 +177,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.onlineDot} />
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+          <Text style={styles.headerTitle}>FynroX AI</Text>
         </View>
         <Text style={styles.headerSubtitle}>Online</Text>
       </View>
@@ -206,7 +206,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             ListEmptyComponent={
               <View style={{ paddingTop: spacing.lg, gap: spacing.md }}>
                 <Card>
-                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hey — I'm 23Prime AI.</Text>
+                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hey — I'm FynroX AI.</Text>
                   <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
                     Ask me about your training, nutrition, or recovery — I'll ground my answers in your real
                     progress in this app. Try one of these, or just type below.
@@ -222,7 +222,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             ListFooterComponent={
               isSending ? (
                 <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-                  <Text style={styles.assistantLabel}>23Prime AI</Text>
+                  <Text style={styles.assistantLabel}>FynroX AI</Text>
                   <View style={[styles.bubble, styles.bubbleAssistant]}>
                     <ActivityIndicator color={colors.aiAccent} size="small" />
                   </View>

@@ -44,7 +44,7 @@ export function SignupScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Create your coaching account</Text>
-        <Text style={styles.subtitle}>Join as a Professional and connect with clients on 23PrimeFit.</Text>
+        <Text style={styles.subtitle}>Join as a Professional and connect with clients on FynroX.</Text>
 
         <TextInput
           style={styles.input}

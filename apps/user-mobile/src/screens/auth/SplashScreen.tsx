@@ -15,7 +15,7 @@ export function SplashScreen({ navigation }: Props) {
   // Reset Password deep link (18 Sep 2026, gap §53) — Splash is
   // AuthStack's initialRouteName, so it's the first screen that mounts
   // whenever the user is signed out, which is exactly when a real
-  // `primefit://reset-password?token=` link (captured in App.tsx, see
+  // `fynrox://reset-password?token=` link (captured in App.tsx, see
   // src/lib/resetPasswordLink.ts) would be opened. `navigate` rather than
   // `reset` so the normal back-to-Splash/Login flow still works if the
   // user backs out of ResetPasswordScreen without completing it.
@@ -33,7 +33,7 @@ export function SplashScreen({ navigation }: Props) {
         <View style={styles.mark}>
           <Icon name="zap" size={40} color={colors.textOnAccent} strokeWidth={2.5} />
         </View>
-        <Text style={styles.logo}>23PrimeFit</Text>
+        <Text style={styles.logo}>FynroX</Text>
         <Text style={styles.tagline}>Your complete wellness operating system</Text>
       </View>
 
