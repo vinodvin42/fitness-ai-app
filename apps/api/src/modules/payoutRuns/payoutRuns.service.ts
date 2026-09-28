@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
+import { payoutProvider } from "../../providers";
 
 /**
  * A-M3 — "Payout run: approve professional earnings and creator
@@ -148,7 +149,16 @@ export async function createPayoutRun(
     entityId: batch.id,
     ruleId: "BR-ADM-005",
     stateAfter: { status: "processing", itemCount: claimed.count, totalCents: preview.totalCents },
-    metadata: { kind, reason },
+    metadata: {
+      kind,
+      reason,
+      // D5 is still open, so record plainly whether this batch was
+      // actually sent anywhere or only recorded as intent. An audit row
+      // that cannot distinguish the two is worse than none when someone
+      // later asks why a professional says they were never paid.
+      payoutProvider: payoutProvider.name,
+      settlementIsReal: payoutProvider.isConfigured(),
+    },
   });
 
   return finalBatch;
@@ -240,6 +250,16 @@ export async function settlePayoutRun(
   });
 
   return updated;
+}
+
+/**
+ * Whether completing a run actually moves money, or only records that it
+ * should. D5 has no real provider yet, so this is false in every
+ * environment today — the admin console reads it so the payout screen
+ * can say so rather than implying settlement.
+ */
+export function payoutSettlementIsReal(): boolean {
+  return payoutProvider.isConfigured();
 }
 
 export async function listPayoutRuns(kind?: PayoutRunKind) {

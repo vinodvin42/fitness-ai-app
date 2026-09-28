@@ -3,7 +3,7 @@ import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { createOrderSchema, verifyPaymentSchema } from "./payments.schema";
 import * as paymentsService from "./payments.service";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { isRazorpayConfigured } from "../../lib/razorpayClient";
+import { paymentProvider, providerStatus } from "../../providers";
 
 export const paymentsRouter = Router();
 
@@ -18,7 +18,10 @@ export const paymentsRouter = Router();
  * payment data, and screens need it before/without a purchase attempt.
  */
 paymentsRouter.get("/payments/config", (_req, res) => {
-  res.json({ configured: isRazorpayConfigured() });
+  // Now reports WHICH provider as well as whether it is configured —
+  // a client showing a payment sheet needs to know it is talking to
+  // the mock, and a QA run that silently used the mock is a false pass.
+  res.json({ configured: paymentProvider.isConfigured(), provider: paymentProvider.name, providers: providerStatus() });
 });
 
 paymentsRouter.post("/payments/razorpay/orders", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {

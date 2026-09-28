@@ -1,7 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
+import { paymentProvider } from "../../providers";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { applyRefundToCommission } from "../creatorCommissions/creatorCommissions.service";
@@ -166,12 +166,11 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
   let providerRefundId: string | null = null;
   const now = new Date();
 
-  if (isRazorpayConfigured() && payment.providerPaymentId) {
+  if (paymentProvider.isConfigured() && payment.providerPaymentId) {
     try {
-      const razorpay = getRazorpayClient();
-      const refund = await razorpay.payments.refund(payment.providerPaymentId, { amount: input.amountCents });
+      const refund = await paymentProvider.refund(payment.providerPaymentId, input.amountCents);
       status = "processed";
-      providerRefundId = (refund as { id?: string }).id ?? null;
+      providerRefundId = refund.id;
     } catch (err) {
       // A gateway failure is recorded as a real `failed` refund (reconciled
       // onto the already-reserved row, not a second one), not swallowed —

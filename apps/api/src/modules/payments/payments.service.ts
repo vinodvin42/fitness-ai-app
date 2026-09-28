@@ -4,7 +4,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { env } from "../../config/env";
-import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
+import { paymentProvider } from "../../providers";
 import { subscribe } from "../subscriptions/subscriptions.service";
 import { purchaseProgram } from "../programPurchases/programPurchases.service";
 import { claimRelationship, createBooking, hasBookingConflict } from "../coaching/coaching.service";
@@ -159,7 +159,7 @@ async function resolveAmountCents(
 }
 
 export async function createOrder(userId: string, input: CreateOrderInput) {
-  if (!isRazorpayConfigured()) {
+  if (!paymentProvider.isConfigured()) {
     throw new ApiHttpError(
       503,
       "payment_gateway_not_configured",
@@ -213,10 +213,10 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     discountCents = result.discountCents;
   }
 
-  const razorpay = getRazorpayClient();
-
-  const order = await razorpay.orders.create({
-    amount: amountCents,
+  // D4 — through the adapter, so which gateway takes the money is a
+  // config value rather than an import in this file.
+  const order = await paymentProvider.createOrder({
+    amountCents,
     currency: env.RAZORPAY_CURRENCY,
     receipt: `${input.purpose}_${input.referenceId}_${Date.now()}`,
     notes: { userId, purpose: input.purpose, referenceId: input.referenceId },
@@ -547,7 +547,7 @@ export async function verifyPayment(
   userId: string,
   input: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string },
 ) {
-  if (!isRazorpayConfigured()) {
+  if (!paymentProvider.isConfigured()) {
     throw new ApiHttpError(503, "payment_gateway_not_configured", "Payments aren't configured on this server yet");
   }
 
@@ -579,15 +579,19 @@ export async function verifyPayment(
     return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
   }
 
-  // The actual security boundary — recompute the signature server-side
-  // with the secret key, never trust that a client posting "success" means
-  // it really was one.
-  const expectedSignature = crypto
-    .createHmac("sha256", env.RAZORPAY_KEY_SECRET!)
-    .update(`${input.razorpayOrderId}|${input.razorpayPaymentId}`)
-    .digest("hex");
-
-  if (!timingSafeEqualHex(expectedSignature, input.razorpaySignature)) {
+  // The actual security boundary — the provider recomputes the
+  // signature server-side with its own secret; a client posting
+  // "success" is never taken at its word. Kept behind the adapter so
+  // each provider owns its own signing scheme (the mock signs with a
+  // real HMAC too, so this path is genuinely exercised in tests rather
+  // than stubbed to true).
+  if (
+    !paymentProvider.verifySignature({
+      orderId: input.razorpayOrderId,
+      paymentId: input.razorpayPaymentId,
+      signature: input.razorpaySignature,
+    })
+  ) {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } });
     throw new ApiHttpError(400, "invalid_signature", "Payment signature verification failed");
   }

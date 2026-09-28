@@ -73,7 +73,7 @@ const envSchema = z.object({
   // Razorpay (20 Aug 2026, gap §14) — deliberately optional, not
   // fail-fast like the JWT secrets above: payments are a bolt-on feature,
   // not required to boot the app at all, and this build environment has
-  // no real merchant credentials to supply. See lib/razorpayClient.ts —
+  // no real merchant credentials to supply. See src/providers/razorpayPaymentProvider.ts —
   // the client is constructed lazily, only when an endpoint actually
   // needs it, so an unconfigured Razorpay never blocks startup or any
   // route that doesn't touch payments.
@@ -122,6 +122,18 @@ const envSchema = z.object({
   // (a per-resource endpoint + "deployment name" instead of a bare model
   // name, since Azure OpenAI deploys a chosen base model under a name you
   // pick yourself) and auth (`api-key` header, not `Authorization: Bearer`).
+  // Provider selection (spec §12: D4, D8) — "code it behind config so the
+  // final answer is a setting change".
+  //
+  // Defaults to the REAL gateway, never to the mock. An environment that
+  // simply lacks credentials must 503 rather than quietly pretend to
+  // take money; choosing the mock is always explicit.
+  PAYMENT_PROVIDER: z.enum(["razorpay", "mock"]).default("razorpay"),
+  // `seed` is the offline four-product list; `openfoodfacts` is the real
+  // vendor. Defaults to the real one — a network blip must never
+  // silently narrow the catalogue.
+  FOOD_DATA_PROVIDER: z.enum(["openfoodfacts", "seed"]).default("openfoodfacts"),
+
   AI_PROVIDER: z.enum(["anthropic", "openai", "azure-openai"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
