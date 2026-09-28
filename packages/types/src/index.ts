@@ -4168,7 +4168,16 @@ export type AdminActionItemType =
   | "support_ticket_open"
   | "support_escalation"
   | "relationship_change_pending"
-  | "credential_verification_pending";
+  | "credential_verification_pending"
+  // Added to schema.prisma by the R1 gap work but never mirrored here, so
+  // admin-web's own type filter could not offer them — found while adding
+  // the third. A union that drifts from the Prisma enum silently narrows
+  // every dropdown built from it.
+  | "professional_assignment_pending"
+  | "gym_help_request"
+  // Spec §8 — a gym, creator or professional application from the public
+  // website. Early Access signups deliberately do not queue.
+  | "partner_application_received";
 
 export type AdminActionItemSeverity = "low" | "medium" | "high";
 export type AdminActionItemStatus = "open" | "resolved";
@@ -4378,4 +4387,44 @@ export interface AdminSearchResultItem {
 export interface AdminSearchResponse {
   query: string;
   results: AdminSearchResultItem[];
+}
+
+// ---------------------------------------------------------------------
+// Public website applications (spec §8) — Early Access, partner
+// applications and contact messages submitted from apps/landing.
+// ---------------------------------------------------------------------
+
+export type PublicApplicationKind = "early_access" | "gym" | "creator" | "professional" | "contact";
+
+export type PublicApplicationStatus = "new" | "in_review" | "contacted" | "converted" | "rejected";
+
+export interface AdminPublicApplicationListItem {
+  id: string;
+  kind: PublicApplicationKind;
+  status: PublicApplicationStatus;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  organisation: string | null;
+  city: string | null;
+  detail: string | null;
+  message: string | null;
+  /** Attribution carried from a gym invite or creator referral landing. */
+  sourceCode: string | null;
+  sourceKind: string | null;
+  /** Contact consent is not carried: a row cannot exist without it. */
+  consentMarketing: boolean;
+  adminNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminPublicApplicationListResponse {
+  items: AdminPublicApplicationListItem[];
+  total: number;
+}
+
+export interface UpdatePublicApplicationInput {
+  status: PublicApplicationStatus;
+  adminNote?: string;
 }

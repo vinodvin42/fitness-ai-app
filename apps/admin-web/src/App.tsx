@@ -39,6 +39,7 @@ import { ReferralsScreen } from "./screens/growth/ReferralsScreen";
 import { InfluencersScreen } from "./screens/growth/InfluencersScreen";
 import { CampaignDirectoryScreen } from "./screens/acquisition/CampaignDirectoryScreen";
 import { AcquisitionReportScreen } from "./screens/acquisition/AcquisitionReportScreen";
+import { ApplicationsScreen } from "./screens/acquisition/ApplicationsScreen";
 import { UserAnalyticsScreen } from "./screens/analytics/UserAnalyticsScreen";
 import { EngagementScreen } from "./screens/analytics/EngagementScreen";
 import { FitnessNutritionScreen } from "./screens/analytics/FitnessNutritionScreen";
@@ -472,6 +473,19 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <AcquisitionReportScreen />
+          </RequireAuth>
+        }
+      />
+      {/* Spec §8 (28 Sep 2026) — the queue behind the public website's
+          Early Access, partner application and contact forms. Under
+          Growth for the same reason Campaigns is: these are leads and
+          partner applications, not accounts, and the API gates both
+          endpoints on the `growth` permission to match. */}
+      <Route
+        path="/growth/applications"
+        element={
+          <RequireAuth>
+            <ApplicationsScreen />
           </RequireAuth>
         }
       />

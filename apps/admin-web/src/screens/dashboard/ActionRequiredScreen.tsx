@@ -35,6 +35,13 @@ const TYPE_OPTIONS: AdminActionItemType[] = [
   "support_escalation",
   "relationship_change_pending",
   "credential_verification_pending",
+  // The three types the Prisma enum gained during the R1 gap work. The
+  // first two were live and emitting but absent from this list, so an
+  // admin could not filter to them — a hand-maintained copy of an enum
+  // narrows silently every time the enum grows.
+  "professional_assignment_pending",
+  "gym_help_request",
+  "partner_application_received",
 ];
 
 function typeLabel(type: string): string {
@@ -100,6 +107,19 @@ function getDrillThrough(item: AdminActionItem): { label: string; to: string; ex
       return { label: "Open change queue", to: "/relationships/change-queue", exact: false };
     case "Refund":
       return { label: "Open refunds", to: "/commerce/refunds", exact: false };
+    case "public_application": {
+      // Spec §8 — a gym, creator or professional application from the
+      // public website. No per-row detail route: every field a submission
+      // carries is already on the queue's own row, so this links to the
+      // list filtered to that form rather than to a page that would only
+      // repeat it.
+      const kind = typeof meta.kind === "string" ? meta.kind : null;
+      return {
+        label: "Open applications",
+        to: kind ? `/growth/applications?kind=${encodeURIComponent(kind)}` : "/growth/applications",
+        exact: false,
+      };
+    }
     default:
       return null;
   }

@@ -618,7 +618,13 @@ open, and that page changes when the plans do.
 4. **Accessibility.** Still not audited end to end. The new pages were built to 44px targets
    and were checked for a single `h1`, a labelled nav, focus-visible inputs and no
    horizontal overflow at 390px — but that is a spot check, not a WCAG 2.1 AA audit.
-5. **An admin screen for the application queue.** The API and the action-queue item exist;
-   `admin-web` has no page for them yet, so the rows are readable over the API only.
+5. ~~An admin screen for the application queue.~~ **Built** — Growth → Applications, with
+   the action queue drilling through to it filtered by form. Adding it surfaced a separate
+   defect: `packages/types`' `AdminActionItemType` union had never been updated for
+   `professional_assignment_pending` or `gym_help_request`, both live and emitting, so
+   admin-web's own filter could not offer them. A hand-maintained copy of an enum narrows
+   silently every time the enum grows, so `tests/enumParity.test.ts` now asserts the union
+   and the Prisma enum match in both directions (and asserts it is reading real values, so
+   it cannot pass on two empty lists).
 6. **The four §A structural decisions**, which remain implemented-behind-flags rather than
    settled. Unchanged.
