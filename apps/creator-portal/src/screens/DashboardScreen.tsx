@@ -7,6 +7,7 @@ import type {
 import { apiClient } from "../lib/api";
 import { extractErrorMessage } from "../lib/apiError";
 import { useAuth } from "../lib/auth";
+import { AppShell } from "../components/AppShell";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -42,27 +43,18 @@ async function fetchPayouts(): Promise<InfluencerPortalPayoutsResponse> {
  * comment for the boundary-discipline guarantee.
  */
 export function DashboardScreen() {
-  const { influencer, logout } = useAuth();
+  const { influencer } = useAuth();
 
   const campaigns = useQuery({ queryKey: ["creator-campaigns"], queryFn: fetchCampaigns });
   const report = useQuery({ queryKey: ["creator-report"], queryFn: fetchReport });
   const payouts = useQuery({ queryKey: ["creator-payouts"], queryFn: fetchPayouts });
 
+  // Wrapped in the shared AppShell as of the R1 build-out: this screen
+  // predates the portal having any navigation, so it carried its own
+  // header and sign-out. Leaving it that way would mean one screen that
+  // looks like a different product from the five around it.
   return (
-    <div className="min-h-screen bg-canvas px-4 py-6 sm:px-8">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <div className="text-sm font-semibold tracking-wide text-text-primary">FYNROX CREATOR PORTAL</div>
-          <div className="text-xs text-text-dim">{influencer?.name}</div>
-        </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-accent hover:text-accent"
-        >
-          Sign out
-        </button>
-      </header>
+    <AppShell title="Dashboard">
 
       <section className="mb-6 rounded-lg border border-border-subtle bg-surface p-4">
         <div className="mb-3 text-sm font-medium text-text-primary">Your profile</div>
@@ -208,6 +200,6 @@ export function DashboardScreen() {
           </>
         )}
       </section>
-    </div>
+    </AppShell>
   );
 }

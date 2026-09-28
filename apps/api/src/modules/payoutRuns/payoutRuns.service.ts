@@ -191,7 +191,9 @@ export async function settlePayoutRun(
     });
     await prisma.creatorCommission.updateMany({
       where: { payoutBatchId: batchId, id: { notIn: failedIds }, status: { notIn: ["disputed", "reversed"] } },
-      data: { status: "paid", paidAt: now },
+      // A successful payment clears any earlier failure — a paid row
+      // showing a stale "payout failed" note is its own support ticket.
+      data: { status: "paid", paidAt: now, lastPayoutFailureReason: null, lastPayoutFailedAt: null },
     });
     // Spec §11 `commission.paid`, one per commission rather than one per
     // batch: a creator asking "when was I paid for this conversion"
@@ -214,7 +216,15 @@ export async function settlePayoutRun(
       // run. The failure belongs to the batch, not to the entitlement.
       await prisma.creatorCommission.updateMany({
         where: { payoutBatchId: batchId, id: { in: failedIds } },
-        data: { status: "approved", payoutBatchId: null },
+        data: {
+          status: "approved",
+          payoutBatchId: null,
+          // C-M2: the status returns to `approved` because the money is
+          // still owed, so the reason has to be carried separately or
+          // the creator's ledger looks like nothing was ever attempted.
+          lastPayoutFailureReason: failureReason,
+          lastPayoutFailedAt: now,
+        },
       });
     }
   } else {

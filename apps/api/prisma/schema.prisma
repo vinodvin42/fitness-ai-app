@@ -3709,6 +3709,17 @@ model CreatorCommission {
   payoutBatchId String?
   payoutBatch   PayoutBatch? @relation(fields: [payoutBatchId], references: [id], onDelete: SetNull)
 
+  /// C-M2 — "Commission ledger 'payout failed' state + reason".
+  ///
+  /// A commission whose payout batch bounced returns to `approved` (the
+  /// money is still owed and the next run must pick it up), so the
+  /// status alone cannot tell the creator what happened. Without this
+  /// the ledger would silently flip back to "approved" and the creator
+  /// would think nothing had been attempted. Cleared on a successful
+  /// payment.
+  lastPayoutFailureReason String?
+  lastPayoutFailedAt      DateTime?
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   approvedAt DateTime?
