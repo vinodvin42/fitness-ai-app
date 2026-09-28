@@ -8,5 +8,13 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // `tests/` is excluded because this workspace has no test runner, so
+    // there are no `vitest` types to resolve — see docs/mobile/i18n.md
+    // for the npm bug that blocks installing one. The file in there is
+    // valid vitest and should come back into `include` the moment a
+    // runner can be installed.
+    "tests"
+  ]
 }

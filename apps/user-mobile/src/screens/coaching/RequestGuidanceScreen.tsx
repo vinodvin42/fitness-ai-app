@@ -17,6 +17,7 @@ import {
   type GuidanceRequestStatus,
 } from "../../api/guidanceRequests";
 import { extractErrorMessage } from "../../lib/apiError";
+import { useTranslation } from "react-i18next";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -39,36 +40,20 @@ type Props = NativeStackScreenProps<MoreStackParamList, "RequestGuidance">;
  * relationship limit is expressed in.
  */
 
-const STATUS_COPY: Record<GuidanceRequestStatus, { label: string; tone: "accent" | "success" | "warning" | "neutral"; detail: string }> = {
-  open: {
-    label: "Finding a professional",
-    tone: "accent",
-    detail: "We're matching you with a verified professional. This usually takes a day or two.",
-  },
-  offered: {
-    label: "Waiting on a professional",
-    tone: "accent",
-    detail: "We've sent your request to a professional and are waiting for them to accept.",
-  },
-  fulfilled: {
-    label: "Matched",
-    tone: "success",
-    detail: "A professional accepted. You'll find them under your professional team.",
-  },
-  cancelled: {
-    label: "Cancelled",
-    tone: "neutral",
-    detail: "You cancelled this request. You can raise a new one any time.",
-  },
+/**
+ * Status -> catalogue key. The copy itself lives in `i18n/locales/en.ts`
+ * so it can be translated; this map only records which key belongs to
+ * which state, which is code, not copy.
+ */
+const STATUS_KEY: Record<GuidanceRequestStatus, { tone: "accent" | "success" | "warning" | "neutral" }> = {
+  open: { tone: "accent" },
+  offered: { tone: "accent" },
+  fulfilled: { tone: "success" },
+  cancelled: { tone: "neutral" },
   // U-M7. Stated plainly rather than dressed up: the user asked for
   // something and did not get it, and a vague "still looking" here would
   // be a lie that costs them weeks.
-  exhausted: {
-    label: "No match yet",
-    tone: "warning",
-    detail:
-      "We couldn't find an available professional for this request. Our team has been notified and will get in touch.",
-  },
+  exhausted: { tone: "warning" },
 };
 
 const SERVICES: Array<{ value: "fitness" | "nutrition"; label: string }> = [
@@ -77,6 +62,7 @@ const SERVICES: Array<{ value: "fitness" | "nutrition"; label: string }> = [
 ];
 
 export function RequestGuidanceScreen(_props: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [serviceType, setServiceType] = useState<"fitness" | "nutrition">("fitness");
   const [note, setNote] = useState("");
@@ -93,26 +79,26 @@ export function RequestGuidanceScreen(_props: Props) {
       queryClient.invalidateQueries({ queryKey: ["guidanceRequests"] });
     },
     onError: (err) =>
-      Alert.alert("Couldn't send your request", extractErrorMessage(err, "Check your connection and try again.")),
+      Alert.alert(t("guidance.sendFailed"), extractErrorMessage(err, t("common.checkConnection"))),
   });
 
   const cancel = useMutation({
     mutationFn: (id: string) => cancelGuidanceRequest(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guidanceRequests"] }),
     onError: (err) =>
-      Alert.alert("Couldn't cancel", extractErrorMessage(err, "Check your connection and try again.")),
+      Alert.alert(t("guidance.cancelFailed"), extractErrorMessage(err, t("common.checkConnection"))),
   });
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Professional guidance">
+      <ScreenContainer title={t("guidance.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (isError) {
     return (
-      <ScreenContainer title="Professional guidance">
+      <ScreenContainer title={t("guidance.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
@@ -124,13 +110,10 @@ export function RequestGuidanceScreen(_props: Props) {
   const canRequest = live.length === 0;
 
   return (
-    <ScreenContainer
-      title="Professional guidance"
-      subtitle="Ask for a verified fitness or nutrition professional"
-    >
+    <ScreenContainer title={t("guidance.title")} subtitle={t("guidance.subtitle")}>
       {live.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Your request</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("guidance.yourRequest")}</Text>
           {live.map((r) => (
             <RequestCard key={r.id} request={r} onCancel={() => cancel.mutate(r.id)} cancelling={cancel.isPending} />
           ))}
@@ -139,7 +122,7 @@ export function RequestGuidanceScreen(_props: Props) {
 
       {canRequest ? (
         <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>What do you need help with?</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("guidance.whatHelp")}</Text>
           <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
             {SERVICES.map((s) => (
               <Chip
@@ -152,7 +135,7 @@ export function RequestGuidanceScreen(_props: Props) {
           </View>
 
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.md }}>
-            Anything the professional should know (optional)
+            {t("guidance.noteLabel")}
           </Text>
           <TextInput
             value={note}
@@ -160,7 +143,7 @@ export function RequestGuidanceScreen(_props: Props) {
             multiline
             numberOfLines={3}
             maxLength={1000}
-            placeholder="Goals, injuries, schedule…"
+            placeholder={t("guidance.notePlaceholder")}
             placeholderTextColor={colors.textMuted}
             style={{
               color: colors.textPrimary,
@@ -174,20 +157,20 @@ export function RequestGuidanceScreen(_props: Props) {
           />
 
           <Button
-            label="Send request"
+            label={t("guidance.send")}
             onPress={() => create.mutate()}
             loading={create.isPending}
             style={{ marginTop: spacing.md }}
           />
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-            We match you with a professional from our verified network. You only pay once they accept.
+            {t("guidance.onlyPayOnAccept")}
           </Text>
         </Card>
       ) : null}
 
       {past.length > 0 ? (
         <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Earlier requests</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("guidance.earlier")}</Text>
           {past.map((r) => (
             <RequestCard key={r.id} request={r} />
           ))}
@@ -210,23 +193,28 @@ function RequestCard({
   onCancel?: () => void;
   cancelling?: boolean;
 }) {
-  const copy = STATUS_COPY[request.status];
+  const { t } = useTranslation();
+  const tone = STATUS_KEY[request.status].tone;
   return (
     <Card>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>
           {request.serviceType === "fitness" ? "Fitness" : "Nutrition"}
         </Text>
-        <Pill label={copy.label} tone={copy.tone} />
+        <Pill label={t(`guidance.status.${request.status}.label`)} tone={tone} />
       </View>
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>{copy.detail}</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+        {t(`guidance.status.${request.status}.detail`)}
+      </Text>
 
       {/* U-M7's re-match visibility. Shown only once it has actually
           happened — a "0 attempts so far" line would be noise. */}
       {request.rematchCount > 0 && request.status !== "fulfilled" ? (
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-          {request.rematchCount} professional{request.rematchCount === 1 ? "" : "s"} couldn't take this on — we're still
-          looking.
+          {/* Pluralised by i18next's CLDR rules, not a ternary — the
+              ternary is correct in English and wrong in most of the ten
+              languages this app offers. */}
+          {t("guidance.rematch", { count: request.rematchCount })}
         </Text>
       ) : null}
 
@@ -238,7 +226,7 @@ function RequestCard({
 
       {onCancel ? (
         <Button
-          label="Cancel request"
+          label={t("guidance.cancel")}
           variant="secondary"
           onPress={onCancel}
           loading={cancelling}
