@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { buildApp, prisma, uniqueEmail } from "./helpers";
 import { hashPassword } from "../src/lib/password";
+import { decryptStringList } from "../src/lib/fieldCrypto";
 
 /**
  * BR-SAF-004 Safety Escalations (R1 Developer 1, 18 Sep 2026) — closes the
@@ -71,8 +72,20 @@ describe("BR-SAF-004 Safety Escalations", () => {
 
     const rows = await prisma.safetyEscalation.findMany({ where: { userId } });
     expect(rows).toHaveLength(1);
-    expect(rows[0].medicalConditions).toEqual(["asthma"]);
-    expect(rows[0].injuries).toEqual(["knee ligament tear"]);
+
+    // §10: health data is stored encrypted. The plaintext columns must be
+    // EMPTY on a new write — that is the whole point, and asserting it
+    // here is what would catch the encryption being quietly bypassed.
+    expect(rows[0].medicalConditions).toEqual([]);
+    expect(rows[0].injuries).toEqual([]);
+    expect(rows[0].medicalConditionsEnc).toBeTruthy();
+    // Ciphertext, not the words themselves, is what lands in a backup.
+    expect(rows[0].medicalConditionsEnc).not.toContain("asthma");
+
+    // And it round-trips: the real values come back through the one
+    // accessor every consumer uses.
+    expect(decryptStringList(rows[0].medicalConditionsEnc)).toEqual(["asthma"]);
+    expect(decryptStringList(rows[0].injuriesEnc)).toEqual(["knee ligament tear"]);
     expect(rows[0].reviewedAt).toBeNull();
     expect(rows[0].reviewedByAdminId).toBeNull();
 

@@ -1,5 +1,6 @@
 import type { User } from "@prisma/client";
 import { classifySafetyOutcome } from "@fitness-ai-app/config";
+import { encryptStringList, readHealthList } from "../../lib/fieldCrypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
@@ -95,8 +96,45 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
  * logMeasurement), so this is the user's real, honest day-one baseline —
  * not a second, competing measurements table bolted onto OnboardingProfile.
  */
+
+/**
+ * Decrypts an onboarding profile's health fields on the way out, so
+ * every caller sees the same shape it always did.
+ *
+ * The encrypted columns themselves are stripped from the result: they
+ * are storage detail, and leaving them on a DTO is how ciphertext ends
+ * up in a log or an API response someone later treats as opaque-but-safe.
+ */
+function withDecryptedHealth<
+  T extends {
+    medicalConditions: string[];
+    injuries: string[];
+    medicalConditionsEnc: string | null;
+    injuriesEnc: string | null;
+  },
+>(profile: T) {
+  const { medicalConditionsEnc, injuriesEnc, ...rest } = profile;
+  return {
+    ...rest,
+    medicalConditions: readHealthList({ encrypted: medicalConditionsEnc, plaintext: profile.medicalConditions }),
+    injuries: readHealthList({ encrypted: injuriesEnc, plaintext: profile.injuries }),
+  };
+}
+
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
-  const { bodyFatPercent, waistCm, hipsCm, ...profileFields } = input;
+  const { bodyFatPercent, waistCm, hipsCm, medicalConditions, injuries, ...rest } = input;
+
+  // Spec §10: health data is stored encrypted. The two plaintext columns
+  // are written as empty from here on — they exist only so the backfill
+  // can migrate pre-existing rows without downtime, and a new write must
+  // never add to the plaintext that backfill is trying to remove.
+  const profileFields = {
+    ...rest,
+    medicalConditions: [],
+    injuries: [],
+    medicalConditionsEnc: encryptStringList(medicalConditions),
+    injuriesEnc: encryptStringList(injuries),
+  };
 
   // BR-SAF-004 (R1 Developer 1, 18 Sep 2026) needs to know, BEFORE the
   // upsert below, whether this call is a genuinely NEW completion or a
@@ -171,7 +209,15 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
 
   if (shouldEscalate) {
     const escalation = await prisma.safetyEscalation.create({
-      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+      data: {
+        userId,
+        // Encrypted here too — a safety escalation holds exactly the
+        // same declared conditions as the profile it came from.
+        medicalConditions: [],
+        injuries: [],
+        medicalConditionsEnc: encryptStringList(input.medicalConditions),
+        injuriesEnc: encryptStringList(input.injuries),
+      },
     });
 
     // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — `high`
@@ -213,7 +259,15 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
     // console can filter is the honest middle ground between "full
     // stop" and "no trace at all".
     const escalation = await prisma.safetyEscalation.create({
-      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+      data: {
+        userId,
+        // Encrypted here too — a safety escalation holds exactly the
+        // same declared conditions as the profile it came from.
+        medicalConditions: [],
+        injuries: [],
+        medicalConditionsEnc: encryptStringList(input.medicalConditions),
+        injuriesEnc: encryptStringList(input.injuries),
+      },
     });
 
     await createActionItem({
@@ -249,7 +303,7 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // server-side rather than re-derived in each client: which conditions
   // are serious is a safety rule, and BR-SAF-004 plus the Definition of
   // Done both require rules to be enforced by the API, not the UI.
-  return { ...profile, safetyOutcome };
+  return { ...withDecryptedHealth(profile), safetyOutcome };
 }
 
 /**
@@ -266,7 +320,7 @@ export async function getOnboardingProfile(userId: string) {
   if (!profile) {
     throw new ApiHttpError(404, "onboarding_profile_not_found", "Onboarding profile not found");
   }
-  return profile;
+  return withDecryptedHealth(profile);
 }
 
 /**
@@ -292,7 +346,7 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
     metadata: { fields: Object.keys(input) },
   });
 
-  return profile;
+  return withDecryptedHealth(profile);
 }
 
 /**
@@ -416,7 +470,9 @@ export async function exportUserData(userId: string) {
   return {
     exportedAt: new Date().toISOString(),
     profile: toPublicUser(user),
-    onboardingProfile,
+    // A data export must contain the user's real declared conditions,
+    // not ciphertext — the whole point is that they can read it.
+    onboardingProfile: onboardingProfile ? withDecryptedHealth(onboardingProfile) : null,
     workoutSessions,
     mealLogs,
     bodyMeasurements,

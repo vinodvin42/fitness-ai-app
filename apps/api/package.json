@@ -16,7 +16,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
     "db:backfill-action-items": "tsx scripts/backfillAdminActionItems.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:backfill-health-encryption": "tsx scripts/backfillHealthEncryption.ts"
   },
   "dependencies": {
     "@fitness-ai-app/config": "*",

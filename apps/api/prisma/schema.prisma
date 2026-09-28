@@ -443,18 +443,31 @@ model User {
 }
 
 model OnboardingProfile {
-  userId                String         @id
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gender                String?
-  age                   Int?
-  weightKg              Float?
-  heightCm              Float?
-  goals                 String[]       @default([])
-  trainingLevel         TrainingLevel?
-  dietType              String?
-  allergens             String[]       @default([])
-  medicalConditions     String[]       @default([])
-  injuries              String[]       @default([])
+  userId            String         @id
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender            String?
+  age               Int?
+  weightKg          Float?
+  heightCm          Float?
+  goals             String[]       @default([])
+  trainingLevel     TrainingLevel?
+  dietType          String?
+  allergens         String[]       @default([])
+  /// Spec §10: health data is "stored encrypted". These two columns are
+  /// the plaintext originals, kept nullable and emptied by the backfill
+  /// (scripts/backfillHealthEncryption.ts) so an existing deployment can
+  /// migrate without downtime. Once every environment has run the
+  /// backfill they can be dropped; until then the read path falls back
+  /// to them for any row the backfill has not reached.
+  medicalConditions String[]       @default([])
+  injuries          String[]       @default([])
+
+  /// AES-256-GCM blobs written by lib/fieldCrypto.ts. Encrypted as one
+  /// list each rather than per element, so the COUNT of declared
+  /// conditions does not leak — "this user declared four things" is
+  /// itself health information.
+  medicalConditionsEnc  String?
+  injuriesEnc           String?
   // Availability/Schedule (R1 Developer 1, 18 Sep 2026 — closes the "no
   // Availability/schedule screen or field anywhere" gap confirmed by
   // audit). A real, honest self-report of how often and roughly when a
@@ -469,7 +482,7 @@ model OnboardingProfile {
   // plans.service.ts's own top comment for the same discipline applied to
   // equipment).
   trainingDaysPerWeek   Int?
-  preferredTrainingDays String[]       @default([])
+  preferredTrainingDays String[]  @default([])
   sessionLengthMinutes  Int?
   // Equipment/gym-context self-report (R1 Developer 1, 18 Sep 2026). A
   // plain, honest, user-reported string — same "raw, honest, never
@@ -1438,15 +1451,19 @@ model Consent {
 // `SensitiveDataAccessRequest.reviewedAt`/`reviewedByAdminId` — null means
 // genuinely not yet looked at by anyone, not defaulted to "reviewed".
 model SafetyEscalation {
-  id                String     @id @default(uuid())
+  id                String   @id @default(uuid())
   userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   medicalConditions String[]
   injuries          String[]
-  createdAt         DateTime   @default(now())
-  reviewedAt        DateTime?
-  reviewedByAdminId String?
-  reviewedByAdmin   AdminUser? @relation("SafetyEscalationReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+
+  /// Same encrypted-at-rest treatment as OnboardingProfile above.
+  medicalConditionsEnc String?
+  injuriesEnc          String?
+  createdAt            DateTime   @default(now())
+  reviewedAt           DateTime?
+  reviewedByAdminId    String?
+  reviewedByAdmin      AdminUser? @relation("SafetyEscalationReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([reviewedAt])

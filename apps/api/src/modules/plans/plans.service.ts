@@ -4,6 +4,7 @@ import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { DecideRecommendationInput } from "./plans.schema";
+import { getDecryptedOnboardingProfile } from "../../lib/healthData";
 
 /**
  * Plan-Generation / Recommendation Engine (14 Sep 2026).
@@ -237,7 +238,11 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
     );
   }
 
-  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  // Health fields are encrypted at rest — read through the one
+  // accessor, never the columns. A direct read here would hand the
+  // plan generator an empty condition list for a user who declared
+  // a heart condition (§10, and the AI safety rules that depend on it).
+  const profile = await getDecryptedOnboardingProfile(userId);
   if (!profile || !profile.completedAt) {
     throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
   }
@@ -276,7 +281,11 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     throw new ApiHttpError(503, "plan_generation_not_configured", "Plan generation isn't configured on this server yet");
   }
 
-  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  // Health fields are encrypted at rest — read through the one
+  // accessor, never the columns. A direct read here would hand the
+  // plan generator an empty condition list for a user who declared
+  // a heart condition (§10, and the AI safety rules that depend on it).
+  const profile = await getDecryptedOnboardingProfile(userId);
   if (!profile || !profile.completedAt) {
     throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
   }
