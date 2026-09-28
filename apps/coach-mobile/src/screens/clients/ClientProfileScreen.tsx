@@ -20,7 +20,9 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
+import { flagClientSafety } from "../../api/professionalClients";
 import {
+  completeRelationship,
   endRelationship,
   fetchAvailableProfessionalsForHandover,
   handoverRelationship,
@@ -144,12 +146,25 @@ export function ClientProfileScreen() {
       {isSummaryError && <ErrorState onRetry={() => refetchSummary()} message="Couldn't load this client's activity." />}
       {summary && <ClientSummarySection summary={summary} />}
 
+      {/* P-M12 — above private notes on purpose: a note is for the
+          coach, a flag is for the safety team, and a coach reaching
+          for somewhere to record a worry should meet the escalation
+          route first. */}
+      <SafetyFlagCard userId={userId} fullName={fullName} />
       <NotesSection userId={userId} />
     </ScreenContainer>
   );
 }
 
-type RelationshipMode = "end" | "handover";
+/**
+ * P-M11 (28 Sep 2026) — `complete` joins the two existing outcomes.
+ * §10 makes COMPLETED distinct from ENDED: ending says the arrangement
+ * stopped, completing says the work finished. Both revoke access, but
+ * only one is something to be pleased about, and collapsing them denies
+ * a coach and their client that difference — "Complete programme" had
+ * no destination before this.
+ */
+type RelationshipMode = "end" | "handover" | "complete";
 
 /**
  * See this screen's own top comment (Wave 3, R1 U6) for the full design.
@@ -195,6 +210,16 @@ function RelationshipActionsSection({
     onError: (err) => Alert.alert("Couldn't end this relationship", extractErrorMessage(err, "Please try again.")),
   });
 
+  const completeMutation = useMutation({
+    mutationFn: (relationshipId: string) => completeRelationship(relationshipId, reason.trim()),
+    onSuccess: () => {
+      resetForm();
+      onComplete("Programme marked complete. This client's access has ended.");
+    },
+    onError: (err) =>
+      Alert.alert("Couldn't complete this programme", extractErrorMessage(err, "Please try again.")),
+  });
+
   const handoverMutation = useMutation({
     mutationFn: (relationshipId: string) =>
       handoverRelationship(relationshipId, {
@@ -224,17 +249,30 @@ function RelationshipActionsSection({
 
     const isHandoverWithReplacement = mode === "handover" && replacementId != null;
     Alert.alert(
-      mode === "handover" ? "Confirm handover" : "Confirm end relationship",
+      mode === "handover"
+        ? "Confirm handover"
+        : mode === "complete"
+          ? "Confirm programme complete"
+          : "Confirm end relationship",
       isHandoverWithReplacement
         ? "This ends your relationship with this client and sends the replacement coach a real offer for them. This can't be undone from here."
-        : "This ends your relationship with this client. This can't be undone from here.",
+        : mode === "complete"
+          ? "This marks the programme finished and ends your access to this client's data. They'll see a completion summary. This can't be undone from here."
+          : "This ends your relationship with this client. This can't be undone from here.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: mode === "handover" ? "Hand Over" : "End Relationship",
-          style: "destructive",
+          text: mode === "handover" ? "Hand Over" : mode === "complete" ? "Complete" : "End Relationship",
+          // Completing is not destructive in the way the other two are —
+          // it is the good ending, and styling it red would tell a coach
+          // finishing a programme well that they are doing damage.
+          style: mode === "complete" ? "default" : "destructive",
           onPress: () =>
-            mode === "handover" ? handoverMutation.mutate(relationshipId) : endMutation.mutate(relationshipId),
+            mode === "handover"
+              ? handoverMutation.mutate(relationshipId)
+              : mode === "complete"
+                ? completeMutation.mutate(relationshipId)
+                : endMutation.mutate(relationshipId),
         },
       ],
     );
@@ -249,7 +287,8 @@ function RelationshipActionsSection({
         const isOpen = openRelationshipId === r.relationshipId;
         const isBusy =
           (endMutation.isPending && endMutation.variables === r.relationshipId) ||
-          (handoverMutation.isPending && handoverMutation.variables === r.relationshipId);
+          (handoverMutation.isPending && handoverMutation.variables === r.relationshipId) ||
+          (completeMutation.isPending && completeMutation.variables === r.relationshipId);
 
         return (
           <View key={r.relationshipId} style={{ marginBottom: spacing.md }}>
@@ -258,7 +297,15 @@ function RelationshipActionsSection({
             </Text>
 
             {!isOpen ? (
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+                {/* Listed first because finishing a programme is the
+                    outcome everyone wants, and burying it behind the two
+                    ways things go wrong makes it look like the exception. */}
+                <Button
+                  label="Complete Programme"
+                  onPress={() => openForm(r.relationshipId, "complete")}
+                  style={{ flex: 1 }}
+                />
                 <Button
                   label="End Relationship"
                   variant="secondary"
@@ -355,6 +402,121 @@ function RelationshipActionsSection({
           </View>
         );
       })}
+    </Card>
+  );
+}
+
+/**
+ * P-M12 — "Client safety flag + escalation route. Pain is handled only
+ * inside chat."
+ *
+ * DESIGN-PENDING P-M12.
+ *
+ * A coach noticing something concerning — a client reporting chest pain
+ * mid-session, a pattern that reads as disordered eating — had nowhere
+ * to put it except a chat message, which nobody monitors and which is
+ * not an escalation. This is that route, and it is deliberately
+ * separate from private notes: a note is for the coach, a flag is for
+ * the safety team.
+ *
+ * The urgent toggle raises queue severity. It does NOT page anyone, and
+ * the screen says so — a coach who believes they have summoned help
+ * when they have queued a ticket is worse off than one who knows to
+ * call emergency services.
+ */
+function SafetyFlagCard({ userId, fullName }: { userId: string; fullName: string }) {
+  const [open, setOpen] = useState(false);
+  const [concern, setConcern] = useState("");
+  const [urgent, setUrgent] = useState(false);
+
+  const raise = useMutation({
+    mutationFn: () => flagClientSafety(userId, { concern: concern.trim(), urgent }),
+    onSuccess: () => {
+      setOpen(false);
+      setConcern("");
+      setUrgent(false);
+      Alert.alert(
+        "Flag raised",
+        "Our safety team has been notified and will review this. You'll be contacted if they need anything from you.",
+      );
+    },
+    onError: (err) => Alert.alert("Couldn't raise the flag", extractErrorMessage(err, "Please try again.")),
+  });
+
+  return (
+    <Card>
+      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Safety</Text>
+      {!open ? (
+        <>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
+            Worried about {fullName.split(" ")[0]}'s safety or wellbeing? Raise it here rather than in chat — chat
+            isn't monitored.
+          </Text>
+          <Button
+            label="Raise a safety concern"
+            variant="secondary"
+            onPress={() => setOpen(true)}
+            style={{ marginTop: spacing.md }}
+          />
+        </>
+      ) : (
+        <View style={{ marginTop: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+            What have you noticed? Be specific — this goes to our safety team, not to the client.
+          </Text>
+          <TextInput
+            value={concern}
+            onChangeText={setConcern}
+            multiline
+            numberOfLines={4}
+            maxLength={2000}
+            placeholder="What happened, when, and what concerns you about it"
+            placeholderTextColor={colors.textMuted}
+            style={{
+              color: colors.textPrimary,
+              backgroundColor: colors.surfaceRaised,
+              borderRadius: radius.card,
+              padding: spacing.md,
+              marginTop: spacing.xs,
+              minHeight: 96,
+              textAlignVertical: "top",
+            }}
+          />
+
+          <Text
+            onPress={() => setUrgent((u) => !u)}
+            style={{ color: urgent ? colors.warning : colors.textSecondary, marginTop: spacing.md }}
+          >
+            {urgent ? "☑" : "☐"}  This needs attention today
+          </Text>
+          {/* Stated plainly. A coach who thinks they have summoned help
+              when they have queued a ticket is worse off than one who
+              knows to call emergency services. */}
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+            This raises the priority of the review. It does not alert anyone immediately. If someone is in immediate
+            danger, call emergency services.
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+            <Button
+              label="Raise flag"
+              onPress={() => raise.mutate()}
+              loading={raise.isPending}
+              disabled={concern.trim().length < 10}
+              style={{ flex: 1 }}
+            />
+            <Button
+              label="Cancel"
+              variant="secondary"
+              onPress={() => {
+                setOpen(false);
+                setConcern("");
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      )}
     </Card>
   );
 }

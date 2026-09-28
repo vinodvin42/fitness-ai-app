@@ -14,9 +14,16 @@ import { apiClient } from "./client";
  * Relationship once accepted here. Same `/professionals/me/...`
  * professional-authed convention.
  */
-export function fetchProfessionalOffers() {
+/**
+ * P-M7 added the `status` filter: the Today queue only ever showed live
+ * offers, so a professional who declined one had no way to see what they
+ * had turned down or what had expired while they were away.
+ */
+export function fetchProfessionalOffers(status?: "offered" | "accepted" | "declined" | "expired") {
   return apiClient
-    .get<ProfessionalOffersForCoachResponse>("/professionals/me/offers")
+    .get<ProfessionalOffersForCoachResponse>("/professionals/me/offers", {
+      params: status ? { status } : undefined,
+    })
     .then((r) => r.data);
 }
 

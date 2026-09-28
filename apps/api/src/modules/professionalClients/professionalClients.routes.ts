@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { Router } from "express";
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
 import { writeRateLimit } from "../../middleware/rateLimit";
@@ -101,6 +102,32 @@ professionalClientsRouter.post(
           req.params.id,
           input,
         ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+/**
+ * P-M12 — the client safety flag. A professional noticing something
+ * concerning had nowhere to put it except a chat message, which nobody
+ * monitors and which is not an escalation.
+ */
+const safetyFlagSchema = z.object({
+  concern: z.string().trim().min(10).max(2000),
+  /** Urgent raises the queue severity; it does not page anyone. */
+  urgent: z.boolean().default(false),
+});
+
+professionalClientsRouter.post(
+  "/professionals/me/clients/:userId/safety-flag",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = safetyFlagSchema.parse(req.body);
+      res.status(201).json(
+        await professionalClientsService.flagClientSafety(req.professionalId as string, req.params.userId, input),
       );
     } catch (err) {
       next(err);

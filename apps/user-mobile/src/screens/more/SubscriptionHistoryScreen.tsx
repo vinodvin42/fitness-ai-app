@@ -21,6 +21,10 @@ const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = {
   // Gap §57 (18 Sep 2026) — real terminal states, distinct from each other.
   expired: colors.textMuted,
   revoked: colors.danger,
+  // U-M4 (28 Sep 2026) — see ProfileScreen's own note on why these two
+  // are amber rather than red: both are recoverable.
+  pending: colors.warning,
+  suspended: colors.warning,
 };
 
 /**

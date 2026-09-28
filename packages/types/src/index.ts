@@ -892,7 +892,32 @@ export type SubscriptionTier = "basic" | "pro" | "elite";
 // `expired`/`revoked` added 18 Sep 2026 (gap §57) — see
 // apps/api/prisma/schema.prisma's SubscriptionStatus enum doc comment for
 // the full real cancel-at-period-end policy and force-revoke design.
-export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "expired" | "revoked";
+/**
+ * R1 (§10 entitlement): `pending` and `suspended` join the set. EXPIRING
+ * is deliberately NOT here — it is derived on read (see
+ * `SubscriptionDisplayState`) because this codebase has no scheduled
+ * worker to flip a stored flag on the day.
+ */
+export type SubscriptionStatus =
+  | "pending"
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "suspended"
+  | "canceled"
+  | "expired"
+  | "revoked";
+
+/** What a client renders — the stored status, plus the derived `expiring`. */
+export type SubscriptionDisplayState =
+  | "pending"
+  | "active"
+  | "expiring"
+  | "expired"
+  | "suspended"
+  | "revoked"
+  | "canceled"
+  | "past_due";
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
 export type BillingCycle = "monthly" | "annual";
 
@@ -1314,7 +1339,16 @@ export type ProfessionalStatus = "active" | "suspended";
  * `CredentialStatus` — see apps/api's schema.prisma comment on this same
  * enum for the full, documented interaction between all three.
  */
-export type ProfessionalLifecycleStatus = "application" | "verification" | "approved" | "available" | "suspended";
+/** R1 (§10 professional account): NEEDS_ACTION / REJECTED / RESTRICTED join. */
+export type ProfessionalLifecycleStatus =
+  | "application"
+  | "verification"
+  | "approved"
+  | "available"
+  | "needs_action"
+  | "rejected"
+  | "restricted"
+  | "suspended";
 /**
  * `Relationship.status` (docs/coach/05-data-model.md §3) — added 21 Aug 2026
  * for apps/admin-web's Module 03/04, the Relationship model itself predates
@@ -1326,7 +1360,20 @@ export type ProfessionalLifecycleStatus = "application" | "verification" | "appr
  * coach review (apps/coach-mobile's Pending Requests screen, see
  * `PendingRelationshipItem` below) — `requested` no longer auto-advances.
  */
-export type RelationshipStatus = "requested" | "accepted" | "awaiting_payment" | "activating" | "active" | "ended";
+/** R1 (§10 professional relationship) — the full transition set. */
+export type RelationshipStatus =
+  | "requested"
+  | "offered"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "awaiting_payment"
+  | "activating"
+  | "activation_failed"
+  | "active"
+  | "changing"
+  | "completed"
+  | "ended";
 
 /** Public shape — never carries passwordHash or the raw kycDocumentData (see professionalAuth.service.ts's toPublicProfessional). */
 export interface Professional {
@@ -3586,7 +3633,21 @@ export interface Paginated<T> {
 // comment for the real-vs-honest-boundary reasoning.
 // ======================================================================
 
-export type PayoutStatus = "pending" | "paid";
+/**
+ * R1 (§10 professional earning): ELIGIBLE -> APPROVED -> PAYOUT_PENDING ->
+ * PAID / PAYOUT_FAILED. `pending` IS the spec's PAYOUT_PENDING, kept
+ * under its original name because every existing row carries it.
+ */
+export type PayoutStatus = "eligible" | "approved" | "pending" | "paid" | "payout_failed";
+
+/** R1 (§10 creator commission). */
+export type CommissionStatus =
+  | "pending_calculation"
+  | "eligible"
+  | "approved"
+  | "paid"
+  | "disputed"
+  | "reversed";
 
 // ---- Coach Settlements (admin 10.06) + coach Earnings ----
 export interface CoachSettlementRow {
@@ -3611,8 +3672,24 @@ export interface AdminSettlementsResponse {
 
 export interface CoachEarningsResponse {
   commissionPct: number;
-  currentMonth: { grossCents: number; commissionCents: number; netCents: number };
+  currentMonth: {
+    grossCents: number;
+    commissionCents: number;
+    netCents: number;
+    /**
+     * True when this figure comes from per-session bookings, which only
+     * exist under the marketplace model decision #4 turns off. Under
+     * controlled assignment it reads zero, and a client must say so
+     * rather than let a professional conclude they earned nothing.
+     */
+    derivedFromBookings: boolean;
+    hasBookingData: boolean;
+  };
   lifetimePaidCents: number;
+  /** Approved or payout-pending, i.e. owed but not yet received. */
+  awaitingPayoutCents: number;
+  /** Non-null when a transfer bounced — usually the payee's own details. */
+  payoutFailure: { count: number; amountCents: number; reason: string | null } | null;
   settlements: Array<{
     id: string;
     periodStart: string;
@@ -3620,12 +3697,23 @@ export interface CoachEarningsResponse {
     commissionPct: number;
     netCents: number;
     status: PayoutStatus;
+    approvedAt: string | null;
     paidAt: string | null;
+    payoutFailureReason: string | null;
   }>;
 }
 
 // ---- Influencers (admin 07) + Payouts (admin 10.07) ----
-export type InfluencerStatus = "active" | "inactive";
+/** R1 (§10 partner lifecycle) — the application states creators lacked. */
+export type InfluencerStatus =
+  | "draft"
+  | "pending_review"
+  | "more_info"
+  | "rejected"
+  | "active"
+  | "inactive"
+  | "suspended"
+  | "ended";
 
 export interface AdminInfluencerListItem {
   id: string;
@@ -3879,7 +3967,14 @@ export interface MealPlan {
 // ratePerMemberCents "not configured" placeholder semantics, and why
 // getMemberActivationSummary is honest-zero rather than fabricated).
 
-export type GymStatus = "application" | "approved" | "suspended";
+/** R1 (§10 partner lifecycle) — MORE_INFO / REJECTED / ENDED join. */
+export type GymStatus =
+  | "application"
+  | "more_info"
+  | "approved"
+  | "rejected"
+  | "suspended"
+  | "ended";
 
 export interface AdminGymLocation {
   id: string;

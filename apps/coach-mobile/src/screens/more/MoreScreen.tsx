@@ -29,6 +29,23 @@ export function MoreScreen() {
           subtitle="Your lifecycle status and how many clients you can take on"
           onPress={() => navigation.navigate("AvailabilityCapacity")}
         />
+        {/* P6 (28 Sep 2026) — the earnings surface. The handoff lists
+            earnings, payout pending/paid/failed and earnings history
+            among this app's complete-as-designed screens; none of them
+            existed, which meant a professional had no way to see what
+            they had been paid. */}
+        <MenuRow
+          label="Earnings"
+          subtitle="What you've been paid, what's owed, and payout status"
+          onPress={() => navigation.navigate("Earnings")}
+        />
+        {/* P-M7 — the offers list. Today only ever showed live offers, so
+            a declined or expired one simply vanished. */}
+        <MenuRow
+          label="Offers"
+          subtitle="Clients proposed to you, including ones you declined"
+          onPress={() => navigation.navigate("Offers")}
+        />
       </Card>
     </ScreenContainer>
   );

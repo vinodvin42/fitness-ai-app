@@ -83,7 +83,10 @@ export function PendingRequestsScreen() {
 
   const offersQuery = useQuery({
     queryKey: ["coach-professional-offers"],
-    queryFn: fetchProfessionalOffers,
+    // Wrapped rather than passed directly: fetchProfessionalOffers now
+    // takes an optional status filter (P-M7), and React Query would
+    // otherwise hand it a query context object as that argument.
+    queryFn: () => fetchProfessionalOffers("offered"),
   });
 
   const invalidateAfterAction = () => {

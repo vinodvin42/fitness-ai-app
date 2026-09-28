@@ -27,6 +27,12 @@ const STATUS_TONE: Record<SubscriptionDetail["status"], "success" | "accent" | "
   // Gap §57 (18 Sep 2026) — real terminal states, distinct from each other.
   expired: "neutral",
   revoked: "neutral",
+  // U-M4 (28 Sep 2026) — §10's entitlement states. `pending` is money
+  // taken but access not yet granted, which is a waiting state, not a
+  // good one; `suspended` is a reversible hold, so it reads as a warning
+  // rather than the terminal red `revoked` gets.
+  pending: "warning",
+  suspended: "warning",
 };
 
 /**
