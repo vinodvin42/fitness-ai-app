@@ -3,6 +3,8 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { getRazorpayClient, isRazorpayConfigured } from "../../lib/razorpayClient";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
+import { applyRefundToCommission } from "../creatorCommissions/creatorCommissions.service";
 import { CreateRefundInput, ListRefundsQuery } from "./adminRefunds.schema";
 
 /**
@@ -113,6 +115,11 @@ type LockedPaymentRow = {
  * creating a second one.
  */
 export async function createRefund(actorAdminId: string, paymentId: string, input: CreateRefundInput) {
+  // BR-ADM-005 / acceptance test 16 — refuse before touching anything.
+  // Checked here as well as in the zod schema so the rule holds for any
+  // future caller that bypasses the route's own validation.
+  const reason = assertHighImpactConfirmed(input);
+
   const { payment, reserved } = await prisma.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<LockedPaymentRow[]>`
       SELECT id, "userId", status, "amountCents", currency, "providerPaymentId"
@@ -144,7 +151,7 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
       data: {
         paymentId,
         amountCents: input.amountCents,
-        reason: input.reason ?? null,
+        reason,
         status: "pending",
         note: input.note ?? null,
       },
@@ -200,8 +207,38 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
         incurredAt: now,
         recordedByAdminId: actorAdminId,
         paidAt: now,
-        notes: input.reason ?? null,
+        notes: reason,
       },
+    });
+  }
+
+  // Acceptance test 15 — "a refund or chargeback moves the linked creator
+  // commission to DISPUTED / REVERSED". Runs for a `pending` refund too,
+  // not only a gateway-processed one: the admin has decided the money is
+  // going back, and leaving the commission payable in the meantime would
+  // let a payout run pay out on a conversion that is being unwound.
+  //
+  // Deliberately not inside the transaction above: a commission ledger
+  // failure must not roll back a refund that the gateway has already
+  // executed. §10's "no record may change another's state implicitly"
+  // cuts both ways — the commission follows the refund, but it does not
+  // get to veto it.
+  try {
+    await applyRefundToCommission({
+      paymentId,
+      refundId: refund.id,
+      refundedCents: input.amountCents,
+      actorAdminId,
+      reason,
+    });
+  } catch (err) {
+    await recordAudit({
+      actorAdminId,
+      action: "commission.dispute_failed",
+      entityType: "Refund",
+      entityId: refund.id,
+      ruleId: "BR-COM-012",
+      metadata: { paymentId, error: (err as Error).message },
     });
   }
 
@@ -210,7 +247,10 @@ export async function createRefund(actorAdminId: string, paymentId: string, inpu
     action: status === "processed" ? "refund.processed" : "refund.recorded",
     entityType: "Refund",
     entityId: refund.id,
-    metadata: { paymentId, amountCents: input.amountCents, status },
+    ruleId: "BR-COM-012",
+    stateBefore: { paymentStatus: payment.status, refundedCents: 0 },
+    stateAfter: { refundStatus: status, refundedCents: input.amountCents },
+    metadata: { paymentId, amountCents: input.amountCents, status, reason },
   });
 
   // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — only a refund

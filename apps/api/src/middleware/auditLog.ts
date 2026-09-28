@@ -25,6 +25,18 @@ export async function recordAudit(params: {
   entityType: string;
   entityId?: string | null;
   metadata?: Record<string, unknown>;
+  /**
+   * Spec §6: the audit log must show "state before / after and rule ID".
+   * Both were previously left to each caller's own `metadata` shape, so
+   * the admin audit screen had nothing dependable to render. Passing
+   * them is optional — most actions have no meaningful before-state —
+   * but a state transition should pass both, and BR-ADM-005's
+   * high-impact actions must.
+   */
+  stateBefore?: Record<string, unknown> | null;
+  stateAfter?: Record<string, unknown> | null;
+  /** e.g. "BR-COM-011". Spec §11 requires every event to carry one. */
+  ruleId?: string | null;
 }) {
   await prisma.auditLog.create({
     data: {
@@ -43,6 +55,13 @@ export async function recordAudit(params: {
       ...(params.metadata !== undefined
         ? { metadata: params.metadata as Prisma.InputJsonObject }
         : {}),
+      ...(params.stateBefore != null
+        ? { stateBefore: params.stateBefore as Prisma.InputJsonObject }
+        : {}),
+      ...(params.stateAfter != null
+        ? { stateAfter: params.stateAfter as Prisma.InputJsonObject }
+        : {}),
+      ruleId: params.ruleId ?? null,
     },
   });
 }

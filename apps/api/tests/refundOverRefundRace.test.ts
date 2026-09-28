@@ -28,6 +28,15 @@ import { createRefund } from "../src/modules/adminRefunds/adminRefunds.service";
  * one succeeds, the other gets a clean 422 `over_refund` (not a silent
  * double-refund), and the total refunded never exceeds the payment amount.
  */
+// BR-ADM-005 gates every refund on a written reason and a typed
+// confirmation, so the race test has to satisfy both before it can
+// exercise the concurrency it actually cares about.
+const HIGH_IMPACT = (amountCents: number) => ({
+  amountCents,
+  reason: "Concurrent refund race regression fixture",
+  confirmation: "RESOLVE",
+});
+
 describe("Refund over-refund race: concurrent refunds must not exceed the payment amount", () => {
   let adminId: string;
   let userId: string;
@@ -89,8 +98,8 @@ describe("Refund over-refund race: concurrent refunds must not exceed the paymen
 
   it("only lets one of two concurrent full-amount refunds through", async () => {
     const results = await Promise.allSettled([
-      createRefund(adminId, paymentId, { amountCents: AMOUNT_CENTS }),
-      createRefund(adminId, paymentId, { amountCents: AMOUNT_CENTS }),
+      createRefund(adminId, paymentId, HIGH_IMPACT(AMOUNT_CENTS)),
+      createRefund(adminId, paymentId, HIGH_IMPACT(AMOUNT_CENTS)),
     ]);
 
     const fulfilled = results.filter((r) => r.status === "fulfilled");

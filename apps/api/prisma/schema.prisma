@@ -418,6 +418,7 @@ model User {
   // relation unless explicitly selected) — this codebase's user-authed
   // endpoints never select it. See that model's own doc comment.
   coachNotes                  CoachNote[]
+  privacyRequests             PrivacyRequest[]
 
   @@map("users")
 }
@@ -868,7 +869,7 @@ model Recipe {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  mealLogs MealLog[]
+  mealLogs      MealLog[]
   // Meal-Plan Generation Engine (22 Sep 2026) — see MealPlan's own doc
   // comment.
   mealPlanItems MealPlanItem[]
@@ -1903,6 +1904,10 @@ model Subscription {
 // gap §14 for the full before/after.
 
 model Payment {
+  /// The creator commission this payment generated, if the converting
+  /// user was attributed to a creator campaign (spec §10).
+  creatorCommission CreatorCommission?
+
   id                      String          @id @default(uuid())
   userId                  String
   user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2084,12 +2089,15 @@ model AdminUser {
   // an item is assigned to and the admin who resolved it can legitimately
   // be the same one, no self-guard needed (same reasoning as Escalation's
   // own comment).
-  actionItemsAssigned             AdminActionItem[] @relation("AdminActionItemAssignedTo")
-  actionItemsResolved             AdminActionItem[] @relation("AdminActionItemResolvedBy")
+  actionItemsAssigned             AdminActionItem[]            @relation("AdminActionItemAssignedTo")
+  actionItemsResolved             AdminActionItem[]            @relation("AdminActionItemResolvedBy")
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
   // own doc comment below. Nullable on that model (a future "system"
   // proposer needs no AdminUser), so this is a one-to-many, not required.
-  professionalOffersProposed       ProfessionalOffer[]
+  professionalOffersProposed      ProfessionalOffer[]
+  payoutBatches                   PayoutBatch[]
+  privacyRequestsVerified         PrivacyRequest[]             @relation("PrivacyRequestVerifiedBy")
+  privacyRequestsResolved         PrivacyRequest[]             @relation("PrivacyRequestResolvedBy")
 
   @@map("admin_users")
 }
@@ -2165,6 +2173,12 @@ enum ProfessionalLifecycleStatus {
   approved
   available
   suspended
+  // Spec §10 "Professional account": ... -> APPROVED / NEEDS_ACTION /
+  // REJECTED; APPROVED -> RESTRICTED / SUSPENDED. P-M3 (application
+  // rejected; account suspended / restricted) needs all three.
+  needs_action
+  rejected
+  restricted
 }
 
 // Extended 15 Sep 2026 (R1 U6 — Professional relationship request/status/
@@ -2204,23 +2218,35 @@ enum RelationshipStatus {
   activating
   active
   ended
+  // Spec §10 "Professional relationship". `offered`/`declined`/
+  // `expired` also live on ProfessionalOffer, but a relationship that
+  // cannot say it is currently offered forces every caller to join to
+  // the offer table to answer "what is happening with this pairing".
+  // `completed` matters most: "programme complete" (U-M8, P-M11) is a
+  // different outcome from `ended` and §10 handles them differently.
+  offered
+  declined
+  expired
+  activation_failed
+  changing
+  completed
 }
 
 model Professional {
-  id                 String             @id @default(uuid())
-  email              String             @unique
+  id                 String                      @id @default(uuid())
+  email              String                      @unique
   passwordHash       String
   fullName           String
   phone              String?
   bio                String?
-  specializationTags String[]           @default([])
+  specializationTags String[]                    @default([])
   yearsExperience    Int?
-  status             ProfessionalStatus @default(active)
+  status             ProfessionalStatus          @default(active)
   // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
   // take on this coach's booking value, admin-editable (Module 03 Profile /
   // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
   // model's doc comment for how it's applied.
-  commissionPct      Int                @default(20)
+  commissionPct      Int                         @default(20)
   // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
   // service, unlike ProfessionalCredential below. Same base64-in-Postgres
   // storage precedent as ProgressPhoto.imageData (no object storage exists
@@ -2231,7 +2257,7 @@ model Professional {
   // before this should ever hold a real government ID — this build has
   // none of that, only the same storage mechanism as everything else here.
   kycDocumentData    String?
-  kycStatus          CredentialStatus   @default(not_verified)
+  kycStatus          CredentialStatus            @default(not_verified)
   // R2 Wave 1 (20 Sep 2026) — the professional's own account-level
   // application/approval journey (Developer 2's R1 work package §2,
   // APPLICATION -> VERIFICATION -> APPROVED -> AVAILABLE). Additive
@@ -2246,15 +2272,15 @@ model Professional {
   // service.ts's `updateMaxActiveClients`). Deliberately NOT a calendar-slot
   // capacity model; R1's own scope for this wave is just the integer gate.
   // Default 15 per the product decision made for this wave.
-  maxActiveClients  Int                @default(15)
+  maxActiveClients   Int                         @default(15)
   // Admin review notes for the KYC check (docs/admin/03-screen-inventory.md
   // 03.03's "admin review notes/log" field) — added 21 Aug 2026 for the
   // Credential Verification screen. A single current-notes field, not a
   // full threaded log; each verify/reject/suspend action is separately
   // captured in AuditLog (recordAudit()) for the actual audit trail.
   adminNotes         String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
 
   credentials      ProfessionalCredential[]
   refreshTokens    ProfessionalRefreshToken[]
@@ -2279,7 +2305,7 @@ model Professional {
   // `proposedByProfessionalId`: offers THIS professional proposed for a
   // replacement via a Handover action, distinct from `offersReceived`
   // above (offers proposed FOR this professional by someone else).
-  offersProposed   ProfessionalOffer[]            @relation("ProfessionalOfferProposedBy")
+  offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
 
   @@map("professionals")
 }
@@ -2590,17 +2616,17 @@ enum ProfessionalOfferStatus {
 }
 
 model ProfessionalOffer {
-  id                String                  @id @default(uuid())
-  professionalId    String
-  professional      Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceType       ProfessionalServiceType
-  status            ProfessionalOfferStatus @default(offered)
+  id                       String                  @id @default(uuid())
+  professionalId           String
+  professional             Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceType              ProfessionalServiceType
+  status                   ProfessionalOfferStatus @default(offered)
   // Nullable — see this model's own top comment on why "system" is a valid,
   // schema-modeled-but-not-yet-built proposer for a later wave.
-  proposedByAdminId String?
-  proposedByAdmin   AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
+  proposedByAdminId        String?
+  proposedByAdmin          AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
   // Wave 3 (20 Sep 2026, R1 U6 handover) — the OTHER real proposer this
   // model's own top comment already anticipated a later wave would add
   // ("system"), but this is the genuine one that landed: the ENDING coach
@@ -2614,10 +2640,10 @@ model ProfessionalOffer {
   // above (the professional the offer is FOR) — this is a second, distinct
   // relation to the same model (the professional the offer is FROM).
   proposedByProfessionalId String?
-  proposedByProfessional   Professional?      @relation("ProfessionalOfferProposedBy", fields: [proposedByProfessionalId], references: [id], onDelete: SetNull)
-  expiresAt         DateTime?
-  createdAt         DateTime                @default(now())
-  respondedAt       DateTime?
+  proposedByProfessional   Professional?           @relation("ProfessionalOfferProposedBy", fields: [proposedByProfessionalId], references: [id], onDelete: SetNull)
+  expiresAt                DateTime?
+  createdAt                DateTime                @default(now())
+  respondedAt              DateTime?
 
   @@index([professionalId, status])
   @@index([userId])
@@ -2713,8 +2739,21 @@ model AuditLog {
   action              String
   entityType          String
   entityId            String?
-  metadata            Json?
-  createdAt           DateTime      @default(now())
+  /// Spec §6 requires the admin audit log to show "state before /
+  /// after and rule ID". Both were previously buried in free-form
+  /// `metadata`, so the console could not render a before/after column
+  /// reliably — every writer chose its own shape. These are additive and
+  /// nullable: existing rows keep whatever they put in `metadata`.
+  stateBefore         Json?
+  stateAfter          Json?
+
+  /// The business rule this action enforced, e.g. "BR-COM-011". Spec §11
+  /// requires every event to carry one; AnalyticsEvent already had
+  /// `ruleId` and the audit log did not.
+  ruleId String?
+
+  metadata  Json?
+  createdAt DateTime @default(now())
 
   @@index([actorId])
   @@index([actorAdminId])
@@ -2855,8 +2894,20 @@ model CoachNote {
 // real ledger, rather than being a parallel money concept. Shared `PayoutStatus` with
 // influencer payouts — both are a simple pending → paid lifecycle.
 enum PayoutStatus {
+  // Spec §10: ELIGIBLE -> APPROVED -> PAYOUT_PENDING -> PAID /
+  // PAYOUT_FAILED. Before R1 this enum held only `pending` and `paid`,
+  // so A-M3 (the admin payout run) had no approval step to run and
+  // C-M2 (the creator "payout failed" state) had nothing to render.
+  //
+  // `pending` IS the spec's PAYOUT_PENDING — kept under its original
+  // name rather than renamed, because every existing CoachSettlement
+  // and InfluencerPayout row already carries it and an enum-value
+  // rename is a drop-and-recreate in Postgres for no behavioural gain.
+  eligible
+  approved
   pending
   paid
+  payout_failed
 }
 
 model CoachSettlement {
@@ -2876,7 +2927,15 @@ model CoachSettlement {
   status          PayoutStatus @default(pending)
   paidAt          DateTime?
   note            String?
-  createdAt       DateTime     @default(now())
+  /// The payout batch that paid this settlement, once one has (A-M3).
+  payoutBatchId   String?
+  payoutBatch     PayoutBatch? @relation(fields: [payoutBatchId], references: [id], onDelete: SetNull)
+
+  /// Why a `payout_failed` settlement failed — surfaced to the
+  /// professional, so it must be a reason a person can act on.
+  payoutFailureReason String?
+  approvedAt          DateTime?
+  createdAt           DateTime  @default(now())
 
   @@unique([professionalId, periodStart])
   @@index([professionalId])
@@ -2886,6 +2945,17 @@ model CoachSettlement {
 enum InfluencerStatus {
   active
   inactive
+  // Same §10 partner lifecycle as GymStatus. Creators previously had
+  // no application lifecycle at all — an Influencer was created
+  // directly by an admin — so A-M2 had no creator queue to act on and
+  // C-M3's suspended / partnership-ended states had nothing behind
+  // them. `active`/`inactive` are kept so existing rows stay valid.
+  draft
+  pending_review
+  more_info
+  rejected
+  suspended
+  ended
 }
 
 model Influencer {
@@ -2920,12 +2990,13 @@ model Influencer {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  payouts   InfluencerPayout[]
+  payouts         InfluencerPayout[]
+  commissions     CreatorCommission[]
   // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — a
   // Campaign MAY credit this influencer (BR-ACQ-002: "who gets paid" is
   // tracked here, separately from `channel`'s "how did they hear about
   // us"). See Campaign's own doc comment.
-  campaigns Campaign[]
+  campaigns       Campaign[]
   // Creator Portal sessions (R2 Wave 5) — see InfluencerRefreshToken's
   // own doc comment.
   refreshTokens   InfluencerRefreshToken[]
@@ -2954,18 +3025,22 @@ model InfluencerRefreshToken {
 }
 
 model InfluencerPayout {
-  id           String       @id @default(uuid())
-  influencerId String
-  influencer   Influencer   @relation(fields: [influencerId], references: [id], onDelete: Cascade)
-  amountCents  Int
+  id                  String       @id @default(uuid())
+  influencerId        String
+  influencer          Influencer   @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  amountCents         Int
   // Free-text period label (e.g. "Aug 2026") — deliberately not a computed
   // date range, since there's no attributed-revenue period to derive one
   // from (see Influencer.commissionPct's comment).
-  periodLabel  String
-  status       PayoutStatus @default(pending)
-  paidAt       DateTime?
-  note         String?
-  createdAt    DateTime     @default(now())
+  periodLabel         String
+  status              PayoutStatus @default(pending)
+  paidAt              DateTime?
+  note                String?
+  /// C-M2: the creator portal's commission ledger needs a "payout failed"
+  /// state *with a reason*, not just a red pill.
+  payoutFailureReason String?
+  approvedAt          DateTime?
+  createdAt           DateTime     @default(now())
 
   @@index([influencerId])
   @@map("influencer_payouts")
@@ -3042,6 +3117,8 @@ enum CampaignStatus {
 // actually carries) — unique so a Touchpoint/signup can resolve a raw
 // code straight back to one Campaign (see auth.service.ts#signup).
 model Campaign {
+  creatorCommissions CreatorCommission[]
+
   id           String            @id @default(uuid())
   sourceId     String
   source       AcquisitionSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
@@ -3301,6 +3378,14 @@ enum GymStatus {
   application
   approved
   suspended
+  // Spec §10 partner lifecycle: DRAFT -> PENDING_REVIEW -> APPROVED /
+  // MORE_INFO / REJECTED -> ACTIVE -> SUSPENDED / ENDED. A-M2's
+  // "approve / request info / reject" decision modal had no state to
+  // write for two of its three outcomes, and G-M2's rejected/ended
+  // states had nothing to render.
+  more_info
+  rejected
+  ended
 }
 
 model Gym {
@@ -3368,14 +3453,23 @@ model Gym {
 // inventory/access hardware in R1; a free-text profile field is the
 // honest scope of "equipment inventory/profile" here.
 model GymLocation {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   gymId     String
-  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  gym       Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
   name      String
   address   String
   equipment String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  /// Spec §10 "Equipment profile": CURRENT -> STALE (reconfirm) ->
+  /// CURRENT. `equipment` is still a plain text self-report (the work
+  /// package forbids a real equipment inventory in R1), but whether that
+  /// self-report is still trusted is now a real state rather than an
+  /// assumption, which is what U-M11 and the gym portal's reconfirm
+  /// screen both read.
+  equipmentStatus      EquipmentProfileStatus @default(current)
+  equipmentConfirmedAt DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@index([gymId])
   @@map("gym_locations")
@@ -3485,24 +3579,224 @@ enum AdminActionItemStatus {
 }
 
 model AdminActionItem {
-  id                String                   @id @default(uuid())
+  id                String                  @id @default(uuid())
   type              AdminActionItemType
   entityType        String
   entityId          String
-  severity          AdminActionItemSeverity  @default(medium)
-  status            AdminActionItemStatus    @default(open)
+  severity          AdminActionItemSeverity @default(medium)
+  status            AdminActionItemStatus   @default(open)
   metadata          Json?
   assignedToAdminId String?
-  assignedToAdmin   AdminUser?               @relation("AdminActionItemAssignedTo", fields: [assignedToAdminId], references: [id], onDelete: SetNull)
+  assignedToAdmin   AdminUser?              @relation("AdminActionItemAssignedTo", fields: [assignedToAdminId], references: [id], onDelete: SetNull)
   resolvedAt        DateTime?
   resolvedByAdminId String?
-  resolvedByAdmin   AdminUser?               @relation("AdminActionItemResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  resolvedByAdmin   AdminUser?              @relation("AdminActionItemResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
   resolutionNote    String?
-  createdAt         DateTime                 @default(now())
+  createdAt         DateTime                @default(now())
 
   @@index([status, severity])
   @@index([type])
   @@index([entityType, entityId])
   @@index([assignedToAdminId])
   @@map("admin_action_items")
+}
+
+/// Spec §10 "Creator commission": PENDING_CALCULATION -> ELIGIBLE ->
+/// APPROVED -> PAID; any -> DISPUTED / REVERSED on refund or chargeback.
+///
+/// The last transition is acceptance test 15, which could not pass
+/// before R1: no per-conversion commission record existed at all
+/// (`InfluencerPayout` is a manually-entered amount for a period, not
+/// something a specific refund can be traced back to).
+enum CommissionStatus {
+  pending_calculation
+  eligible
+  approved
+  paid
+  /// A refund or chargeback landed against the converting payment and the
+  /// commission is under review. Distinct from `reversed`: disputed is a
+  /// question, reversed is an answer.
+  disputed
+  /// The commission has been clawed back. Terminal.
+  reversed
+}
+
+/// A single creator commission, earned on one converting Payment.
+///
+/// Deliberately per-payment rather than per-period: spec §10 requires
+/// that "a refund or chargeback moves the linked creator commission to
+/// DISPUTED / REVERSED", and "the linked commission" only means
+/// something if a commission row can be traced to the exact payment the
+/// refund reverses. `InfluencerPayout` stays as the batch-level record
+/// of money actually sent; this is the ledger it is built from, which is
+/// also what BR-COM-012's "separate ledgers" requires.
+model CreatorCommission {
+  id           String     @id @default(uuid())
+  influencerId String
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  /// The payment that converted. Restrict, not Cascade: a commission is a
+  /// financial record and must outlive tidying-up of anything else.
+  paymentId String  @unique
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  /// The campaign the conversion was attributed to, when one is known.
+  /// Nullable because attribution can be resolved later than the payment.
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  /// Snapshot of the rate at calculation time. Reading it live off
+  /// `Influencer.commissionPct` would silently restate historical
+  /// commissions whenever the rate changes.
+  commissionPct   Int
+  grossCents      Int
+  commissionCents Int
+
+  status CommissionStatus @default(pending_calculation)
+
+  /// Set when status moves to `disputed` or `reversed`, naming the refund
+  /// that caused it, so the ledger explains itself without a join guess.
+  disputedReason String?
+  refundId       String?
+
+  /// The payout batch that paid this commission, once one has.
+  payoutBatchId String?
+  payoutBatch   PayoutBatch? @relation(fields: [payoutBatchId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  approvedAt DateTime?
+  paidAt     DateTime?
+
+  @@index([influencerId, status])
+  @@index([status])
+  @@map("creator_commissions")
+}
+
+enum PayoutBatchKind {
+  professional_earning
+  creator_commission
+}
+
+enum PayoutBatchStatus {
+  draft
+  processing
+  completed
+  /// Some rows in the batch paid and some failed. The batch is finished;
+  /// the failed rows are individually retryable. Modelled explicitly
+  /// because "completed" on a batch where money did not move for every
+  /// row is the kind of half-truth a finance console must never show.
+  partially_failed
+}
+
+/// A-M3: "approve professional earnings and creator commissions, create
+/// payout batch, mark paid / failed". Before R1 the only payout action
+/// was `POST /admin/payouts/:id/mark-paid`, one influencer row at a
+/// time, with no approval step and no failure state.
+model PayoutBatch {
+  id   String          @id @default(uuid())
+  kind PayoutBatchKind
+
+  createdByAdminId String
+  createdByAdmin   AdminUser @relation(fields: [createdByAdminId], references: [id], onDelete: Restrict)
+
+  status PayoutBatchStatus @default(draft)
+
+  /// Denormalised totals, written when the batch is assembled. A finance
+  /// screen must be able to show what a batch was worth without summing
+  /// its rows live, and must keep showing the original figure even after
+  /// individual rows later fail or are reversed.
+  itemCount  Int @default(0)
+  totalCents Int @default(0)
+
+  /// Required, and enforced in the service layer, not just here —
+  /// BR-ADM-005 makes a payout run a high-impact admin action.
+  reason String
+
+  note        String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  commissions CreatorCommission[]
+  settlements CoachSettlement[]
+
+  @@index([kind, status])
+  @@map("payout_batches")
+}
+
+/// Spec §10: RECEIVED -> VERIFYING -> IN_PROGRESS -> COMPLETED / REJECTED.
+///
+/// Before R1 this had no model at all: export and deletion executed
+/// immediately and Admin reconstructed a "DSAR log" by querying AuditLog
+/// for `user.data_exported` / `user.account_deleted`. That is a record of
+/// things that already happened, not a queue, so the user could not see
+/// request status (U-M17), Admin had nothing to verify or schedule
+/// (A-M5), and journey F8 broke.
+enum PrivacyRequestStatus {
+  received
+  /// Identity verification, per A-M5's "verify identity" action. A DPDP
+  /// subject-rights request must be verified before it is fulfilled —
+  /// fulfilling an unverified deletion request IS the data breach.
+  verifying
+  in_progress
+  completed
+  rejected
+}
+
+enum PrivacyRequestType {
+  export
+  deletion
+}
+
+/// A data-subject request under the DPDP Act, as a first-class record.
+model PrivacyRequest {
+  id     String             @id @default(uuid())
+  userId String
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   PrivacyRequestType
+
+  status PrivacyRequestStatus @default(received)
+
+  /// Free text from the user, if they gave a reason. Never required —
+  /// a subject does not owe anyone a reason for exercising a right.
+  userNote String?
+
+  verifiedByAdminId String?
+  verifiedByAdmin   AdminUser? @relation("PrivacyRequestVerifiedBy", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
+  verifiedAt        DateTime?
+
+  resolvedByAdminId String?
+  resolvedByAdmin   AdminUser? @relation("PrivacyRequestResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+
+  /// Required to move to `rejected` — enforced in the service layer.
+  /// A refused subject-rights request that does not say why is not a
+  /// defensible position under DPDP.
+  rejectionReason String?
+
+  /// Deletion is scheduled rather than immediate so the subject has a
+  /// window to cancel, and so the "deletion scheduled" state U-M17 has
+  /// to render is a real stored fact rather than a UI fiction.
+  scheduledFor DateTime?
+
+  /// Where a completed export can be downloaded, and when that link dies.
+  exportUrl       String?
+  exportExpiresAt DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("privacy_requests")
+}
+
+/// Spec §10 "Equipment profile": CURRENT -> STALE (reconfirm) -> CURRENT.
+///
+/// Drives U-M11 (the gym equipment confirmation step and its stale /
+/// missing state) and the gym portal's own "stale equipment -> reconfirm"
+/// screen, neither of which had any state to read before R1.
+enum EquipmentProfileStatus {
+  current
+  stale
 }

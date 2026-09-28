@@ -194,7 +194,14 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
     const refundRes = await request(app)
       .post(`/admin/payments/${payment.id}/refunds`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ amountCents: 50000, reason: "Test refund" });
+      // BR-ADM-005: a refund is a high-impact action, so the reason must
+      // clear the 10-character floor and the confirmation word is
+      // required. "Test refund" alone is now correctly rejected.
+      .send({
+        amountCents: 50000,
+        reason: "Duplicate charge reported by the user in ticket 4471",
+        confirmation: "RESOLVE",
+      });
     expect(refundRes.status).toBe(201);
     expect(refundRes.body.refund.status).toBe("pending"); // Razorpay is unconfigured in this suite
     const refundId = refundRes.body.refund.id;
