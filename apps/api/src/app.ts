@@ -98,10 +98,37 @@ export function createApp() {
   // 2026), so by the time this line runs in production, CORS_ORIGINS is
   // guaranteed non-empty. The permissive fallback stays for
   // development/test, where it's genuinely convenient.
+  // ONE cors layer, with its options decided per request.
+  //
+  // The public invite/referral link resolver is the only part of this API
+  // called from the marketing site, which may sit on a different origin
+  // than the API (same-origin on the merged Azure site today; not in local
+  // dev, and not necessarily in future). It needs an open origin; nothing
+  // else does.
+  //
+  // This is deliberately a single middleware rather than a permissive one
+  // mounted alongside the strict one. Two stacked cors() layers both run —
+  // `app.use(path, mw)` does not terminate — so the first sets
+  // Access-Control-Allow-Credentials and the second sets an open
+  // Access-Control-Allow-Origin, producing exactly the open-origin-with-
+  // credentials pair that lets any site make authenticated requests with a
+  // visitor's cookies. Two earlier attempts at this shipped that pair; both
+  // were caught by reading the response headers rather than the code.
+  const PUBLIC_LINK_PATHS = /^\/links\/(gym|r)\//;
   app.use(
-    cors({
-      origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : true,
-      credentials: true,
+    cors((req, callback) => {
+      if (PUBLIC_LINK_PATHS.test(req.path)) {
+        // Unauthenticated GETs that report whether an invite code is
+        // valid and return no personal data. `credentials: false` is the
+        // important half: browsers will not attach cookies or
+        // Authorization headers, so an open origin cannot ride a session.
+        callback(null, { origin: true, credentials: false });
+        return;
+      }
+      callback(null, {
+        origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : true,
+        credentials: true,
+      });
     }),
   );
   // Razorpay's webhook signature (20 Aug 2026, gap §14) is computed over

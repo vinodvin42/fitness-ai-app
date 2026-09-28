@@ -1,15 +1,22 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- This page is served under a rewritten path (/gym/{code},
+       /r/{code}) by staticwebapp.config.json and serve.js, so every
+       relative asset and link would otherwise resolve against that
+       path and 404. Caught by driving the real page in a browser:
+       the JS came back as the 404 HTML page, which failed to parse
+       and silently left the invite stuck on "Checking your invite". -->
+  <base href="/" />
   <meta charset="UTF-8" />
-  <title>About — FynroX</title>
+  <title>Join FynroX through a creator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="FynroX is a training, nutrition, and recovery app with an AI coach grounded in your real data, plus verified human professionals matched to you when you want one. Currently in pilot." />
+  <meta name="description" content="You've followed a creator's FynroX link. Create your account — training, nutrition and recovery, with an AI coach grounded in your own data." />
   <meta name="theme-color" content="#0B0C10" />
   <meta name="color-scheme" content="dark" />
 
-  <meta property="og:title" content="About — FynroX" />
-  <meta property="og:description" content="Who's building FynroX and what the app actually does today." />
+  <meta property="og:title" content="Join FynroX through a creator" />
+  <meta property="og:description" content="You've followed a creator's FynroX link. Create your account — training, nutrition and recovery, with an AI coach grounded in your own data." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
@@ -49,74 +56,41 @@
   <main id="main">
     <section class="page-hero">
       <div class="wrap page-hero__inner">
-        <p class="eyebrow">
-          <span class="eyebrow__mark">ABOUT</span>
-          <span aria-hidden="true">·</span>
-          <span>FynroX</span>
+        <p class="section-eyebrow">Creator referral</p>
+        <h1 class="page-hero__title" id="referralTitle">Checking your link…</h1>
+        <p class="page-hero__subtitle" id="referralSubtitle">
+          One moment while we look up who sent you here.
         </p>
-        <h1 class="page-hero__title">A wellness app that's honest about what's real.</h1>
-        <p class="page-hero__subtitle">
-          FynroX is a training, nutrition, and recovery app with an AI coach grounded in your
-          own data, plus verified human professionals matched to you when you want one. We're currently in a pilot,
-          onboarding our first testers.
-        </p>
+        <div class="page-hero__actions" id="referralActions" hidden>
+          <a class="btn btn--primary btn--lg" id="referralContinue" href="download.html">Continue to FynroX</a>
+        </div>
       </div>
     </section>
 
     <section class="content-section">
       <div class="wrap">
-        <div class="content-section__head">
-          <p class="section-eyebrow">What we're building</p>
-          <h2 class="section-title">One app, three pillars, a human layer on top</h2>
-          <p class="section-subtitle">
-            Training, nutrition, and recovery tracking that feeds a genuinely data-grounded AI
-            coach — and when you want a real person, we match you with a verified fitness
-            nutrition, yoga, or sports coach. See the full breakdown on the
-            <a href="features.html" style="color: var(--accent); text-decoration: underline dotted;">Features page</a>.
+        <div class="note-box" id="referralUnavailable" hidden>
+          <strong>This referral link isn't active.</strong>
+          <p>
+            The campaign may have ended. You can still join FynroX — the link only affects how we credit the creator,
+            never what you get or what you pay.
           </p>
+          <p><a class="btn btn--ghost btn--sm" href="download.html">Join anyway</a></p>
         </div>
 
-        <div class="stat-grid">
-          <div class="stat-card">
-            <p class="stat-card__value">3</p>
-            <p class="stat-card__label">Core pillars — Train, Fuel, Recover</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-card__value">1</p>
-            <p class="stat-card__label">AI coach, grounded in your logged data</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-card__value">4</p>
-            <p class="stat-card__label">Coach specialties — fitness, nutrition, yoga, sports</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-card__value">2</p>
-            <p class="stat-card__label">Partner programs — gyms and creators</p>
+        <div id="referralDetail" hidden>
+          <!-- Said plainly because a referral link is a commercial
+               arrangement, and a visitor is entitled to know one exists
+               without having to read the terms page to find out. -->
+          <div class="note-box">
+            <strong>What this link does</strong>
+            <p>
+              If you subscribe, the creator who sent you here earns a commission. It doesn't change your price, your
+              plan, or anything about your account — and they never see who signed up, what you train, what you eat,
+              or anything about your health.
+            </p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="content-section content-section--raised">
-      <div class="wrap">
-        <div class="content-section__head">
-          <p class="section-eyebrow">Where we are today</p>
-          <h2 class="section-title">Pilot stage, not a public launch</h2>
-          <p class="section-subtitle">
-            FynroX isn't on an app store yet. Android is a direct APK install for pilot
-            testers; iOS access will open via TestFlight. We deliberately don't publish ratings,
-            download counts, or user numbers on this site, because there aren't any yet — see the
-            <a href="download.html" style="color: var(--accent); text-decoration: underline dotted;">Download page</a>
-            for exactly how each platform gets the app.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="cta-strip">
-      <div class="wrap cta-strip__inner">
-        <h2 class="cta-strip__title">Questions about the product or the pilot?</h2>
-        <a class="btn btn--primary btn--lg" href="support.html">Contact support</a>
       </div>
     </section>
   </main>
@@ -164,5 +138,7 @@
 
   <script src="assets/js/main.js"></script>
   <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/invite.js"></script>
+
 </body>
 </html>

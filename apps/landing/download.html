@@ -29,7 +29,7 @@
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
       <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">23</span>
+        <span class="brand__mark" aria-hidden="true">FX</span>
         <span class="brand__word">FynroX</span>
       </a>
       <nav class="nav" aria-label="Primary">
@@ -47,6 +47,17 @@
   </header>
 
   <main id="main">
+    <!-- W-M2: a visitor arriving from a gym invite or creator referral
+         carries their code here, because without a deferred deep-link
+         provider (D6) an install loses it. Shown rather than silently
+         dropped — they have to type it once, so they need to read it. -->
+    <div class="wrap" id="carriedCodeWrap" hidden>
+      <div class="note-box">
+        <strong>Your code: <span id="carriedCode"></span></strong>
+        <p>Enter this in the app when you create your account, so your gym or creator gets credited.</p>
+      </div>
+    </div>
+
     <section class="page-hero">
       <div class="wrap page-hero__inner">
         <p class="eyebrow">
@@ -147,7 +158,7 @@
     <div class="wrap footer__inner">
       <div class="footer__brand">
         <span class="brand">
-          <span class="brand__mark" aria-hidden="true">23</span>
+          <span class="brand__mark" aria-hidden="true">FX</span>
           <span class="brand__word">FynroX</span>
         </span>
         <p class="footer__tagline">
@@ -185,5 +196,17 @@
   </footer>
 
   <script src="assets/js/main.js"></script>
+  <script>
+    // Deliberately inline and tiny: it reads one query parameter and
+    // writes it into the page. A separate file would be a network round
+    // trip for four lines.
+    (function () {
+      var code = new URLSearchParams(window.location.search).get("code");
+      if (!code) return;
+      document.getElementById("carriedCode").textContent = code;
+      document.getElementById("carriedCodeWrap").hidden = false;
+    })();
+  </script>
+  <script src="assets/js/cookie-consent.js"></script>
 </body>
 </html>

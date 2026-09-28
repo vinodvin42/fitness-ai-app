@@ -1400,3 +1400,52 @@ button {
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
+
+/* ------------------------------------------------------------------
+   Cookie consent banner (W-M3)
+   Fixed to the bottom rather than an overlay: a modal that blocks the
+   page until you choose is a dark pattern in the other direction, and
+   this site's content is readable whether or not you have decided.
+   ------------------------------------------------------------------ */
+.cookie-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--surface, #14161c);
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  padding: 14px 0;
+}
+
+.cookie-bar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cookie-bar__text {
+  margin: 0;
+  flex: 1 1 320px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #a8adba);
+}
+
+.cookie-bar__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .cookie-bar__actions {
+    width: 100%;
+  }
+  .cookie-bar__actions .btn {
+    flex: 1;
+  }
+}

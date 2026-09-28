@@ -29,9 +29,23 @@ const MIME_TYPES = {
   ".webmanifest": "application/manifest+json",
 };
 
+/*
+ * Mirrors staticwebapp.config.json's `routes`, so a local run resolves
+ * the invite and referral links the same way production does. Without
+ * this, /gym/ABC123 works on the deployed site and 404s (or silently
+ * renders the home page) locally — which is exactly the class of
+ * difference that gets noticed after launch.
+ */
+function rewriteRoute(requestedPath) {
+  if (requestedPath === "/") return "/index.html";
+  if (requestedPath.startsWith("/gym/")) return "/gym-invite.html";
+  if (requestedPath.startsWith("/r/")) return "/referral.html";
+  return requestedPath;
+}
+
 const server = http.createServer((req, res) => {
   const requestedPath = decodeURIComponent((req.url || "/").split("?")[0]);
-  const relativePath = requestedPath === "/" ? "/index.html" : requestedPath;
+  const relativePath = rewriteRoute(requestedPath);
   const filePath = path.normalize(path.join(ROOT, relativePath));
 
   // Guard against path traversal outside this folder.
@@ -43,15 +57,17 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      // Single static page — anything unrecognized falls back to index.html,
-      // mirroring staticwebapp.config.json's navigationFallback behavior.
-      fs.readFile(path.join(ROOT, "index.html"), (fallbackErr, fallbackData) => {
+      // Anything unrecognized serves the real 404 page with a real 404
+      // status, mirroring staticwebapp.config.json. This used to fall
+      // back to index.html with a 200, which meant a mistyped URL looked
+      // like a working home page to both people and crawlers.
+      fs.readFile(path.join(ROOT, "404.html"), (fallbackErr, fallbackData) => {
         if (fallbackErr) {
           res.writeHead(404, { "Content-Type": "text/plain" });
           res.end("Not found");
           return;
         }
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
         res.end(fallbackData);
       });
       return;

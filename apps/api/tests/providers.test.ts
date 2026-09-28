@@ -169,6 +169,25 @@ describe("Provider adapters (§11, D4/D5/D6/D8)", () => {
       expect(res.body.attribution).toBeUndefined();
     });
 
+    it("opens CORS for the public link routes WITHOUT credentials", async () => {
+      // The marketing site may be on a different origin than the API, so
+      // these two routes need an open origin. The dangerous part is the
+      // pairing: an open origin PLUS credentials lets any site make
+      // authenticated requests with a visitor's cookies. Two earlier
+      // attempts at this shipped exactly that pair (two stacked cors()
+      // layers, where one set the origin and the other the credentials),
+      // so this asserts the absence, not just the presence.
+      const res = await request(app).get(`/links/gym/${gymCode}`).set("Origin", "http://unrelated.example");
+      expect(res.headers["access-control-allow-origin"]).toBe("http://unrelated.example");
+      expect(res.headers["access-control-allow-credentials"]).toBeUndefined();
+    });
+
+    it("does NOT open CORS for an authenticated route", async () => {
+      const res = await request(app).get("/users/me").set("Origin", "http://unrelated.example");
+      // The allowlist must still refuse an unknown origin everywhere else.
+      expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+    });
+
     it("treats a suspended gym's invite as dead, and does not say why", async () => {
       await prisma.gym.update({ where: { id: gymId }, data: { status: "suspended" } });
       const res = await request(app).get(`/links/gym/${gymCode}`);
