@@ -407,6 +407,39 @@ export async function deleteAccount(userId: string, input: DeleteAccountInput) {
 }
 
 /**
+ * The same hard delete, reached from an admin-fulfilled PrivacyRequest
+ * rather than from the user's own password-confirmed self-service path.
+ *
+ * Kept here, next to `deleteAccount`, rather than reimplemented in the
+ * privacy module: both must stay in step about what "delete a user"
+ * cascades to, and two copies of that knowledge is how one of them ends
+ * up leaving rows behind. The password check is deliberately absent —
+ * the identity proof for this path is the admin's own verification step
+ * (`privacyRequests.service.ts#verifyPrivacyRequest`), which is what
+ * A-M5's "verify identity" action records.
+ *
+ * Acceptance test 17: everything user-owned cascades via Prisma's
+ * onDelete: Cascade; AuditLog survives by its own onDelete: SetNull with
+ * an anonymized actor, which is the "keeps only records the law
+ * requires" half of that test.
+ */
+export async function hardDeleteUserForPrivacyRequest(userId: string) {
+  const existing = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!existing) return;
+
+  await recordAudit({
+    actorId: userId,
+    action: "user.account_deleted",
+    entityType: "User",
+    entityId: userId,
+    ruleId: "BR-PRV-001",
+    metadata: { via: "privacy_request" },
+  });
+
+  await prisma.user.delete({ where: { id: userId } });
+}
+
+/**
  * §L "Security" — Two-Factor Authentication, step 1 of 2 (25 Aug 2026,
  * gap §17). Generates a fresh TOTP secret and stores it ENCRYPTED
  * immediately, but `twoFactorEnabled` stays false until enableTwoFactor

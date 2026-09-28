@@ -220,6 +220,20 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
     },
   });
 
+  // Spec §11 `earning.eligible` — the moment a professional's work
+  // becomes money owed. Audit rather than analytics: the payee is a
+  // Professional, and trackEvent is keyed to a consumer `userId` it
+  // would have to invent here.
+  await recordAudit({
+    actorAdminId: actorAdminId,
+    action: "earning.eligible",
+    entityType: "CoachSettlement",
+    entityId: settlement.id,
+    ruleId: "BR-COM-012",
+    stateAfter: { status: settlement.status, netCents },
+    metadata: { professionalId: input.professionalId, grossCents, commissionCents },
+  });
+
   // Flow the payout into Finance's real ledger.
   await prisma.expense.create({
     data: {

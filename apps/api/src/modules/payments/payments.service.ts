@@ -722,6 +722,18 @@ export async function retryActivation(userId: string, paymentId: string) {
     throw new ApiHttpError(409, "activation_not_failed", "This payment doesn't have a failed activation to retry");
   }
 
+  // Spec §11 `entitlement.retry_started`. Emitted BEFORE the attempt, so
+  // a retry that itself fails still leaves a trace that one was made —
+  // the whole point of the event is measuring how often the access
+  // recovery path is exercised, which an after-the-fact-on-success
+  // emission would under-count exactly where it matters most.
+  await trackEvent(
+    userId,
+    "entitlement.retry_started",
+    { paymentId: payment.id },
+    { ruleId: "BR-COM-011", metadata: { purpose: payment.purpose } },
+  );
+
   const { booking } = await activatePayment(payment);
   return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
 }

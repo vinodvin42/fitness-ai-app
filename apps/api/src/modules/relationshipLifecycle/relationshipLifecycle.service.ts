@@ -87,6 +87,82 @@ async function getOwnedRelationshipOrThrow(actor: Actor, relationshipId: string)
  * Callable directly (professional/admin "End Relationship") or as the
  * first half of `handoverRelationship` below.
  */
+/**
+ * Programme completed — spec §10's `ACTIVE -> COMPLETED`, which is a
+ * different outcome from `ended` and is handled differently.
+ *
+ * P-M11 ("Programme completed / relationship ended state — 'Complete
+ * programme' has no result") and U-M8 ("Programme completed summary +
+ * next step") both need this. Ending a relationship says the
+ * arrangement stopped; completing it says the work finished, which is
+ * what the user's completion summary and the professional's own record
+ * are about. §10 revokes access on both, so this emits `access.revoked`
+ * exactly as `endRelationship` does.
+ */
+export async function completeRelationship(
+  actor: Actor,
+  relationshipId: string,
+  reason: string,
+): Promise<RelationshipRow> {
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) {
+    throw new ApiHttpError(404, "relationship_not_found", "Relationship not found");
+  }
+  if (actor.professionalId && relationship.professionalId !== actor.professionalId) {
+    throw new ApiHttpError(404, "relationship_not_found", "Relationship not found");
+  }
+  if (relationship.status !== "active") {
+    throw new ApiHttpError(
+      409,
+      "relationship_not_active",
+      `Only an active relationship can be completed (this one is ${relationship.status})`,
+    );
+  }
+
+  const updated = await prisma.relationship.update({
+    where: { id: relationshipId },
+    data: { status: "completed", endedAt: new Date(), endReason: reason },
+  });
+
+  await recordAudit({
+    ...actorAuditFields(actor),
+    action: "relationship.completed",
+    entityType: "Relationship",
+    entityId: relationshipId,
+    ruleId: "BR-ACC-007",
+    stateBefore: { status: "active" },
+    stateAfter: { status: "completed" },
+    metadata: { reason },
+  });
+
+  await trackEvent(
+    relationship.userId,
+    "relationship.completed",
+    { relationshipId, professionalId: relationship.professionalId },
+    { ruleId: "BR-ACC-007", metadata: { reason } },
+  );
+
+  // §10: "On ENDED or COMPLETED, revoke access and log access.revoked."
+  await recordAudit({
+    ...actorAuditFields(actor),
+    action: "access.revoked",
+    entityType: "Relationship",
+    entityId: relationshipId,
+    ruleId: "BR-ACC-007",
+    stateBefore: { access: "granted" },
+    stateAfter: { access: "revoked" },
+    metadata: { professionalId: relationship.professionalId, userId: relationship.userId, cause: "completed" },
+  });
+  await trackEvent(
+    relationship.userId,
+    "access.revoked",
+    { relationshipId, professionalId: relationship.professionalId },
+    { ruleId: "BR-ACC-007", metadata: { cause: "relationship_completed" } },
+  );
+
+  return updated as RelationshipRow;
+}
+
 export async function endRelationship(actor: Actor, relationshipId: string, reason: string): Promise<RelationshipRow> {
   const relationship = await getOwnedRelationshipOrThrow(actor, relationshipId);
 
@@ -104,6 +180,9 @@ export async function endRelationship(actor: Actor, relationshipId: string, reas
     action: actor.professionalId ? "professional.relationship.ended" : "admin.relationship.ended",
     entityType: "Relationship",
     entityId: relationshipId,
+    ruleId: "BR-ACC-007",
+    stateBefore: { status: relationship.status },
+    stateAfter: { status: "ended" },
     metadata: { reason, previousStatus: relationship.status },
   });
 
@@ -115,6 +194,32 @@ export async function endRelationship(actor: Actor, relationshipId: string, reas
     relationshipId,
     professionalId: relationship.professionalId,
   });
+
+  // Spec §10: "On ENDED or COMPLETED, revoke access and log
+  // access.revoked". The revocation itself has always been real — every
+  // professional-facing read gates on an ACTIVE relationship, so ending
+  // one makes those calls 403 immediately — but the event the spec names
+  // was never emitted, which is the half of acceptance test 12
+  // ("the old professional's API calls return 403 AND access.revoked is
+  // logged") that could not pass. Written as both an analytics event and
+  // an audit row: access revocation is a compliance fact, not only a
+  // product metric.
+  await recordAudit({
+    ...actorAuditFields(actor),
+    action: "access.revoked",
+    entityType: "Relationship",
+    entityId: relationshipId,
+    ruleId: "BR-ACC-007",
+    stateBefore: { access: "granted" },
+    stateAfter: { access: "revoked" },
+    metadata: { professionalId: relationship.professionalId, userId: relationship.userId, reason },
+  });
+  await trackEvent(
+    relationship.userId,
+    "access.revoked",
+    { relationshipId, professionalId: relationship.professionalId },
+    { ruleId: "BR-ACC-007", metadata: { cause: "relationship_ended" } },
+  );
 
   return updated as RelationshipRow;
 }

@@ -42,6 +42,7 @@ import { adminAnalyticsRouter } from "./modules/adminAnalytics/adminAnalytics.ro
 import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegrations.routes";
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
+import { payoutRunsRouter } from "./modules/payoutRuns/payoutRuns.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
 import { gymsRouter } from "./modules/gyms/gyms.routes";
@@ -50,6 +51,7 @@ import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
 import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
+import { privacyRequestsRouter } from "./modules/privacyRequests/privacyRequests.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
 import { adminActionQueueRouter } from "./modules/adminActionQueue/adminActionQueue.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
@@ -258,6 +260,8 @@ export function createApp() {
   // made: configurable per-coach/per-influencer commission) and a missing
   // Coupon/Refund entity (now built). See each module's own doc comment.
   app.use("/", adminSettlementsRouter);
+  // A-M3 — the payout run the settlement rows were waiting on.
+  app.use("/", payoutRunsRouter);
   app.use("/", adminInfluencersRouter);
   app.use("/", gymsRouter);
   // Gym Partner Lite portal (R2 Wave 5, 21 Sep 2026) — apps/gym-portal's own
@@ -285,6 +289,11 @@ export function createApp() {
   // which is NOT built.
   app.use("/", adminRolesRouter);
   app.use("/", adminPrivacyRouter);
+  // Journey F8 — the tracked subject-rights lifecycle (U-M17 / A-M5).
+  // Sits alongside the existing 12.04 Privacy dashboard rather than
+  // replacing it: that surfaces the historical AuditLog trail, this is
+  // the live queue.
+  app.use("/", privacyRequestsRouter);
   // Module 11 — AI Operations (added 27 Aug 2026) — the scoped-down slice
   // reports/build-plan.html's own 11.01–11.03 entry named as smaller and
   // genuinely buildable: one real, audit-logged on/off switch for AI
