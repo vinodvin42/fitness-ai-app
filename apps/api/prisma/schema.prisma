@@ -2134,6 +2134,7 @@ model AdminUser {
   payoutBatches                   PayoutBatch[]
   privacyRequestsVerified         PrivacyRequest[]             @relation("PrivacyRequestVerifiedBy")
   privacyRequestsResolved         PrivacyRequest[]             @relation("PrivacyRequestResolvedBy")
+  publicApplicationsReviewed      PublicApplication[]          @relation("PublicApplicationReviewedBy")
   gymHelpRequestsResolved         GymHelpRequest[]
 
   @@map("admin_users")
@@ -3611,6 +3612,11 @@ enum AdminActionItemType {
   // A gym partner asking for help. Operational, never clinical —
   // see GymHelpRequest's own comment on why it holds no member link.
   gym_help_request
+  // W-M6 / spec §8: a gym, creator or professional application arriving
+  // from the public website. Early Access signups deliberately do NOT
+  // queue — a few thousand of them would bury the dozen applications
+  // that need a human decision.
+  partner_application_received
 }
 
 enum AdminActionItemSeverity {
@@ -3973,4 +3979,86 @@ enum GymHelpRequestStatus {
   open
   in_progress
   resolved
+}
+
+/// Spec §8 (Public Website) — the website's Early Access, partner
+/// application and contact forms all land here.
+///
+/// One table rather than four, because the four forms differ only in
+/// which optional fields they collect and who reads them; four
+/// near-identical tables would be four places to forget an index or a
+/// consent column. `kind` carries the distinction, and the service layer
+/// is what requires the per-kind fields.
+///
+/// Before this, "Apply" on the For Gyms page was a `mailto:` link. A
+/// mailto cannot produce the success, error or already-registered states
+/// the spec names for these forms, and a lead that exists only in
+/// somebody's inbox is not a lead the business can see.
+model PublicApplication {
+  id   String                @id @default(uuid())
+  kind PublicApplicationKind
+
+  /// Lower-cased on write, so `(kind, email)` really is one person per
+  /// form rather than one per capitalisation.
+  email    String
+  fullName String
+  phone    String?
+
+  /// Gym / creator / professional applications only. Kept nullable
+  /// rather than split into subtype tables — see the note above.
+  organisation String?
+  city         String?
+  /// Creator applications: where their audience is. Professional
+  /// applications: their discipline. Free text either way, because
+  /// forcing a taxonomy on a first contact loses the interesting ones.
+  detail       String?
+  message      String?
+
+  /// Attribution carried from an invite/referral landing, so a visitor
+  /// who arrives via a gym code and registers interest instead of
+  /// installing is still credited to that gym (journey F2/F3).
+  sourceCode String?
+  sourceKind String?
+
+  /// DPDP: recorded, never assumed. `consentContact` is what makes it
+  /// lawful to reply at all, so the service refuses a submission
+  /// without it; `consentMarketing` is separate and genuinely optional.
+  consentContact   Boolean  @default(false)
+  consentMarketing Boolean  @default(false)
+  consentAt        DateTime @default(now())
+
+  status PublicApplicationStatus @default(new)
+
+  /// Set when an admin moves the row on, so a queue that is being
+  /// worked looks different from one that is being ignored.
+  reviewedByAdminId String?
+  reviewedByAdmin   AdminUser? @relation("PublicApplicationReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  reviewedAt        DateTime?
+  adminNote         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The already-registered state the spec names for Early Access is
+  /// this constraint, surfaced. Scoped to `kind` so applying as a gym
+  /// does not block registering interest as a user.
+  @@unique([kind, email])
+  @@index([kind, status, createdAt])
+  @@map("public_applications")
+}
+
+enum PublicApplicationKind {
+  early_access
+  gym
+  creator
+  professional
+  contact
+}
+
+enum PublicApplicationStatus {
+  new
+  in_review
+  contacted
+  converted
+  rejected
 }

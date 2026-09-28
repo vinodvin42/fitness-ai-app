@@ -568,3 +568,57 @@ with* credentials. Typecheck and the test suite were green throughout. The equiv
 lesson from the first pass was an event-registry test that passed vacuously. Both suggest
 the same thing: the checks that catch real defects here are the ones that exercise the
 running system, not the ones that read it.
+
+### Third implementation pass
+
+Two further commits. The suite went from **403 tests in 57 files** to **443 in 61**, at the
+same verification bar (typecheck on all six workspaces, lint at 0 errors, full API suite).
+
+| Area | What landed |
+|---|---|
+| **Shared rate-limit store + object storage (§11)** | All five limiters share a Redis store when `REDIS_URL` is set. The piece worth reviewing is `assertRateLimitStoreIsSafe()`: `API_INSTANCE_COUNT > 1` without Redis is now a **boot failure**, because an in-memory limiter behind a load balancer gives an attacker `limit x instanceCount` attempts and *nothing errors* — the control is simply weaker than its configuration claims, silently. The object storage adapter is local disk and reports `isConfigured()` as `false`, like the payout provider and for the same reason. |
+| **The remaining Website R1 pages (§8, W-M4, W-M5, W-M6)** | How it works, Programs, Professional Guidance, For Professionals, Learn (all three categories, one article each through a shared template), FAQ, Safety & Privacy, and Early Access. Real application and contact forms on the gym, creator, professional, contact and early-access pages, replacing `mailto:` links. A mobile nav, and `sync-shell.js` so 24 copy-pasted headers cannot drift apart. |
+
+The forms needed a backend, so `PublicApplication` and `POST /public/applications` exist
+now: one table, `kind` carrying the distinction, `(kind, email)` unique. §8's four form
+states come straight out of it — `201` is success, `200 already_registered` is deliberately
+**not** an error (treating it as one just teaches people to resubmit from a second address,
+which is how a clean list becomes a dirty one), `400` carries a `fields[]` array the page
+marks field by field, and consent is `z.literal(true)` so a submission that lost the
+checkbox fails validation rather than quietly becoming a lawful basis to email someone.
+Partner applications raise an action-queue item; Early Access deliberately does not, because
+a few thousand signups would bury the dozen applications that need a decision.
+
+Three defects in this pass were again found only by driving the real pages:
+
+- The forms' `POST` was **blocked by CORS** from a different origin — which is exactly what
+  a separately-deployed marketing site is. `/public/*` joined the open-origin set, still
+  with `credentials: false`, and the test asserts the absence of the credentials header
+  rather than only the presence of the origin one.
+- A form hidden on success **stayed on screen**, because `display: grid` beats the `hidden`
+  attribute. Invisible only to a reader of the CSS; obvious in a browser.
+- Two pieces of **marketing copy had gone stale against locked decisions**: `features.html`
+  and `index.html` promised browsing and booking coaches (D9 turns the marketplace off in
+  R1 — guidance is matched, not browsed), and both `features.html` and `pricing.html` listed
+  streaks (D-gamification is off). `support.html` still explained how to purchase a program
+  individually, which D2 removed. Copy drifts against config exactly the way code does, and
+  nothing in the build catches it.
+
+`pricing.html` still shows three tiers, deliberately: the seed data and `SubscriptionTier`
+really do carry `basic`/`pro`/`elite` today, so collapsing the page to one Premium tier
+ahead of the schema would make the website lie about what the checkout sells. A3 remains
+open, and that page changes when the plans do.
+
+### Still open after the third pass
+
+1. **i18n.** Unchanged, and now larger — the nine new website pages are English-only, as is
+   the rest of `apps/landing` (which has no i18n mechanism at all).
+2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
+3. **Dropping the plaintext health columns**, once the backfill has run everywhere.
+4. **Accessibility.** Still not audited end to end. The new pages were built to 44px targets
+   and were checked for a single `h1`, a labelled nav, focus-visible inputs and no
+   horizontal overflow at 390px — but that is a spot check, not a WCAG 2.1 AA audit.
+5. **An admin screen for the application queue.** The API and the action-queue item exist;
+   `admin-web` has no page for them yet, so the rows are readable over the API only.
+6. **The four §A structural decisions**, which remain implemented-behind-flags rather than
+   settled. Unchanged.

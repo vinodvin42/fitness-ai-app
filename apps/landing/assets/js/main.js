@@ -39,4 +39,36 @@
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
+
+  /*
+   * Mobile navigation (spec §8). The nav used to be one flat row that
+   * wrapped onto three lines on a phone; below 900px the stylesheet now
+   * collapses it behind this toggle.
+   *
+   * The button is rendered with `hidden` in the HTML and un-hidden here,
+   * which is the honest order: with JS off the toggle could never open
+   * anything, and a button that does nothing is worse than no button.
+   * The CSS only hides the nav inside the same breakpoint, so the
+   * no-JS page keeps its full (wrapped) nav rather than losing it.
+   */
+  var toggle = document.getElementById("navToggle");
+  var nav = document.getElementById("primaryNav");
+  if (toggle && nav) {
+    document.documentElement.classList.add("has-nav-toggle");
+    toggle.hidden = false;
+
+    toggle.addEventListener("click", function () {
+      var open = nav.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    // Escape closes it and returns focus, so a keyboard user is not
+    // trapped scrolling a panel they cannot dismiss.
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape" || !nav.classList.contains("is-open")) return;
+      nav.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.focus();
+    });
+  }
 })();

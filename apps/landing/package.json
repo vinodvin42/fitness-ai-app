@@ -5,6 +5,7 @@
   "description": "Public marketing/landing page for FynroX — plain static HTML/CSS/vanilla JS, no build step. Deploys to Azure Static Web Apps.",
   "scripts": {
     "dev": "node serve.js",
-    "start": "node serve.js"
+    "start": "node serve.js",
+    "sync-shell": "node sync-shell.js"
   }
 }

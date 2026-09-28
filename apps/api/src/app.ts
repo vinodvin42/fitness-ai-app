@@ -69,6 +69,7 @@ import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.route
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
 import { guidanceRequestsRouter } from "./modules/guidanceRequests/guidanceRequests.routes";
 import { deepLinksRouter } from "./modules/deepLinks/deepLinks.routes";
+import { publicApplicationsRouter } from "./modules/publicApplications/publicApplications.routes";
 import { adminSearchRouter } from "./modules/adminSearch/adminSearch.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
@@ -114,14 +115,22 @@ export function createApp() {
   // credentials pair that lets any site make authenticated requests with a
   // visitor's cookies. Two earlier attempts at this shipped that pair; both
   // were caught by reading the response headers rather than the code.
-  const PUBLIC_LINK_PATHS = /^\/links\/(gym|r)\//;
+  //
+  // `/public/applications` joined this set on 28 Sep 2026 with the
+  // website's Early Access, partner application and contact forms. Same
+  // reasoning and the same guard rail: it is an anonymous POST that
+  // reads no session, so `credentials: false` means an open origin
+  // cannot ride one. Caught by driving the real form against a local API
+  // on a different port — the browser blocked it exactly as a separate
+  // marketing-site deploy would.
+  const PUBLIC_LINK_PATHS = /^\/links\/(gym|r)\/|^\/public\//;
   app.use(
     cors((req, callback) => {
       if (PUBLIC_LINK_PATHS.test(req.path)) {
-        // Unauthenticated GETs that report whether an invite code is
-        // valid and return no personal data. `credentials: false` is the
-        // important half: browsers will not attach cookies or
-        // Authorization headers, so an open origin cannot ride a session.
+        // Unauthenticated requests that read no session and return no
+        // personal data. `credentials: false` is the important half:
+        // browsers will not attach cookies or Authorization headers, so
+        // an open origin cannot ride a session.
         callback(null, { origin: true, credentials: false });
         return;
       }
@@ -383,6 +392,11 @@ export function createApp() {
   // Public by design: these are links handed to people who do not have
   // an account yet.
   app.use("/", deepLinksRouter);
+
+  // Spec §8 — the Public Website's Early Access / partner application /
+  // contact forms, and the admin queue that reads them. Unauthenticated
+  // POST, rate-limited inside the router.
+  app.use("/", publicApplicationsRouter);
 
   // Global cross-entity admin search (R1 Wave 6, 22 Sep 2026) — see
   // adminSearch.service.ts's own doc comment for the full scope.

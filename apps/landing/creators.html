@@ -32,16 +32,21 @@
         <span class="brand__mark" aria-hidden="true">FX</span>
         <span class="brand__word">FynroX</span>
       </a>
-      <nav class="nav" aria-label="Primary">
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Menu</span>
+      </button>
+      <nav class="nav" id="primaryNav" aria-label="Primary">
         <a class="nav__link" href="index.html">Home</a>
-        <a class="nav__link" href="features.html">Features</a>
+        <a class="nav__link" href="how-it-works.html">How it works</a>
+        <a class="nav__link" href="programs.html">Programs</a>
+        <a class="nav__link" href="professional-guidance.html">Guidance</a>
         <a class="nav__link" href="pricing.html">Pricing</a>
         <a class="nav__link" href="gyms.html">For Gyms</a>
         <a class="nav__link" href="creators.html" aria-current="page">For Creators</a>
-        <a class="nav__link" href="download.html">Download</a>
-        <a class="nav__link" href="/app/">Admin Login</a>
-        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+        <a class="nav__link" href="professionals.html">For Professionals</a>
+        <a class="nav__link" href="learn.html">Learn</a>
+        <a class="btn btn--primary btn--sm" href="early-access.html">Get early access</a>
       </nav>
     </div>
   </header>
@@ -127,6 +132,74 @@
       </div>
     </section>
 
+    <section class="content-section">
+      <div class="wrap">
+        <p class="section-eyebrow">APPLY</p>
+        <h2 class="section-title">Apply to become a creator partner</h2>
+        <p class="section-subtitle">
+          We read every application. If your audience is a fit we'll come back with terms; if
+          it isn't, we'll tell you that instead of going quiet.
+        </p>
+        <div class="form-state" id="creatorApplyState" role="status" tabindex="-1" hidden></div>
+        <form
+          class="form"
+          id="creatorApply"
+          data-kind="creator"
+          data-state-region="creatorApplyState"
+          data-success-title="Application received"
+          data-success-body="A real person will read this and come back to you by email — including if the answer is no." data-known-body="We already have an application from this email address. It's in the queue and we'll come back to you at the same address — there's no need to send another."
+          method="post"
+          action="/api/public/applications"
+          novalidate
+        >
+          <div class="field">
+            <label class="field__label" for="creatorApplyorganisation">Channel or handle</label>
+            <p class="field__hint">Where your audience actually is — the handle, not a display name.</p>
+            <input class="field__input" type="text" id="creatorApplyorganisation" name="organisation" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="creatorApplyfullName">Your name</label>
+            <input class="field__input" type="text" id="creatorApplyfullName" name="fullName" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="creatorApplyemail">Email</label>
+            <input class="field__input" type="email" id="creatorApplyemail" name="email" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="creatorApplydetail">Platform and audience size (optional)</label>
+            <p class="field__hint">Roughly — we're not going to hold you to a number.</p>
+            <input class="field__input" type="text" id="creatorApplydetail" name="detail" />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="creatorApplymessage">What you'd want to do with FynroX</label>
+            <p class="field__hint">The kind of content you make and how FynroX would fit it. Short is fine.</p>
+            <textarea class="field__textarea" id="creatorApplymessage" name="message"></textarea>
+            <p class="field__error"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="creatorApplyConsent" name="consentContact" value="true" required />
+            <label class="field__label" for="creatorApplyConsent">
+              I agree that FynroX can contact me about this. Required — we won't email you
+              without it. <a href="privacy.html">How we handle your data</a>.
+            </label>
+            <p class="field__error" id="creatorApplyConsentError"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="creatorApplyMarketing" name="consentMarketing" value="true" />
+            <label class="field__label" for="creatorApplyMarketing">
+              Optional: send me product updates as well. Genuinely optional — leaving this
+              unticked changes nothing about the message above.
+            </label>
+          </div>
+          <button class="btn btn--primary btn--lg" type="submit">Send application</button>
+        </form>
+      </div>
+    </section>
+
     <section class="cta-strip">
       <div class="wrap cta-strip__inner">
         <h2 class="cta-strip__title">Already an approved creator partner?</h2>
@@ -151,6 +224,8 @@
         <div>
           <p class="footer__col-title">Product</p>
           <a class="footer__col-link" href="features.html">Features</a>
+          <a class="footer__col-link" href="how-it-works.html">How it works</a>
+          <a class="footer__col-link" href="programs.html">Programs</a>
           <a class="footer__col-link" href="pricing.html">Pricing</a>
           <a class="footer__col-link" href="download.html">Download</a>
         </div>
@@ -158,16 +233,27 @@
           <p class="footer__col-title">Partners</p>
           <a class="footer__col-link" href="gyms.html">For Gyms</a>
           <a class="footer__col-link" href="creators.html">For Creators</a>
+          <a class="footer__col-link" href="professionals.html">For Professionals</a>
+          <a class="footer__col-link" href="professional-guidance.html">Professional Guidance</a>
         </div>
         <div>
           <p class="footer__col-title">Company</p>
           <a class="footer__col-link" href="about.html">About</a>
+          <a class="footer__col-link" href="learn.html">Learn</a>
+          <a class="footer__col-link" href="faq.html">FAQ</a>
           <a class="footer__col-link" href="support.html">Support</a>
+          <a class="footer__col-link" href="early-access.html">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal</p>
+          <p class="footer__col-title">Legal & safety</p>
+          <a class="footer__col-link" href="safety.html">Safety &amp; Privacy</a>
           <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
           <a class="footer__col-link" href="terms.html">Terms of Service</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Sign in</p>
+          <a class="footer__col-link" href="/app/">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach</a>
         </div>
       </nav>
     </div>
@@ -177,6 +263,7 @@
   </footer>
 
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/forms.js"></script>
   <script src="assets/js/cookie-consent.js"></script>
 </body>
 </html>

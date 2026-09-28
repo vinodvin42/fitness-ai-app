@@ -32,16 +32,21 @@
         <span class="brand__mark" aria-hidden="true">FX</span>
         <span class="brand__word">FynroX</span>
       </a>
-      <nav class="nav" aria-label="Primary">
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Menu</span>
+      </button>
+      <nav class="nav" id="primaryNav" aria-label="Primary">
         <a class="nav__link" href="index.html">Home</a>
-        <a class="nav__link" href="features.html">Features</a>
+        <a class="nav__link" href="how-it-works.html">How it works</a>
+        <a class="nav__link" href="programs.html">Programs</a>
+        <a class="nav__link" href="professional-guidance.html">Guidance</a>
         <a class="nav__link" href="pricing.html">Pricing</a>
         <a class="nav__link" href="gyms.html">For Gyms</a>
         <a class="nav__link" href="creators.html">For Creators</a>
-        <a class="nav__link" href="download.html">Download</a>
-        <a class="nav__link" href="/app/">Admin Login</a>
-        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+        <a class="nav__link" href="professionals.html">For Professionals</a>
+        <a class="nav__link" href="learn.html">Learn</a>
+        <a class="btn btn--primary btn--sm" href="early-access.html">Get early access</a>
       </nav>
     </div>
   </header>
@@ -136,6 +141,63 @@
       </div>
     </section>
 
+    <section class="content-section">
+      <div class="wrap">
+        <p class="section-eyebrow">OR WRITE TO US HERE</p>
+        <h2 class="section-title">Contact form</h2>
+        <p class="section-subtitle">
+          Goes to the same queue as the email address above. Use whichever you prefer — this
+          one just tells you straight away that it arrived.
+        </p>
+        <div class="form-state" id="contactState" role="status" tabindex="-1" hidden></div>
+        <form
+          class="form"
+          id="contact"
+          data-kind="contact"
+          data-state-region="contactState"
+          data-success-title="Message sent"
+          data-success-body="It's in the support queue and we'll reply to the address you gave us. You don't need to send it again." data-known-body="We already have a message from this address in the queue. We'll reply there — sending another won't make it faster."
+          method="post"
+          action="/api/public/applications"
+          novalidate
+        >
+          <div class="field">
+            <label class="field__label" for="contactfullName">Your name</label>
+            <input class="field__input" type="text" id="contactfullName" name="fullName" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="contactemail">Email</label>
+            <p class="field__hint">The address we'll reply to.</p>
+            <input class="field__input" type="email" id="contactemail" name="email" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="contactmessage">What do you need help with?</label>
+            <p class="field__hint">If it's about your account, tell us the email you signed up with — we won't guess.</p>
+            <textarea class="field__textarea" id="contactmessage" name="message" required></textarea>
+            <p class="field__error"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="contactConsent" name="consentContact" value="true" required />
+            <label class="field__label" for="contactConsent">
+              I agree that FynroX can contact me about this. Required — we won't email you
+              without it. <a href="privacy.html">How we handle your data</a>.
+            </label>
+            <p class="field__error" id="contactConsentError"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="contactMarketing" name="consentMarketing" value="true" />
+            <label class="field__label" for="contactMarketing">
+              Optional: send me product updates as well. Genuinely optional — leaving this
+              unticked changes nothing about the message above.
+            </label>
+          </div>
+          <button class="btn btn--primary btn--lg" type="submit">Send message</button>
+        </form>
+      </div>
+    </section>
+
     <section class="content-section content-section--raised">
       <div class="wrap">
         <div class="content-section__head">
@@ -149,8 +211,8 @@
             <p>Open a program from Train, pick a workout, and tap Start Workout. Log each set as you go, then tap Finish.</p>
           </details>
           <details class="faq-item">
-            <summary>How do I purchase a program?</summary>
-            <p>Open a priced program from Train and tap Purchase.</p>
+            <summary>Do I have to buy programs separately?</summary>
+            <p>No. Every program is included in FynroX Premium — there's no per-program purchase and no program store. See <a href="programs.html">Programs</a>.</p>
           </details>
           <details class="faq-item">
             <summary>How do I change my password?</summary>
@@ -169,6 +231,10 @@
             <p>Cancel any time from Settings. Cancellation takes effect at the end of your current billing period, not immediately, so you keep the access you've already paid for.</p>
           </details>
         </div>
+        <p class="section-subtitle">
+          More questions — price, cancellation, health data, what isn't built yet — are on the
+          <a href="faq.html">full FAQ</a>.
+        </p>
       </div>
     </section>
   </main>
@@ -189,6 +255,8 @@
         <div>
           <p class="footer__col-title">Product</p>
           <a class="footer__col-link" href="features.html">Features</a>
+          <a class="footer__col-link" href="how-it-works.html">How it works</a>
+          <a class="footer__col-link" href="programs.html">Programs</a>
           <a class="footer__col-link" href="pricing.html">Pricing</a>
           <a class="footer__col-link" href="download.html">Download</a>
         </div>
@@ -196,16 +264,27 @@
           <p class="footer__col-title">Partners</p>
           <a class="footer__col-link" href="gyms.html">For Gyms</a>
           <a class="footer__col-link" href="creators.html">For Creators</a>
+          <a class="footer__col-link" href="professionals.html">For Professionals</a>
+          <a class="footer__col-link" href="professional-guidance.html">Professional Guidance</a>
         </div>
         <div>
           <p class="footer__col-title">Company</p>
           <a class="footer__col-link" href="about.html">About</a>
+          <a class="footer__col-link" href="learn.html">Learn</a>
+          <a class="footer__col-link" href="faq.html">FAQ</a>
           <a class="footer__col-link" href="support.html">Support</a>
+          <a class="footer__col-link" href="early-access.html">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal</p>
+          <p class="footer__col-title">Legal & safety</p>
+          <a class="footer__col-link" href="safety.html">Safety &amp; Privacy</a>
           <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
           <a class="footer__col-link" href="terms.html">Terms of Service</a>
+        </div>
+        <div>
+          <p class="footer__col-title">Sign in</p>
+          <a class="footer__col-link" href="/app/">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach</a>
         </div>
       </nav>
     </div>
@@ -215,6 +294,7 @@
   </footer>
 
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/forms.js"></script>
   <script src="assets/js/cookie-consent.js"></script>
 </body>
 </html>
