@@ -101,3 +101,42 @@ for (const app of APPS) {
 }
 
 console.log(`\n${grandTotal} inline strings across all apps.`);
+
+/*
+ * The marketing site is counted separately because it translates
+ * differently: it has no build step, so its English lives in the HTML
+ * and a `data-i18n` attribute names the key rather than a `t()` call
+ * wrapping the string (see apps/landing/assets/js/i18n.js).
+ *
+ * Only the keyed counts are reported here. Whether anything is LEFT
+ * unkeyed is not a heuristic worth guessing at when an exact answer
+ * exists: apps/api/tests/landingI18n.test.ts parses every page and
+ * fails on the first unkeyed string, and runs in CI.
+ */
+const LANDING = path.join(import.meta.dirname, '../apps/landing');
+const pages = fs.readdirSync(LANDING).filter((f) => f.endsWith('.html')).sort();
+if (pages.length) {
+  let keyed = 0;
+  const rows = [];
+  for (const page of pages) {
+    const src = fs.readFileSync(path.join(LANDING, page), 'utf8');
+    const n =
+      (src.match(/\sdata-i18n="/g) || []).length +
+      (src.match(/\sdata-i18n-html="/g) || []).length +
+      (src.match(/\sdata-i18n-attr="/g) || []).length;
+    keyed += n;
+    rows.push({ page, n });
+  }
+
+  const catalogue = fs.readFileSync(path.join(LANDING, 'assets/i18n/en.js'), 'utf8');
+  const keys = (catalogue.match(/^\s{2}"[^"]+":/gm) || []).length;
+
+  console.log(`\nlanding: ${pages.length} pages`);
+  console.log(`  ${keyed} keyed elements and attributes`);
+  console.log(`  ${keys} keys in assets/i18n/en.js (shared across pages, so fewer than the above)`);
+  if (showStrings) {
+    for (const r of rows.sort((a, b) => b.n - a.n)) {
+      console.log(`    ${String(r.n).padStart(3)} keyed   ${r.page}`);
+    }
+  }
+}

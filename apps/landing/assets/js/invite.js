@@ -56,22 +56,53 @@
     return (window.FYNROX_API_BASE_URL || "/api").replace(/\/$/, "");
   }
 
+  /*
+   * Copy this file builds rather than the HTML. The English is the
+   * second argument, so with no catalogue loaded — the default — each
+   * call site behaves exactly as the string literal it replaced.
+   *
+   * Names are interpolated with a placeholder rather than concatenated:
+   * "{name} invited you" can be reordered by a translator, "X" + " has
+   * invited you" cannot.
+   */
+  function t(key, english) {
+    return window.FynroxI18n ? window.FynroxI18n.t(key, english) : english;
+  }
+
+  function fill(template, token, value) {
+    return template.split(token).join(value);
+  }
+
   function showUnavailable() {
-    titleEl.textContent = isGym ? "This invite isn't active" : "This link isn't active";
+    titleEl.textContent = isGym
+      ? t("invite.gymInactiveTitle", "This invite isn't active")
+      : t("invite.creatorInactiveTitle", "This link isn't active");
     subtitleEl.textContent = isGym
-      ? "You can still join FynroX on your own."
-      : "You can still join FynroX — it only affects how the creator is credited.";
+      ? t("invite.gymInactiveBody", "You can still join FynroX on your own.")
+      : t(
+          "invite.creatorInactiveBody",
+          "You can still join FynroX \u2014 it only affects how the creator is credited.",
+        );
     if (unavailableEl) unavailableEl.hidden = false;
   }
 
   function showValid(data) {
     if (isGym) {
-      titleEl.textContent = data.gymName ? data.gymName + " invited you to FynroX" : "You've been invited to FynroX";
-      subtitleEl.textContent =
-        "Create your account and your training plan will be built around the equipment they actually have.";
+      titleEl.textContent = data.gymName
+        ? fill(t("invite.gymTitle", "{gym} invited you to FynroX"), "{gym}", data.gymName)
+        : t("invite.gymTitleFallback", "You've been invited to FynroX");
+      subtitleEl.textContent = t(
+        "invite.gymSubtitle",
+        "Create your account and your training plan will be built around the equipment they actually have.",
+      );
     } else {
-      titleEl.textContent = data.creatorName ? data.creatorName + " sent you to FynroX" : "Welcome to FynroX";
-      subtitleEl.textContent = "Training, nutrition and recovery, with an AI coach grounded in your own data.";
+      titleEl.textContent = data.creatorName
+        ? fill(t("invite.creatorTitle", "{creator} sent you to FynroX"), "{creator}", data.creatorName)
+        : t("invite.creatorTitleFallback", "Welcome to FynroX");
+      subtitleEl.textContent = t(
+        "invite.creatorSubtitle",
+        "Training, nutrition and recovery, with an AI coach grounded in your own data.",
+      );
     }
 
     if (detailEl) detailEl.hidden = false;
@@ -88,7 +119,11 @@
       if (!data.deferredDeepLinkSupported) {
         var note = document.createElement("p");
         note.className = "hero__note";
-        note.textContent = "Your code is " + code + " — you'll enter it once in the app.";
+        note.textContent = fill(
+          t("invite.codeNote", "Your code is {code} \u2014 you'll enter it once in the app."),
+          "{code}",
+          code,
+        );
         actionsEl.parentNode.appendChild(note);
       }
     }
@@ -115,9 +150,11 @@
       // A network failure is not the same as a dead link, and telling
       // someone their gym's invite has expired when the API is simply
       // unreachable would be a lie with consequences for the gym.
-      titleEl.textContent = "We couldn't check your invite";
-      subtitleEl.textContent =
-        "Something went wrong on our side, not yours. You can still continue and enter your code in the app.";
+      titleEl.textContent = t("invite.errorTitle", "We couldn't check your invite");
+      subtitleEl.textContent = t(
+        "invite.errorBody",
+        "Something went wrong on our side, not yours. You can still continue and enter your code in the app.",
+      );
       if (actionsEl) actionsEl.hidden = false;
     });
 })();

@@ -49,19 +49,39 @@
 
   if (read() !== null) return; // already decided
 
+  /*
+   * Copy this file builds rather than the HTML. The English is the
+   * second argument, so with no catalogue loaded — the default — each
+   * call site behaves exactly as the string literal it replaced.
+   */
+  function t(key, english) {
+    return window.FynroxI18n ? window.FynroxI18n.t(key, english) : english;
+  }
+
   function render() {
     var bar = document.createElement("div");
     bar.className = "cookie-bar";
     bar.setAttribute("role", "region");
-    bar.setAttribute("aria-label", "Cookie choices");
+    bar.setAttribute("aria-label", t("cookies.ariaLabel", "Cookie choices"));
     bar.innerHTML =
       '<div class="wrap cookie-bar__inner">' +
-      '<p class="cookie-bar__text">We use essential cookies to make this site work. With your permission we’d also ' +
-      'use analytics and attribution cookies, which tell us how people found us. You can say no and everything still works. ' +
-      '<a href="privacy.html">How we handle your data</a>.</p>' +
+      '<p class="cookie-bar__text">' +
+      // One string, markup and all: the link sits mid-sentence and a
+      // translation has to be free to move it.
+      t(
+        "cookies.text",
+        "We use essential cookies to make this site work. With your permission we’d also " +
+          "use analytics and attribution cookies, which tell us how people found us. You can say no and everything still works. " +
+          '<a href="privacy.html">How we handle your data</a>.',
+      ) +
+      "</p>" +
       '<div class="cookie-bar__actions">' +
-      '<button type="button" class="btn btn--ghost btn--sm" data-consent="reject">Reject non-essential</button>' +
-      '<button type="button" class="btn btn--primary btn--sm" data-consent="accept">Accept</button>' +
+      '<button type="button" class="btn btn--ghost btn--sm" data-consent="reject">' +
+      t("cookies.reject", "Reject non-essential") +
+      "</button>" +
+      '<button type="button" class="btn btn--primary btn--sm" data-consent="accept">' +
+      t("cookies.accept", "Accept") +
+      "</button>" +
       "</div></div>";
 
     bar.addEventListener("click", function (event) {

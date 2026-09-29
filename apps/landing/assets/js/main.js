@@ -35,10 +35,22 @@
   window.addEventListener("scroll", updateHeaderState, { passive: true });
   updateHeaderState();
 
-  var yearEl = document.getElementById("year");
-  if (yearEl) {
-    yearEl.textContent = String(new Date().getFullYear());
+  /*
+   * The year sits inside a translated sentence ("© <span id="year">
+   * FynroX. Not a substitute..."), so swapping that sentence replaces
+   * this span with the empty one from the catalogue. Writing the year
+   * again on `fynrox:i18n` is the contract assets/js/i18n.js documents
+   * for anything that puts text into the DOM.
+   */
+  function setYear() {
+    var yearEl = document.getElementById("year");
+    if (yearEl) {
+      yearEl.textContent = String(new Date().getFullYear());
+    }
   }
+
+  setYear();
+  document.addEventListener("fynrox:i18n", setYear);
 
   /*
    * Mobile navigation (spec §8). The nav used to be one flat row that

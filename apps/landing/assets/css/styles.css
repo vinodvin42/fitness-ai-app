@@ -1417,10 +1417,58 @@ button {
   font-size: 0.8125rem;
 }
 
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .footer__copy {
   margin-top: var(--space-4);
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+
+/*
+ * Language picker. Hidden by the `hidden` attribute in the markup and
+ * un-hidden by assets/js/i18n.js once there is more than one language
+ * to choose between, which is the same honest order the mobile nav
+ * toggle uses: a control that cannot do anything is worse than no
+ * control.
+ */
+.footer__lang-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.footer__lang-wrap[hidden] {
+  /* `hidden` loses to `display: flex` in the cascade — the same bug the
+     forms had, and the reason .form[hidden] exists further up. */
+  display: none;
+}
+
+.footer__lang-label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.footer__lang {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.6rem;
+}
+
+.footer__lang:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ------------------------------------------------------------------

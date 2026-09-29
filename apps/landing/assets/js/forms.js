@@ -116,6 +116,16 @@
     return data;
   }
 
+  /*
+   * Copy this file builds rather than the HTML. The English is the
+   * second argument, so with no catalogue loaded — the default — each
+   * call site behaves exactly as the string literal it replaced, and a
+   * missing key can never show a visitor a raw key name.
+   */
+  function t(key, english) {
+    return window.FynroxI18n ? window.FynroxI18n.t(key, english) : english;
+  }
+
   function enhance(form) {
     form.addEventListener("submit", function (event) {
       event.preventDefault();
@@ -125,13 +135,13 @@
       if (submit) {
         submit.disabled = true;
         submit.setAttribute("data-label", submit.textContent);
-        submit.textContent = "Sending…";
+        submit.textContent = t("forms.sending", "Sending\u2026");
       }
 
       function restore() {
         if (!submit) return;
         submit.disabled = false;
-        submit.textContent = submit.getAttribute("data-label") || "Submit";
+        submit.textContent = submit.getAttribute("data-label") || t("forms.submit", "Submit");
       }
 
       fetch(apiBase() + "/public/applications", {
@@ -151,9 +161,12 @@
             showState(
               form,
               "success",
-              form.getAttribute("data-success-title") || "You're on the list",
+              form.getAttribute("data-success-title") || t("forms.successTitle", "You're on the list"),
               form.getAttribute("data-success-body") ||
-                "We've got your details and we'll be in touch. Nothing else is needed from you right now.",
+                t(
+                  "forms.successBody",
+                  "We've got your details and we'll be in touch. Nothing else is needed from you right now.",
+                ),
             );
             return;
           }
@@ -165,9 +178,12 @@
             showState(
               form,
               "known",
-              "You're already registered",
+              t("forms.knownTitle", "You're already registered"),
               form.getAttribute("data-known-body") ||
-                "This email is already on our list, so there's nothing more to do. We'll be in touch at the same address.",
+                t(
+                  "forms.knownBody",
+                  "This email is already on our list, so there's nothing more to do. We'll be in touch at the same address.",
+                ),
             );
             return;
           }
@@ -177,8 +193,8 @@
             showState(
               form,
               "error",
-              "Check the highlighted fields",
-              result.body.error.message || "Something in the form needs fixing.",
+              t("forms.invalidTitle", "Check the highlighted fields"),
+              result.body.error.message || t("forms.invalidBody", "Something in the form needs fixing."),
             );
             return;
           }
@@ -187,8 +203,11 @@
             showState(
               form,
               "error",
-              "Too many attempts",
-              "You've submitted this a few times in a short window. Give it a few minutes and try again.",
+              t("forms.rateLimitTitle", "Too many attempts"),
+              t(
+                "forms.rateLimitBody",
+                "You've submitted this a few times in a short window. Give it a few minutes and try again.",
+              ),
             );
             return;
           }
@@ -196,8 +215,8 @@
           showState(
             form,
             "error",
-            "We couldn't save that",
-            "Something went wrong on our side, not yours. Please try again in a moment.",
+            t("forms.serverErrorTitle", "We couldn't save that"),
+            t("forms.serverErrorBody", "Something went wrong on our side, not yours. Please try again in a moment."),
           );
         })
         .catch(function () {
@@ -208,8 +227,11 @@
           showState(
             form,
             "error",
-            "We couldn't reach FynroX",
-            "Your connection dropped before we could save this. Nothing was submitted — please try again.",
+            t("forms.networkErrorTitle", "We couldn't reach FynroX"),
+            t(
+              "forms.networkErrorBody",
+              "Your connection dropped before we could save this. Nothing was submitted \u2014 please try again.",
+            ),
           );
         });
     });

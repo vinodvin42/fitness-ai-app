@@ -63,6 +63,9 @@ Every page is a standalone HTML file — no templating, no includes.
 - `assets/js/invite.js` — resolves a gym or creator code against the API
   before the invite/referral landing promises anything.
 - `assets/js/cookie-consent.js` — the consent banner.
+- `assets/js/i18n.js` — the translation layer (see below).
+- `assets/i18n/en.js` — the English source catalogue, generated. It is
+  what a translator is handed, not what the browser reads.
 - `assets/favicon.svg` — a small mark echoing the app's own "progress ring"
   component, not a fabricated logo.
 - `sync-shell.js` — regenerates the header and footer nav in every page
@@ -75,10 +78,75 @@ Every page is a standalone HTML file — no templating, no includes.
 
 There is still no build step. But the header and footer are copy-pasted
 into 24 files, and a stale nav on a marketing site is a page nobody can
-reach. `sync-shell.js` rewrites both blocks in every `*.html` from two
-lists at the top of that file. Edit the lists, run
+reach. `sync-shell.js` rewrites the header nav, the footer nav and the
+footer bottom bar in every `*.html` from two lists at the top of that
+file. It also generates each link's `data-i18n` key, so adding a nav
+item cannot leave one string untranslatable. Edit the lists, run
 `npm run sync-shell --workspace=apps/landing`, commit the result. It is
 idempotent and nothing at deploy time depends on it.
+
+## Translation
+
+The rest of the product uses i18next. This site cannot: no build step,
+no framework, and adding either to ship copy would cost more than the
+copy is worth. So the same job is done with an attribute and a script.
+
+```html
+<h1 data-i18n="index.heroTitle">Training, nutrition, and recovery…</h1>
+<p  data-i18n-html="faq.answer">Yes — see the <a href="x">terms</a>.</p>
+<meta data-i18n-attr="content:index.metaDescription" name="description" … />
+```
+
+**English lives in the HTML, not in the catalogue.** That is the whole
+design decision:
+
+- With JavaScript off, or before `i18n.js` runs, the page is complete,
+  correct English — not a flash of empty elements or a grid of raw keys.
+- Crawlers index the English page exactly as written.
+- A missing key is invisible: the element keeps the English already in
+  it. i18next, by contrast, renders the key itself — `faq.answer.title`
+  as body copy on a public page.
+
+**What it costs, plainly:** every language shares one URL, so only
+English is indexable. Per-language URLs need pre-rendering, which needs
+a build step. The extraction is the expensive half of that work and it
+is not wasted — a generator would read these same attributes.
+
+### Adding a language
+
+1. Copy `assets/i18n/en.js` to `assets/i18n/<code>.js`, change `en` on
+   the assignment line, translate the values, leave the keys alone.
+   Values for `data-i18n-html` keys carry inline markup because the
+   markup sits inside the sentence; keep the tags, move them where the
+   target language needs them.
+2. Add `{ code: "<code>", label: "<endonym>" }` to `LANGUAGES` in
+   `assets/js/i18n.js`.
+
+The footer picker appears by itself once there is more than one
+language, and the choice persists in `localStorage`. Today `LANGUAGES`
+has one entry, so there is no picker — a control offering languages that
+do not exist is worse than no control. (The app's ten Indian languages
+are in the same position: only `en` is populated there either.)
+
+### Two rules
+
+1. **Anything that writes text into the DOM must listen for
+   `fynrox:i18n`.** Swapping a translated sentence replaces the elements
+   inside it, so the footer year and the carried referral code are
+   written again on that event. `main.js` and the inline script in
+   `download.html` show the pattern.
+2. **Regenerate the catalogue after changing copy.** `assets/i18n/en.js`
+   is a second copy of the English and two copies drift.
+   `apps/api/tests/landingI18n.test.ts` fails on the first divergence,
+   on the first unkeyed string, and on a `LANGUAGES` entry with no
+   catalogue file.
+
+### Checking it yourself
+
+`?pseudo=1` on any page renders every catalogued string accented
+(`Tráíníng, nútrítíón…`). Anything still in plain English on that page
+is a string the runtime cannot reach. It is a test, not a language, so
+it is not in the picker.
 
 ## The forms
 

@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Get early access — FynroX</title>
+  <title data-i18n="earlyAccess.pageTitle">Get early access — FynroX</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Register for early access to FynroX. The app is in a closed pilot; join the list and we'll email you when there's a place." />
+  <meta data-i18n-attr="content:earlyAccess.metaDescription" name="description" content="Register for early access to FynroX. The app is in a closed pilot; join the list and we'll email you when there's a place." />
   <meta name="theme-color" content="#0B0C10" />
   <meta name="color-scheme" content="dark" />
 
-  <meta property="og:title" content="Get early access — FynroX" />
-  <meta property="og:description" content="Join the early access list for the FynroX pilot." />
+  <meta data-i18n-attr="content:earlyAccess.metaOgTitle" property="og:title" content="Get early access — FynroX" />
+  <meta data-i18n-attr="content:earlyAccess.metaOgDescription" property="og:description" content="Join the early access list for the FynroX pilot." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
@@ -34,19 +34,19 @@
       </a>
       <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
         <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span>Menu</span>
+        <span data-i18n="shell.nav.menu">Menu</span>
       </button>
-      <nav class="nav" id="primaryNav" aria-label="Primary">
-        <a class="nav__link" href="index.html">Home</a>
-        <a class="nav__link" href="how-it-works.html">How it works</a>
-        <a class="nav__link" href="programs.html">Programs</a>
-        <a class="nav__link" href="professional-guidance.html">Guidance</a>
-        <a class="nav__link" href="pricing.html">Pricing</a>
-        <a class="nav__link" href="gyms.html">For Gyms</a>
-        <a class="nav__link" href="creators.html">For Creators</a>
-        <a class="nav__link" href="professionals.html">For Professionals</a>
-        <a class="nav__link" href="learn.html">Learn</a>
-        <a class="btn btn--primary btn--sm" href="early-access.html">Get early access</a>
+      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">
+        <a class="nav__link" href="index.html" data-i18n="shell.nav.home">Home</a>
+        <a class="nav__link" href="how-it-works.html" data-i18n="shell.nav.howItWorks">How it works</a>
+        <a class="nav__link" href="programs.html" data-i18n="shell.nav.programs">Programs</a>
+        <a class="nav__link" href="professional-guidance.html" data-i18n="shell.nav.guidance">Guidance</a>
+        <a class="nav__link" href="pricing.html" data-i18n="shell.nav.pricing">Pricing</a>
+        <a class="nav__link" href="gyms.html" data-i18n="shell.nav.forGyms">For Gyms</a>
+        <a class="nav__link" href="creators.html" data-i18n="shell.nav.forCreators">For Creators</a>
+        <a class="nav__link" href="professionals.html" data-i18n="shell.nav.forProfessionals">For Professionals</a>
+        <a class="nav__link" href="learn.html" data-i18n="shell.nav.learn">Learn</a>
+        <a class="btn btn--primary btn--sm" href="early-access.html" data-i18n="shell.nav.cta">Get early access</a>
       </nav>
     </div>
   </header>
@@ -55,19 +55,19 @@
     <section class="page-hero">
       <div class="wrap page-hero__inner">
         <p class="eyebrow">
-          <span class="eyebrow__mark">EARLY ACCESS</span>
+          <span data-i18n="earlyAccess.earlyAccess" class="eyebrow__mark">EARLY ACCESS</span>
           <span aria-hidden="true">·</span>
-          <span>Closed pilot</span>
+          <span data-i18n="earlyAccess.closedPilot">Closed pilot</span>
         </p>
-        <h1 class="page-hero__title">FynroX isn't open to everyone yet.</h1>
-        <p class="page-hero__subtitle">The app is in a closed pilot with a small number of testers. Leave your details and we'll email you when there's a place — no app store listing, no download link, nothing to install today.</p>
+        <h1 data-i18n="earlyAccess.fynroxIsntOpenTo" class="page-hero__title">FynroX isn't open to everyone yet.</h1>
+        <p data-i18n="earlyAccess.theAppIsIn" class="page-hero__subtitle">The app is in a closed pilot with a small number of testers. Leave your details and we'll email you when there's a place — no app store listing, no download link, nothing to install today.</p>
       </div>
     </section>
 
     <section class="content-section">
       <div class="wrap">
         <div class="form-state" id="earlyAccessState" role="status" tabindex="-1" hidden></div>
-        <form
+        <form data-i18n-attr="data-success-title:earlyAccess.successTitleYoureOn;data-success-body:earlyAccess.successBodyWeveGot;data-known-body:earlyAccess.knownBodyThisEmail"
           class="form"
           id="earlyAccess"
           data-kind="early_access"
@@ -79,30 +79,30 @@
           novalidate
         >
           <div class="field">
-            <label class="field__label" for="earlyAccessfullName">Your name</label>
+            <label data-i18n="earlyAccess.yourName" class="field__label" for="earlyAccessfullName">Your name</label>
             <input class="field__input" type="text" id="earlyAccessfullName" name="fullName" required />
             <p class="field__error"></p>
           </div>
           <div class="field">
-            <label class="field__label" for="earlyAccessemail">Email</label>
-            <p class="field__hint">Where we'll send your invite. One invite per address.</p>
+            <label data-i18n="earlyAccess.email" class="field__label" for="earlyAccessemail">Email</label>
+            <p data-i18n="earlyAccess.whereWellSendYour" class="field__hint">Where we'll send your invite. One invite per address.</p>
             <input class="field__input" type="email" id="earlyAccessemail" name="email" required />
             <p class="field__error"></p>
           </div>
           <div class="field">
-            <label class="field__label" for="earlyAccessphone">Phone (optional)</label>
+            <label data-i18n="earlyAccess.phoneOptional" class="field__label" for="earlyAccessphone">Phone (optional)</label>
             <input class="field__input" type="tel" id="earlyAccessphone" name="phone" />
             <p class="field__error"></p>
           </div>
           <div class="field">
-            <label class="field__label" for="earlyAccesscity">City (optional)</label>
-            <p class="field__hint">We're opening city by city, so this changes when you hear from us.</p>
+            <label data-i18n="earlyAccess.cityOptional" class="field__label" for="earlyAccesscity">City (optional)</label>
+            <p data-i18n="earlyAccess.wereOpeningCityBy" class="field__hint">We're opening city by city, so this changes when you hear from us.</p>
             <input class="field__input" type="text" id="earlyAccesscity" name="city" />
             <p class="field__error"></p>
           </div>
           <div class="field field--check">
             <input type="checkbox" id="earlyAccessConsent" name="consentContact" value="true" required />
-            <label class="field__label" for="earlyAccessConsent">
+            <label data-i18n-html="earlyAccess.iAgreeThatFynrox" class="field__label" for="earlyAccessConsent">
               I agree that FynroX can contact me about this. Required — we won't email you
               without it. <a href="privacy.html">How we handle your data</a>.
             </label>
@@ -110,15 +110,15 @@
           </div>
           <div class="field field--check">
             <input type="checkbox" id="earlyAccessMarketing" name="consentMarketing" value="true" />
-            <label class="field__label" for="earlyAccessMarketing">
+            <label data-i18n="earlyAccess.optionalSendMeProduct" class="field__label" for="earlyAccessMarketing">
               Optional: send me product updates as well. Genuinely optional — leaving this
               unticked changes nothing about the message above.
             </label>
           </div>
-          <button class="btn btn--primary btn--lg" type="submit">Join the list</button>
+          <button data-i18n="earlyAccess.joinTheList" class="btn btn--primary btn--lg" type="submit">Join the list</button>
         </form>
         <div class="note-box">
-          <p>
+          <p data-i18n-html="earlyAccess.weEmailYouAbout">
             <strong>What we do with this:</strong> we email you about the pilot, and that's
             it. We don't sell it, we don't pass it to partners, and the optional box above is
             the only thing that opts you into anything else.
@@ -130,23 +130,23 @@
 
     <section class="content-section content-section--raised">
       <div class="wrap">
-        <p class="section-eyebrow">WHILE YOU WAIT</p>
-        <h2 class="section-title">Worth reading first</h2>
+        <p data-i18n="earlyAccess.whileYouWait" class="section-eyebrow">WHILE YOU WAIT</p>
+        <h2 data-i18n="earlyAccess.worthReadingFirst" class="section-title">Worth reading first</h2>
         <div class="feature-grid">
           <a class="article-card" href="how-it-works.html">
-            <p class="article-card__category">The loop</p>
-            <p class="article-card__title">How FynroX works</p>
-            <p class="article-card__body">Plan, log, check in, adjust — and where the AI coach and a human professional fit.</p>
+            <p data-i18n="earlyAccess.theLoop" class="article-card__category">The loop</p>
+            <p data-i18n="earlyAccess.howFynroxWorks" class="article-card__title">How FynroX works</p>
+            <p data-i18n="earlyAccess.planLogCheckIn" class="article-card__body">Plan, log, check in, adjust — and where the AI coach and a human professional fit.</p>
           </a>
           <a class="article-card" href="safety.html">
-            <p class="article-card__category">Before you sign up</p>
-            <p class="article-card__title">Safety &amp; privacy</p>
-            <p class="article-card__body">What we do with health data, and when the app stops you training rather than encouraging you.</p>
+            <p data-i18n="earlyAccess.beforeYouSignUp" class="article-card__category">Before you sign up</p>
+            <p data-i18n="earlyAccess.safetyPrivacy" class="article-card__title">Safety &amp; privacy</p>
+            <p data-i18n="earlyAccess.whatWeDoWith" class="article-card__body">What we do with health data, and when the app stops you training rather than encouraging you.</p>
           </a>
           <a class="article-card" href="faq.html">
-            <p class="article-card__category">Questions</p>
-            <p class="article-card__title">FAQ</p>
-            <p class="article-card__body">Price, cancellation, what the AI can and can't do, and what isn't built yet.</p>
+            <p data-i18n="earlyAccess.questions" class="article-card__category">Questions</p>
+            <p data-i18n="earlyAccess.faq" class="article-card__title">FAQ</p>
+            <p data-i18n="earlyAccess.priceCancellationWhatThe" class="article-card__body">Price, cancellation, what the AI can and can't do, and what isn't built yet.</p>
           </a>
         </div>
       </div>
@@ -161,53 +161,55 @@
           <span class="brand__mark" aria-hidden="true">FX</span>
           <span class="brand__word">FynroX</span>
         </span>
-        <p class="footer__tagline">
+        <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
           Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
           publicly available.
         </p>
       </div>
-      <nav class="footer__nav" aria-label="Footer">
+      <nav class="footer__nav" aria-label="Footer" data-i18n-attr="aria-label:shell.footer.ariaLabel">
         <div>
-          <p class="footer__col-title">Product</p>
-          <a class="footer__col-link" href="features.html">Features</a>
-          <a class="footer__col-link" href="how-it-works.html">How it works</a>
-          <a class="footer__col-link" href="programs.html">Programs</a>
-          <a class="footer__col-link" href="pricing.html">Pricing</a>
-          <a class="footer__col-link" href="download.html">Download</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.product">Product</p>
+          <a class="footer__col-link" href="features.html" data-i18n="shell.footer.link.features">Features</a>
+          <a class="footer__col-link" href="how-it-works.html" data-i18n="shell.footer.link.howItWorks">How it works</a>
+          <a class="footer__col-link" href="programs.html" data-i18n="shell.footer.link.programs">Programs</a>
+          <a class="footer__col-link" href="pricing.html" data-i18n="shell.footer.link.pricing">Pricing</a>
+          <a class="footer__col-link" href="download.html" data-i18n="shell.footer.link.download">Download</a>
         </div>
         <div>
-          <p class="footer__col-title">Partners</p>
-          <a class="footer__col-link" href="gyms.html">For Gyms</a>
-          <a class="footer__col-link" href="creators.html">For Creators</a>
-          <a class="footer__col-link" href="professionals.html">For Professionals</a>
-          <a class="footer__col-link" href="professional-guidance.html">Professional Guidance</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.partners">Partners</p>
+          <a class="footer__col-link" href="gyms.html" data-i18n="shell.footer.link.forGyms">For Gyms</a>
+          <a class="footer__col-link" href="creators.html" data-i18n="shell.footer.link.forCreators">For Creators</a>
+          <a class="footer__col-link" href="professionals.html" data-i18n="shell.footer.link.forProfessionals">For Professionals</a>
+          <a class="footer__col-link" href="professional-guidance.html" data-i18n="shell.footer.link.professionalGuidance">Professional Guidance</a>
         </div>
         <div>
-          <p class="footer__col-title">Company</p>
-          <a class="footer__col-link" href="about.html">About</a>
-          <a class="footer__col-link" href="learn.html">Learn</a>
-          <a class="footer__col-link" href="faq.html">FAQ</a>
-          <a class="footer__col-link" href="support.html">Support</a>
-          <a class="footer__col-link" href="early-access.html">Early access</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.company">Company</p>
+          <a class="footer__col-link" href="about.html" data-i18n="shell.footer.link.about">About</a>
+          <a class="footer__col-link" href="learn.html" data-i18n="shell.footer.link.learn">Learn</a>
+          <a class="footer__col-link" href="faq.html" data-i18n="shell.footer.link.faq">FAQ</a>
+          <a class="footer__col-link" href="support.html" data-i18n="shell.footer.link.support">Support</a>
+          <a class="footer__col-link" href="early-access.html" data-i18n="shell.footer.link.earlyAccess">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal & safety</p>
-          <a class="footer__col-link" href="safety.html">Safety &amp; Privacy</a>
-          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
-          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.legalSafety">Legal & safety</p>
+          <a class="footer__col-link" href="safety.html" data-i18n="shell.footer.link.safetyPrivacy">Safety &amp; Privacy</a>
+          <a class="footer__col-link" href="privacy.html" data-i18n="shell.footer.link.privacyPolicy">Privacy Policy</a>
+          <a class="footer__col-link" href="terms.html" data-i18n="shell.footer.link.termsOfService">Terms of Service</a>
         </div>
         <div>
-          <p class="footer__col-title">Sign in</p>
-          <a class="footer__col-link" href="/app/">Admin</a>
-          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
+          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
         </div>
       </nav>
     </div>
-    <div class="wrap">
-      <p class="footer__copy">© <span id="year">2026</span> FynroX. Not a substitute for professional medical advice.</p>
+    <div class="wrap footer__bottom">
+      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> FynroX. Not a substitute for professional medical advice.</p>
+      <div class="footer__lang-wrap" data-i18n-picker hidden></div>
     </div>
   </footer>
 
+  <script src="assets/js/i18n.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/forms.js"></script>
   <script src="assets/js/cookie-consent.js"></script>

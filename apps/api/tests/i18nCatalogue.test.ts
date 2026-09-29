@@ -121,17 +121,6 @@ function flatten(obj: unknown, prefix = ""): Set<string> {
   return keys;
 }
 
-
-/**
- * i18next resolves `t("thing", { count })` against `thing_one` /
- * `thing_other`, so the bare `thing` is a legitimate call for a key that
- * does not literally exist. Accepted only when a plural form does.
- */
-function resolves(key: string): boolean {
-  if (CATALOGUE.has(key)) return true;
-  return ["_one", "_other", "_zero", "_two", "_few", "_many"].some((s) => CATALOGUE.has(key + s));
-}
-
 describe.each(APPS)("$name translation catalogue", ({ src, catalogue }) => {
   const CATALOGUE = flatten(catalogue);
   const calls = translationCalls(src);

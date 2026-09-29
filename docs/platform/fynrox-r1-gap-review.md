@@ -623,10 +623,23 @@ open, and that page changes when the plans do.
    read yet" caveat — a `Gym` and an `Influencer` have no `languagePreference` column
    either. **`apps/admin-web` is complete too** — 65 components and ~1,150 keys,
    migrated by a three-pass script rather than by hand, with every one of its 1,253 call
-   sites verified against the pre-migration source from git. **`apps/landing` is the only
-   surface left**, and needs a different mechanism entirely — static HTML, no build step, no framework, so
-   react-i18next cannot go there at all. `docs/mobile/i18n.md` carries the coverage table
-   and the reasoning for both.
+   sites verified against the pre-migration source from git. **`apps/landing` is complete
+   too**, on a different mechanism entirely: static HTML with no build step and no
+   framework means react-i18next cannot go there at all, so its 24 pages carry
+   `data-i18n` attributes and `assets/js/i18n.js` swaps the text — 1,692 keyed sites,
+   808 keys. The English stays in the markup rather than moving into the catalogue,
+   which inverts i18next's worst failure: a missing key leaves the English in place
+   instead of rendering `faq.answer.title` as body copy on a public page. Two guards
+   hold it (`apps/api/tests/landingI18n.test.ts`): every visible string on every page
+   must be keyed, and every catalogue value must be byte-identical to the page, because
+   the catalogue is a second copy of the English and two copies drift. The stated cost:
+   all languages share one URL, so only English is indexable — per-language URLs need
+   pre-rendering, which needs the build step the site does not have. `docs/mobile/i18n.md`
+   and `apps/landing/README.md` carry the reasoning.
+
+   What remains for every surface is **content, not engineering**: only `en` is
+   populated anywhere. The landing picker stays hidden until a second catalogue exists,
+   rather than offering ten languages that resolve to English.
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
 3. **Dropping the plaintext health columns.** Still blocked on the backfill having run in
    every environment, but that is now a command rather than a memory: `npm run
