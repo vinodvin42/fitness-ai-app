@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -22,15 +23,16 @@ const GENDERS = ["male", "female", "other"] as const;
  * users.service.ts#upsertOnboardingProfile's own comment.
  */
 export function AboutYouScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={1}
       total={8}
-      label="About You"
-      title="Tell us about yourself"
-      subtitle="This helps us personalize your training and nutrition plans."
+      label={t("onboarding.aboutYou.step")}
+      title={t("onboarding.aboutYou.title")}
+      subtitle={t("onboarding.aboutYou.subtitle")}
       onNext={() => {
         markScreenReached("Schedule");
         navigation.navigate("Schedule");
@@ -49,9 +51,9 @@ export function AboutYouScreen({ navigation }: Props) {
       </View>
 
       <View style={{ marginTop: spacing.lg }}>
-        <Stepper label="Age" value={state.age} unit="yrs" step={1} min={13} max={100} onChange={(age) => update({ age })} />
+        <Stepper label={t("onboarding.aboutYou.age")} value={state.age} unit="yrs" step={1} min={13} max={100} onChange={(age) => update({ age })} />
         <Stepper
-          label="Weight"
+          label={t("onboarding.aboutYou.weight")}
           value={state.weightKg}
           unit="kg"
           step={0.5}
@@ -60,7 +62,7 @@ export function AboutYouScreen({ navigation }: Props) {
           onChange={(weightKg) => update({ weightKg })}
         />
         <Stepper
-          label="Height"
+          label={t("onboarding.aboutYou.height")}
           value={state.heightCm}
           unit="cm"
           step={1}
@@ -71,12 +73,12 @@ export function AboutYouScreen({ navigation }: Props) {
       </View>
 
       <View style={{ marginTop: spacing.lg }}>
-        <Text style={{ ...typography.h2, color: colors.textPrimary }}>Baseline measurements</Text>
+        <Text style={{ ...typography.h2, color: colors.textPrimary }}>{t("onboarding.aboutYou.baseline")}</Text>
         <Text style={{ ...typography.meta, color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.xs }}>
           Optional — skip anything you don't know precisely. Leave a value at "–" to leave it out.
         </Text>
         <Stepper
-          label="Body fat %"
+          label={t("onboarding.aboutYou.bodyFat")}
           value={state.bodyFatPercent}
           unit="%"
           step={0.5}
@@ -85,7 +87,7 @@ export function AboutYouScreen({ navigation }: Props) {
           onChange={(bodyFatPercent) => update({ bodyFatPercent })}
         />
         <Stepper
-          label="Waist"
+          label={t("onboarding.aboutYou.waist")}
           value={state.waistCm}
           unit="cm"
           step={1}
@@ -94,7 +96,7 @@ export function AboutYouScreen({ navigation }: Props) {
           onChange={(waistCm) => update({ waistCm })}
         />
         <Stepper
-          label="Hips"
+          label={t("onboarding.aboutYou.hips")}
           value={state.hipsCm}
           unit="cm"
           step={1}

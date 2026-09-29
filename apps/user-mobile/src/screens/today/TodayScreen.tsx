@@ -133,19 +133,19 @@ export function TodayScreen({ navigation }: Props) {
       }
     >
       <AIBanner
-        title="Your AI Coach is ready"
+        title={t("today.aiCoachReady")}
         body="Ask FynroX AI for training, nutrition, or recovery guidance grounded in your real progress."
         ctaLabel="Open chat"
         onPress={() => navigation.navigate("Recover", { screen: "AiCoach" })}
       />
 
       {isPlanError ? (
-        <ErrorState message="Couldn't load your plan for today." onRetry={onRetryPlan} />
+        <ErrorState message={t("today.planError")} onRetry={onRetryPlan} />
       ) : inProgressToday ? (
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
             <Icon name="dumbbell" size={18} color={colors.accent} />
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Continue Workout</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("today.continueWorkout")}</Text>
           </View>
           <Text style={{ color: colors.textSecondary }}>
             {inProgressToday.workoutName} · {inProgressToday.programName}
@@ -154,7 +154,7 @@ export function TodayScreen({ navigation }: Props) {
             {inProgressToday.totalSets} set{inProgressToday.totalSets === 1 ? "" : "s"} logged so far
           </Text>
           <Button
-            label="Resume session"
+            label={t("today.resumeSession")}
             onPress={() =>
               navigation.navigate("Train", {
                 screen: "ActiveWorkout",
@@ -168,7 +168,7 @@ export function TodayScreen({ navigation }: Props) {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
             <Icon name="target" size={18} color={colors.accent} />
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Today's Plan</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("today.todaysPlan")}</Text>
           </View>
           <Text style={{ color: colors.textSecondary }}>
             {nextWorkout.workout.name} · {nextWorkout.plan.programName}
@@ -179,7 +179,7 @@ export function TodayScreen({ navigation }: Props) {
             </Text>
           ) : null}
           <Button
-            label="Start Workout"
+            label={t("today.startWorkout")}
             onPress={() =>
               navigation.navigate("Train", {
                 screen: "WorkoutDetail",
@@ -199,7 +199,7 @@ export function TodayScreen({ navigation }: Props) {
       ) : null}
 
       {isWaterError ? (
-        <ErrorState message="Couldn't load today's hydration." onRetry={() => refetchWater()} />
+        <ErrorState message={t("today.hydrationError")} onRetry={() => refetchWater()} />
       ) : (
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
@@ -218,7 +218,7 @@ export function TodayScreen({ navigation }: Props) {
               {Math.max(0, WATER_GOAL_GLASSES - totalGlasses)} glasses to your goal
             </Text>
             <Button
-              label="+1 Glass"
+              label={t("fuel.addGlass")}
               variant="secondary"
               onPress={onAddGlass}
               loading={isLoggingWater}
@@ -253,11 +253,11 @@ export function TodayScreen({ navigation }: Props) {
       <View>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickLinks")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <QuickLink icon="dumbbell" label="Train" onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
-          <QuickLink icon="utensils" label="Fuel" onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />
+          <QuickLink icon="dumbbell" label={t("nav.train")} onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
+          <QuickLink icon="utensils" label={t("nav.fuel")} onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />
           <QuickLink
             icon="heart-pulse"
-            label="Recover"
+            label={t("nav.recover")}
             onPress={() => navigation.navigate("Recover", { screen: "RecoverHub" })}
             tint={colors.aiAccent}
             tintSoft={colors.aiAccentSoft}

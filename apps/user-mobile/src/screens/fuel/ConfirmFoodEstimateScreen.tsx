@@ -59,20 +59,20 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Confirm Estimate" subtitle={`“${estimate.description}”`}>
+    <ScreenContainer title={t("fuel.confirmEstimate.title")} subtitle={`“${estimate.description}”`}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm }}>
           <Text style={{ fontSize: 18 }}>✨</Text>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>AI estimate — review before logging</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("fuel.confirmEstimate.banner")}</Text>
         </View>
         <Text style={{ color: colors.textMuted, ...typography.caption, marginBottom: spacing.md }}>
-          These numbers are a guess, not a fact yet. Edit anything that looks off, then log it.
+          {t("fuel.confirmEstimate.caveat")}
         </Text>
 
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>What you ate</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("fuel.logMeal.whatDidYouEat")}</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.textMuted} />
 
-        <Text style={{ color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.xs }}>Calories</Text>
+        <Text style={{ color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.xs }}>{t("fuel.logMeal.calories")}</Text>
         <TextInput
           style={styles.input}
           keyboardType="number-pad"
@@ -83,21 +83,21 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
 
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Protein (g)</Text>
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("fuel.logMeal.proteinG")}</Text>
             <TextInput style={styles.input} keyboardType="number-pad" value={protein} onChangeText={setProtein} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Carbs (g)</Text>
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("fuel.logMeal.carbsG")}</Text>
             <TextInput style={styles.input} keyboardType="number-pad" value={carbs} onChangeText={setCarbs} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Fat (g)</Text>
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("fuel.logMeal.fatG")}</Text>
             <TextInput style={styles.input} keyboardType="number-pad" value={fat} onChangeText={setFat} />
           </View>
         </View>
       </Card>
 
-      <Button label="Log it" onPress={onLogIt} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Button label={t("fuel.confirmEstimate.logIt")} onPress={onLogIt} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
       <Button
         label={t("common.cancel")}
         variant="secondary"

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -43,6 +44,7 @@ const RECENT_WORKOUTS_SHOWN = 3;
  * reserves for real failures instead.
  */
 export function ProgressReviewScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isChecking, setIsChecking] = useState(false);
 
@@ -79,11 +81,11 @@ export function ProgressReviewScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Progress Review" subtitle="Your recent activity, and what your plan suggests">
+    <ScreenContainer title={t("progress.review.title")} subtitle={t("progress.review.subtitle")}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <Icon name="dumbbell" size={18} color={colors.accent} />
-          <Text style={{ color: colors.textSecondary }}>Recent training</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.review.recentTraining")}</Text>
         </View>
         {recentCompleted.length > 0 ? (
           recentCompleted.map((h) => (
@@ -98,14 +100,14 @@ export function ProgressReviewScreen({ navigation }: Props) {
             </View>
           ))
         ) : (
-          <Text style={{ color: colors.textMuted }}>No completed workouts yet — finish one to see it here.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("progress.review.noWorkouts")}</Text>
         )}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <Icon name="trending-up" size={18} color={colors.cyan} />
-          <Text style={{ color: colors.textSecondary }}>Weight trend</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.weightTrend")}</Text>
         </View>
         {latestWeight ? (
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.sm }}>
@@ -115,34 +117,38 @@ export function ProgressReviewScreen({ navigation }: Props) {
                 {weightDelta > 0 ? `+${weightDelta}` : weightDelta} kg since last weigh-in
               </Text>
             ) : (
-              <Text style={{ color: colors.textMuted, ...typography.meta }}>Only one weigh-in logged, no trend yet</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("progress.review.oneWeighIn")}</Text>
             )}
           </View>
         ) : (
-          <Text style={{ color: colors.textMuted }}>No weigh-ins logged yet.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("progress.review.noWeighIns")}</Text>
         )}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <Icon name="sparkles" size={18} color={colors.aiAccent} />
-          <Text style={{ color: colors.textSecondary }}>Your recommendation</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.review.yourRecommendation")}</Text>
         </View>
 
         {isRecommendationLoading ? (
           <ActivityIndicator color={colors.accent} />
         ) : isRecommendationError ? (
-          <ErrorState message="Couldn't load your recommendation." onRetry={() => refetchRecommendation()} />
+          <ErrorState message={t("progress.review.error")} onRetry={() => refetchRecommendation()} />
         ) : recommendation ? (
           <>
             <Text style={{ color: colors.textPrimary, ...typography.h3 }}>
-              {recommendation.kind === "no_change" ? "Continue Current Plan" : `Switch to ${recommendation.suggestedProgramName ?? "a new program"}`}
+              {recommendation.kind === "no_change"
+                ? t("progress.review.continueCurrent")
+                : t("progress.review.switchTo", {
+                    program: recommendation.suggestedProgramName ?? t("progress.review.aNewProgram"),
+                  })}
             </Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }} numberOfLines={2}>
               {recommendation.rationale}
             </Text>
             <Button
-              label="Why This Changed"
+              label={t("progress.review.whyThisChanged")}
               variant="secondary"
               onPress={() => navigation.navigate("WhyThisChanged", { recommendation })}
               style={{ marginTop: spacing.md }}
@@ -157,7 +163,7 @@ export function ProgressReviewScreen({ navigation }: Props) {
             </Text>
             {plan?.status === "generated" ? (
               <Button
-                label="Check for a Recommendation"
+                label={t("progress.review.check")}
                 loading={isChecking}
                 onPress={onCheckForRecommendation}
                 style={{ marginTop: spacing.md }}

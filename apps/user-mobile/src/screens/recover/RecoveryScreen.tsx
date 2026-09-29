@@ -129,28 +129,28 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
   const todayMindfulTotal = (todayMindfulness ?? []).reduce((sum, log) => sum + log.durationMinutes, 0);
 
   return (
-    <ScreenContainer title="Recovery">
+    <ScreenContainer title={t("recover.title")}>
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Log today</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("recover.logToday")}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
-          Self-reported — enter what you have. Saving again updates today's entry.
+          {t("recover.selfReported")}
         </Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <LabeledInput label="Resting HR" unit="bpm" value={form.restingHeartRate} onChange={(v) => set("restingHeartRate", v)} />
-          <LabeledInput label="Sleep" unit="hrs" value={form.sleepHours} onChange={(v) => set("sleepHours", v)} />
+          <LabeledInput label={t("recover.metrics.restingHr")} unit="bpm" value={form.restingHeartRate} onChange={(v) => set("restingHeartRate", v)} />
+          <LabeledInput label={t("recover.metrics.sleep")} unit="hrs" value={form.sleepHours} onChange={(v) => set("sleepHours", v)} />
         </View>
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-          <LabeledInput label="HRV" unit="ms" value={form.hrvMs} onChange={(v) => set("hrvMs", v)} />
-          <LabeledInput label="Soreness" unit="1-5" value={form.soreness} onChange={(v) => set("soreness", v)} />
-          <LabeledInput label="Energy" unit="1-5" value={form.energyLevel} onChange={(v) => set("energyLevel", v)} />
+          <LabeledInput label={t("recover.metrics.hrv")} unit="ms" value={form.hrvMs} onChange={(v) => set("hrvMs", v)} />
+          <LabeledInput label={t("recover.metrics.soreness")} unit="1-5" value={form.soreness} onChange={(v) => set("soreness", v)} />
+          <LabeledInput label={t("recover.metrics.energy")} unit="1-5" value={form.energyLevel} onChange={(v) => set("energyLevel", v)} />
         </View>
         <TextInput
           value={form.notes}
           onChangeText={(v) => set("notes", v)}
-          placeholder="Notes (optional)"
+          placeholder={t("recover.notesOptional")}
           placeholderTextColor={colors.textMuted}
           style={{ ...inputStyle, marginTop: spacing.sm }}
         />
@@ -165,26 +165,26 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>
-          Log Mindfulness Session
+          {t("recover.mindfulness.title")}
         </Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
           {todayMindfulTotal > 0
-            ? `${todayMindfulTotal} min logged today — logging again adds another session.`
-            : "A quick self-report — how long, and what kind (optional)."}
+            ? t("recover.mindfulness.loggedToday", { minutes: todayMindfulTotal })
+            : t("recover.mindfulness.prompt")}
         </Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <LabeledInput
-            label="Duration"
+            label={t("recover.mindfulness.duration")}
             unit="min"
             value={mindfulForm.durationMinutes}
             onChange={(v) => setMindfulForm((p) => ({ ...p, durationMinutes: v }))}
           />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>Type (optional)</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("recover.mindfulness.typeOptional")}</Text>
             <TextInput
               value={mindfulForm.type}
               onChangeText={(v) => setMindfulForm((p) => ({ ...p, type: v }))}
-              placeholder="e.g. breathing"
+              placeholder={t("recover.mindfulness.typePlaceholder")}
               placeholderTextColor={colors.textMuted}
               style={{ ...inputStyle, marginTop: 4 }}
             />
@@ -193,12 +193,12 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
         <TextInput
           value={mindfulForm.note}
           onChangeText={(v) => setMindfulForm((p) => ({ ...p, note: v }))}
-          placeholder="Note (optional)"
+          placeholder={t("recover.noteOptional")}
           placeholderTextColor={colors.textMuted}
           style={{ ...inputStyle, marginTop: spacing.sm }}
         />
         <Button
-          label="Log session"
+          label={t("recover.mindfulness.logSession")}
           onPress={() => mindfulnessMutation.mutate()}
           loading={mindfulnessMutation.isPending}
           disabled={!mindfulValid || mindfulnessMutation.isPending}
@@ -209,21 +209,21 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
       {data && (
         <Card style={{ marginTop: spacing.md }}>
           <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>
-            {data.rangeDays}-day averages
+            {t("recover.averages", { days: data.rangeDays })}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
-            <Metric label="Resting HR" value={fmt(data.averages.restingHeartRate, " bpm")} />
-            <Metric label="Sleep" value={fmt(data.averages.sleepHours, " hrs")} />
-            <Metric label="HRV" value={fmt(data.averages.hrvMs, " ms")} />
-            <Metric label="Soreness" value={fmt(data.averages.soreness)} />
-            <Metric label="Energy" value={fmt(data.averages.energyLevel)} />
+            <Metric label={t("recover.metrics.restingHr")} value={fmt(data.averages.restingHeartRate, " bpm")} />
+            <Metric label={t("recover.metrics.sleep")} value={fmt(data.averages.sleepHours, " hrs")} />
+            <Metric label={t("recover.metrics.hrv")} value={fmt(data.averages.hrvMs, " ms")} />
+            <Metric label={t("recover.metrics.soreness")} value={fmt(data.averages.soreness)} />
+            <Metric label={t("recover.metrics.energy")} value={fmt(data.averages.energyLevel)} />
           </View>
         </Card>
       )}
 
       {data && data.logs.length > 0 && (
         <Card style={{ marginTop: spacing.md }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Recent</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("recover.recent")}</Text>
           {data.logs.map((log: RecoveryLogItem) => (
             <View
               key={log.id}

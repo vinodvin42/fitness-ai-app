@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Image, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { Program } from "@fitness-ai-app/types";
@@ -32,37 +33,38 @@ type Props = NativeStackScreenProps<TrainStackParamList, "TrainDashboard">;
  * filterable catalog.
  */
 export function TrainScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const programsQuery = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
 
   return (
-    <ScreenContainer title="Train" scroll={false}>
+    <ScreenContainer title={t("train.title")} scroll={false}>
       <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
         <ListRow
           icon="search"
-          title="Browse All Programs"
-          subtitle="Search & filter the full catalog"
+          title={t("train.links.browse.label")}
+          subtitle={t("train.links.browse.subtitle")}
           tint={colors.accent}
           tintSoft={colors.accentSoft}
           onPress={() => navigation.navigate("ProgramsMarketplace")}
         />
         <ListRow
           icon="target"
-          title="My Programs"
-          subtitle="Purchased & started plans"
+          title={t("train.links.mine.label")}
+          subtitle={t("train.links.mine.subtitle")}
           onPress={() => navigation.navigate("MyPrograms")}
         />
         <ListRow
           icon="dumbbell"
-          title="Exercise Library"
-          subtitle="Browse by muscle & equipment"
+          title={t("train.links.exercises.label")}
+          subtitle={t("train.links.exercises.subtitle")}
           tint={colors.success}
           tintSoft={colors.successSoft}
           onPress={() => navigation.navigate("ExerciseLibrary")}
         />
         <ListRow
           icon="line-chart"
-          title="Workout History"
-          subtitle="Past sessions & PRs"
+          title={t("train.links.history.label")}
+          subtitle={t("train.links.history.subtitle")}
           tint={colors.aiAccent}
           tintSoft={colors.aiAccentSoft}
           onPress={() => navigation.navigate("WorkoutHistory")}
@@ -135,7 +137,7 @@ export function TrainScreen({ navigation }: Props) {
               </Card>
             </Pressable>
           )}
-          ListEmptyComponent={<EmptyState title="No programs yet" />}
+          ListEmptyComponent={<EmptyState title={t("train.noPrograms")} />}
         />
       )}
     </ScreenContainer>

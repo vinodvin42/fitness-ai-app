@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -152,6 +153,7 @@ function annualSavingsPercent(plan: SubscriptionPlan, allPlans: SubscriptionPlan
  * point.
  */
 export function SubscriptionScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -248,7 +250,7 @@ export function SubscriptionScreen({ navigation }: Props) {
 
   if (plansLoading || currentLoading) {
     return (
-      <ScreenContainer title="Subscription">
+      <ScreenContainer title={t("subscription.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -256,7 +258,7 @@ export function SubscriptionScreen({ navigation }: Props) {
 
   if (plansError || currentError) {
     return (
-      <ScreenContainer title="Subscription">
+      <ScreenContainer title={t("subscription.title")}>
         <ErrorState
           onRetry={() => {
             refetchPlans();
@@ -268,7 +270,7 @@ export function SubscriptionScreen({ navigation }: Props) {
   }
 
   return (
-    <ScreenContainer title="Subscription">
+    <ScreenContainer title={t("subscription.title")}>
       {current ? (
         <Card>
           {(() => {
@@ -311,7 +313,7 @@ export function SubscriptionScreen({ navigation }: Props) {
           {(current.status === "active" || current.status === "trialing" || current.status === "past_due") &&
             !current.cancelAtPeriodEnd && (
               <Button
-                label="Cancel Subscription"
+                label={t("subscription.cancel")}
                 variant="secondary"
                 onPress={onCancel}
                 loading={isCanceling}
@@ -322,14 +324,14 @@ export function SubscriptionScreen({ navigation }: Props) {
       ) : (
         <Card style={{ alignItems: "center", gap: spacing.xs, paddingVertical: spacing.lg }}>
           <Icon name="trophy" size={28} color={colors.accent} />
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Unlock your full potential</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.meta }}>Choose a plan to get started.</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("subscription.unlock")}</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta }}>{t("subscription.choosePlan")}</Text>
         </Card>
       )}
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
-        <Chip label="Monthly" selected={billingCycle === "monthly"} onPress={() => setBillingCycle("monthly")} />
-        <Chip label="Annual" selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
+        <Chip label={t("subscription.monthly")} selected={billingCycle === "monthly"} onPress={() => setBillingCycle("monthly")} />
+        <Chip label={t("subscription.annual")} selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
       </View>
 
       <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
@@ -364,15 +366,21 @@ export function SubscriptionScreen({ navigation }: Props) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{TIER_LABEL[plan.tier]}</Text>
-                      {plan.tier === "pro" ? <Pill label="Popular" tone="accent" /> : null}
-                      {savings != null ? <Pill label={`Save ${savings}%`} tone="success" /> : null}
+                      {plan.tier === "pro" ? <Pill label={t("subscription.popular")} tone="accent" /> : null}
+                      {savings != null ? <Pill label={t("subscription.save", { percent: savings })} tone="success" /> : null}
                     </View>
                     <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
                       {formatPrice(plan.priceCents, plan.billingCycle)}
                     </Text>
                   </View>
                   <Button
-                    label={!paymentsConfigured && plan.priceCents > 0 ? "Coming soon" : current ? "Switch" : "Choose"}
+                    label={
+                      !paymentsConfigured && plan.priceCents > 0
+                        ? t("subscription.comingSoon")
+                        : current
+                          ? t("subscription.switch")
+                          : t("subscription.choose")
+                    }
                     onPress={() => onSubscribe(plan)}
                     loading={pendingPlanId === plan.id}
                     disabled={!paymentsConfigured && plan.priceCents > 0}
@@ -385,11 +393,11 @@ export function SubscriptionScreen({ navigation }: Props) {
       </View>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Have a coupon?</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("subscription.haveCoupon")}</Text>
         <TextInput
           value={couponCode}
           onChangeText={(v) => setCouponCode(v.toUpperCase())}
-          placeholder="Enter code"
+          placeholder={t("subscription.enterCode")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           style={{
@@ -403,14 +411,14 @@ export function SubscriptionScreen({ navigation }: Props) {
           }}
         />
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-          Applied at checkout for paid plans. An invalid code will stop the order.
+          {t("subscription.couponNote")}
         </Text>
       </Card>
 
       <FeatureComparison />
 
       <Button
-        label="Purchase History"
+        label={t("subscription.purchaseHistory")}
         variant="secondary"
         onPress={() => navigation.navigate("SubscriptionHistory")}
         style={{ marginTop: spacing.lg }}
@@ -420,13 +428,16 @@ export function SubscriptionScreen({ navigation }: Props) {
   );
 }
 
-const COMPARISON_FEATURES: Array<{ label: string; basic: boolean; pro: boolean; elite: boolean }> = [
-  { label: "Workout & nutrition tracking", basic: true, pro: true, elite: true },
-  { label: "Progress & timeline", basic: true, pro: true, elite: true },
-  { label: "AI Coach chat", basic: false, pro: true, elite: true },
-  { label: "Recovery log", basic: false, pro: true, elite: true },
-  { label: "1-on-1 human coaching", basic: false, pro: false, elite: true },
-  { label: "Priority support", basic: false, pro: false, elite: true },
+// `label` became `key` on 29 Sep 2026: the copy lives in the catalogue
+// (`subscription.features.*`) and this array carries only which tiers
+// include what, which is the actual product decision.
+const COMPARISON_FEATURES: Array<{ key: string; basic: boolean; pro: boolean; elite: boolean }> = [
+  { key: "tracking", basic: true, pro: true, elite: true },
+  { key: "progress", basic: true, pro: true, elite: true },
+  { key: "aiCoach", basic: false, pro: true, elite: true },
+  { key: "recovery", basic: false, pro: true, elite: true },
+  { key: "humanCoaching", basic: false, pro: false, elite: true },
+  { key: "prioritySupport", basic: false, pro: false, elite: true },
 ];
 
 /**
@@ -435,21 +446,22 @@ const COMPARISON_FEATURES: Array<{ label: string; basic: boolean; pro: boolean; 
  * intended to include, not an enforced entitlement matrix.
  */
 function FeatureComparison() {
+  const { t } = useTranslation();
   const cell = (on: boolean) => (
     <Text style={{ color: on ? colors.accent : colors.textMuted, textAlign: "center", flex: 1 }}>{on ? "✓" : "–"}</Text>
   );
   return (
     <Card style={{ marginTop: spacing.md }}>
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Compare plans</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("subscription.comparePlans")}</Text>
       <View style={{ flexDirection: "row", marginBottom: spacing.xs }}>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 2 }}>Feature</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 2 }}>{t("subscription.feature")}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Basic</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Pro</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Elite</Text>
       </View>
       {COMPARISON_FEATURES.map((f) => (
         <View
-          key={f.label}
+          key={f.key}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -458,7 +470,7 @@ function FeatureComparison() {
             borderTopColor: colors.border,
           }}
         >
-          <Text style={{ color: colors.textSecondary, flex: 2 }}>{f.label}</Text>
+          <Text style={{ color: colors.textSecondary, flex: 2 }}>{t(`subscription.features.${f.key}`)}</Text>
           {cell(f.basic)}
           {cell(f.pro)}
           {cell(f.elite)}

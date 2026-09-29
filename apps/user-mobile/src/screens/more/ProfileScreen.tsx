@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -60,6 +61,7 @@ const STATUS_TONE: Record<SubscriptionDetail["status"], "success" | "accent" | "
  * resolve — each needs a feature or a document that doesn't exist yet.
  */
 export function ProfileScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const {
@@ -77,7 +79,7 @@ export function ProfileScreen({ navigation }: Props) {
   } = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary });
 
   return (
-    <ScreenContainer title="Profile">
+    <ScreenContainer title={t("profile.title")}>
       <Card style={{ alignItems: "center", gap: spacing.xs, paddingVertical: spacing.lg }}>
         <View
           style={{
@@ -99,15 +101,15 @@ export function ProfileScreen({ navigation }: Props) {
         {user?.phone ? <Text style={{ color: colors.textMuted, ...typography.meta }}>{user.phone}</Text> : null}
         {user?.createdAt ? (
           <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.xs }}>
-            Member since {new Date(user.createdAt).toLocaleDateString()}
+            {t("profile.memberSince", { date: new Date(user.createdAt).toLocaleDateString() })}
           </Text>
         ) : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Subscription</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("profile.subscription")}</Text>
         {isSubscriptionError ? (
-          <ErrorState message="Couldn't load your subscription." onRetry={() => refetchSubscription()} />
+          <ErrorState message={t("profile.subscriptionError")} onRetry={() => refetchSubscription()} />
         ) : isSubscriptionLoading ? (
           <ActivityIndicator color={colors.accent} />
         ) : subscription ? (
@@ -120,11 +122,11 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
             {subscription.renewsAt ? (
               <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-                Renews {new Date(subscription.renewsAt).toLocaleDateString()}
+                {t("profile.renews", { date: new Date(subscription.renewsAt).toLocaleDateString() })}
               </Text>
             ) : null}
             <Button
-              label="Manage Subscription"
+              label={t("profile.manage")}
               variant="secondary"
               onPress={() => navigation.navigate("Subscription")}
               style={{ marginTop: spacing.md }}
@@ -132,9 +134,9 @@ export function ProfileScreen({ navigation }: Props) {
           </>
         ) : (
           <>
-            <Text style={{ color: colors.textSecondary }}>No active subscription.</Text>
+            <Text style={{ color: colors.textSecondary }}>{t("profile.none")}</Text>
             <Button
-              label="View Plans"
+              label={t("profile.viewPlans")}
               variant="secondary"
               onPress={() => navigation.navigate("Subscription")}
               style={{ marginTop: spacing.md }}
@@ -144,20 +146,31 @@ export function ProfileScreen({ navigation }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Invite Friends</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("profile.invite")}</Text>
         {isReferralError ? (
-          <ErrorState message="Couldn't load your referral code." onRetry={() => refetchReferral()} />
+          <ErrorState message={t("profile.referralError")} onRetry={() => refetchReferral()} />
         ) : isReferralLoading || !referral ? (
           <ActivityIndicator color={colors.accent} />
         ) : (
           <>
-            <Text style={{ color: colors.textSecondary }}>
-              Your code <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi }}>{referral.code}</Text> has
-              {" "}
-              {referral.referredSignups} signup{referral.referredSignups === 1 ? "" : "s"} so far.
+            {/*
+              Split from one sentence into a label + code + count on
+              29 Sep 2026. The original interpolated a styled <Text> for
+              the code INSIDE the sentence, which cannot survive
+              translation — word order moves, and the code would end up
+              in the wrong place in most of the ten languages offered.
+              The count is a real CLDR plural now rather than
+              `count === 1 ? "" : "s"`.
+            */}
+            <Text style={{ color: colors.textSecondary }}>{t("profile.yourCode")}</Text>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, marginTop: 2 }}>
+              {referral.code}
+            </Text>
+            <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+              {t("profile.signups", { count: referral.referredSignups })}
             </Text>
             <Button
-              label="Invite Friends"
+              label={t("profile.invite")}
               variant="secondary"
               onPress={() => navigation.navigate("Referral")}
               style={{ marginTop: spacing.md }}
@@ -167,8 +180,8 @@ export function ProfileScreen({ navigation }: Props) {
       </Card>
 
       <View style={{ gap: spacing.sm }}>
-        <ListRow icon="profile" title="Edit Profile" tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("EditProfile")} />
-        <ListRow icon="settings" title="Preferences" tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("Preferences")} />
+        <ListRow icon="profile" title={t("profile.editProfile")} tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("EditProfile")} />
+        <ListRow icon="settings" title={t("profile.preferences")} tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("Preferences")} />
       </View>
     </ScreenContainer>
   );
