@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
 import { apiClient } from "../lib/api";
@@ -21,6 +22,7 @@ interface Campaign {
  * the Overview puts out of scope.
  */
 export function CampaignsScreen() {
+  const { t } = useTranslation();
   const campaigns = useQuery({
     queryKey: ["creatorCampaigns"],
     queryFn: async () => (await apiClient.get<{ campaigns: Campaign[] } | Campaign[]>("/influencer-portal/campaigns")).data,
@@ -28,14 +30,14 @@ export function CampaignsScreen() {
 
   if (campaigns.isLoading) {
     return (
-      <AppShell title="Campaigns">
+      <AppShell title={t("nav.campaigns")}>
         <p className="text-sm text-text-dim">Loading…</p>
       </AppShell>
     );
   }
   if (campaigns.isError || !campaigns.data) {
     return (
-      <AppShell title="Campaigns">
+      <AppShell title={t("nav.campaigns")}>
         <p className="text-sm text-danger">{extractErrorMessage(campaigns.error, "Couldn't load your campaigns.")}</p>
       </AppShell>
     );
@@ -44,10 +46,10 @@ export function CampaignsScreen() {
   const rows = Array.isArray(campaigns.data) ? campaigns.data : campaigns.data.campaigns ?? [];
 
   return (
-    <AppShell title="Campaigns">
+    <AppShell title={t("nav.campaigns")}>
       {rows.length === 0 ? (
         <p className="text-sm text-text-dim">
-          No campaigns are credited to you yet — your FynroX contact will set one up and it'll appear here.
+          {t("campaigns.empty")}
         </p>
       ) : (
         <table className="w-full text-sm">
@@ -75,8 +77,7 @@ export function CampaignsScreen() {
       )}
 
       <p className="mt-6 max-w-2xl text-xs text-text-dim">
-        Campaign performance is reported as totals only. FynroX never shares who signed up, what they train, what they
-        eat, or anything about their health.
+        {t("campaigns.totalsOnly")}
       </p>
     </AppShell>
   );

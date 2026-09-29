@@ -3,9 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { en as userEn } from "../../user-mobile/src/i18n/locales/en";
 import { en as coachEn } from "../../coach-mobile/src/i18n/locales/en";
+import { en as gymEn } from "../../gym-portal/src/i18n/locales/en";
+import { en as creatorEn } from "../../creator-portal/src/i18n/locales/en";
 
 /**
- * Guards the mobile apps' translation catalogues.
+ * Guards every translation catalogue in the repo.
  *
  * i18next returns THE KEY ITSELF when a key is missing. So a typo in
  * `t("today.progressCrad.title")` does not throw, does not fail
@@ -22,6 +24,8 @@ import { en as coachEn } from "../../coach-mobile/src/i18n/locales/en";
 const APPS = [
   { name: "user-mobile", src: path.join(__dirname, "../../user-mobile/src"), catalogue: userEn },
   { name: "coach-mobile", src: path.join(__dirname, "../../coach-mobile/src"), catalogue: coachEn },
+  { name: "gym-portal", src: path.join(__dirname, "../../gym-portal/src"), catalogue: gymEn },
+  { name: "creator-portal", src: path.join(__dirname, "../../creator-portal/src"), catalogue: creatorEn },
 ];
 
 function sourceFiles(dir: string): string[] {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * How much of each mobile app's copy is translatable, per screen.
+ * How much of each app's copy is translatable, per screen.
  *
  *   node scripts/i18n-report.mjs            # summary
  *   node scripts/i18n-report.mjs --strings  # + the actual strings left
@@ -22,7 +22,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const APPS = ['user-mobile', 'coach-mobile'].map((name) => ({
+// admin-web is absent on purpose — see docs/mobile/i18n.md.
+const APPS = ['user-mobile', 'coach-mobile', 'gym-portal', 'creator-portal'].map((name) => ({
   name,
   root: path.join(import.meta.dirname, `../apps/${name}/src`),
 }));

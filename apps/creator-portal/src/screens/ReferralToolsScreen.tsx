@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
 import { apiClient } from "../lib/api";
@@ -31,6 +32,7 @@ interface ReferralTools {
  * and gets nothing is a problem worth one boolean.
  */
 export function ReferralToolsScreen() {
+  const { t } = useTranslation();
   const tools = useQuery({
     queryKey: ["creatorReferralTools"],
     queryFn: async () => (await apiClient.get<ReferralTools>("/influencer-portal/referral-tools")).data,
@@ -38,43 +40,43 @@ export function ReferralToolsScreen() {
 
   if (tools.isLoading) {
     return (
-      <AppShell title="Referral tools">
+      <AppShell title={t("nav.referralTools")}>
         <p className="text-sm text-text-dim">Loading…</p>
       </AppShell>
     );
   }
   if (tools.isError || !tools.data) {
     return (
-      <AppShell title="Referral tools">
+      <AppShell title={t("nav.referralTools")}>
         <p className="text-sm text-danger">{extractErrorMessage(tools.error, "Couldn't load your referral tools.")}</p>
       </AppShell>
     );
   }
 
-  const t = tools.data;
+  const data = tools.data;
 
   return (
-    <AppShell title="Referral tools">
+    <AppShell title={t("nav.referralTools")}>
       <section className="mb-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-text-primary">{t.displayName}</h2>
-            {t.handle ? <p className="text-xs text-text-dim">{t.handle}</p> : null}
+            <h2 className="text-sm font-semibold text-text-primary">{data.displayName}</h2>
+            {data.handle ? <p className="text-xs text-text-dim">{data.handle}</p> : null}
           </div>
-          <StatusBadge status={t.status} />
+          <StatusBadge status={data.status} />
         </div>
         <p className="mt-3 text-sm text-text-secondary">
-          You earn {t.commissionPct}% commission on subscriptions that start through your links.
+          You earn {data.commissionPct}% commission on subscriptions that start through your links.
         </p>
       </section>
 
-      {t.links.length === 0 ? (
+      {data.links.length === 0 ? (
         <p className="text-sm text-text-dim">
-          No campaigns yet — your FynroX contact will set one up and your links will appear here.
+          {t("referralTools.empty")}
         </p>
       ) : (
         <div className="space-y-5">
-          {t.links.map((l) => (
+          {data.links.map((l) => (
             <section key={l.campaignId} className="flex flex-wrap gap-6 rounded-lg border border-border-subtle bg-surface p-5">
               <img
                 src={l.qrPngDataUrl}
@@ -91,8 +93,7 @@ export function ReferralToolsScreen() {
                     month of zero conversions. */}
                 {!l.live ? (
                   <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
-                    This link isn't live right now, so anyone who follows it sees an unavailable page. Check with your
-                    FynroX contact before you post it.
+                    {t("referralTools.notLive")}
                   </p>
                 ) : null}
 
@@ -105,19 +106,18 @@ export function ReferralToolsScreen() {
                     onClick={() => navigator.clipboard?.writeText(l.url)}
                     className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
                   >
-                    Copy link
+                    {t("referralTools.copyLink")}
                   </button>
                   <a
                     href={l.qrPngDataUrl}
                     download={`fynrox-${l.code}-qr.png`}
                     className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
                   >
-                    Download QR
+                    {t("referralTools.downloadQr")}
                   </a>
                 </div>
                 <p className="mt-3 text-xs text-text-dim">
-                  Code: <span className="font-mono text-accent">{l.code}</span> — people can type this in the app if
-                  they'd rather not follow a link.
+                  {t("referralTools.codeLine", { code: l.code })}
                 </p>
               </div>
             </section>

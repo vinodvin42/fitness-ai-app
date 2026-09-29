@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
 import { apiClient } from "../lib/api";
@@ -32,6 +33,7 @@ const STATUS_COPY: Record<string, string> = {
 };
 
 export function AgreementScreen() {
+  const { t } = useTranslation();
   const tools = useQuery({
     queryKey: ["creatorReferralTools"],
     queryFn: async () => (await apiClient.get<ReferralTools>("/influencer-portal/referral-tools")).data,
@@ -40,10 +42,10 @@ export function AgreementScreen() {
   const status = tools.data?.status ?? "active";
 
   return (
-    <AppShell title="Agreement & terms">
+    <AppShell title={t("agreement.title")}>
       <section className="max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary">Partnership status</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("agreement.status")}</h2>
           <StatusBadge status={status} />
         </div>
         {/* C-M3 — every end state gets a sentence, not a bare badge. */}
@@ -51,39 +53,38 @@ export function AgreementScreen() {
       </section>
 
       <section className="mt-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Commercial terms</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("agreement.commercialTerms")}</h2>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-text-secondary">Commission rate</dt>
+            <dt className="text-text-secondary">{t("agreement.commissionRate")}</dt>
             <dd className="text-text-primary">{tools.data ? `${tools.data.commissionPct}%` : "—"}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-text-secondary">Applies to</dt>
-            <dd className="text-text-primary">Subscriptions started through your links</dd>
+            <dt className="text-text-secondary">{t("agreement.appliesTo")}</dt>
+            <dd className="text-text-primary">{t("agreement.appliesToValue")}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-text-secondary">Payout schedule</dt>
-            <dd className="text-text-primary">Monthly, after approval</dd>
+            <dt className="text-text-secondary">{t("agreement.payoutSchedule")}</dt>
+            <dd className="text-text-primary">{t("agreement.payoutScheduleValue")}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-text-secondary">Refunds</dt>
-            <dd className="text-text-primary">Commission is reversed if the subscription is refunded</dd>
+            <dd className="text-text-primary">{t("agreement.refundNote")}</dd>
           </div>
         </dl>
       </section>
 
       <section className="mt-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Creator agreement</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("agreement.creatorAgreement")}</h2>
         {!r1Flags.LEGAL_TEXT_APPROVED ? (
           // D13 is open. Saying so is better than showing draft terms to
           // someone who earns money under them.
           <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
-            The full creator agreement is still with our legal team and isn't published yet. Your FynroX contact has
-            the current draft — nothing here replaces what you've signed.
+            {t("agreement.draftNote")}
           </p>
         ) : (
           <p className="mt-2 text-sm text-text-secondary">
-            Your signed creator agreement governs this partnership. Contact your FynroX contact for a copy.
+            {t("agreement.signedNote")}
           </p>
         )}
       </section>

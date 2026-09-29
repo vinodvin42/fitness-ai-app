@@ -1,4 +1,5 @@
 import { AppShell } from "../components/AppShell";
+import { useTranslation } from "react-i18next";
 
 /**
  * Gym Partner Lite portal — "Support/contact" (R2 Wave 5, 21 Sep 2026).
@@ -17,15 +18,14 @@ import { AppShell } from "../components/AppShell";
  * useful "Support/contact" this wave can ship.
  */
 export function SupportScreen() {
+  const { t } = useTranslation();
   return (
-    <AppShell title="Support">
+    <AppShell title={t("nav.support")}>
       <div className="max-w-lg space-y-4">
         <div className="rounded-lg border border-border-subtle bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text-primary">Contact FynroX Partner Support</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("support.title")}</h2>
           <p className="mt-2 text-sm text-text-secondary">
-            For anything about your partner account — commercial terms, adding or updating a location, resetting
-            your portal password, or a question about your invite code — reach out directly and a real person will
-            follow up.
+            {t("support.body")}
           </p>
 
           <dl className="mt-4 space-y-3 text-sm">
@@ -38,16 +38,14 @@ export function SupportScreen() {
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] uppercase tracking-wide text-text-dim">Response time</dt>
-              <dd className="text-text-secondary">Typically within 1–2 business days.</dd>
+              <dt className="text-[11px] uppercase tracking-wide text-text-dim">{t("support.responseTime")}</dt>
+              <dd className="text-text-secondary">{t("support.responseValue")}</dd>
             </div>
           </dl>
         </div>
 
         <div className="rounded-lg border border-border-subtle bg-surface p-5 text-xs text-text-dim">
-          FynroX never shares your members' nutrition logs, medical or safety information, progress photos, or
-          private AI Coach conversations with your gym — support requests about a specific member's health data will
-          always be declined, by policy, no matter how they're submitted.
+          {t("support.boundary")}
         </div>
       </div>
     </AppShell>

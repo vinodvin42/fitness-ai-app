@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatCard } from "../components/StatCard";
@@ -45,6 +46,7 @@ const money = (cents: number) => `₹${(cents / 100).toFixed(2)}`;
  * conversion feed would be a member list by another name.
  */
 export function CommissionScreen() {
+  const { t } = useTranslation();
   const ledger = useQuery({
     queryKey: ["creatorCommissions"],
     queryFn: async () => (await apiClient.get<Ledger>("/influencer-portal/commissions")).data,
@@ -52,14 +54,14 @@ export function CommissionScreen() {
 
   if (ledger.isLoading) {
     return (
-      <AppShell title="Commission">
+      <AppShell title={t("nav.commission")}>
         <p className="text-sm text-text-dim">Loading…</p>
       </AppShell>
     );
   }
   if (ledger.isError || !ledger.data) {
     return (
-      <AppShell title="Commission">
+      <AppShell title={t("nav.commission")}>
         <p className="text-sm text-danger">{extractErrorMessage(ledger.error, "Couldn't load your ledger.")}</p>
       </AppShell>
     );
@@ -68,26 +70,25 @@ export function CommissionScreen() {
   const { totals, entries, hasPayoutFailure } = ledger.data;
 
   return (
-    <AppShell title="Commission">
+    <AppShell title={t("nav.commission")}>
       {hasPayoutFailure ? (
         <div className="mb-5 rounded-md bg-danger/10 px-4 py-3">
-          <p className="text-sm font-medium text-danger">A payout to you didn't go through</p>
+          <p className="text-sm font-medium text-danger">{t("commission.payoutFailed")}</p>
           <p className="mt-1 text-sm text-text-secondary">
-            The commission is still owed to you and will be included in the next payout run. If your bank or UPI
-            details have changed, send them to your FynroX contact so the retry succeeds.
+            {t("commission.payoutFailedNote")}
           </p>
         </div>
       ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Paid" value={money(totals.paidCents)} />
-        <StatCard label="Pending" value={money(totals.pendingCents)} />
-        <StatCard label="Under review" value={money(totals.disputedCents)} />
+        <StatCard label={t("commission.paid")} value={money(totals.paidCents)} />
+        <StatCard label={t("commission.pending")} value={money(totals.pendingCents)} />
+        <StatCard label={t("commission.underReview")} value={money(totals.disputedCents)} />
       </div>
 
       {entries.length === 0 ? (
         <p className="text-sm text-text-dim">
-          No commission yet. Once someone subscribes through one of your links, it'll appear here.
+          {t("commission.empty")}
         </p>
       ) : (
         <table className="w-full text-sm">

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
@@ -11,16 +12,19 @@ import { useAuth } from "../lib/auth";
  * this product is commercial, and stating the boundary where they will
  * see it every day is cheaper than explaining it later.
  */
+// Keys, not labels — module-level and evaluated once at import, so a
+// translated string here would freeze the language at load time.
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "/", glyph: "▦" },
-  { label: "Campaigns", path: "/campaigns", glyph: "▣" },
-  { label: "Referral tools", path: "/referral-tools", glyph: "▢" },
-  { label: "Commission", path: "/commission", glyph: "◈" },
-  { label: "Agreement", path: "/agreement", glyph: "◉" },
-  { label: "Account", path: "/account", glyph: "◑" },
+  { key: "dashboard", path: "/", glyph: "▦" },
+  { key: "campaigns", path: "/campaigns", glyph: "▣" },
+  { key: "referralTools", path: "/referral-tools", glyph: "▢" },
+  { key: "commission", path: "/commission", glyph: "◈" },
+  { key: "agreement", path: "/agreement", glyph: "◉" },
+  { key: "account", path: "/account", glyph: "◑" },
 ];
 
 export function AppShell({ children, title }: { children: ReactNode; title: string }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const { influencer, logout } = useAuth();
 
@@ -33,7 +37,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
           </div>
           <div>
             <div className="text-sm font-semibold tracking-wide">FYNROX</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Creator Portal</div>
+            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("shell.portalName")}</div>
           </div>
         </div>
 
@@ -51,14 +55,14 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
                 }`}
               >
                 <span className="w-4 text-center">{item.glyph}</span>
-                {item.label}
+                {t(`nav.${item.key}`)}
               </Link>
             );
           })}
         </nav>
 
         <div className="border-t border-border-subtle px-4 py-3 text-[10px] text-text-dim">
-          Commercial data only — never a member's identity, training, food or health data.
+          {t("shell.commercialOnly")}
         </div>
       </aside>
 
@@ -77,7 +81,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
               onClick={logout}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-danger hover:text-danger"
             >
-              Sign out
+              {t("shell.signOut")}
             </button>
           </div>
         </header>

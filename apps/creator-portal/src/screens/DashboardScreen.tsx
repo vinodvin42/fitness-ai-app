@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type {
   InfluencerPortalAcquisitionReportResponse,
   InfluencerPortalCampaignsResponse,
@@ -43,6 +44,7 @@ async function fetchPayouts(): Promise<InfluencerPortalPayoutsResponse> {
  * comment for the boundary-discipline guarantee.
  */
 export function DashboardScreen() {
+  const { t } = useTranslation();
   const { influencer } = useAuth();
 
   const campaigns = useQuery({ queryKey: ["creator-campaigns"], queryFn: fetchCampaigns });
@@ -54,10 +56,10 @@ export function DashboardScreen() {
   // header and sign-out. Leaving it that way would mean one screen that
   // looks like a different product from the five around it.
   return (
-    <AppShell title="Dashboard">
+    <AppShell title={t("nav.dashboard")}>
 
       <section className="mb-6 rounded-lg border border-border-subtle bg-surface p-4">
-        <div className="mb-3 text-sm font-medium text-text-primary">Your profile</div>
+        <div className="mb-3 text-sm font-medium text-text-primary">{t("dashboard.yourProfile")}</div>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <div>
             <div className="text-xs text-text-dim">Email</div>
@@ -79,7 +81,7 @@ export function DashboardScreen() {
       </section>
 
       <section className="mb-6">
-        <div className="mb-3 text-sm font-medium text-text-primary">Your campaigns &amp; link codes</div>
+        <div className="mb-3 text-sm font-medium text-text-primary">{t("dashboard.yourCampaigns")}</div>
         {campaigns.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
         {campaigns.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -87,15 +89,15 @@ export function DashboardScreen() {
           </div>
         )}
         {campaigns.data && campaigns.data.campaigns.length === 0 && (
-          <p className="text-sm text-text-dim">No campaigns are credited to you yet — ask your FynroX contact.</p>
+          <p className="text-sm text-text-dim">{t("dashboard.noCampaigns")}</p>
         )}
         {campaigns.data && campaigns.data.campaigns.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Campaign</th>
-                  <th className="px-4 py-3 font-normal">Link code</th>
+                  <th className="px-4 py-3 font-normal">{t("dashboard.campaign")}</th>
+                  <th className="px-4 py-3 font-normal">{t("dashboard.linkCode")}</th>
                   <th className="px-4 py-3 font-normal">Channel</th>
                   <th className="px-4 py-3 font-normal">Status</th>
                 </tr>
@@ -118,7 +120,7 @@ export function DashboardScreen() {
       </section>
 
       <section className="mb-6">
-        <div className="mb-3 text-sm font-medium text-text-primary">Your attribution (all-time)</div>
+        <div className="mb-3 text-sm font-medium text-text-primary">{t("dashboard.attribution")}</div>
         {report.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
         {report.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -128,21 +130,21 @@ export function DashboardScreen() {
         {report.data && (
           <>
             <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Registrations" value={report.data.totals.registrations} />
-              <StatCard label="Activated" value={report.data.totals.activatedUsers} />
-              <StatCard label="First workout" value={report.data.totals.usersWithFirstWorkout} />
-              <StatCard label="Paid conversions" value={report.data.totals.paidConversions} />
+              <StatCard label={t("dashboard.registrations")} value={report.data.totals.registrations} />
+              <StatCard label={t("dashboard.activated")} value={report.data.totals.activatedUsers} />
+              <StatCard label={t("dashboard.firstWorkout")} value={report.data.totals.usersWithFirstWorkout} />
+              <StatCard label={t("dashboard.paidConversions")} value={report.data.totals.paidConversions} />
             </div>
             {report.data.byCampaign.length > 0 && (
               <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-4 py-3 font-normal">Campaign</th>
-                      <th className="px-4 py-3 font-normal">Registrations</th>
-                      <th className="px-4 py-3 font-normal">Activated</th>
-                      <th className="px-4 py-3 font-normal">First workout</th>
-                      <th className="px-4 py-3 font-normal">Paid</th>
+                      <th className="px-4 py-3 font-normal">{t("dashboard.campaign")}</th>
+                      <th className="px-4 py-3 font-normal">{t("dashboard.registrations")}</th>
+                      <th className="px-4 py-3 font-normal">{t("dashboard.activated")}</th>
+                      <th className="px-4 py-3 font-normal">{t("dashboard.firstWorkout")}</th>
+                      <th className="px-4 py-3 font-normal">{t("dashboard.paid")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -164,7 +166,7 @@ export function DashboardScreen() {
       </section>
 
       <section>
-        <div className="mb-3 text-sm font-medium text-text-primary">Your payout history</div>
+        <div className="mb-3 text-sm font-medium text-text-primary">{t("dashboard.payoutHistory")}</div>
         {payouts.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
         {payouts.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -174,12 +176,12 @@ export function DashboardScreen() {
         {payouts.data && (
           <>
             <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <StatCard label="Paid" value={money(payouts.data.counts.paidCents)} />
-              <StatCard label="Pending" value={money(payouts.data.counts.pendingCents)} />
-              <StatCard label="Total payouts" value={payouts.data.counts.total} />
+              <StatCard label={t("dashboard.paid")} value={money(payouts.data.counts.paidCents)} />
+              <StatCard label={t("dashboard.pending")} value={money(payouts.data.counts.pendingCents)} />
+              <StatCard label={t("dashboard.totalPayouts")} value={payouts.data.counts.total} />
             </div>
             {payouts.data.payouts.length === 0 ? (
-              <p className="text-sm text-text-dim">No payouts recorded yet.</p>
+              <p className="text-sm text-text-dim">{t("dashboard.noPayouts")}</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
                 <table className="w-full text-left text-sm">

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { apiClient } from "../lib/api";
 import { extractErrorMessage } from "../lib/apiError";
@@ -20,6 +21,7 @@ interface InviteAssets {
  * place.
  */
 export function InviteScreen() {
+  const { t } = useTranslation();
   const invite = useQuery({
     queryKey: ["gymInvite"],
     queryFn: async () => (await apiClient.get<InviteAssets>("/gym-portal/invite")).data,
@@ -27,14 +29,14 @@ export function InviteScreen() {
 
   if (invite.isLoading) {
     return (
-      <AppShell title="Invite members">
+      <AppShell title={t("nav.invite")}>
         <p className="text-sm text-text-dim">Loading…</p>
       </AppShell>
     );
   }
   if (invite.isError || !invite.data) {
     return (
-      <AppShell title="Invite members">
+      <AppShell title={t("nav.invite")}>
         <p className="text-sm text-danger">{extractErrorMessage(invite.error, "Couldn't load your invite link.")}</p>
       </AppShell>
     );
@@ -43,13 +45,12 @@ export function InviteScreen() {
   const data = invite.data;
 
   return (
-    <AppShell title="Invite members">
+    <AppShell title={t("nav.invite")}>
       {/* An invite from a gym that isn't approved silently fails when a
           member scans it. Better to say so than to let them print it. */}
       {!data.live ? (
         <p className="mb-5 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
-          Your partnership isn't active yet, so this link won't work for members. We'll let you know as soon as it
-          does — there's no need to reprint anything, the code stays the same.
+          {t("invite.notActive")}
         </p>
       ) : null}
 
@@ -62,7 +63,7 @@ export function InviteScreen() {
               download={`fynrox-${data.inviteCode}-qr.png`}
               className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-canvas"
             >
-              Download PNG
+              {t("invite.downloadPng")}
             </a>
             <button
               type="button"
@@ -75,13 +76,13 @@ export function InviteScreen() {
           {/* Honest about what isn't built rather than a dead button. */}
           {!data.posterPdfAvailable ? (
             <p className="mt-2 text-[11px] text-text-dim">
-              A designed PDF poster isn't available yet — the PNG prints well at A5 or larger.
+              {t("invite.noPdf")}
             </p>
           ) : null}
         </div>
 
         <div className="min-w-[280px] flex-1">
-          <h2 className="text-sm font-semibold text-text-primary">Your invite link</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("invite.yourLink")}</h2>
           <p className="mt-1 break-all rounded-md border border-border-subtle bg-canvas px-3 py-2 font-mono text-sm text-text-primary">
             {data.url}
           </p>
@@ -90,18 +91,17 @@ export function InviteScreen() {
             onClick={() => navigator.clipboard?.writeText(data.url)}
             className="mt-2 rounded-md border border-border-subtle px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
           >
-            Copy link
+            {t("invite.copyLink")}
           </button>
 
-          <h3 className="mt-6 text-sm font-semibold text-text-primary">Invite code</h3>
+          <h3 className="mt-6 text-sm font-semibold text-text-primary">{t("invite.inviteCode")}</h3>
           <p className="mt-1 font-mono text-lg tracking-widest text-accent">{data.inviteCode}</p>
           <p className="mt-1 text-xs text-text-dim">
-            Members can type this in the app if they'd rather not scan.
+            {t("invite.typeInstead")}
           </p>
 
           <p className="mt-6 max-w-sm text-xs text-text-dim">
-            Signups through this code are attributed to your gym. You'll see the counts on your dashboard — never a
-            member list, and never anything about their training, food or health.
+            {t("invite.attributionNote")}
           </p>
         </div>
       </div>

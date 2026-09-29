@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
@@ -30,6 +31,7 @@ interface GymLocation {
  * honestly in one click rather than retyping to make it go away.
  */
 export function EquipmentScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
@@ -61,10 +63,9 @@ export function EquipmentScreen() {
   });
 
   return (
-    <AppShell title="Equipment">
+    <AppShell title={t("nav.equipment")}>
       <p className="mb-5 max-w-2xl text-sm text-text-secondary">
-        Members' training plans are built around the equipment you list here. Keeping it current is the single
-        biggest thing you can do to make their programmes match your floor.
+        {t("equipment.why")}
       </p>
 
       {save.isError ? (
@@ -79,7 +80,7 @@ export function EquipmentScreen() {
         <p className="text-sm text-danger">{extractErrorMessage(locations.error, "Couldn't load your locations.")}</p>
       ) : (locations.data ?? []).length === 0 ? (
         <p className="text-sm text-text-dim">
-          No locations on file yet — contact FynroX support and we'll add them.
+          {t("equipment.noLocations")}
         </p>
       ) : (
         <div className="space-y-5">
@@ -111,14 +112,14 @@ export function EquipmentScreen() {
               ) : null}
 
               <label className="mb-1 block text-xs text-text-dim" htmlFor={`equipment-${l.id}`}>
-                Equipment at this location
+                {t("equipment.atLocation")}
               </label>
               <textarea
                 id={`equipment-${l.id}`}
                 rows={4}
                 value={drafts[l.id] ?? ""}
                 onChange={(e) => setDrafts((d) => ({ ...d, [l.id]: e.target.value }))}
-                placeholder="Squat racks, dumbbells to 50kg, leg press, 2 treadmills…"
+                placeholder={t("equipment.placeholder")}
                 className="w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
               />
 
@@ -129,7 +130,7 @@ export function EquipmentScreen() {
                   onClick={() => save.mutate({ id: l.id, equipment: drafts[l.id] })}
                   className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-canvas disabled:opacity-40"
                 >
-                  Save list
+                  {t("equipment.save")}
                 </button>
                 {l.hasEquipmentProfile ? (
                   <button
@@ -138,7 +139,7 @@ export function EquipmentScreen() {
                     onClick={() => reconfirm.mutate(l.id)}
                     className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary disabled:opacity-40"
                   >
-                    Still accurate
+                    {t("equipment.stillAccurate")}
                   </button>
                 ) : null}
               </div>

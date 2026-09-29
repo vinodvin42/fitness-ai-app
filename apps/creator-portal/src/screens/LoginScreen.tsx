@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
 
@@ -11,6 +12,7 @@ import { extractErrorMessage } from "../lib/apiError";
  * app's first login screen in this codebase follows.
  */
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,14 +41,14 @@ export function LoginScreen() {
           </div>
           <div>
             <div className="text-sm font-semibold tracking-wide">FYNROX</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Creator Portal</div>
+            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("shell.portalName")}</div>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="email">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -61,7 +63,7 @@ export function LoginScreen() {
 
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="password">
-              Password
+              {t("login.password")}
             </label>
             <input
               id="password"
@@ -81,12 +83,12 @@ export function LoginScreen() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-accent py-2 text-sm font-medium text-canvas transition-opacity disabled:opacity-60"
           >
-            {isSubmitting ? "Signing in…" : "Sign in"}
+            {isSubmitting ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
 
         <p className="mt-6 text-center text-[11px] text-text-dim">
-          No portal access yet? Ask your FynroX contact to grant one.
+          {t("login.noAccess")}
         </p>
       </div>
     </div>

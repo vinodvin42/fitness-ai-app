@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
@@ -42,6 +43,7 @@ const CATEGORIES = [
  * cannot and must not give them.
  */
 export function HelpRequestsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [category, setCategory] = useState("trainer_support");
   const [subject, setSubject] = useState("");
@@ -79,10 +81,10 @@ export function HelpRequestsScreen() {
   const rows = requests.data ?? [];
 
   return (
-    <AppShell title="Trainer help">
+    <AppShell title={t("nav.help")}>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-text-primary">Your requests</h2>
+          <h2 className="mb-3 text-sm font-semibold text-text-primary">{t("help.yourRequests")}</h2>
           {requests.isLoading ? (
             <p className="text-sm text-text-dim">Loading…</p>
           ) : requests.isError ? (
@@ -91,7 +93,7 @@ export function HelpRequestsScreen() {
             </p>
           ) : rows.length === 0 ? (
             <p className="text-sm text-text-dim">
-              Nothing open. Use the form to ask our team about programming, equipment or getting members started.
+              {t("help.empty")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -121,7 +123,7 @@ export function HelpRequestsScreen() {
                       <p className="whitespace-pre-wrap text-sm text-text-secondary">{r.body}</p>
                       {r.resolutionNote ? (
                         <div className="mt-3 rounded-md bg-accent/10 px-3 py-2">
-                          <p className="text-xs font-medium text-accent">FynroX replied</p>
+                          <p className="text-xs font-medium text-accent">{t("help.replied")}</p>
                           <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{r.resolutionNote}</p>
                         </div>
                       ) : null}
@@ -134,7 +136,7 @@ export function HelpRequestsScreen() {
         </section>
 
         <section className="rounded-lg border border-border-subtle bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text-primary">Ask for help</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("help.ask")}</h2>
 
           {create.isError ? (
             <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
@@ -143,7 +145,7 @@ export function HelpRequestsScreen() {
           ) : null}
 
           <label className="mt-4 block text-xs text-text-dim" htmlFor="help-category">
-            What's it about?
+            {t("help.about")}
           </label>
           <select
             id="help-category"
@@ -161,7 +163,7 @@ export function HelpRequestsScreen() {
           {(locations.data ?? []).length > 1 ? (
             <>
               <label className="mt-4 block text-xs text-text-dim" htmlFor="help-location">
-                Location (optional)
+                {t("help.location")}
               </label>
               <select
                 id="help-location"
@@ -169,7 +171,7 @@ export function HelpRequestsScreen() {
                 onChange={(e) => setLocationId(e.target.value)}
                 className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
               >
-                <option value="">All locations</option>
+                <option value="">{t("help.allLocations")}</option>
                 {locations.data!.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -191,7 +193,7 @@ export function HelpRequestsScreen() {
           />
 
           <label className="mt-4 block text-xs text-text-dim" htmlFor="help-body">
-            What do you need?
+            {t("help.need")}
           </label>
           <textarea
             id="help-body"
@@ -203,20 +205,20 @@ export function HelpRequestsScreen() {
           />
 
           <label className="mt-4 block text-xs text-text-dim" htmlFor="help-ref">
-            Your own reference (optional)
+            {t("help.reference")}
           </label>
           <input
             id="help-ref"
             value={gymReference}
             onChange={(e) => setGymReference(e.target.value)}
             maxLength={200}
-            placeholder="e.g. the 6am group"
+            placeholder={t("help.referencePlaceholder")}
             className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
           />
           {/* Said out loud, because a gym will otherwise assume they can
               name a member and get member-level answers back. */}
           <p className="mt-1 text-[11px] text-text-dim">
-            For your records only. We can't discuss an individual member's training, food or health data.
+            {t("help.referenceNote")}
           </p>
 
           <button
@@ -225,7 +227,7 @@ export function HelpRequestsScreen() {
             onClick={() => create.mutate()}
             className="mt-5 w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-canvas disabled:opacity-40"
           >
-            Send request
+            {t("help.send")}
           </button>
         </section>
       </div>

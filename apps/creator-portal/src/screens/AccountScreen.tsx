@@ -1,4 +1,5 @@
 import { AppShell } from "../components/AppShell";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { BRAND_SUPPORT_EMAIL } from "@fitness-ai-app/config";
 
@@ -12,12 +13,13 @@ import { BRAND_SUPPORT_EMAIL } from "@fitness-ai-app/config";
  * product cannot yet use safely.
  */
 export function AccountScreen() {
+  const { t } = useTranslation();
   const { influencer } = useAuth();
 
   return (
-    <AppShell title="Account">
+    <AppShell title={t("nav.account")}>
       <section className="max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Your details</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("account.yourDetails")}</h2>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex justify-between">
             <dt className="text-text-secondary">Name</dt>
@@ -38,15 +40,14 @@ export function AccountScreen() {
       </section>
 
       <section className="mt-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Payout details</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("account.payoutDetails")}</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          We collect bank or UPI details directly with your FynroX contact rather than through this portal, so they
-          never sit in a form. If a payout fails, that's the first thing to check.
+          {t("account.payoutNote")}
         </p>
       </section>
 
       <section className="mt-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Support</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("account.support")}</h2>
         <p className="mt-2 text-sm text-text-secondary">
           Questions about commission, campaigns or your agreement:{" "}
           {/* Underlined, not colour-only: axe-core (29 Sep 2026) measured
@@ -59,8 +60,7 @@ export function AccountScreen() {
           </a>
         </p>
         <p className="mt-3 text-xs text-text-dim">
-          We can't answer questions about individual members — who they are, what they train, or anything they log.
-          That applies to everyone, including partners.
+          {t("account.boundary")}
         </p>
       </section>
     </AppShell>

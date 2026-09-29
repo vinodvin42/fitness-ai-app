@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppShell } from "../components/AppShell";
 import { StatusBadge } from "../components/StatusBadge";
 import { apiClient } from "../lib/api";
@@ -37,6 +38,7 @@ const STATUS_COPY: Record<string, string> = {
 };
 
 export function PartnershipScreen() {
+  const { t } = useTranslation();
   const partnership = useQuery({
     queryKey: ["gymPartnership"],
     queryFn: async () => (await apiClient.get<Partnership>("/gym-portal/partnership")).data,
@@ -44,14 +46,14 @@ export function PartnershipScreen() {
 
   if (partnership.isLoading) {
     return (
-      <AppShell title="Partnership">
+      <AppShell title={t("nav.partnership")}>
         <p className="text-sm text-text-dim">Loading…</p>
       </AppShell>
     );
   }
   if (partnership.isError || !partnership.data) {
     return (
-      <AppShell title="Partnership">
+      <AppShell title={t("nav.partnership")}>
         <p className="text-sm text-danger">
           {extractErrorMessage(partnership.error, "Couldn't load your partnership details.")}
         </p>
@@ -62,7 +64,7 @@ export function PartnershipScreen() {
   const p = partnership.data;
 
   return (
-    <AppShell title="Partnership">
+    <AppShell title={t("nav.partnership")}>
       <section className="max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text-primary">Status</h2>
@@ -85,21 +87,21 @@ export function PartnershipScreen() {
           <p className="mt-1 text-2xl font-semibold text-text-primary">{p.locationCount}</p>
         </div>
         <div className="rounded-lg border border-border-subtle bg-surface p-4">
-          <p className="text-xs uppercase tracking-widest text-text-dim">Members joined</p>
+          <p className="text-xs uppercase tracking-widest text-text-dim">{t("partnership.membersJoined")}</p>
           <p className="mt-1 text-2xl font-semibold text-text-primary">{p.memberCount}</p>
           {/* G-M5's empty state, in the place a gym actually looks. */}
           {p.memberCount === 0 ? (
             <p className="mt-1 text-[11px] text-text-dim">
-              No one yet — share your invite link to get started.
+              {t("partnership.noneYet")}
             </p>
           ) : (
-            <p className="mt-1 text-[11px] text-text-dim">Aggregate count only, never a member list.</p>
+            <p className="mt-1 text-[11px] text-text-dim">{t("partnership.aggregateOnly")}</p>
           )}
         </div>
       </section>
 
       <section className="mt-6 max-w-2xl rounded-lg border border-border-subtle bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Commercial terms</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("partnership.commercialTerms")}</h2>
         <p className="mt-2 text-sm text-text-secondary">
           {p.commercialConfigured
             ? "Your commercial terms are agreed and on file. Your FynroX account manager has the details."
