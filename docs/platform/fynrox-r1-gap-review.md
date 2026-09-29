@@ -628,7 +628,13 @@ open, and that page changes when the plans do.
    react-i18next cannot go there at all. `docs/mobile/i18n.md` carries the coverage table
    and the reasoning for both.
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
-3. **Dropping the plaintext health columns**, once the backfill has run everywhere.
+3. **Dropping the plaintext health columns.** Still blocked on the backfill having run in
+   every environment, but that is now a command rather than a memory: `npm run
+   db:verify-health-encryption` answers it from the data per environment, exits non-zero
+   with the offending ids (never the values), and `docs/platform/health-data-encryption.md`
+   carries the sequence and the exact drop SQL. The drop is deliberately NOT staged as a
+   migration — an unapplied destructive migration in `prisma/migrations` is applied by the
+   next `migrate deploy` anyone runs, which is the accident the verifier exists to prevent.
 4. ~~Accessibility.~~ **Audited** — see `docs/platform/accessibility.md`. Every palette in
    the repo failed on exactly one token (the dim/muted one, at 2.55:1 to 3.38:1 against
    4.5:1); admin-web had 200 unnamed selects and 44 colour-only links. All fixed, with

@@ -17,7 +17,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:backfill-action-items": "tsx scripts/backfillAdminActionItems.ts",
     "db:studio": "prisma studio",
-    "db:backfill-health-encryption": "tsx scripts/backfillHealthEncryption.ts"
+    "db:backfill-health-encryption": "tsx scripts/backfillHealthEncryption.ts",
+    "db:verify-health-encryption": "tsx scripts/verifyHealthEncryptionComplete.ts"
   },
   "dependencies": {
     "@fitness-ai-app/config": "*",
