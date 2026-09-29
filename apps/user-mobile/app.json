@@ -2,7 +2,7 @@
   "expo": {
     "name": "FynroX",
     "slug": "23primefit-user-mobile",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "scheme": "fynrox",
     "userInterfaceStyle": "dark",
