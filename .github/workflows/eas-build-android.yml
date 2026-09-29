@@ -1,0 +1,188 @@
+name: Build Android APK (EAS)
+
+# Builds apps/user-mobile into an installable Android APK on Expo's
+# infrastructure, so the artifact the landing page links to can be
+# produced without anyone's laptop being the release machine.
+#
+# Until this existed, every APK was built by hand and the only record of
+# it was a comment in apps/landing/download.html. That is why the
+# download link sat on the 22 Sep build through an entire R1 release:
+# the code shipped to main, and nothing carried it into a binary.
+#
+# workflow_dispatch ONLY, matching deploy-azure-api.yml, and for a
+# sharper reason than that one: every run consumes EAS build minutes and
+# signs an artifact with the project's real Android keystore. That is a
+# deliberate act, not something a push to main should trigger.
+#
+# What is and is not verified here: the shell in the reporting step was
+# tested directly — the jq extraction against both shapes eas returns,
+# and the artifact check against a real large zip, an HTML error page
+# served with a 200, an undersized zip and a 404, each landing on the
+# right branch. The `eas build` step itself has never run: it needs an
+# Expo account, and the environment this was written in has neither
+# credentials nor network access to expo.dev. Treat the first dispatch
+# as the real test of that step.
+#
+# REQUIRES the EXPO_TOKEN repository secret — an Expo access token from
+# https://expo.dev/settings/access-tokens for the account that owns the
+# project (app.json's `owner`, currently vinodvin42). Without it this
+# workflow fails on its first step, by design; see "Why not a login
+# step" below.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "eas.json build profile (only `preview` is defined today)"
+        required: true
+        default: preview
+
+permissions:
+  contents: read
+
+concurrency:
+  # Same reasoning as deploy-azure-api.yml's: a second dispatch should
+  # queue behind a running build, not race it. Cancelling mid-build
+  # wastes the minutes already spent and leaves a half-finished build on
+  # the Expo side.
+  group: eas-build-android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # eas-cli installed directly rather than through
+      # expo/expo-github-action. The action is the more common recipe,
+      # but pinning a third-party action to a version this repo cannot
+      # verify is how a workflow ships broken. `EXPO_TOKEN` in the
+      # environment is EAS's own documented non-interactive auth and
+      # needs nothing else.
+      - name: Install eas-cli
+        run: npm install -g eas-cli
+
+      # Fails fast and says why. Without a token eas-cli tries to prompt
+      # for a login, finds no TTY, and the job either hangs to its
+      # timeout or dies with a message about interactivity that says
+      # nothing about the missing secret.
+      - name: Check the EXPO_TOKEN secret is set
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::The EXPO_TOKEN repository secret is not set. Create an access token at https://expo.dev/settings/access-tokens for the account that owns this project (app.json 'owner'), then add it under Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+      - name: Build
+        working-directory: apps/user-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build \
+            --platform android \
+            --profile "${{ inputs.profile }}" \
+            --non-interactive \
+            --wait \
+            --json > "$RUNNER_TEMP/build.json"
+
+      # The last build's provenance lived in an HTML comment someone
+      # wrote by hand. This prints the same facts — artifact URL, real
+      # byte size, versionCode — into the run summary, so updating
+      # apps/landing/download.html is transcription rather than
+      # archaeology.
+      - name: Report the artifact
+        run: |
+          json="$RUNNER_TEMP/build.json"
+
+          # The raw payload goes to the log unconditionally: the key path
+          # below is the current shape of `eas build --json`, and if a
+          # future eas-cli moves it, the answer must still be in the log
+          # rather than lost to a jq expression that quietly returned
+          # nothing.
+          echo "--- raw eas build --json output ---"
+          cat "$json"
+          echo "-----------------------------------"
+
+          url=$(jq -r '
+            [ .[]?.artifacts?.applicationArchiveUrl?,
+              .[]?.artifacts?.buildUrl?,
+              .artifacts?.applicationArchiveUrl?,
+              .artifacts?.buildUrl? ]
+            | map(select(. != null and . != "")) | first // empty
+          ' "$json")
+
+          if [ -z "$url" ]; then
+            echo "::error::The build finished but no artifact URL was found in its JSON. The raw payload is printed above." >&2
+            exit 1
+          fi
+
+          version=$(jq -r '[ .[]?.appVersion?, .appVersion? ] | map(select(. != null)) | first // "unknown"' "$json")
+          code=$(jq -r '[ .[]?.appBuildVersion?, .appBuildVersion? ] | map(select(. != null)) | first // "unknown"' "$json")
+
+          # Download the artifact rather than reading Content-Length from a
+          # HEAD. Two reasons, both found by testing this logic rather than
+          # assuming it: a HEAD can come back with no Content-Length at all
+          # (HTTP/2, chunked), and an empty length made the size arithmetic
+          # below silently produce "~0MB" — which would have been written
+          # straight into the download page's visible copy. Pulling the file
+          # also proves the whole download works, which is what the previous
+          # release checked by hand before wiring its link in.
+          apk="$RUNNER_TEMP/app.apk"
+          status=$(curl -sSL --max-time 900 -w '%{http_code}' -o "$apk" "$url")
+
+          if [ "$status" != "200" ]; then
+            echo "::error::The artifact URL answered HTTP $status, not 200: $url" >&2
+            exit 1
+          fi
+
+          bytes=$(wc -c < "$apk")
+
+          # An APK is a zip, so it starts "PK". This catches the case where
+          # an error page is served with a 200 and would otherwise be
+          # published as the app.
+          if [ "$(head -c 2 "$apk")" != "PK" ]; then
+            echo "::error::The artifact downloaded from $url is not a zip/APK (does not start with 'PK'). Size was $bytes bytes." >&2
+            exit 1
+          fi
+
+          # The last release was ~84MB. Anything in single-digit megabytes
+          # is not this app and should not reach the download page.
+          if [ "$bytes" -lt 10000000 ]; then
+            echo "::error::The artifact is only $bytes bytes, far smaller than expected for this app. Refusing to report it as publishable." >&2
+            exit 1
+          fi
+
+          mb=$(( (bytes + 524288) / 1048576 ))
+
+          {
+            echo "## Android APK"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Artifact | \`$url\` |"
+            echo "| Version | $version |"
+            echo "| versionCode | $code |"
+            echo "| Size | $bytes bytes / ~${mb}MB |"
+            echo "| Commit | \`$GITHUB_SHA\` |"
+            echo
+            echo "To publish it, update \`apps/landing/download.html\`:"
+            echo
+            echo "1. the Android card's \`href\` → the artifact URL above"
+            echo "2. the visible size copy → \`~${mb}MB\`"
+            echo "3. the provenance comment above the card → this version, versionCode, date and commit"
+            echo "4. regenerate \`apps/landing/assets/i18n/en.js\` — the size string is a translated key, and"
+            echo "   \`apps/api/tests/landingI18n.test.ts\` fails if the catalogue and the page disagree"
+            echo
+            echo "Then merge to main, which redeploys the landing site."
+          } >> "$GITHUB_STEP_SUMMARY"
