@@ -49,7 +49,12 @@ export function AccountScreen() {
         <h2 className="text-sm font-semibold text-text-primary">Support</h2>
         <p className="mt-2 text-sm text-text-secondary">
           Questions about commission, campaigns or your agreement:{" "}
-          <a className="text-accent" href={`mailto:${BRAND_SUPPORT_EMAIL}`}>
+          {/* Underlined, not colour-only: axe-core (29 Sep 2026) measured
+              the accent against the surrounding body text at 1.53:1, where
+              WCAG wants 3:1 for a link inside a text block. Someone who
+              cannot separate mint from grey would not see a link here at
+              all. */}
+          <a className="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent" href={`mailto:${BRAND_SUPPORT_EMAIL}`}>
             {BRAND_SUPPORT_EMAIL}
           </a>
         </p>

@@ -398,7 +398,7 @@ export function ActionRequiredScreen() {
                   <div className="mt-1 text-xs text-text-dim">
                     {item.entityType} ·{" "}
                     {drillThrough ? (
-                      <Link to={drillThrough.to} className="text-accent hover:underline">
+                      <Link to={drillThrough.to} className="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent">
                         {drillThrough.exact ? drillThrough.label : `${drillThrough.label} (no per-item detail route yet)`}
                       </Link>
                     ) : (
@@ -459,6 +459,13 @@ export function ActionRequiredScreen() {
 
                     {adminDirectory.data ? (
                       <select
+                        // axe-core, 29 Sep 2026: `select-name`, critical, on every
+                        // open row. The visible "Assign to…" placeholder option is
+                        // not a name — a screen reader announced only "combo box",
+                        // with nothing to say which item it assigns. Named per row
+                        // rather than generically, because a queue renders many of
+                        // these and "Assign to" on all of them is barely better.
+                        aria-label={`Assign "${typeLabel(item.type)}" to an admin`}
                         value={assignSelection[item.id] ?? ""}
                         onChange={(e) => setAssignSelection((prev) => ({ ...prev, [item.id]: e.target.value }))}
                         className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
@@ -472,6 +479,9 @@ export function ActionRequiredScreen() {
                       </select>
                     ) : (
                       <input
+                        // Same finding: a placeholder is not an accessible name,
+                        // and it disappears the moment anything is typed.
+                        aria-label={`Assign "${typeLabel(item.type)}" to an admin by id`}
                         placeholder="Admin id…"
                         value={assignSelection[item.id] ?? ""}
                         onChange={(e) => setAssignSelection((prev) => ({ ...prev, [item.id]: e.target.value }))}

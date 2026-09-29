@@ -615,9 +615,13 @@ open, and that page changes when the plans do.
    the rest of `apps/landing` (which has no i18n mechanism at all).
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
 3. **Dropping the plaintext health columns**, once the backfill has run everywhere.
-4. **Accessibility.** Still not audited end to end. The new pages were built to 44px targets
-   and were checked for a single `h1`, a labelled nav, focus-visible inputs and no
-   horizontal overflow at 390px — but that is a spot check, not a WCAG 2.1 AA audit.
+4. ~~Accessibility.~~ **Audited** — see `docs/platform/accessibility.md`. Every palette in
+   the repo failed on exactly one token (the dim/muted one, at 2.55:1 to 3.38:1 against
+   4.5:1); admin-web had 200 unnamed selects and 44 colour-only links. All fixed, with
+   `apps/api/tests/designTokenContrast.test.ts` in CI and `scripts/a11y-audit.mjs` for
+   the DOM pass. What automation cannot reach — keyboard order, focus management, screen
+   reader labels, and the two React Native apps beyond their palettes — is listed there
+   and still needs a person.
 5. ~~An admin screen for the application queue.~~ **Built** — Growth → Applications, with
    the action queue drilling through to it filtered by form. Adding it surfaced a separate
    defect: `packages/types`' `AdminActionItemType` union had never been updated for

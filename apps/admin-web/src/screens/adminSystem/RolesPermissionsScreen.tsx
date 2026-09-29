@@ -97,7 +97,12 @@ export function RolesPermissionsScreen() {
                       .join(" ")}
                   </div>
                   <div className="mt-0.5 text-xs text-text-secondary">{r.description}</div>
-                  <div className="mt-1 text-[11px] text-text-dim">{r.memberCount} member{r.memberCount === 1 ? "" : "s"}</div>
+                  {/* text-secondary, not text-dim: the selected card's own
+                      `bg-accent/10` lightens the background enough that
+                      text-dim lands at 4.4:1 (axe-core, 29 Sep 2026) — the
+                      one place in this console where a tinted surface tips
+                      an otherwise-passing token under AA. */}
+                  <div className="mt-1 text-[11px] text-text-secondary">{r.memberCount} member{r.memberCount === 1 ? "" : "s"}</div>
                 </button>
               ))}
               <NotAvailablePanel

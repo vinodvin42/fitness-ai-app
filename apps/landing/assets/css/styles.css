@@ -29,7 +29,29 @@
   /* Text */
   --text-primary: #edf0f5;
   --text-secondary: #98a2b3;
-  --text-muted: #5e6675;
+  /*
+   * Lightened from #5e6675 on 29 Sep 2026. An axe-core pass over all 24
+   * pages at WCAG 2.1 AA returned 189 contrast failures and every single
+   * one was this token: 3.38:1 on the canvas, 2.88:1 on a raised
+   * surface, against a 4.5:1 requirement. It is used for exactly the
+   * text a low-vision reader most needs — footer column headings, dates,
+   * "not built yet" notes, field hints.
+   *
+   * #8b919c measures 4.65:1 on --surface-high, the lightest surface in
+   * this palette and therefore the worst case, and better on every other.
+   *
+   * The first attempt at this fix was #838b98, chosen because it cleared
+   * every combination axe-core actually flagged. The palette-level test
+   * (apps/api/tests/designTokenContrast.test.ts) then failed it at 4.28:1
+   * on --surface-high — a pairing no page happens to render today, so no
+   * DOM audit could have caught it, and the next card built on that
+   * surface would have shipped the failure back. Fixing the palette beats
+   * fixing the pages that use it.
+   *
+   * Same value as apps/user-mobile/src/theme/tokens.ts's `textMuted`,
+   * which this file is ported from and which had the identical defect.
+   */
+  --text-muted: #8b919c;
   --text-on-accent: #04120e;
 
   /* Brand accent (mint-cyan) */
