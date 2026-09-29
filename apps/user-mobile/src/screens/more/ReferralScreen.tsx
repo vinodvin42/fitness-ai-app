@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Share, Text, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
@@ -13,11 +14,9 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Referral">;
 
-const HOW_IT_WORKS = [
-  "Share your code with a friend.",
-  "They enter it on the Sign Up screen when they create their account.",
-  "It shows up here as a real, counted signup.",
-];
+// Keys, not copy — the array is module-level and a translated string in
+// it would freeze the language at import time.
+const HOW_IT_WORKS = ["referral.step1", "referral.step2", "referral.step3"];
 
 /**
  * Refer & Invite (docs/mobile/03-screen-inventory.md §O) — a real referral
@@ -41,6 +40,7 @@ const HOW_IT_WORKS = [
  * doesn't report whether a share was delivered.
  */
 export function ReferralScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary });
   const [justCopied, setJustCopied] = useState(false);
 
@@ -60,7 +60,7 @@ export function ReferralScreen({ navigation: _navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Refer & Invite">
+      <ScreenContainer title={t("referral.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -68,16 +68,16 @@ export function ReferralScreen({ navigation: _navigation }: Props) {
 
   if (isLoading || !data) {
     return (
-      <ScreenContainer title="Refer & Invite">
+      <ScreenContainer title={t("referral.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Refer & Invite">
+    <ScreenContainer title={t("referral.title")}>
       <Card>
-        <Text style={{ color: colors.textSecondary }}>Your referral code</Text>
+        <Text style={{ color: colors.textSecondary }}>{t("referral.yourCode")}</Text>
         <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs, letterSpacing: 2 }}>
           {data.code}
         </Text>
@@ -88,19 +88,19 @@ export function ReferralScreen({ navigation: _navigation }: Props) {
             onPress={onCopy}
             style={{ flex: 1 }}
           />
-          <Button label="Share" onPress={onShare} style={{ flex: 1 }} />
+          <Button label={t("referral.share")} onPress={onShare} style={{ flex: 1 }} />
         </View>
       </Card>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
         <Card style={{ flex: 1 }}>
-          <Text style={{ color: colors.textSecondary }}>Signups</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("referral.signups")}</Text>
           <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>
             {data.referredSignups}
           </Text>
         </Card>
         <Card style={{ flex: 1 }}>
-          <Text style={{ color: colors.textSecondary }}>Months earned</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("referral.monthsEarned")}</Text>
           <Text style={{ color: colors.accent, ...typography.h1, marginTop: spacing.xs }}>
             {data.creditMonths}
           </Text>
@@ -108,31 +108,30 @@ export function ReferralScreen({ navigation: _navigation }: Props) {
       </View>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Rewards</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("referral.rewards")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, ...typography.meta }}>You get</Text>
-            <Text style={{ color: colors.textPrimary, marginTop: 2 }}>1 month free</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>when your friend subscribes to a paid plan</Text>
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("referral.youGet")}</Text>
+            <Text style={{ color: colors.textPrimary, marginTop: 2 }}>{t("referral.youGetValue")}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("referral.youGetWhen")}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, ...typography.meta }}>Your friend gets</Text>
-            <Text style={{ color: colors.textPrimary, marginTop: 2 }}>Your referral credit</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>toward their membership</Text>
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("referral.friendGets")}</Text>
+            <Text style={{ color: colors.textPrimary, marginTop: 2 }}>{t("referral.friendGetsValue")}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("referral.friendGetsWhen")}</Text>
           </View>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.sm }}>
-          You've earned {data.rewardsEarned} reward{data.rewardsEarned === 1 ? "" : "s"} so far. Credit is applied
-          toward your next renewal.
+          {t("referral.earned", { count: data.rewardsEarned })}
         </Text>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>How it works</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("referral.howItWorks")}</Text>
         {HOW_IT_WORKS.map((step, i) => (
           <View key={step} style={{ flexDirection: "row", marginBottom: spacing.xs }}>
             <Text style={{ color: colors.accent, fontFamily: fonts.bodyBold, marginRight: spacing.sm }}>{i + 1}.</Text>
-            <Text style={{ color: colors.textSecondary, flex: 1 }}>{step}</Text>
+            <Text style={{ color: colors.textSecondary, flex: 1 }}>{t(step)}</Text>
           </View>
         ))}
       </Card>

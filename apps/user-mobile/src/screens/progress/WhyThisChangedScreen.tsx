@@ -151,7 +151,7 @@ export function WhyThisChangedScreen({ route }: Props) {
 
   if (!passedRecommendation && isLoading) {
     return (
-      <ScreenContainer title="Why This Changed">
+      <ScreenContainer title={t("progress.whyChanged.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -159,7 +159,7 @@ export function WhyThisChangedScreen({ route }: Props) {
 
   if (!passedRecommendation && isError) {
     return (
-      <ScreenContainer title="Why This Changed">
+      <ScreenContainer title={t("progress.whyChanged.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -167,10 +167,10 @@ export function WhyThisChangedScreen({ route }: Props) {
 
   if (!recommendation) {
     return (
-      <ScreenContainer title="Why This Changed">
+      <ScreenContainer title={t("progress.whyChanged.title")}>
         <EmptyState
-          title="No recommendation yet"
-          subtitle="Check your recent activity against your plan to see if anything should change."
+          title={t("progress.whyChanged.emptyTitle")}
+          subtitle={t("progress.whyChanged.emptySubtitle")}
           actionLabel={isCheckingNow ? "Checking…" : "Check Now"}
           onAction={isCheckingNow ? undefined : onCheckNow}
         />
@@ -186,7 +186,7 @@ export function WhyThisChangedScreen({ route }: Props) {
   const isUndecided = recommendation.status === "active";
 
   return (
-    <ScreenContainer title="Why This Changed" subtitle={new Date(recommendation.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}>
+    <ScreenContainer title={t("progress.whyChanged.title")} subtitle={new Date(recommendation.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <Icon name={status.icon} size={18} color={status.color} />
@@ -201,7 +201,7 @@ export function WhyThisChangedScreen({ route }: Props) {
       {isUndecided ? (
         isPickingReplacement ? (
           <Card style={{ marginTop: spacing.md }}>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Choose a different program</Text>
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>{t("progress.whyChanged.chooseDifferent")}</Text>
             <View style={{ gap: spacing.sm }}>
               {replacementOptions.length > 0 ? (
                 replacementOptions.map((p) => (
@@ -214,11 +214,11 @@ export function WhyThisChangedScreen({ route }: Props) {
                   />
                 ))
               ) : (
-                <Text style={{ color: colors.textMuted }}>No other real programs available right now.</Text>
+                <Text style={{ color: colors.textMuted }}>{t("progress.whyChanged.noOthers")}</Text>
               )}
             </View>
             <Button
-              label="Confirm Switch"
+              label={t("progress.whyChanged.confirmSwitch")}
               disabled={!selectedProgramId}
               loading={isDeciding}
               onPress={() =>
@@ -244,12 +244,12 @@ export function WhyThisChangedScreen({ route }: Props) {
               onPress={() => onDecide({ action: "accept" })}
             />
             <Button
-              label="Choose a Different Program"
+              label={t("progress.whyChanged.chooseAnother")}
               variant="secondary"
               disabled={isDeciding}
               onPress={() => setIsPickingReplacement(true)}
             />
-            <Button label="Decline" variant="secondary" loading={isDeciding} onPress={() => onDecide({ action: "decline" })} />
+            <Button label={t("progress.whyChanged.decline")} variant="secondary" loading={isDeciding} onPress={() => onDecide({ action: "decline" })} />
           </View>
         )
       ) : null}

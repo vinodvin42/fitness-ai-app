@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -49,6 +50,7 @@ function formatPrice(cents: number | null) {
  * categories — nothing else in this product supports those, see gap §1.
  */
 export function CoachDiscoveryScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>(route.params?.serviceType ?? "all");
   const [sort, setSort] = useState<"experience" | "price">("experience");
@@ -81,8 +83,8 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const items = useMemo(() => data?.items ?? [], [data]);
 
   return (
-    <ScreenContainer title="Coaching">
-      <SearchBar value={search} onChangeText={setSearch} placeholder="Search coaches" />
+    <ScreenContainer title={t("coaching.title")}>
+      <SearchBar value={search} onChangeText={setSearch} placeholder={t("coaching.discovery.search")} />
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
         {SERVICE_CHIPS.map(({ value, label }) => (
@@ -91,12 +93,12 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm }}>
-        <Chip label="Most experienced" selected={sort === "experience"} onPress={() => setSort("experience")} />
-        <Chip label="Lowest price" selected={sort === "price"} onPress={() => setSort("price")} />
+        <Chip label={t("coaching.discovery.mostExperienced")} selected={sort === "experience"} onPress={() => setSort("experience")} />
+        <Chip label={t("coaching.discovery.lowestPrice")} selected={sort === "price"} onPress={() => setSort("price")} />
       </View>
 
       <Button
-        label="Find My Professional Team"
+        label={t("coaching.discovery.findTeam")}
         variant="secondary"
         onPress={() => navigation.navigate("MyProfessionalTeam")}
         style={{ marginTop: spacing.md, height: 40 }}
@@ -104,15 +106,15 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
 
       {isLoading ? (
         <Card style={{ marginTop: spacing.md }}>
-          <Text style={{ color: colors.textSecondary }}>Loading coaches…</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("coaching.discovery.loading")}</Text>
         </Card>
       ) : isError ? (
         <ErrorState style={{ marginTop: spacing.md }} onRetry={refetch} />
       ) : items.length === 0 ? (
         <EmptyState
           style={{ marginTop: spacing.md }}
-          title="No verified coaches yet"
-          subtitle="Check back soon, or try a different filter."
+          title={t("coaching.discovery.emptyTitle")}
+          subtitle={t("coaching.discovery.emptySubtitle")}
         />
       ) : (
         <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
@@ -154,7 +156,7 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
                 </Text>
               ) : null}
               <Button
-                label="View Profile"
+                label={t("coaching.team.viewProfile")}
                 variant="secondary"
                 onPress={() => navigation.navigate("CoachProfileDetail", { professionalId: coach.id })}
                 style={{ marginTop: spacing.md, height: 42 }}

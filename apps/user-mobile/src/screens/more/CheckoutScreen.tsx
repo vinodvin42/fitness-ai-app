@@ -111,9 +111,9 @@ export function CheckoutScreen({ route, navigation }: Props) {
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={64}
-            placeholder="FX-XXXXXXXX"
+            placeholder={t("checkoutCode.placeholder")}
             placeholderTextColor={colors.textMuted}
-            accessibilityLabel="Discount or referral code"
+            accessibilityLabel={t("checkoutCode.a11y")}
             style={{
               flex: 1,
               color: colors.textPrimary,

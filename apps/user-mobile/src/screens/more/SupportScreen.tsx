@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SupportTicket } from "@fitness-ai-app/types";
+import { BRAND_NAME, BRAND_SUPPORT_EMAIL } from "@fitness-ai-app/config";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -73,6 +75,7 @@ function formatDate(iso: string) {
  * which shows the full thread and lets you reply too.
  */
 export function SupportScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: tickets, isLoading, isError, refetch } = useQuery({ queryKey: ["support", "tickets"], queryFn: fetchMyTickets });
 
@@ -83,17 +86,19 @@ export function SupportScreen({ navigation }: Props) {
   );
 
   const onEmailSupport = () => {
-    Linking.openURL("mailto:support@fynrox.com?subject=FynroX%20Support");
+    // From the brand config, not a literal: the spec requires one
+    // constant so a rename is one change (packages/config/src/brand.ts).
+    Linking.openURL(`mailto:${BRAND_SUPPORT_EMAIL}?subject=${encodeURIComponent(`${BRAND_NAME} Support`)}`);
   };
 
   return (
-    <ScreenContainer title="Support">
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search help articles" />
+    <ScreenContainer title={t("support.title")}>
+      <SearchBar value={query} onChangeText={setQuery} placeholder={t("support.search")} />
 
       <ListRow
         icon="mail"
-        title="Email Support"
-        subtitle="support@fynrox.com"
+        title={t("support.emailTitle")}
+        subtitle={BRAND_SUPPORT_EMAIL}
         tint={colors.accent}
         tintSoft={colors.accentSoft}
         onPress={onEmailSupport}
@@ -117,9 +122,9 @@ export function SupportScreen({ navigation }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>My Tickets</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("support.myTickets")}</Text>
           <Button
-            label="New Ticket"
+            label={t("support.newTicket")}
             onPress={() => navigation.navigate("SupportTicketForm")}
             style={{ height: 36, paddingHorizontal: spacing.md }}
           />
@@ -129,7 +134,7 @@ export function SupportScreen({ navigation }: Props) {
         ) : isError ? (
           <ErrorState onRetry={() => refetch()} />
         ) : (tickets ?? []).length === 0 ? (
-          <EmptyState title="No tickets yet" subtitle="Run into a bug or have a question? Open a new ticket." />
+          <EmptyState title={t("support.noTickets")} subtitle={t("support.noTicketsSubtitle")} />
         ) : (
           <View style={{ gap: spacing.sm }}>
             {(tickets ?? []).map((ticket) => (

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -25,6 +26,7 @@ function whenLabel(iso: string | null): string {
  * from My Professional Team's "Message" button.
  */
 export function ConversationsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-conversations"],
     queryFn: fetchConversations,
@@ -33,7 +35,7 @@ export function ConversationsScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Messages">
+      <ScreenContainer title={t("coaching.messages.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -41,19 +43,19 @@ export function ConversationsScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title="Messages">
+      <ScreenContainer title={t("coaching.messages.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Messages">
+    <ScreenContainer title={t("coaching.messages.title")}>
       {data.conversations.length === 0 ? (
         <EmptyState
-          title="No conversations yet"
-          subtitle="Once you have a coach, you can message each other here."
-          actionLabel="Find a Coach"
+          title={t("coaching.messages.emptyTitle")}
+          subtitle={t("coaching.messages.emptySubtitle")}
+          actionLabel={t("coaching.team.findCoach")}
           onAction={() => navigation.navigate("CoachDiscovery", undefined)}
         />
       ) : (

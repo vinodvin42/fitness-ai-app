@@ -202,6 +202,311 @@ export const en = {
     recent: "Recent check-ins",
   },
 
+  /** Coaching — discovery, bookings, messages and the relationship. */
+  coaching: {
+    title: "Coaching",
+    subtitle: "Request guidance and track your professional relationship",
+    team: {
+      title: "My Professional Team",
+      emptyTitle: "No coaches yet",
+      emptySubtitle: "Book a session with a coach and they'll show up here.",
+      findCoach: "Find a Coach",
+      bookSession: "Book Session",
+      message: "Message",
+      change: "Change",
+      viewProfile: "View Profile",
+      allMessages: "All messages ›",
+      recommended: "Recommended Professionals",
+    },
+    discovery: {
+      search: "Search coaches",
+      mostExperienced: "Most experienced",
+      lowestPrice: "Lowest price",
+      findTeam: "Find My Professional Team",
+      loading: "Loading coaches…",
+      emptyTitle: "No verified coaches yet",
+      emptySubtitle: "Check back soon, or try a different filter.",
+    },
+    profile: {
+      title: "Coach Profile",
+      yearsExp: "Years exp.",
+      clients: "Clients",
+      services: "Available Services",
+      noServices: "No priced services listed yet.",
+    },
+    booking: {
+      selectTitle: "Book a Session",
+      chooseService: "Choose a service",
+      chooseDate: "Choose a date",
+      chooseTime: "Choose a time",
+      couponPlaceholder: "Have a coupon? Enter code",
+      confirmedTitle: "Booking Confirmed",
+      booked: "Booked ✓",
+      coach: "Coach",
+      service: "Service",
+      dateTime: "Date & Time",
+      duration: "Duration",
+      amount: "Amount",
+      viewBookings: "View My Bookings",
+      backHome: "Back to Home",
+    },
+    relationship: {
+      emptyTitle: "No professional relationship yet",
+      emptySubtitle: "Request guidance from a verified fitness or nutrition professional to get started.",
+      yourRequest: "Your Request",
+      viewTeam: "View My Professional Team",
+      serviceFitness: "Fitness Coaching",
+      serviceNutrition: "Nutrition Coaching",
+      // §10's relationship lifecycle, as the progress stepper renders it.
+      step: {
+        requested: "Requested",
+        accepted: "Accepted",
+        awaiting_payment: "Awaiting Payment",
+        activating: "Activating",
+        active: "Active",
+      },
+      // The same states as a sentence the user reads, which is a
+      // different string from the stepper's one-word label.
+      status: {
+        requested: "Waiting for the coach to respond",
+        accepted: "Accepted — set up your payment to continue",
+        awaiting_payment: "Awaiting payment",
+        activating: "Activating your relationship…",
+        active: "Active",
+      },
+      requestedNote:
+        "Nothing's wrong — the coach hasn't reviewed your request yet. You'll be able to continue as soon as they accept.",
+      notActiveNote: "Not an active professional relationship yet — full access unlocks once this reaches Active.",
+      continueToPayment: "Continue to Payment",
+    },
+    change: {
+      title: "Change Professional",
+      headsUp: "Heads up",
+      current: "Current professional",
+      why: "Why are you changing professionals?",
+      tellUsMore: "Tell us more (optional)",
+    },
+    messages: {
+      title: "Messages",
+      emptyTitle: "No conversations yet",
+      emptySubtitle: "Once you have a coach, you can message each other here.",
+      placeholder: "Message…",
+      send: "Send",
+    },
+    requests: {
+      emptyTitle: "No requests yet",
+      emptySubtitle: "Ask for guidance and we'll match you with a professional.",
+    },
+  },
+
+  /** Settings — Security & Privacy and the screens around it. */
+  security: {
+    title: "Security & Privacy",
+    changePassword: "Change Password",
+    currentPassword: "Current password",
+    newPassword: "New password (min. 8 characters)",
+    confirmNewPassword: "Confirm new password",
+    password: "Password",
+    twoFactor: {
+      title: "Two-Factor Authentication",
+      pitch: "Add a second step at login using an authenticator app — even if your password leaks, your account stays protected.",
+      setUp: "Set Up",
+      scan: "Scan this with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.",
+      cantScan: "Can't scan it? Enter this code manually:",
+      copy: "Copy",
+      code: "6-digit code",
+      enable: "Enable",
+      recoveryCodes:
+        "Two-factor authentication is on. Save these recovery codes somewhere safe — each works once, and this is the only time they'll be shown.",
+      copyCodes: "Copy Codes",
+      on: "Two-factor authentication is on — logins need a code from your authenticator app. Enter your password to turn it off.",
+      turnOff: "Turn Off",
+    },
+    sessions: {
+      title: "Active Sessions",
+      empty: "No active sessions",
+      signOut: "Sign Out",
+    },
+    biometric: {
+      title: "Biometric Unlock",
+      checking: "Checking this device…",
+      ready: "Require Face ID or Touch ID to open the app after it's been backgrounded.",
+      unavailable: "No Face ID or Touch ID is set up on this device.",
+      lockAfter: "Lock after being backgrounded for",
+      immediately: "Immediately",
+      minutes: "{{count}} min",
+    },
+    data: {
+      title: "Data & Privacy",
+      body: "Download everything this app has stored about you — profile, workouts, meals, measurements, purchases, and reminders — as JSON.",
+      download: "Download My Data",
+    },
+    deleteAccount: {
+      title: "Delete Account",
+      body: "Permanently deletes your account and everything in it. Enter your password to confirm.",
+      submit: "Delete Account",
+    },
+  },
+
+  reminders: {
+    label: "Label",
+    labelPlaceholder: "e.g. Drink water",
+    hour: "Hour",
+    minute: "Minute",
+    am: "AM",
+    pm: "PM",
+    repeat: "Repeat",
+    everyDay: "Every day",
+    weekdays: "Weekdays",
+    weekends: "Weekends",
+    playSound: "Play sound",
+    delete: "Delete Reminder",
+  },
+
+  editProfile: {
+    title: "Edit Profile",
+    fullName: "Full name",
+    mobile: "Mobile number",
+    aboutYou: "About You",
+    aboutYouError: "Couldn't load gender/age/height/weight.",
+  },
+
+  photos: {
+    title: "Progress Photos",
+    take: "Take Photo",
+    upload: "Upload Photo",
+    emptyTitle: "No progress photos yet",
+    emptySubtitle: "Take or upload one to start tracking your transformation.",
+    beforeAfter: "Before / After",
+    close: "Close",
+    delete: "Delete",
+  },
+
+  referral: {
+    title: "Refer & Invite",
+    yourCode: "Your referral code",
+    share: "Share",
+    signups: "Signups",
+    monthsEarned: "Months earned",
+    rewards: "Rewards",
+    youGet: "You get",
+    youGetValue: "1 month free",
+    youGetWhen: "when your friend subscribes to a paid plan",
+    friendGets: "Your friend gets",
+    friendGetsValue: "Your referral credit",
+    friendGetsWhen: "toward their membership",
+    // CLDR plural, not `reward{n === 1 ? "" : "s"}`.
+    earned_one: "You've earned {{count}} reward so far. Credit is applied toward your next renewal.",
+    earned_other: "You've earned {{count}} rewards so far. Credit is applied toward your next renewal.",
+    howItWorks: "How it works",
+    step1: "Share your code with a friend.",
+    step2: "They enter it on the Sign Up screen when they create their account.",
+    step3: "It shows up here as a real, counted signup.",
+  },
+
+  support: {
+    title: "Support",
+    search: "Search help articles",
+    emailTitle: "Email Support",
+    myTickets: "My Tickets",
+    noTickets: "No tickets yet",
+    noTicketsSubtitle: "Run into a bug or have a question? Open a new ticket.",
+    newTicket: "New Ticket",
+  },
+
+  settings: {
+    title: "Settings",
+    healthConnect: "Health Connect",
+    healthConnectNote: "Wearable sync needs a native Bluetooth/HealthKit integration this build can't do yet.",
+    preferences: "Preferences",
+    unitSystem: "Unit System",
+    accentColor: "Accent Color",
+    notifications: "Notifications",
+    reminderNotifications: "Reminder notifications",
+    manageReminders: "Manage Reminders",
+    privacy: "Privacy & Consent",
+    savePreferenceFailed: "Couldn't save that preference. Check your connection and try again.",
+    language: "Language",
+    searchLanguages: "Search languages",
+  },
+
+  remindersList: {
+    title: "Reminders",
+    add: "+ Add Reminder",
+    emptyTitle: "No reminders yet",
+    emptySubtitle: "Add one for workouts, meals, water, or measurements.",
+  },
+
+  measurements: {
+    logTitle: "Log Measurement",
+    historyTitle: "Measurement History",
+    emptyTitle: "No measurements logged yet",
+    emptySubtitle: "Log your weight and body measurements to start tracking progress.",
+  },
+
+  purchaseHistory: {
+    title: "Purchase History",
+    emptyTitle: "No subscription history yet",
+    emptySubtitle: "Subscribe to a plan to see it show up here.",
+  },
+
+  streak: {
+    title: "Streak Tracker",
+    current: "Current streak",
+    byCategory: "Streaks by category",
+  },
+
+  ticket: {
+    newTitle: "New Ticket",
+    subject: "Subject",
+    subjectPlaceholder: "A short summary",
+    message: "Message",
+    messagePlaceholder: "What's going on?",
+    submit: "Submit",
+    reply: "Reply…",
+    send: "Send",
+    category: {
+      bug: "Bug Report",
+      feature_request: "Feature Request",
+      billing: "Billing",
+      account: "Account",
+      other: "Other",
+    },
+  },
+
+  lock: {
+    subtitle: "Unlock with Face ID or Touch ID to continue.",
+    unlock: "Unlock",
+    logOut: "Log Out",
+  },
+
+  barcode: {
+    permissionTitle: "Camera access needed",
+    allow: "Allow Camera",
+    manual: "Log manually instead",
+  },
+
+  restTimer: {
+    title: "REST TIMER",
+    complete: "Rest complete!",
+    add15: "+15s",
+  },
+
+  wizard: { back: "Back" },
+  offline: { banner: "No internet connection" },
+
+  checkoutCode: {
+    placeholder: "FX-XXXXXXXX",
+    a11y: "Discount or referral code",
+  },
+
+  timelineExtra: {
+    eventTitle: "Timeline Event",
+    byMonth: "By month",
+  },
+
+  recipes: { title: "Recipes", empty: "No recipes yet" },
+
   /** Onboarding — the assessment a new user cannot skip. */
   onboarding: {
     aboutYou: {
@@ -215,6 +520,39 @@ export const en = {
       bodyFat: "Body fat %",
       waist: "Waist",
       hips: "Hips",
+      optionalNote: 'Optional — skip anything you don\'t know precisely. Leave a value at "–" to leave it out.',
+    },
+    goals: { step: "Goals", title: "What are your goals?", subtitle: "Select as many as apply — you can change these later." },
+    level: { step: "Training Level", title: "What's your experience level?" },
+    schedule: {
+      step: "Schedule",
+      title: "When can you train?",
+      subtitle: "A rough idea helps us understand your availability — this doesn't lock you into a fixed schedule.",
+      daysPerWeek: "Days per week",
+      whichDays: "Which days work best?",
+      sessionLength: "Typical session length",
+    },
+    equipment: {
+      step: "Equipment",
+      title: "What do you have access to?",
+      subtitle: "This helps us steer clear of programs that need equipment you don't have.",
+    },
+    diet: { step: "Food/Diet", title: "Your diet preferences", dietType: "Diet type" },
+    safety: {
+      step: "Safety",
+      title: "Any medical conditions or injuries?",
+      subtitle: "This helps us avoid recommending unsafe exercises.",
+      medicalConditions: "Medical conditions",
+    },
+    generating: {
+      building: "Building your plan",
+      ready: "Your plan is ready",
+      failed: "Couldn't build your plan",
+      getStarted: "Get Started",
+      retry: "Retry",
+      skip: "Skip for now — I'll set this up later",
+      picking: "Picking the right program for your goals and safety context…",
+      answersSaved: "Your assessment answers are saved — nothing is lost. Try again below.",
     },
     summary: {
       step: "Review",
@@ -234,6 +572,45 @@ export const en = {
       noneSelected: "None selected",
       notSet: "Not set",
     },
+  },
+
+  timeline: {
+    title: "Timeline",
+    prs: "PRs",
+    milestones: "Milestones",
+    programs: "Programs",
+    empty: "No milestones yet",
+    viewMonth: "View Month",
+    viewReport: "View Report",
+  },
+
+  aiCoach: {
+    // FynroX AI is a product name and stays as-is in every language, for
+    // the same reason the plan tiers do.
+    unavailable: "AI Coach isn't available yet",
+    greeting: "Hey — I'm FynroX AI.",
+    placeholder: "Ask your coach anything…",
+    messageA11y: "Message to AI Coach",
+    sendA11y: "Send message",
+  },
+
+  recoverHub: {
+    title: "Recover",
+    subtitle: "Rest, recovery & AI guidance",
+    chat: "Chat with FynroX AI",
+    log: "Recovery Log",
+    logSubtitle: "Resting HR, sleep, HRV, soreness & energy",
+    open: "Open Recovery",
+  },
+
+  country: {
+    title: "Country",
+    search: "Search countries",
+    manualCode: "2-letter code",
+    setCode: "Set country code",
+    dontSee: "Don't see your country?",
+    dontSeeNote:
+      "This list covers common markets only — enter your country's 2-letter code directly (e.g. US, IN, DE).",
   },
 
   /** Progress — measurements, trends, records, and the plan review. */
@@ -259,6 +636,16 @@ export const en = {
       measurementHistory: "Measurement History",
       streakTracker: "Streak Tracker",
       photos: "Progress Photos",
+    },
+    whyChanged: {
+      title: "Why This Changed",
+      emptyTitle: "No recommendation yet",
+      emptySubtitle: "Check your recent activity against your plan to see if anything should change.",
+      chooseDifferent: "Choose a different program",
+      noOthers: "No other real programs available right now.",
+      confirmSwitch: "Confirm Switch",
+      chooseAnother: "Choose a Different Program",
+      decline: "Decline",
     },
     review: {
       title: "Progress Review",
@@ -286,6 +673,88 @@ export const en = {
       mine: { label: "My Programs", subtitle: "Purchased & started plans" },
       exercises: { label: "Exercise Library", subtitle: "Browse by muscle & equipment" },
       history: { label: "Workout History", subtitle: "Past sessions & PRs" },
+    },
+  },
+
+  /** Train — workouts, programmes, exercises and the set tracker. */
+  workout: {
+    title: "Workout",
+    exercise: "Exercise",
+    program: "Program",
+    // No `startWorkout` here: both buttons that say it (Today and Workout
+    // detail) share `today.startWorkout`. One string, one translation.
+    logSet: "Log Set",
+    reps: "Reps",
+    weightOptional: "Weight (kg, optional)",
+    weightKg: "WEIGHT (KG)",
+    upNext: "Up Next",
+    resumed: "Resumed from where you left off — nothing was lost.",
+    rpeOptional: "RPE (perceived exertion, optional)",
+    rpeCaps: "RPE (PERCEIVED EXERTION)",
+    abandon: "Abandon Workout",
+    openTracker: "Open Set & Rest Tracker",
+    setRestTracker: "SET / REST TRACKER",
+    warmUp: "Warm-Up",
+    dropSet: "Drop Set",
+    setHistory: "Set History",
+    noSets: "No sets logged for this exercise yet.",
+    noPhoto: "No demonstration photo for this exercise yet.",
+    complete: {
+      title: "Workout Complete!",
+      niceWork: "Nice work — logged and saved.",
+      sets: "Sets",
+      volume: "Volume",
+      duration: "Duration",
+      streak: "Training streak",
+      newRecords: "New Personal Records",
+      backToTrain: "Back to Train",
+    },
+    history: {
+      title: "Workout History",
+      search: "Search workouts",
+      sessions: "Sessions",
+      completed: "Completed",
+      sets: "Sets",
+      volume: "Volume",
+      emptyTitle: "No workouts match",
+      emptySubtitle: "Try a different search, filter, or day.",
+    },
+    library: {
+      title: "Exercise Library",
+      search: "Search exercises",
+      muscleGroup: "MUSCLE GROUP",
+      emptyTitle: "No exercises match",
+      emptySubtitle: "Try a different search or filter.",
+    },
+    marketplace: {
+      title: "Browse Programs",
+      search: "Search programs",
+      emptyTitle: "No programs match",
+      emptySubtitle: "Try a different search or filter.",
+    },
+    mine: {
+      title: "My Programs",
+      emptyTitle: "No programs yet",
+      emptySubtitle: "You haven't started or purchased any programs yet — browse Programs on the Train tab.",
+      browse: "Browse Programs",
+    },
+    programDetail: {
+      free: "Free",
+      purchased: "Purchased",
+      purchase: "Purchase this program",
+      couponPlaceholder: "Have a coupon? Enter code",
+      noWorkouts: "No workouts in this program yet.",
+    },
+    programProgress: {
+      title: "Program Progress",
+      viewCompletion: "View Completion",
+      viewWorkouts: "View Workouts",
+    },
+    programComplete: {
+      title: "Program Complete",
+      viewProgress: "View Progress",
+      backToMine: "Back to My Programs",
+      browseMore: "Browse More Programs",
     },
   },
 
@@ -358,6 +827,17 @@ export const en = {
       banner: "AI estimate — review before logging",
       caveat: "These numbers are a guess, not a fact yet. Edit anything that looks off, then log it.",
       logIt: "Log it",
+    },
+    recipe: { title: "Recipe", logThisMeal: "Log this meal", calories: "Calories" },
+    mealPlan: {
+      title: "Meal Plan",
+      nDayPlan: "{{days}}-day plan",
+      emptyTitle: "No meal plan yet",
+      emptySubtitle:
+        "Generate a real, AI-curated meal plan built from your diet type, allergens, and goals — using real recipes from the catalog.",
+      generate: "Generate Meal Plan",
+      regenerate: "Regenerate",
+      picking: "Picking real recipes that fit your diet and goals…",
     },
     calendar: {
       title: "Nutrition Calendar",

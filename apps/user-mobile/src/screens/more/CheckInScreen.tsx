@@ -229,11 +229,12 @@ function RatingPicker({
 }
 
 function RatingSummary({ checkIn, compact }: { checkIn: CheckIn; compact?: boolean }) {
+  const { t } = useTranslation();
   return (
     <View style={{ flexDirection: "row", gap: spacing.lg, marginTop: compact ? spacing.xs : 0 }}>
-      <RatingValue label="Energy" value={checkIn.energy} />
-      <RatingValue label="Soreness" value={checkIn.soreness} />
-      <RatingValue label="Adherence" value={checkIn.adherence} />
+      <RatingValue label={t("checkIn.energy")} value={checkIn.energy} />
+      <RatingValue label={t("checkIn.soreness")} value={checkIn.soreness} />
+      <RatingValue label={t("checkIn.adherence")} value={checkIn.adherence} />
     </View>
   );
 }

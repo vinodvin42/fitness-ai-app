@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -40,6 +41,7 @@ const PHASE_META: Record<keyof typeof PHASE_LABELS, { icon: IconName; color: str
  * Detail's own Purchase card — see gap §14.
  */
 export function WorkoutDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { workoutId } = route.params;
   const queryClient = useQueryClient();
   const [isStarting, setIsStarting] = useState(false);
@@ -76,7 +78,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Workout">
+      <ScreenContainer title={t("workout.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -84,7 +86,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
 
   if (isLoading || !workout) {
     return (
-      <ScreenContainer title="Workout">
+      <ScreenContainer title={t("workout.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -144,7 +146,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
       })}
 
       {workout.program.purchased ? (
-        <Button label="Start Workout" onPress={onStart} loading={isStarting} style={{ marginTop: spacing.sm }} />
+        <Button label={t("today.startWorkout")} onPress={onStart} loading={isStarting} style={{ marginTop: spacing.sm }} />
       ) : (
         <Button
           label={

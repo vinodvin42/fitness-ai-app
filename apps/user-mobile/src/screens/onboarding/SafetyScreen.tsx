@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -32,6 +33,7 @@ const INJURIES = ["Knee", "Shoulder", "Lower back", "Ankle", "Wrist", "Neck"];
  * "safety outcome separate" — see that screen's own comment).
  */
 export function SafetyScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   const onNext = () => {
@@ -43,15 +45,15 @@ export function SafetyScreen({ navigation }: Props) {
     <WizardLayout
       step={7}
       total={8}
-      label="Safety"
-      title="Any medical conditions or injuries?"
-      subtitle="This helps us avoid recommending unsafe exercises."
+      label={t("onboarding.safety.step")}
+      title={t("onboarding.safety.title")}
+      subtitle={t("onboarding.safety.subtitle")}
       onBack={() => navigation.goBack()}
       onNext={onNext}
       nextLabel="Review"
     >
       <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>
-        Medical conditions
+        {t("onboarding.safety.medicalConditions")}
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: spacing.xs }}>

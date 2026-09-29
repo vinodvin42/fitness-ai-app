@@ -75,7 +75,7 @@ export function AboutYouScreen({ navigation }: Props) {
       <View style={{ marginTop: spacing.lg }}>
         <Text style={{ ...typography.h2, color: colors.textPrimary }}>{t("onboarding.aboutYou.baseline")}</Text>
         <Text style={{ ...typography.meta, color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.xs }}>
-          Optional — skip anything you don't know precisely. Leave a value at "–" to leave it out.
+          {t("onboarding.aboutYou.optionalNote")}
         </Text>
         <Stepper
           label={t("onboarding.aboutYou.bodyFat")}

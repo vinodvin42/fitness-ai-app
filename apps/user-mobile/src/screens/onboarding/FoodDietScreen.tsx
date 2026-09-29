@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -24,14 +25,15 @@ const ALLERGENS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Food/Diet". */
 export function FoodDietScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, update, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={6}
       total={8}
-      label="Food/Diet"
-      title="Your diet preferences"
+      label={t("onboarding.diet.step")}
+      title={t("onboarding.diet.title")}
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("Safety");
@@ -39,7 +41,7 @@ export function FoodDietScreen({ navigation }: Props) {
       }}
       nextDisabled={!state.dietType}
     >
-      <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>Diet type</Text>
+      <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>{t("onboarding.diet.dietType")}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: spacing.xs }}>
           {DIET_TYPES.map((diet) => (

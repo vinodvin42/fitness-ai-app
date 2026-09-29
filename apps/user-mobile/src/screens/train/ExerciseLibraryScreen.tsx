@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FlatList, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -31,6 +32,7 @@ const ALL = "All";
  * falling back to the dumbbell icon tile for exercises without one.
  */
 export function ExerciseLibraryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: exercises, isLoading, isError, refetch } = useQuery({
     queryKey: ["exercises"],
     queryFn: fetchExercises,
@@ -61,17 +63,17 @@ export function ExerciseLibraryScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Exercise Library">
+      <ScreenContainer title={t("workout.library.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Exercise Library" scroll={false}>
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search exercises" />
+    <ScreenContainer title={t("workout.library.title")} scroll={false}>
+      <SearchBar value={query} onChangeText={setQuery} placeholder={t("workout.library.search")} />
 
-      <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.md }}>MUSCLE GROUP</Text>
+      <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.md }}>{t("workout.library.muscleGroup")}</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
         {muscleGroups.map((mg) => (
           <Chip key={mg} label={mg} selected={muscleGroup === mg} onPress={() => setMuscleGroup(mg)} />
@@ -102,7 +104,7 @@ export function ExerciseLibraryScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("ExerciseDetail", { exerciseId: item.id })}
           />
         )}
-        ListEmptyComponent={<EmptyState title="No exercises match" subtitle="Try a different search or filter." />}
+        ListEmptyComponent={<EmptyState title={t("workout.library.emptyTitle")} subtitle={t("workout.library.emptySubtitle")} />}
       />
     </ScreenContainer>
   );

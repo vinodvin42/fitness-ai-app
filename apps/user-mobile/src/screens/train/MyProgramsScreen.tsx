@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -33,13 +34,14 @@ const STATUS_COLOR: Record<MyProgram["status"], string> = {
  * there's no separate marketplace screen yet).
  */
 export function MyProgramsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: myPrograms, isLoading, isError, refetch } = useQuery({
     queryKey: ["programs", "mine"],
     queryFn: fetchMyPrograms,
   });
 
   return (
-    <ScreenContainer title="My Programs" scroll={false}>
+    <ScreenContainer title={t("workout.mine.title")} scroll={false}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError ? (
@@ -75,15 +77,15 @@ export function MyProgramsScreen({ navigation }: Props) {
           )}
           ListEmptyComponent={
             <EmptyState
-              title="No programs yet"
-              subtitle="You haven't started or purchased any programs yet — browse Programs on the Train tab."
+              title={t("workout.mine.emptyTitle")}
+              subtitle={t("workout.mine.emptySubtitle")}
             />
           }
         />
       )}
 
       <Button
-        label="Browse Programs"
+        label={t("workout.mine.browse")}
         variant="secondary"
         onPress={() => navigation.navigate("TrainDashboard")}
         style={{ marginTop: spacing.md }}

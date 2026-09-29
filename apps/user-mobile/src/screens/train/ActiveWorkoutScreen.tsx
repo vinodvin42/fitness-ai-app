@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -138,6 +139,7 @@ function PhasePill({ phase }: { phase: WorkoutPhase }) {
  * not a workout-session status.
  */
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { workoutId, sessionId } = route.params;
   const queryClient = useQueryClient();
   const { data: workout, isLoading, isError, refetch } = useQuery({
@@ -358,7 +360,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         />
         {wasResumed ? (
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-            Resumed from where you left off — nothing was lost.
+            {t("workout.resumed")}
           </Text>
         ) : null}
       </View>
@@ -373,7 +375,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             Target: {currentExercise?.targetSets} sets × {currentExercise?.targetReps} reps
           </Text>
           <Button
-            label="Open Set & Rest Tracker"
+            label={t("workout.openTracker")}
             variant="secondary"
             onPress={() => navigation.navigate("SetRestTracker", { workoutId, sessionId, exerciseIndex })}
             style={{ marginTop: spacing.sm, height: 40 }}
@@ -399,7 +401,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
               <TextInput
                 style={styles.input}
-                placeholder="Reps"
+                placeholder={t("workout.reps")}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 value={reps}
@@ -407,7 +409,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Weight (kg, optional)"
+                placeholder={t("workout.weightOptional")}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 value={weight}
@@ -416,7 +418,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             </View>
 
             <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-              RPE (perceived exertion, optional)
+              {t("workout.rpeOptional")}
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
               {RPE_SCALE.map((n) => (
@@ -425,7 +427,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             </View>
 
             <Button
-              label="Log Set"
+              label={t("workout.logSet")}
               onPress={onLogSet}
               loading={isSubmittingSet}
               disabled={!reps || paused}
@@ -436,7 +438,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
         {upNext.length > 0 ? (
           <Card>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Up Next</Text>
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>{t("workout.upNext")}</Text>
             {upNext.map((ex) => (
               <View key={ex.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs }}>
                 <View>
@@ -461,7 +463,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           variant={setsRemaining > 0 ? "secondary" : "primary"}
         />
         <Button
-          label="Abandon Workout"
+          label={t("workout.abandon")}
           variant="secondary"
           onPress={onAbandon}
           loading={isAbandoning}

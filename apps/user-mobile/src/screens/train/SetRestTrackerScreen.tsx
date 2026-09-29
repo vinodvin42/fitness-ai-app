@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -39,6 +40,7 @@ const RPE_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
  * gap §13/§H, not this pass's scope).
  */
 export function SetRestTrackerScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { workoutId, sessionId, exerciseIndex } = route.params;
   const queryClient = useQueryClient();
 
@@ -131,8 +133,8 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
-        <Text style={{ color: colors.textMuted, ...typography.meta }}>SET / REST TRACKER</Text>
-        <Button label="Done" variant="secondary" onPress={() => navigation.goBack()} style={{ height: 36, paddingHorizontal: spacing.md }} />
+        <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("workout.setRestTracker")}</Text>
+        <Button label={t("common.done")} variant="secondary" onPress={() => navigation.goBack()} style={{ height: 36, paddingHorizontal: spacing.md }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
@@ -141,7 +143,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         <Card>
           <View style={{ flexDirection: "row", gap: spacing.md }}>
             <View style={{ flex: 1, alignItems: "center" }}>
-              <Text style={{ color: colors.textMuted, ...typography.meta }}>WEIGHT (KG)</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("workout.weightKg")}</Text>
               <TextInput
                 style={{ color: colors.textPrimary, fontSize: 40, fontFamily: fonts.mono, textAlign: "center", marginTop: spacing.xs }}
                 placeholder="—"
@@ -165,12 +167,12 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
           </View>
 
           <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md, justifyContent: "center" }}>
-            <Chip label="Warm-Up" selected={isWarmup} onPress={() => setIsWarmup((v) => !v)} />
-            <Chip label="Drop Set" selected={isDropSet} onPress={() => setIsDropSet((v) => !v)} />
+            <Chip label={t("workout.warmUp")} selected={isWarmup} onPress={() => setIsWarmup((v) => !v)} />
+            <Chip label={t("workout.dropSet")} selected={isDropSet} onPress={() => setIsDropSet((v) => !v)} />
           </View>
 
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.md, textAlign: "center" }}>
-            RPE (PERCEIVED EXERTION)
+            {t("workout.rpeCaps")}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs, justifyContent: "center" }}>
             {RPE_SCALE.map((n) => (
@@ -203,7 +205,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
             onChangeText={setNote}
           />
 
-          <Button label="Log Set" onPress={onLogSet} loading={isSubmitting} disabled={!reps} style={{ marginTop: spacing.md }} />
+          <Button label={t("workout.logSet")} onPress={onLogSet} loading={isSubmitting} disabled={!reps} style={{ marginTop: spacing.md }} />
         </Card>
 
         <Card>
@@ -211,9 +213,9 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         </Card>
 
         <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Set History</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("workout.setHistory")}</Text>
           {exerciseSetLogs.length === 0 ? (
-            <Text style={{ color: colors.textMuted }}>No sets logged for this exercise yet.</Text>
+            <Text style={{ color: colors.textMuted }}>{t("workout.noSets")}</Text>
           ) : (
             exerciseSetLogs.map((s) => (
               <View

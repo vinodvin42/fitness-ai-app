@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -28,6 +29,7 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ExerciseDetail">;
  * empty state below rather than getting an approximately-right picture.
  */
 export function ExerciseDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { exerciseId } = route.params;
   const { data: exercise, isLoading, isError, refetch } = useQuery({
     queryKey: ["exercise", exerciseId],
@@ -36,7 +38,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Exercise">
+      <ScreenContainer title={t("workout.exercise")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -44,7 +46,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
 
   if (isLoading || !exercise) {
     return (
-      <ScreenContainer title="Exercise">
+      <ScreenContainer title={t("workout.exercise")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -66,7 +68,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
           />
         ) : (
           <View style={{ alignItems: "center", paddingVertical: spacing.lg }}>
-            <Text style={{ color: colors.textMuted }}>No demonstration photo for this exercise yet.</Text>
+            <Text style={{ color: colors.textMuted }}>{t("workout.noPhoto")}</Text>
           </View>
         )}
         <Text style={{ color: colors.textSecondary, marginTop: spacing.sm }}>

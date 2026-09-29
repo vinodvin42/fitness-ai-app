@@ -178,7 +178,7 @@ export function RequestGuidanceScreen(_props: Props) {
       ) : null}
 
       {requests.length === 0 && !canRequest ? (
-        <EmptyState title="No requests yet" subtitle="Ask for guidance and we'll match you with a professional." />
+        <EmptyState title={t("coaching.requests.emptyTitle")} subtitle={t("coaching.requests.emptySubtitle")} />
       ) : null}
     </ScreenContainer>
   );

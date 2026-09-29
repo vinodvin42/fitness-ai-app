@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -35,13 +36,14 @@ const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = {
  * no payment gateway generating real transactions).
  */
 export function SubscriptionHistoryScreen(_props: Props) {
+  const { t } = useTranslation();
   const { data: history, isLoading, isError, refetch } = useQuery({
     queryKey: ["subscriptions", "history"],
     queryFn: fetchSubscriptionHistory,
   });
 
   return (
-    <ScreenContainer title="Purchase History" scroll={false}>
+    <ScreenContainer title={t("purchaseHistory.title")} scroll={false}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError ? (
@@ -61,7 +63,7 @@ export function SubscriptionHistoryScreen(_props: Props) {
               </Text>
             </Card>
           )}
-          ListEmptyComponent={<EmptyState title="No subscription history yet" subtitle="Subscribe to a plan to see it show up here." />}
+          ListEmptyComponent={<EmptyState title={t("purchaseHistory.emptyTitle")} subtitle={t("purchaseHistory.emptySubtitle")} />}
         />
       )}
     </ScreenContainer>

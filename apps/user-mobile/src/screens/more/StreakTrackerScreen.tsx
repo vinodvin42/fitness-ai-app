@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -67,6 +68,7 @@ function heatColor(level: number): string {
  * data source — see gap §29 for the full before/after.
  */
 export function StreakTrackerScreen(_props: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["progress", "streaks"],
     queryFn: fetchStreaks,
@@ -93,7 +95,7 @@ export function StreakTrackerScreen(_props: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Streak Tracker">
+      <ScreenContainer title={t("streak.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -101,7 +103,7 @@ export function StreakTrackerScreen(_props: Props) {
 
   if (isLoading || !data) {
     return (
-      <ScreenContainer title="Streak Tracker">
+      <ScreenContainer title={t("streak.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -118,7 +120,7 @@ export function StreakTrackerScreen(_props: Props) {
   };
 
   return (
-    <ScreenContainer title="Streak Tracker">
+    <ScreenContainer title={t("streak.title")}>
       <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
         <View
           style={{
@@ -133,7 +135,7 @@ export function StreakTrackerScreen(_props: Props) {
           <Icon name="flame" size={32} color={colors.orange} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textSecondary }}>Current streak</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("streak.current")}</Text>
           <Text style={{ color: colors.textPrimary, ...typography.metricLarge }}>
             {data.overall.currentStreak}{" "}
             <Text style={{ ...typography.h2, color: colors.textMuted }}>
@@ -191,7 +193,7 @@ export function StreakTrackerScreen(_props: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Streaks by category</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("streak.byCategory")}</Text>
         {CATEGORY_ORDER.map((catKey) => {
           const cat = data.categories.find((c) => c.category === catKey);
           const meta = CATEGORY_META[catKey];

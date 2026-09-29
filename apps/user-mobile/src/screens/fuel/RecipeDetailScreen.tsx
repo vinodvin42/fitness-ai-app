@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Image, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -28,6 +29,7 @@ type Props = NativeStackScreenProps<FuelStackParamList, "RecipeDetail">;
  * a new MealLog server-side (POST /meal-logs with recipeId).
  */
 export function RecipeDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { recipeId } = route.params;
   const queryClient = useQueryClient();
   const [isLogging, setIsLogging] = useState(false);
@@ -52,7 +54,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Recipe">
+      <ScreenContainer title={t("fuel.recipe.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -60,7 +62,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
   if (isLoading || !recipe) {
     return (
-      <ScreenContainer title="Recipe">
+      <ScreenContainer title={t("fuel.recipe.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -102,10 +104,10 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         </View>
 
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-          <MacroChip label="Calories" value={`${recipe.calories}`} color={colors.orange} />
-          <MacroChip label="Protein" value={`${recipe.proteinG}g`} color={colors.success} />
-          <MacroChip label="Carbs" value={`${recipe.carbsG}g`} color={colors.warning} />
-          <MacroChip label="Fat" value={`${recipe.fatG}g`} color={colors.pink} />
+          <MacroChip label={t("fuel.recipe.calories")} value={`${recipe.calories}`} color={colors.orange} />
+          <MacroChip label={t("fuel.macros.protein")} value={`${recipe.proteinG}g`} color={colors.success} />
+          <MacroChip label={t("fuel.macros.carbs")} value={`${recipe.carbsG}g`} color={colors.warning} />
+          <MacroChip label={t("fuel.macros.fat")} value={`${recipe.fatG}g`} color={colors.pink} />
         </View>
       </Card>
 
@@ -117,7 +119,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
-      <Button label="Log this meal" onPress={onLog} loading={isLogging} style={{ marginTop: spacing.sm }} />
+      <Button label={t("fuel.recipe.logThisMeal")} onPress={onLog} loading={isLogging} style={{ marginTop: spacing.sm }} />
     </ScreenContainer>
   );
 }

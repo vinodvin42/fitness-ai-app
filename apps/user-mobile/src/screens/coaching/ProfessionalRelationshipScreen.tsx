@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -17,8 +18,14 @@ import { r1Flags } from "@fitness-ai-app/config";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "ProfessionalRelationship">;
 
-function serviceLabel(serviceType: string) {
-  return serviceType === "fitness" ? "Fitness Coaching" : "Nutrition Coaching";
+// Copy for these three lived in module-level functions, which cannot
+// reach the `t` hook. Each now returns a KEY and the component resolves
+// it — `statusPresentation` keeps the colour and icon, which are design
+// decisions rather than copy.
+function serviceLabelKey(serviceType: string) {
+  return serviceType === "fitness"
+    ? "coaching.relationship.serviceFitness"
+    : "coaching.relationship.serviceNutrition";
 }
 
 // The real six-stage lifecycle schema.prisma's RelationshipStatus enum
@@ -27,35 +34,19 @@ function serviceLabel(serviceType: string) {
 // same as "no relationship" looked before this screen existed).
 const STEPS: RelationshipStatus[] = ["requested", "accepted", "awaiting_payment", "activating", "active"];
 
-function stepLabel(step: RelationshipStatus): string {
-  switch (step) {
-    case "requested":
-      return "Requested";
-    case "accepted":
-      return "Accepted";
-    case "awaiting_payment":
-      return "Awaiting Payment";
-    case "activating":
-      return "Activating";
-    case "active":
-    default:
-      return "Active";
-  }
-}
-
-function statusPresentation(status: RelationshipStatus): { label: string; color: string; icon: IconName } {
+function statusPresentation(status: RelationshipStatus): { color: string; icon: IconName } {
   switch (status) {
     case "requested":
-      return { label: "Waiting for the coach to respond", color: colors.aiAccent, icon: "sparkles" };
+      return { color: colors.aiAccent, icon: "sparkles" };
     case "accepted":
-      return { label: "Accepted — set up your payment to continue", color: colors.warning, icon: "check" };
+      return { color: colors.warning, icon: "check" };
     case "awaiting_payment":
-      return { label: "Awaiting payment", color: colors.warning, icon: "clock" };
+      return { color: colors.warning, icon: "clock" };
     case "activating":
-      return { label: "Activating your relationship…", color: colors.warning, icon: "refresh-cw" };
+      return { color: colors.warning, icon: "refresh-cw" };
     case "active":
     default:
-      return { label: "Active", color: colors.success, icon: "check" };
+      return { color: colors.success, icon: "check" };
   }
 }
 
@@ -87,6 +78,7 @@ function statusPresentation(status: RelationshipStatus): { label: string; color:
  * branches below.
  */
 export function ProfessionalRelationshipScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coaching", "relationships", "status"],
     queryFn: fetchRelationshipStatus,
@@ -94,7 +86,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Coaching">
+      <ScreenContainer title={t("coaching.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -102,7 +94,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title="Coaching">
+      <ScreenContainer title={t("coaching.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
@@ -112,11 +104,11 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
   const active = data.relationships.filter((r) => r.status === "active");
 
   return (
-    <ScreenContainer title="Coaching" subtitle="Request guidance and track your professional relationship">
+    <ScreenContainer title={t("coaching.title")} subtitle={t("coaching.subtitle")}>
       {data.relationships.length === 0 ? (
         <EmptyState
-          title="No professional relationship yet"
-          subtitle="Request guidance from a verified fitness or nutrition professional to get started."
+          title={t("coaching.relationship.emptyTitle")}
+          subtitle={t("coaching.relationship.emptySubtitle")}
           actionLabel={r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED ? "Find a Professional" : "Request guidance"}
           onAction={() =>
             r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
@@ -128,7 +120,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
         <View style={{ gap: spacing.md }}>
           {inFlight.length > 0 ? (
             <View style={{ gap: spacing.sm }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Your Request</Text>
+              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("coaching.relationship.yourRequest")}</Text>
               {inFlight.map((r) => (
                 <RelationshipStatusCard
                   key={r.relationshipId}
@@ -148,16 +140,16 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
                 <Icon name="check" size={18} color={colors.success} />
-                <Text style={{ color: colors.success, ...typography.label }}>Active</Text>
+                <Text style={{ color: colors.success, ...typography.label }}>{t("coaching.relationship.step.active")}</Text>
               </View>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
                 You have {active.length} active professional relationship{active.length === 1 ? "" : "s"}
               </Text>
               <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
-                {active.map((r) => `${r.professionalFullName} (${serviceLabel(r.serviceType)})`).join(" · ")}
+                {active.map((r) => `${r.professionalFullName} (${t(serviceLabelKey(r.serviceType))})`).join(" · ")}
               </Text>
               <Button
-                label="View My Professional Team"
+                label={t("coaching.relationship.viewTeam")}
                 onPress={() => navigation.navigate("MyProfessionalTeam")}
                 style={{ marginTop: spacing.md }}
               />
@@ -194,6 +186,7 @@ function RelationshipStatusCard({
   item: RelationshipStatusItem;
   onContinuePayment?: () => void;
 }) {
+  const { t } = useTranslation();
   const presentation = statusPresentation(item.status);
   const currentIndex = STEPS.indexOf(item.status);
 
@@ -201,16 +194,18 @@ function RelationshipStatusCard({
     <Card>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
         <Icon name={presentation.icon} size={18} color={presentation.color} />
-        <Text style={{ color: presentation.color, ...typography.label }}>{presentation.label}</Text>
+        <Text style={{ color: presentation.color, ...typography.label }}>
+          {t(`coaching.relationship.status.${item.status}`)}
+        </Text>
       </View>
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{item.professionalFullName}</Text>
-      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{serviceLabel(item.serviceType)}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{t(serviceLabelKey(item.serviceType))}</Text>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.md }}>
         {STEPS.map((step, i) => (
           <Pill
             key={step}
-            label={stepLabel(step)}
+            label={t(`coaching.relationship.step.${step}`)}
             tone={i < currentIndex ? "success" : i === currentIndex ? "warning" : "neutral"}
             icon={i < currentIndex ? "check" : undefined}
           />
@@ -219,12 +214,12 @@ function RelationshipStatusCard({
 
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
         {item.status === "requested"
-          ? "Nothing's wrong — the coach hasn't reviewed your request yet. You'll be able to continue as soon as they accept."
-          : "Not an active professional relationship yet — full access unlocks once this reaches Active."}
+          ? t("coaching.relationship.requestedNote")
+          : t("coaching.relationship.notActiveNote")}
       </Text>
 
       {onContinuePayment ? (
-        <Button label="Continue to Payment" onPress={onContinuePayment} style={{ marginTop: spacing.md }} />
+        <Button label={t("coaching.relationship.continueToPayment")} onPress={onContinuePayment} style={{ marginTop: spacing.md }} />
       ) : null}
     </Card>
   );

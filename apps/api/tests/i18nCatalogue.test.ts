@@ -46,6 +46,32 @@ function translationCalls(): Array<{ key: string; file: string }> {
 }
 
 /**
+ * Catalogue keys named as bare string literals anywhere in the app, which
+ * is what an indirection through a helper looks like:
+ *
+ *   const HOW_IT_WORKS = ["referral.step1", "referral.step2"];
+ *   ...
+ *   <Text>{t(step)}</Text>
+ *
+ * The scanner only sees `t(step)` and has no idea what `step` holds.
+ * Several module-level arrays and helpers are written this way ON PURPOSE
+ * — a translated string in a module-level array freezes the language at
+ * import time — so treating them as dead would punish the correct
+ * pattern. Wider than matching inside `t(...)`, and deliberately so: the
+ * cost of a false negative here (one stale literal keeps a dead key
+ * alive) is far smaller than a false positive (the report tells someone
+ * to delete live copy).
+ */
+function literalKeyMentions(): Set<string> {
+  const mentioned = new Set<string>();
+  for (const file of sourceFiles(MOBILE)) {
+    const src = fs.readFileSync(file, "utf8");
+    for (const m of src.matchAll(/"([a-z][\w]*(?:\.[\w]+)+)"/g)) mentioned.add(m[1]);
+  }
+  return mentioned;
+}
+
+/**
  * Keys built at runtime, e.g. ``t(`guidance.status.${request.status}.label`)``.
  *
  * The first draft of this file ignored these and duly reported ten live
@@ -102,6 +128,7 @@ describe("user app translation catalogue", () => {
 
   it("found real t() calls and templates, rather than passing on an empty scan", () => {
     expect(templatePatterns().length).toBeGreaterThan(0);
+    expect(literalKeyMentions().size).toBeGreaterThan(0);
     // The scanner is a regex over source text and can fail by matching
     // nothing, which would make the assertion below vacuous.
     expect(calls.length).toBeGreaterThan(5);
@@ -120,12 +147,14 @@ describe("user app translation catalogue", () => {
     // Not a correctness bug, but a translator is paid per string and a
     // dead key wastes that in nine languages at once.
     const asked = new Set(calls.map((c) => c.key));
+    const mentioned = literalKeyMentions();
     const patterns = templatePatterns();
     const unreachable = [...CATALOGUE].filter((k) => {
       if (asked.has(k)) return false;
       // A plural key is reached by its base name.
       const base = k.replace(/_(one|other|zero|two|few|many)$/, "");
       if (asked.has(base)) return false;
+      if (mentioned.has(k) || mentioned.has(base)) return false;
       return !patterns.some((p) => p.test(k) || p.test(base));
     });
     expect(unreachable, "catalogue keys no t() call reaches").toEqual([]);

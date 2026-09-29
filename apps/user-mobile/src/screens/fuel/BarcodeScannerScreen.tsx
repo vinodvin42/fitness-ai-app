@@ -95,17 +95,17 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.permissionTitle}>Camera access needed</Text>
+        <Text style={styles.permissionTitle}>{t("barcode.permissionTitle")}</Text>
         <Text style={styles.permissionBody}>
           {permission.canAskAgain
             ? "Allow camera access to scan a product's barcode."
             : "Enable camera access for this app in your device Settings to scan a barcode."}
         </Text>
         {permission.canAskAgain ? (
-          <Button label="Allow Camera" onPress={requestPermission} style={{ marginTop: spacing.lg }} />
+          <Button label={t("barcode.allow")} onPress={requestPermission} style={{ marginTop: spacing.lg }} />
         ) : null}
         <Button
-          label="Log manually instead"
+          label={t("barcode.manual")}
           variant="secondary"
           onPress={() => navigation.navigate("LogMeal", { mealType })}
           style={{ marginTop: spacing.sm }}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AccentColor, UnitSystem } from "@fitness-ai-app/types";
@@ -41,6 +42,7 @@ const ACCENT_COLORS: AccentColor[] = ["blue", "green", "yellow", "red"];
  * context/provider, which is out of scope for this pass (gap §11).
  */
 export function PreferencesScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const { user, updateProfile } = useAuth();
   const [unitSystem, setUnitSystem] = useState<UnitSystem>(user?.unitSystem ?? "metric");
   const [accentColor, setAccentColor] = useState<AccentColor>(user?.accentColor ?? "blue");
@@ -75,9 +77,9 @@ export function PreferencesScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Preferences">
+    <ScreenContainer title={t("settings.preferences")}>
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Unit System</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("settings.unitSystem")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           {UNIT_SYSTEMS.map((us) => (
             <Chip key={us} label={UNIT_LABELS[us]} selected={unitSystem === us} onPress={() => onSelectUnitSystem(us)} />
@@ -86,7 +88,7 @@ export function PreferencesScreen({ navigation: _navigation }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Accent Color</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("settings.accentColor")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           {ACCENT_COLORS.map((ac) => (
             <Pressable key={ac} onPress={() => onSelectAccentColor(ac)}>

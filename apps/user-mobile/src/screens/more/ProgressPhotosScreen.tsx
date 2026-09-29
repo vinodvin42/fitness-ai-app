@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +46,7 @@ function fmtDate(iso: string) {
  * a real, confirmed Delete action), rather than a separate screen.
  */
 export function ProgressPhotosScreen(_props: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: photos, isLoading, isError, refetch } = useQuery({
     queryKey: ["progressPhotos"],
@@ -125,7 +127,7 @@ export function ProgressPhotosScreen(_props: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Progress Photos">
+      <ScreenContainer title={t("photos.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -133,23 +135,23 @@ export function ProgressPhotosScreen(_props: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Progress Photos">
+      <ScreenContainer title={t("photos.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Progress Photos">
+    <ScreenContainer title={t("photos.title")}>
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
-        <Button label="Take Photo" onPress={onTakePhoto} loading={isSaving} style={{ flex: 1 }} />
-        <Button label="Upload Photo" variant="secondary" onPress={onUploadPhoto} loading={isSaving} style={{ flex: 1 }} />
+        <Button label={t("photos.take")} onPress={onTakePhoto} loading={isSaving} style={{ flex: 1 }} />
+        <Button label={t("photos.upload")} variant="secondary" onPress={onUploadPhoto} loading={isSaving} style={{ flex: 1 }} />
       </View>
 
       {items.length === 0 ? (
         <EmptyState
-          title="No progress photos yet"
-          subtitle="Take or upload one to start tracking your transformation."
+          title={t("photos.emptyTitle")}
+          subtitle={t("photos.emptySubtitle")}
           style={{ marginTop: spacing.lg }}
         />
       ) : (
@@ -170,7 +172,7 @@ export function ProgressPhotosScreen(_props: Props) {
 
           {compareMode && compareEntries.length === 2 ? (
             <Card style={{ marginTop: spacing.sm }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Before / After</Text>
+              <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("photos.beforeAfter")}</Text>
               <View style={{ flexDirection: "row", gap: spacing.md }}>
                 {[...compareEntries].sort((a, b) => new Date(a.takenAt).getTime() - new Date(b.takenAt).getTime()).map((p, i) => (
                   <View key={p.id} style={{ flex: 1, alignItems: "center" }}>
@@ -189,8 +191,8 @@ export function ProgressPhotosScreen(_props: Props) {
               <Image source={{ uri: viewingPhoto.imageData }} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }} />
               <Text style={{ color: colors.textSecondary, marginTop: spacing.sm }}>{fmtDate(viewingPhoto.takenAt)}</Text>
               <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-                <Button label="Close" variant="secondary" onPress={() => setViewingPhotoId(null)} style={{ flex: 1 }} />
-                <Button label="Delete" variant="secondary" onPress={() => onDelete(viewingPhoto)} style={{ flex: 1 }} />
+                <Button label={t("photos.close")} variant="secondary" onPress={() => setViewingPhotoId(null)} style={{ flex: 1 }} />
+                <Button label={t("photos.delete")} variant="secondary" onPress={() => onDelete(viewingPhoto)} style={{ flex: 1 }} />
               </View>
             </Card>
           ) : null}

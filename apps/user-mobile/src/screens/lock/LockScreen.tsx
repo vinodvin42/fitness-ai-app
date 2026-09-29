@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
@@ -22,6 +23,7 @@ import { colors, spacing, typography } from "../../theme/tokens";
  * enrolled, etc.) rather than trapping the user behind a failing sensor.
  */
 export function LockScreen() {
+  const { t } = useTranslation();
   const { unlock, logout } = useAuth();
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +43,13 @@ export function LockScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.logo}>FynroX</Text>
-        <Text style={styles.subtitle}>Unlock with Face ID or Touch ID to continue.</Text>
+        <Text style={styles.subtitle}>{t("lock.subtitle")}</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
 
       <View style={styles.actions}>
-        <Button label="Unlock" onPress={onUnlock} loading={isUnlocking} />
-        <Button label="Log Out" variant="secondary" onPress={logout} />
+        <Button label={t("lock.unlock")} onPress={onUnlock} loading={isUnlocking} />
+        <Button label={t("lock.logOut")} variant="secondary" onPress={logout} />
       </View>
     </SafeAreaView>
   );

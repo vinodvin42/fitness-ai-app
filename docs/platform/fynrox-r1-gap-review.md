@@ -611,8 +611,12 @@ open, and that page changes when the plans do.
 
 ### Still open after the third pass
 
-1. **i18n.** Unchanged, and now larger — the nine new website pages are English-only, as is
-   the rest of `apps/landing` (which has no i18n mechanism at all).
+1. ~~i18n (user app).~~ **Complete** — all 115 components, 518 inline strings to 0, guarded
+   by `apps/api/tests/i18nCatalogue.test.ts` in CI and measured by
+   `scripts/i18n-report.mjs`. Only `en` is populated; the other nine languages resolve
+   through `fallbackLng` until translations exist, which is a content task rather than an
+   engineering one. **`apps/landing` still has no i18n mechanism at all** and its 24 pages
+   are English-only; `apps/coach-mobile` and the three consoles are likewise untouched.
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
 3. **Dropping the plaintext health columns**, once the backfill has run everywhere.
 4. ~~Accessibility.~~ **Audited** — see `docs/platform/accessibility.md`. Every palette in

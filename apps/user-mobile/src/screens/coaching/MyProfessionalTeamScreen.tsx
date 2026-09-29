@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -33,6 +34,7 @@ function serviceLabel(serviceType: string) {
  * Professional.
  */
 export function MyProfessionalTeamScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coaching", "team"],
     queryFn: fetchMyTeam,
@@ -40,7 +42,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="My Professional Team">
+      <ScreenContainer title={t("coaching.team.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -48,19 +50,19 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title="My Professional Team">
+      <ScreenContainer title={t("coaching.team.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="My Professional Team">
+    <ScreenContainer title={t("coaching.team.title")}>
       {data.team.length === 0 ? (
         <EmptyState
-          title="No coaches yet"
-          subtitle="Book a session with a coach and they'll show up here."
-          actionLabel="Find a Coach"
+          title={t("coaching.team.emptyTitle")}
+          subtitle={t("coaching.team.emptySubtitle")}
+          actionLabel={t("coaching.team.findCoach")}
           onAction={() => navigation.navigate("CoachDiscovery", undefined)}
         />
       ) : (
@@ -69,7 +71,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("Conversations")}
             style={{ color: colors.accent, fontFamily: fonts.bodySemi, alignSelf: "flex-end" }}
           >
-            All messages ›
+            {t("coaching.team.allMessages")}
           </Text>
           {data.team.map((member) => (
             <Card key={member.relationshipId}>
@@ -82,13 +84,13 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
               </Text>
               <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm, alignItems: "center" }}>
                 <Button
-                  label="Book Session"
+                  label={t("coaching.team.bookSession")}
                   variant="secondary"
                   onPress={() => navigation.navigate("BookingServiceSelection", { professionalId: member.professionalId })}
                   style={{ height: 40, flex: 1 }}
                 />
                 <Button
-                  label="Message"
+                  label={t("coaching.team.message")}
                   variant="secondary"
                   onPress={() =>
                     navigation.navigate("MessageThread", {
@@ -99,7 +101,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
                   style={{ height: 40, flex: 1 }}
                 />
                 <Button
-                  label="Change"
+                  label={t("coaching.team.change")}
                   variant="secondary"
                   onPress={() =>
                     navigation.navigate("ChangeProfessional", {
@@ -119,7 +121,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
       {data.recommended.length > 0 ? (
         <View style={{ marginTop: spacing.lg }}>
           <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>
-            Recommended Professionals
+            {t("coaching.team.recommended")}
           </Text>
           {data.recommended.map((coach) => (
             <Card key={coach.id} style={{ marginBottom: spacing.sm }}>
@@ -128,7 +130,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
                 {coach.yearsExperience != null ? `${coach.yearsExperience} yrs experience` : "Experience not listed"}
               </Text>
               <Button
-                label="View Profile"
+                label={t("coaching.team.viewProfile")}
                 variant="secondary"
                 onPress={() => navigation.navigate("CoachProfileDetail", { professionalId: coach.id })}
                 style={{ marginTop: spacing.sm, height: 40 }}

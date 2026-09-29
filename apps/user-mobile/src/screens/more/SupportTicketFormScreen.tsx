@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -17,13 +18,9 @@ type Props = NativeStackScreenProps<MoreStackParamList, "SupportTicketForm">;
 // docs/mobile/03-screen-inventory.md §L "report-a-bug / feature-request
 // actions" — folded into one form with a category chip, rather than two
 // separate flows that would only differ by which chip is pre-selected.
-const CATEGORIES: Array<{ value: SupportTicketCategory; label: string }> = [
-  { value: "bug", label: "Bug Report" },
-  { value: "feature_request", label: "Feature Request" },
-  { value: "billing", label: "Billing" },
-  { value: "account", label: "Account" },
-  { value: "other", label: "Other" },
-];
+// Values only; the labels live in the catalogue under
+// `ticket.category.*`, keyed by the same value.
+const CATEGORIES: SupportTicketCategory[] = ["bug", "feature_request", "billing", "account", "other"];
 
 /**
  * New Support Ticket (docs/mobile/03-screen-inventory.md §L) — not its
@@ -35,6 +32,7 @@ const CATEGORIES: Array<{ value: SupportTicketCategory; label: string }> = [
  * an admin reply thread).
  */
 export function SupportTicketFormScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [category, setCategory] = useState<SupportTicketCategory>("other");
   const [subject, setSubject] = useState("");
@@ -58,31 +56,36 @@ export function SupportTicketFormScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="New Ticket">
+    <ScreenContainer title={t("ticket.newTitle")}>
       <Card>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Category</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
-          {CATEGORIES.map(({ value, label }) => (
-            <Chip key={value} label={label} selected={category === value} onPress={() => setCategory(value)} />
+          {CATEGORIES.map((value) => (
+            <Chip
+              key={value}
+              label={t(`ticket.category.${value}`)}
+              selected={category === value}
+              onPress={() => setCategory(value)}
+            />
           ))}
         </View>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Subject</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("ticket.subject")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="A short summary"
+          placeholder={t("ticket.subjectPlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={subject}
           onChangeText={setSubject}
           maxLength={140}
         />
 
-        <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Message</Text>
+        <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("ticket.message")}</Text>
         <TextInput
           style={[styles.input, styles.multiline]}
-          placeholder="What's going on?"
+          placeholder={t("ticket.messagePlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={message}
           onChangeText={setMessage}
@@ -91,7 +94,7 @@ export function SupportTicketFormScreen({ navigation }: Props) {
         />
       </Card>
 
-      <Button label="Submit" onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Button label={t("ticket.submit")} onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
     </ScreenContainer>
   );
 }

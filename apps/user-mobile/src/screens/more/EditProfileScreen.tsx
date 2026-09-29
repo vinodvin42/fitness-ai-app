@@ -93,23 +93,23 @@ export function EditProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Edit Profile">
+    <ScreenContainer title={t("editProfile.title")}>
       <Card>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Full name</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("editProfile.fullName")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Full name"
+          placeholder={t("editProfile.fullName")}
           placeholderTextColor={colors.textMuted}
           value={fullName}
           onChangeText={setFullName}
         />
 
         <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-          Mobile number
+          {t("editProfile.mobile")}
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="Mobile number"
+          placeholder={t("editProfile.mobile")}
           placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           value={phone}
@@ -128,9 +128,9 @@ export function EditProfileScreen({ navigation }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>About You</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("editProfile.aboutYou")}</Text>
         {isAboutYouError ? (
-          <ErrorState message="Couldn't load gender/age/height/weight." onRetry={() => refetchAboutYou()} />
+          <ErrorState message={t("editProfile.aboutYouError")} onRetry={() => refetchAboutYou()} />
         ) : isLoadingAboutYou || !aboutYouLoaded ? (
           <ActivityIndicator color={colors.accent} />
         ) : (
@@ -146,9 +146,9 @@ export function EditProfileScreen({ navigation }: Props) {
               ))}
             </View>
             <View style={{ marginTop: spacing.sm }}>
-              <Stepper label="Age" value={age} unit="yrs" step={1} min={13} max={100} onChange={setAge} />
-              <Stepper label="Weight" value={weightKg} unit="kg" step={0.5} min={30} max={250} onChange={setWeightKg} />
-              <Stepper label="Height" value={heightCm} unit="cm" step={1} min={100} max={230} onChange={setHeightCm} />
+              <Stepper label={t("onboarding.aboutYou.age")} value={age} unit="yrs" step={1} min={13} max={100} onChange={setAge} />
+              <Stepper label={t("onboarding.aboutYou.weight")} value={weightKg} unit="kg" step={0.5} min={30} max={250} onChange={setWeightKg} />
+              <Stepper label={t("onboarding.aboutYou.height")} value={heightCm} unit="cm" step={1} min={100} max={230} onChange={setHeightCm} />
             </View>
           </>
         )}

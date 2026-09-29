@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -43,6 +44,7 @@ function fmtDate(iso: string): string {
  * feature name, not a guess at unrelated functionality.
  */
 export function WorkoutHistoryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: history, isLoading, isError, refetch } = useQuery({
     queryKey: ["workoutHistory"],
     queryFn: fetchWorkoutHistory,
@@ -103,7 +105,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Workout History">
+      <ScreenContainer title={t("workout.history.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -131,8 +133,8 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
   const compareEntries = (history ?? []).filter((h) => selectedForCompare.includes(h.id));
 
   return (
-    <ScreenContainer title="Workout History">
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search workouts" />
+    <ScreenContainer title={t("workout.history.title")}>
+      <SearchBar value={query} onChangeText={setQuery} placeholder={t("workout.history.search")} />
 
       {statuses.length > 2 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
@@ -155,10 +157,10 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
           {MONTH_NAMES[month]} {year}
         </Text>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
-          <StatTile label="Sessions" value={String(monthlyStats.sessions)} />
-          <StatTile label="Completed" value={String(monthlyStats.completed)} />
-          <StatTile label="Sets" value={String(monthlyStats.totalSets)} />
-          <StatTile label="Volume" value={`${monthlyStats.totalVolumeKg}kg`} />
+          <StatTile label={t("workout.history.sessions")} value={String(monthlyStats.sessions)} />
+          <StatTile label={t("workout.history.completed")} value={String(monthlyStats.completed)} />
+          <StatTile label={t("workout.history.sets")} value={String(monthlyStats.totalSets)} />
+          <StatTile label={t("workout.history.volume")} value={`${monthlyStats.totalVolumeKg}kg`} />
         </View>
       </Card>
 
@@ -288,7 +290,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
           </Pressable>
         ))}
         {!isLoading && filtered.length === 0 ? (
-          <EmptyState title="No workouts match" subtitle="Try a different search, filter, or day." />
+          <EmptyState title={t("workout.history.emptyTitle")} subtitle={t("workout.history.emptySubtitle")} />
         ) : null}
       </View>
     </ScreenContainer>

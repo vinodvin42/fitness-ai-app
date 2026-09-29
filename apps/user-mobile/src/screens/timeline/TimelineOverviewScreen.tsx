@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -58,6 +59,7 @@ const BADGE_SOFT: Record<TimelineEventType, string> = {
  * than guessing.
  */
 export function TimelineOverviewScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: events, isLoading, isError, refetch } = useQuery({ queryKey: ["timeline"], queryFn: fetchTimeline });
   const currentYear = new Date().getFullYear();
 
@@ -81,7 +83,7 @@ export function TimelineOverviewScreen({ navigation }: Props) {
   }, [eventsThisYear]);
 
   return (
-    <ScreenContainer title="Timeline" scroll={false}>
+    <ScreenContainer title={t("timeline.title")} scroll={false}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           {years.map((year) => (
@@ -91,9 +93,9 @@ export function TimelineOverviewScreen({ navigation }: Props) {
       </ScrollView>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm }}>
-        <RibbonStat value={countsByType.pr} label="PRs" color={colors.warning} />
-        <RibbonStat value={countsByType.milestone} label="Milestones" color={colors.accent} />
-        <RibbonStat value={countsByType.program_complete} label="Programs" color={colors.success} />
+        <RibbonStat value={countsByType.pr} label={t("timeline.prs")} color={colors.warning} />
+        <RibbonStat value={countsByType.milestone} label={t("timeline.milestones")} color={colors.accent} />
+        <RibbonStat value={countsByType.program_complete} label={t("timeline.programs")} color={colors.success} />
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.md, marginBottom: spacing.sm }}>
@@ -145,7 +147,7 @@ export function TimelineOverviewScreen({ navigation }: Props) {
           )}
           ListEmptyComponent={
             <EmptyState
-              title="No milestones yet"
+              title={t("timeline.empty")}
               subtitle={`Complete a workout or hit a new PR to start your ${selectedYear} timeline.`}
             />
           }
@@ -153,13 +155,13 @@ export function TimelineOverviewScreen({ navigation }: Props) {
       )}
 
       <Button
-        label="View Month"
+        label={t("timeline.viewMonth")}
         variant="secondary"
         onPress={() => navigation.navigate("TimelineMonth", {})}
         style={{ marginTop: spacing.sm }}
       />
       <Button
-        label="View Report"
+        label={t("timeline.viewReport")}
         variant="secondary"
         onPress={() => navigation.navigate("TimelineReport", { year: selectedYear })}
         style={{ marginTop: spacing.sm }}

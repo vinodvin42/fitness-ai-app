@@ -60,7 +60,7 @@ export function LogMeasurementScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Log Measurement">
+    <ScreenContainer title={t("measurements.logTitle")}>
       <Card>
         {FIELDS.map(({ key, label }) => (
           <React.Fragment key={key}>

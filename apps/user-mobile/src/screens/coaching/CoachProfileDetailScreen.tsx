@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -36,6 +37,7 @@ function serviceLabel(serviceType: string | null) {
  * design's own single "Book Session" button.
  */
 export function CoachProfileDetailScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { professionalId } = route.params;
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -45,7 +47,7 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Coach Profile">
+      <ScreenContainer title={t("coaching.profile.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -53,14 +55,14 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title="Coach Profile">
+      <ScreenContainer title={t("coaching.profile.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Coach Profile">
+    <ScreenContainer title={t("coaching.profile.title")}>
       <Card>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           <View
@@ -86,8 +88,8 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-          <StatTile icon="clock" label="Years exp." value={String(data.yearsExperience ?? "—")} />
-          <StatTile icon="heart" label="Clients" value={String(data.totalClients)} />
+          <StatTile icon="clock" label={t("coaching.profile.yearsExp")} value={String(data.yearsExperience ?? "—")} />
+          <StatTile icon="heart" label={t("coaching.profile.clients")} value={String(data.totalClients)} />
         </View>
       </Card>
 
@@ -110,9 +112,9 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
       ) : null}
 
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Available Services</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("coaching.profile.services")}</Text>
         {data.offerings.length === 0 ? (
-          <Text style={{ color: colors.textSecondary }}>No priced services listed yet.</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("coaching.profile.noServices")}</Text>
         ) : (
           data.offerings.map((o, i) => (
             <View
@@ -136,7 +138,7 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
       </Card>
 
       <Button
-        label="Book Session"
+        label={t("coaching.team.bookSession")}
         onPress={() => navigation.navigate("BookingServiceSelection", { professionalId })}
         disabled={data.offerings.length === 0}
       />

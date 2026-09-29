@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -35,6 +36,7 @@ function daysBetween(start: string, end: string): number {
  * decision, gap §13).
  */
 export function ProgramCompletionScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { programId } = route.params;
   const { data: progress, isLoading, isError, refetch } = useQuery({
     queryKey: ["program", programId, "progress"],
@@ -47,7 +49,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Program Complete">
+      <ScreenContainer title={t("workout.programComplete.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -55,7 +57,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
   if (isLoading || !progress) {
     return (
-      <ScreenContainer title="Program Complete">
+      <ScreenContainer title={t("workout.programComplete.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -63,14 +65,14 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
   if (progress.status !== "completed") {
     return (
-      <ScreenContainer title="Program Complete">
+      <ScreenContainer title={t("workout.programComplete.title")}>
         <Card>
           <Text style={{ color: colors.textPrimary, ...typography.body }}>
             {progress.program.name} isn't finished yet — {progress.completedWorkouts} of {progress.totalWorkouts}{" "}
             workouts complete.
           </Text>
           <Button
-            label="View Progress"
+            label={t("workout.programComplete.viewProgress")}
             onPress={() => navigation.replace("ProgramProgress", { programId })}
             style={{ marginTop: spacing.md }}
           />
@@ -82,7 +84,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
   const daysTaken = progress.startedAt && progress.lastCompletedAt ? daysBetween(progress.startedAt, progress.lastCompletedAt) : null;
 
   return (
-    <ScreenContainer title="Program Complete">
+    <ScreenContainer title={t("workout.programComplete.title")}>
       <Card>
         <View style={{ alignItems: "center", paddingVertical: spacing.md }}>
           <Text style={{ fontSize: 48 }}>🏆</Text>
@@ -113,7 +115,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
       {trainingStreak ? (
         <Card style={{ marginTop: spacing.md }}>
-          <Text style={{ color: colors.textSecondary }}>Training streak</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("workout.complete.streak")}</Text>
           <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs }}>
             {trainingStreak.currentStreak}{" "}
             <Text style={{ ...typography.h2, color: colors.textMuted }}>
@@ -127,12 +129,12 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
       ) : null}
 
       <Button
-        label="Back to My Programs"
+        label={t("workout.programComplete.backToMine")}
         onPress={() => navigation.navigate("MyPrograms")}
         style={{ marginTop: spacing.lg }}
       />
       <Button
-        label="Browse More Programs"
+        label={t("workout.programComplete.browseMore")}
         variant="secondary"
         onPress={() => navigation.navigate("TrainDashboard")}
         style={{ marginTop: spacing.sm }}
