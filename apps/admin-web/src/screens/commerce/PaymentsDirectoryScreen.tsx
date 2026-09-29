@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { AdminPaymentDirectoryResponse, PaymentPurpose, PaymentStatus } from "@fitness-ai-app/types";
@@ -54,6 +55,7 @@ async function fetchDirectory(filters: Filters): Promise<AdminPaymentDirectoryRe
  * module's second nav-level screen — see `screens/commerce/subNav.ts`.
  */
 export function PaymentsDirectoryScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ status: "", purpose: "", search: "", startDate: "", endDate: "" });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -65,15 +67,15 @@ export function PaymentsDirectoryScreen() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <AppShell title="Payments" subNav={COMMERCE_SUB_NAV}>
+    <AppShell title={t("paymentsDirectory.payments")} subNav={COMMERCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-4 gap-3">
-            <StatCard label="Total Payments" value={data.summary.totalCount} />
-            <StatCard label="Captured Revenue" value={`${money(data.summary.capturedRevenueCents)}`} hint="Sum of Paid amounts, current filter scope" />
-            <StatCard label="Failed" value={data.summary.failedCount} />
+            <StatCard label={t("paymentsDirectory.totalPayments")} value={data.summary.totalCount} />
+            <StatCard label={t("paymentsDirectory.capturedRevenue")} value={`${money(data.summary.capturedRevenueCents)}`} hint="Sum of Paid amounts, current filter scope" />
+            <StatCard label={t("paymentsDirectory.failed")} value={data.summary.failedCount} />
             <StatCard
-              label="Success Rate"
+              label={t("paymentsDirectory.successRate")}
               value={data.summary.successRate == null ? "—" : `${Math.round(data.summary.successRate * 100)}%`}
             />
           </div>
@@ -81,34 +83,34 @@ export function PaymentsDirectoryScreen() {
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("paymentsDirectory.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="created">Created</option>
-              <option value="paid">Paid</option>
-              <option value="failed">Failed</option>
+              <option value="">{t("paymentsDirectory.all")}</option>
+              <option value="created">{t("paymentsDirectory.created")}</option>
+              <option value="paid">{t("paymentsDirectory.paid")}</option>
+              <option value="failed">{t("paymentsDirectory.failed")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Purpose
+            {t("paymentsDirectory.purpose")}
             <select
               value={filters.purpose}
               onChange={(e) => setFilter("purpose", e.target.value as Filters["purpose"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="subscription">Subscription</option>
-              <option value="program_purchase">Program purchase</option>
+              <option value="">{t("paymentsDirectory.all")}</option>
+              <option value="subscription">{t("paymentsDirectory.subscription")}</option>
+              <option value="program_purchase">{t("paymentsDirectory.programPurchase")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("paymentsDirectory.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -128,10 +130,10 @@ export function PaymentsDirectoryScreen() {
           </label>
 
           <label className="ml-auto flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("paymentsDirectory.search")}
             <input
               type="search"
-              placeholder="User, order id, payment id…"
+              placeholder={t("paymentsDirectory.userOrderIdPayment")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -139,13 +141,13 @@ export function PaymentsDirectoryScreen() {
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("paymentsDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load payments.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("paymentsDirectory.retry")}
             </button>
           </div>
         )}
@@ -155,13 +157,13 @@ export function PaymentsDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">User</th>
-                  <th className="px-4 py-3 font-normal">Purchased</th>
-                  <th className="px-4 py-3 font-normal">Amount</th>
-                  <th className="px-4 py-3 font-normal">Provider</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Date</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.user")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.purchased")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.amount")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.provider")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.date")}</th>
+                  <th className="px-4 py-3 font-normal">{t("paymentsDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +187,7 @@ export function PaymentsDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{new Date(p.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <Link to={`/commerce/${p.id}`} className="text-xs text-accent hover:underline">
-                        View →
+                        {t("paymentsDirectory.view")}
                       </Link>
                     </td>
                   </tr>
@@ -193,7 +195,7 @@ export function PaymentsDirectoryScreen() {
                 {data.payments.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No payments match these filters.
+                      {t("paymentsDirectory.noPaymentsMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -205,7 +207,7 @@ export function PaymentsDirectoryScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing data exists yet for this Figma-spec'd field — see adminPayments.service.ts."
+            subtitle={t("paymentsDirectory.noBackingDataExists")}
           />
         )}
       </div>

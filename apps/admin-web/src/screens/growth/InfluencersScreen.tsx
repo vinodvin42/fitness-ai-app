@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminInfluencerDetail, AdminInfluencerListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -31,6 +32,7 @@ async function fetchInfluencer(id: string): Promise<AdminInfluencerDetail> {
  * paid records a Finance Expense (category influencer_payout).
  */
 export function InfluencersScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [passwordFormId, setPasswordFormId] = useState<string | null>(null);
@@ -58,14 +60,14 @@ export function InfluencersScreen() {
   });
 
   return (
-    <AppShell title="Influencers" subNav={GROWTH_SUB_NAV}>
+    <AppShell title={t("influencers.influencers")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         {list.data && (
           <div className="grid grid-cols-4 gap-3">
-            <StatCard label="Total" value={list.data.counts.total} />
-            <StatCard label="Active" value={list.data.counts.active} />
-            <StatCard label="Paid out" value={money(list.data.counts.totalPaidCents)} />
-            <StatCard label="Pending" value={money(list.data.counts.totalPendingCents)} />
+            <StatCard label={t("influencers.total")} value={list.data.counts.total} />
+            <StatCard label={t("influencers.active")} value={list.data.counts.active} />
+            <StatCard label={t("influencers.paidOut")} value={money(list.data.counts.totalPaidCents)} />
+            <StatCard label={t("influencers.pending")} value={money(list.data.counts.totalPendingCents)} />
           </div>
         )}
 
@@ -88,7 +90,7 @@ export function InfluencersScreen() {
             className="grid grid-cols-1 gap-3 rounded-lg border border-border-subtle bg-surface p-4 sm:grid-cols-4"
           >
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Name
+              {t("influencers.name")}
               <input
                 required
                 value={name}
@@ -97,7 +99,7 @@ export function InfluencersScreen() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Handle
+              {t("influencers.handle")}
               <input
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
@@ -105,7 +107,7 @@ export function InfluencersScreen() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Commission %
+              {t("influencers.commission2")}
               <input
                 type="number"
                 min={0}
@@ -125,12 +127,12 @@ export function InfluencersScreen() {
           </form>
         )}
 
-        {list.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {list.isLoading && <p className="text-sm text-text-secondary">{t("influencers.loading")}</p>}
         {list.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(list.error, "Couldn't load influencers.")}
             <button type="button" onClick={() => list.refetch()} className="ml-3 underline">
-              Retry
+              {t("influencers.retry")}
             </button>
           </div>
         )}
@@ -140,11 +142,11 @@ export function InfluencersScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Name</th>
-                  <th className="px-4 py-3 font-normal">Commission</th>
-                  <th className="px-4 py-3 font-normal">Paid</th>
-                  <th className="px-4 py-3 font-normal">Pending</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
+                  <th className="px-4 py-3 font-normal">{t("influencers.name")}</th>
+                  <th className="px-4 py-3 font-normal">{t("influencers.commission")}</th>
+                  <th className="px-4 py-3 font-normal">{t("influencers.paid")}</th>
+                  <th className="px-4 py-3 font-normal">{t("influencers.pending")}</th>
+                  <th className="px-4 py-3 font-normal">{t("influencers.status")}</th>
                   <th className="px-4 py-3 font-normal"></th>
                 </tr>
               </thead>
@@ -184,7 +186,7 @@ export function InfluencersScreen() {
                 {list.data.influencers.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
-                      No influencers yet.
+                      {t("influencers.noInfluencersYet")}
                     </td>
                   </tr>
                 )}
@@ -208,6 +210,7 @@ export function InfluencersScreen() {
 }
 
 function PayoutsPanel({ influencerId }: { influencerId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [amountDisplay, setAmountDisplay] = useState("");
   const [periodLabel, setPeriodLabel] = useState("");
@@ -254,7 +257,7 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
         className="flex flex-wrap items-end gap-3"
       >
         <label className="flex flex-col gap-1 text-xs text-text-dim">
-          Amount
+          {t("influencers.amount")}
           <input
             required
             type="number"
@@ -266,10 +269,10 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-text-dim">
-          Period
+          {t("influencers.period")}
           <input
             required
-            placeholder="Aug 2026"
+            placeholder={t("influencers.aug2026")}
             value={periodLabel}
             onChange={(e) => setPeriodLabel(e.target.value)}
             className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -284,9 +287,9 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
         </button>
       </form>
 
-      {detail.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+      {detail.isLoading && <p className="text-sm text-text-secondary">{t("influencers.loading")}</p>}
       {detail.data && detail.data.payouts.length === 0 && (
-        <p className="text-sm text-text-dim">No payouts recorded yet.</p>
+        <p className="text-sm text-text-dim">{t("influencers.noPayoutsRecordedYet")}</p>
       )}
       {detail.data && detail.data.payouts.length > 0 && (
         <table className="w-full text-left text-sm">
@@ -306,7 +309,7 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
                       disabled={markPaid.isPending}
                       className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
                     >
-                      Mark Paid
+                      {t("influencers.markPaid")}
                     </button>
                   )}
                 </td>
@@ -335,6 +338,7 @@ function SetPortalPasswordPanel({
   influencerName: string;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
 
   const setPortalPassword = useMutation({
@@ -357,11 +361,11 @@ function SetPortalPasswordPanel({
         Set Portal Password{influencerName ? ` — ${influencerName}` : ""}
       </div>
       <p className="text-xs text-text-dim">
-        Grants (or resets) this influencer&apos;s login to the Creator Portal. Requires an email on file.
+        {t("influencers.grantsOrResetsThis")}
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-text-dim">
-          New password
+          {t("influencers.newPassword")}
           <input
             required
             type="password"
@@ -385,7 +389,7 @@ function SetPortalPasswordPanel({
           {extractErrorMessage(setPortalPassword.error, "Couldn't set the portal password.")}
         </p>
       )}
-      {setPortalPassword.isSuccess && <p className="text-xs text-accent">Portal password set.</p>}
+      {setPortalPassword.isSuccess && <p className="text-xs text-accent">{t("influencers.portalPasswordSet")}</p>}
     </form>
   );
 }

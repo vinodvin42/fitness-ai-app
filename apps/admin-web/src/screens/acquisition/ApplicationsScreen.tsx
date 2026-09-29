@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminPublicApplicationListItem,
@@ -50,6 +51,7 @@ async function fetchApplications(kind: string, status: string): Promise<AdminPub
  * would be ceremony, not information.
  */
 export function ApplicationsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [kind, setKind] = useState("");
   const [status, setStatus] = useState("");
@@ -82,26 +84,26 @@ export function ApplicationsScreen() {
   }
 
   return (
-    <AppShell title="Applications & Early Access" subNav={GROWTH_SUB_NAV}>
+    <AppShell title={t("applications.applicationsEarlyAccess")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         {applications.data && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Shown" value={items.length} />
-            <StatCard label="Unworked (new)" value={newCount} />
-            <StatCard label="Partner applications" value={partnerCount} />
-            <StatCard label="Total matching" value={applications.data.total} />
+            <StatCard label={t("applications.shown")} value={items.length} />
+            <StatCard label={t("applications.unworkedNew")} value={newCount} />
+            <StatCard label={t("applications.partnerApplications")} value={partnerCount} />
+            <StatCard label={t("applications.totalMatching")} value={applications.data.total} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Form
+            {t("applications.form")}
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value)}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("applications.all")}</option>
               {(Object.keys(KIND_LABELS) as PublicApplicationKind[]).map((k) => (
                 <option key={k} value={k}>
                   {KIND_LABELS[k]}
@@ -110,13 +112,13 @@ export function ApplicationsScreen() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("applications.status")}
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("applications.all")}</option>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s.replace("_", " ")}
@@ -126,12 +128,12 @@ export function ApplicationsScreen() {
           </label>
         </div>
 
-        {applications.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {applications.isLoading && <p className="text-sm text-text-secondary">{t("applications.loading")}</p>}
         {applications.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(applications.error, "Couldn't load applications.")}
             <button type="button" onClick={() => applications.refetch()} className="ml-3 underline">
-              Retry
+              {t("applications.retry")}
             </button>
           </div>
         )}
@@ -141,13 +143,13 @@ export function ApplicationsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Who</th>
-                  <th className="px-4 py-3 font-normal">Form</th>
-                  <th className="px-4 py-3 font-normal">Details</th>
-                  <th className="px-4 py-3 font-normal">Message</th>
-                  <th className="px-4 py-3 font-normal">Source</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Move to</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.who")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.form")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.details")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.message")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.source")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("applications.moveTo")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +165,7 @@ export function ApplicationsScreen() {
                           always read the same. Marketing consent is real
                           and genuinely varies, so it is the one shown. */}
                       {row.consentMarketing && (
-                        <div className="text-xs text-accent">opted into updates</div>
+                        <div className="text-xs text-accent">{t("applications.optedIntoUpdates")}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{KIND_LABELS[row.kind]}</td>
@@ -180,7 +182,7 @@ export function ApplicationsScreen() {
                     </td>
                     <td className="px-4 py-3">
                       <input
-                        placeholder="Note (optional)"
+                        placeholder={t("applications.noteOptional")}
                         value={noteDraft[row.id] ?? ""}
                         onChange={(e) => setNoteDraft((p) => ({ ...p, [row.id]: e.target.value }))}
                         className="mb-2 w-40 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
@@ -206,7 +208,7 @@ export function ApplicationsScreen() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      Nothing matching that filter.
+                      {t("applications.nothingMatchingThatFilter")}
                     </td>
                   </tr>
                 )}

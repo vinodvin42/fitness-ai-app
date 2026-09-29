@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminReferralDirectoryResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -38,6 +39,7 @@ async function fetchReferrals(filters: Filters): Promise<AdminReferralDirectoryR
  * not something an admin has any legitimate reason to edit.
  */
 export function ReferralsScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
@@ -49,18 +51,18 @@ export function ReferralsScreen() {
   });
 
   return (
-    <AppShell title="Referrals" subNav={GROWTH_SUB_NAV}>
+    <AppShell title={t("referrals.referrals")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Total Referrals" value={data.stats.totalReferrals} hint="In the current filtered scope" />
-            <StatCard label="Unique Referrers" value={data.stats.uniqueReferrers} hint="Distinct users who've referred someone" />
+            <StatCard label={t("referrals.totalReferrals")} value={data.stats.totalReferrals} hint="In the current filtered scope" />
+            <StatCard label={t("referrals.uniqueReferrers")} value={data.stats.uniqueReferrers} hint="Distinct users who've referred someone" />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("referrals.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -78,10 +80,10 @@ export function ReferralsScreen() {
             />
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("referrals.search")}
             <input
               type="search"
-              placeholder="Referrer or referee name/email…"
+              placeholder={t("referrals.referrerOrRefereeName")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -89,20 +91,20 @@ export function ReferralsScreen() {
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("referrals.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load referrals.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("referrals.retry")}
             </button>
           </div>
         )}
 
         {data && data.topReferrers.length > 0 && (
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="text-xs uppercase tracking-wide text-text-dim">Top Referrers</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("referrals.topReferrers")}</div>
             <ol className="mt-3 space-y-2">
               {data.topReferrers.map((r, i) => (
                 <li key={r.userId} className="flex items-center gap-3 text-sm">
@@ -125,9 +127,9 @@ export function ReferralsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Referrer</th>
-                  <th className="px-4 py-3 font-normal">Referee</th>
-                  <th className="px-4 py-3 font-normal">Date</th>
+                  <th className="px-4 py-3 font-normal">{t("referrals.referrer")}</th>
+                  <th className="px-4 py-3 font-normal">{t("referrals.referee")}</th>
+                  <th className="px-4 py-3 font-normal">{t("referrals.date")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,7 +151,7 @@ export function ReferralsScreen() {
                 {data.entries.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-4 py-8 text-center text-text-dim">
-                      No referrals match these filters.
+                      {t("referrals.noReferralsMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -158,7 +160,7 @@ export function ReferralsScreen() {
           </div>
         )}
 
-        {data && <NotAvailablePanel keys={data.notAvailable} subtitle="Neither exists in this build yet — see this screen's own doc comment for why." />}
+        {data && <NotAvailablePanel keys={data.notAvailable} subtitle={t("referrals.neitherExistsInThis")} />}
       </div>
     </AppShell>
   );

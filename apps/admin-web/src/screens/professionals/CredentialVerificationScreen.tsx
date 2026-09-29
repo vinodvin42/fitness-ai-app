@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminProfessionalDetailResponse,
@@ -68,6 +69,7 @@ function DocLink({ label, dataUri }: { label: string; dataUri: string | null | u
  * force-revoke both now use.
  */
 export function CredentialVerificationScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -106,13 +108,13 @@ export function CredentialVerificationScreen() {
   const detail = detailQuery.data;
 
   return (
-    <AppShell title="Credential Verification" subNav={PROFESSIONALS_SUB_NAV}>
+    <AppShell title={t("credentialVerification.credentialVerification")} subNav={PROFESSIONALS_SUB_NAV}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
         <div className="rounded-lg border border-border-subtle bg-surface">
           <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
             Pending Review Queue ({queue.length})
           </div>
-          {queueQuery.isLoading && <p className="p-4 text-sm text-text-secondary">Loading…</p>}
+          {queueQuery.isLoading && <p className="p-4 text-sm text-text-secondary">{t("credentialVerification.loading")}</p>}
           {queueQuery.isError && (
             <p className="p-4 text-sm text-danger">{extractErrorMessage(queueQuery.error, "Couldn't load the queue.")}</p>
           )}
@@ -143,7 +145,7 @@ export function CredentialVerificationScreen() {
               </li>
             ))}
             {!queueQuery.isLoading && queue.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-text-dim">Nothing awaiting review.</li>
+              <li className="px-4 py-8 text-center text-sm text-text-dim">{t("credentialVerification.nothingAwaitingReview")}</li>
             )}
           </ul>
         </div>
@@ -151,11 +153,11 @@ export function CredentialVerificationScreen() {
         <div className="space-y-4">
           {!selectedId && (
             <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-8 text-center text-sm text-text-dim">
-              Select an applicant from the queue to review their credentials.
+              {t("credentialVerification.selectAnApplicantFrom")}
             </div>
           )}
 
-          {selectedId && detailQuery.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+          {selectedId && detailQuery.isLoading && <p className="text-sm text-text-secondary">{t("credentialVerification.loading")}</p>}
 
           {detail && (
             <>
@@ -175,21 +177,21 @@ export function CredentialVerificationScreen() {
                   </div>
                   <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-secondary">
                     <div>
-                      <dt className="text-text-dim">Qualification</dt>
+                      <dt className="text-text-dim">{t("credentialVerification.qualification")}</dt>
                       <dd>{c.certificationName ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-text-dim">Issuing body</dt>
+                      <dt className="text-text-dim">{t("credentialVerification.issuingBody")}</dt>
                       <dd>{c.certifyingBody ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-text-dim">Year obtained</dt>
+                      <dt className="text-text-dim">{t("credentialVerification.yearObtained")}</dt>
                       <dd>{c.yearObtained ?? "—"}</dd>
                     </div>
                   </dl>
                   <div className="mt-3 flex flex-wrap gap-4">
-                    <DocLink label="Certification document" dataUri={c.certificationDocData} />
-                    <DocLink label="Qualification certificate" dataUri={c.qualificationDocData} />
+                    <DocLink label={t("credentialVerification.certificationDocument")} dataUri={c.certificationDocData} />
+                    <DocLink label={t("credentialVerification.qualificationCertificate")} dataUri={c.qualificationDocData} />
                   </div>
                   <textarea
                     placeholder={`Admin notes (optional to Approve, required — ${MIN_REJECT_REASON_LENGTH}+ characters — to Reject)`}
@@ -207,7 +209,7 @@ export function CredentialVerificationScreen() {
                       }
                       className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                     >
-                      Approve
+                      {t("credentialVerification.approve")}
                     </button>
                     <button
                       type="button"
@@ -229,15 +231,15 @@ export function CredentialVerificationScreen() {
                       }
                       className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
                     >
-                      Reject
+                      {t("credentialVerification.reject")}
                     </button>
                     <button
                       type="button"
                       disabled
-                      title="Not built — CredentialStatus has no 'info requested' state, see adminProfessionals.service.ts"
+                      title={t("credentialVerification.notBuiltCredentialstatusHas")}
                       className="cursor-not-allowed rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-dim"
                     >
-                      Request Info
+                      {t("credentialVerification.requestInfo")}
                     </button>
                   </div>
                 </div>
@@ -245,14 +247,14 @@ export function CredentialVerificationScreen() {
 
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-center justify-between">
-                  <div className="font-medium">Government KYC Identity Check</div>
+                  <div className="font-medium">{t("credentialVerification.governmentKycIdentityCheck")}</div>
                   <StatusBadge status={detail.professional.kycStatus} />
                 </div>
                 <div className="mt-3">
-                  <DocLink label="Government ID (e.g. Aadhaar)" dataUri={detail.professional.kycDocumentData} />
+                  <DocLink label={t("credentialVerification.governmentIdEG")} dataUri={detail.professional.kycDocumentData} />
                 </div>
                 <textarea
-                  placeholder="Admin notes (optional)"
+                  placeholder={t("credentialVerification.adminNotesOptional")}
                   value={notes.kyc ?? ""}
                   onChange={(e) => setNotes((prev) => ({ ...prev, kyc: e.target.value }))}
                   className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -265,7 +267,7 @@ export function CredentialVerificationScreen() {
                     onClick={() => kycMutation.mutate({ status: "verified", adminNotes: notes.kyc })}
                     className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                   >
-                    Approve
+                    {t("credentialVerification.approve")}
                   </button>
                   <button
                     type="button"
@@ -273,18 +275,18 @@ export function CredentialVerificationScreen() {
                     onClick={() => kycMutation.mutate({ status: "rejected", adminNotes: notes.kyc })}
                     className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
                   >
-                    Reject
+                    {t("credentialVerification.reject")}
                   </button>
                 </div>
               </div>
 
               {detail.professional.status === "suspended" ? (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-xs text-text-dim">Already suspended.</div>
+                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-xs text-text-dim">{t("credentialVerification.alreadySuspended")}</div>
               ) : (
                 <ReasonGatedAction
-                  title="Suspend Application"
-                  description="Sets this professional's account status to Suspended — reversible from the Directory. A reason is required and is recorded to the audit trail."
-                  actionLabel="Suspend Application"
+                  title={t("credentialVerification.suspendApplication")}
+                  description={t("credentialVerification.setsThisProfessionalS")}
+                  actionLabel={t("credentialVerification.suspendApplication")}
                   isPending={suspendMutation.isPending}
                   isError={suspendMutation.isError}
                   error={suspendMutation.error}

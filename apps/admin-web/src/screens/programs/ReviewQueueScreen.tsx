@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminContentReviewListResponse, ContentReviewContentType, ContentReviewStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -46,6 +47,7 @@ async function fetchQueue(status: ContentReviewStatus | ""): Promise<AdminConten
  * adminPrograms.service.ts's `cannot_approve_own_content_review` guard.
  */
 export function ReviewQueueScreen() {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<ContentReviewStatus | "">("pending");
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
@@ -68,13 +70,13 @@ export function ReviewQueueScreen() {
   });
 
   return (
-    <AppShell title="Review / Approval" subNav={PROGRAMS_SUB_NAV}>
+    <AppShell title={t("reviewQueue.reviewApproval")} subNav={PROGRAMS_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Pending" value={data.counts.pending} />
-            <StatCard label="Approved" value={data.counts.approved} />
-            <StatCard label="Rejected" value={data.counts.rejected} />
+            <StatCard label={t("reviewQueue.pending")} value={data.counts.pending} />
+            <StatCard label={t("reviewQueue.approved")} value={data.counts.approved} />
+            <StatCard label={t("reviewQueue.rejected")} value={data.counts.rejected} />
           </div>
         )}
 
@@ -86,27 +88,27 @@ export function ReviewQueueScreen() {
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("reviewQueue.status")}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as ContentReviewStatus | "")}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="">All</option>
+              <option value="pending">{t("reviewQueue.pending")}</option>
+              <option value="approved">{t("reviewQueue.approved")}</option>
+              <option value="rejected">{t("reviewQueue.rejected")}</option>
+              <option value="">{t("reviewQueue.all")}</option>
             </select>
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("reviewQueue.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the queue.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("reviewQueue.retry")}
             </button>
           </div>
         )}
@@ -130,19 +132,19 @@ export function ReviewQueueScreen() {
 
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                 <div>
-                  <dt className="text-xs text-text-dim">Author</dt>
+                  <dt className="text-xs text-text-dim">{t("reviewQueue.author")}</dt>
                   <dd className="text-text-secondary">{r.submittedByName}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Date</dt>
+                  <dt className="text-xs text-text-dim">{t("reviewQueue.date")}</dt>
                   <dd className="text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Reviewer</dt>
+                  <dt className="text-xs text-text-dim">{t("reviewQueue.reviewer")}</dt>
                   <dd className="text-text-secondary">{r.reviewedByName ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Reviewed</dt>
+                  <dt className="text-xs text-text-dim">{t("reviewQueue.reviewed")}</dt>
                   <dd className="text-text-secondary">{r.reviewedAt ? new Date(r.reviewedAt).toLocaleDateString() : "—"}</dd>
                 </div>
               </dl>
@@ -150,7 +152,7 @@ export function ReviewQueueScreen() {
               {r.status === "pending" ? (
                 <div className="mt-3">
                   <textarea
-                    placeholder="Review notes (optional)"
+                    placeholder={t("reviewQueue.reviewNotesOptional")}
                     value={reviewNotes[r.id] ?? ""}
                     onChange={(e) => setReviewNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                     className="w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -163,7 +165,7 @@ export function ReviewQueueScreen() {
                       onClick={() => approveMutation.mutate(r.id)}
                       className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                     >
-                      Approve (publish)
+                      {t("reviewQueue.approvePublish")}
                     </button>
                     <button
                       type="button"
@@ -171,7 +173,7 @@ export function ReviewQueueScreen() {
                       onClick={() => rejectMutation.mutate(r.id)}
                       className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
                     >
-                      Reject
+                      {t("reviewQueue.reject")}
                     </button>
                   </div>
                   {(approveMutation.isError || rejectMutation.isError) && (
@@ -183,7 +185,7 @@ export function ReviewQueueScreen() {
               ) : (
                 r.reviewNotes && (
                   <p className="mt-3 text-xs text-text-secondary">
-                    <span className="text-text-dim">Review notes: </span>
+                    <span className="text-text-dim">{t("reviewQueue.reviewNotes")}</span>
                     {r.reviewNotes}
                   </p>
                 )
@@ -194,7 +196,7 @@ export function ReviewQueueScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing field exists yet for these Figma-spec'd columns — see adminPrograms.service.ts."
+            subtitle={t("reviewQueue.noBackingFieldExists")}
           />
         )}
       </div>

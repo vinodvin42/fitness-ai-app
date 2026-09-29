@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import type { AdminPaymentDetailResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -48,6 +49,7 @@ function Field({ label, value }: { label: string; value: string | number }) {
  * be genuinely incomplete for a `failed` payment.
  */
 export function TransactionDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -59,14 +61,14 @@ export function TransactionDetailScreen() {
   const payment = data?.payment;
 
   return (
-    <AppShell title="Transaction Detail" subNav={COMMERCE_SUB_NAV}>
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("transactionDetail.transactionDetail")} subNav={COMMERCE_SUB_NAV}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("transactionDetail.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           {extractErrorMessage(error, "Couldn't load this transaction.")}
           <button type="button" onClick={() => refetch()} className="ml-3 underline">
-            Retry
+            {t("transactionDetail.retry")}
           </button>
         </div>
       )}
@@ -75,7 +77,7 @@ export function TransactionDetailScreen() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs uppercase tracking-wide text-text-dim">Transaction</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.transaction")}</div>
               <div className="mt-1 flex items-center gap-2">
                 <span className="font-mono text-sm text-text-primary">{payment.id}</span>
                 <StatusBadge status={payment.status} />
@@ -86,34 +88,34 @@ export function TransactionDetailScreen() {
               </p>
             </div>
             <Link to="/commerce" className="text-xs text-text-secondary hover:text-text-primary">
-              ← Back to Payments
+              {t("transactionDetail.backToPayments")}
             </Link>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Ledger</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.ledger")}</div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <Field label="Purpose" value={PURPOSE_LABELS[payment.purpose] ?? payment.purpose} />
-                <Field label="Amount" value={`${money(payment.amountCents)} ${payment.currency}`} />
-                <Field label="Provider" value={payment.provider} />
-                <Field label="Created" value={new Date(payment.createdAt).toLocaleString()} />
-                <Field label="Provider order id" value={payment.providerOrderId} />
-                <Field label="Provider payment id" value={payment.providerPaymentId ?? "—"} />
+                <Field label={t("transactionDetail.purpose")} value={PURPOSE_LABELS[payment.purpose] ?? payment.purpose} />
+                <Field label={t("transactionDetail.amount")} value={`${money(payment.amountCents)} ${payment.currency}`} />
+                <Field label={t("transactionDetail.provider")} value={payment.provider} />
+                <Field label={t("transactionDetail.created")} value={new Date(payment.createdAt).toLocaleString()} />
+                <Field label={t("transactionDetail.providerOrderId")} value={payment.providerOrderId} />
+                <Field label={t("transactionDetail.providerPaymentId")} value={payment.providerPaymentId ?? "—"} />
               </dl>
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Related entities</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.relatedEntities")}</div>
               <dl className="mt-3 space-y-3 text-sm">
                 <div>
-                  <dt className="text-xs text-text-dim">User</dt>
+                  <dt className="text-xs text-text-dim">{t("transactionDetail.user")}</dt>
                   <dd className="text-text-secondary">
                     {payment.userFullName} <span className="text-xs text-text-dim">({payment.userEmail})</span>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Purchased</dt>
+                  <dt className="text-xs text-text-dim">{t("transactionDetail.purchased")}</dt>
                   {data.reference ? (
                     <dd className="text-text-secondary">
                       {data.reference.name}
@@ -138,12 +140,12 @@ export function TransactionDetailScreen() {
 
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing data exists yet for this Figma-spec'd field — see adminPayments.service.ts."
+            subtitle={t("transactionDetail.noBackingDataExists")}
           />
 
           <div className="rounded-lg border border-border-subtle bg-surface">
             <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-              Audit trail
+              {t("transactionDetail.auditTrail")}
             </div>
             <ul className="divide-y divide-border-subtle">
               {data.auditTrail.map((a) => (
@@ -153,7 +155,7 @@ export function TransactionDetailScreen() {
                 </li>
               ))}
               {data.auditTrail.length === 0 && (
-                <li className="px-4 py-8 text-center text-sm text-text-dim">No audit entries recorded for this payment yet.</li>
+                <li className="px-4 py-8 text-center text-sm text-text-dim">{t("transactionDetail.noAuditEntriesRecorded")}</li>
               )}
             </ul>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { COMMON_COUNTRIES, type AdminUserAnalyticsResponse } from "@fitness-ai-app/types";
@@ -78,6 +79,7 @@ async function fetchUserAnalytics(filters: Filters): Promise<AdminUserAnalyticsR
  * screens.
  */
 export function UserAnalyticsScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ startDate: "", endDate: "" });
   const [tab, setTab] = useState<Tab>("userAnalytics");
   const [compare, setCompare] = useState(false);
@@ -96,7 +98,7 @@ export function UserAnalyticsScreen() {
   };
 
   return (
-    <AppShell title="Analytics" subNav={ANALYTICS_SUB_NAV}>
+    <AppShell title={t("userAnalytics.analytics")} subNav={ANALYTICS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap gap-2">
@@ -118,7 +120,7 @@ export function UserAnalyticsScreen() {
 
           <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              From
+              {t("userAnalytics.from")}
               <input
                 type="date"
                 value={filters.startDate}
@@ -135,21 +137,21 @@ export function UserAnalyticsScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
-            <span className="pb-1.5 text-[11px] text-text-dim">Defaults to last 30 days</span>
+            <span className="pb-1.5 text-[11px] text-text-dim">{t("userAnalytics.defaultsToLast30")}</span>
             <label className="flex items-center gap-1.5 pb-1.5 text-xs text-text-secondary">
               <input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} />
-              Compare to previous period
+              {t("userAnalytics.compareToPreviousPeriod")}
             </label>
           </div>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("userAnalytics.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load analytics.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("userAnalytics.retry")}
             </button>
           </div>
         )}
@@ -158,25 +160,25 @@ export function UserAnalyticsScreen() {
           <div className="space-y-4">
             <div className="grid grid-cols-4 gap-3">
               <StatCard
-                label="New Users"
+                label={t("userAnalytics.newUsers")}
                 value={data.kpis.newUsers.value}
                 trendPct={data.kpis.newUsers.trendPct}
                 hint={compare ? `vs. ${data.kpis.newUsers.previousValue} previous period` : undefined}
               />
               <StatCard
-                label="Active Users"
+                label={t("userAnalytics.activeUsers")}
                 value={data.kpis.activeUsers.value}
                 trendPct={data.kpis.activeUsers.trendPct}
                 hint={compare ? `vs. ${data.kpis.activeUsers.previousValue} previous period` : "Trained, logged a meal, or logged a measurement"}
               />
               <StatCard
-                label="Revenue"
+                label={t("userAnalytics.revenue")}
                 value={money(data.kpis.revenueCents.value)}
                 trendPct={data.kpis.revenueCents.trendPct}
                 hint={compare ? `vs. ${money(data.kpis.revenueCents.previousValue)} previous period` : undefined}
               />
               <StatCard
-                label="Referral Signups"
+                label={t("userAnalytics.referralSignups")}
                 value={data.kpis.referralSignups.value}
                 trendPct={data.kpis.referralSignups.trendPct}
                 hint={compare ? `vs. ${data.kpis.referralSignups.previousValue} previous period` : undefined}
@@ -185,7 +187,7 @@ export function UserAnalyticsScreen() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Signups per day</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.signupsPerDay")}</div>
                 <div className="mt-3 h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data.signupSeries}>
@@ -198,7 +200,7 @@ export function UserAnalyticsScreen() {
                 </div>
               </div>
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Revenue per day</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.revenuePerDay")}</div>
                 <div className="mt-3 h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data.revenueSeries}>
@@ -217,7 +219,7 @@ export function UserAnalyticsScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Retention Cohorts — last 6 months</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.retentionCohortsLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 % of each month's new signups who logged ≥1 workout in that relative month. Independent of the date
                 filter above — a cohort table needs its own month-over-month axis. "—" means too early to know.
@@ -226,12 +228,12 @@ export function UserAnalyticsScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Cohort</th>
-                      <th className="px-3 py-2 font-normal">Size</th>
-                      <th className="px-3 py-2 font-normal">Month 0</th>
-                      <th className="px-3 py-2 font-normal">Month 1</th>
-                      <th className="px-3 py-2 font-normal">Month 2</th>
-                      <th className="px-3 py-2 font-normal">Month 3</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.cohort")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.size")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.month0")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.month1")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.month2")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.month3")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -265,29 +267,29 @@ export function UserAnalyticsScreen() {
 
         {data && tab === "training" && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Workouts Completed" value={data.trainingStats.totalWorkoutsCompleted} hint="In the selected date range" />
-            <StatCard label="Sets Logged" value={data.trainingStats.totalSetsLogged} hint="In the selected date range" />
-            <StatCard label="Avg Sets / Session" value={data.trainingStats.avgSetsPerSession ?? "—"} />
+            <StatCard label={t("userAnalytics.workoutsCompleted")} value={data.trainingStats.totalWorkoutsCompleted} hint="In the selected date range" />
+            <StatCard label={t("userAnalytics.setsLogged")} value={data.trainingStats.totalSetsLogged} hint="In the selected date range" />
+            <StatCard label={t("userAnalytics.avgSetsSession")} value={data.trainingStats.avgSetsPerSession ?? "—"} />
           </div>
         )}
 
         {data && tab === "nutrition" && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Meals Logged" value={data.nutritionStats.totalMealsLogged} hint="In the selected date range" />
-            <StatCard label="Water Logs" value={data.nutritionStats.totalWaterLogs} hint="In the selected date range" />
-            <StatCard label="Avg Water Logs / Active User" value={data.nutritionStats.avgWaterLogsPerActiveUser ?? "—"} />
+            <StatCard label={t("userAnalytics.mealsLogged")} value={data.nutritionStats.totalMealsLogged} hint="In the selected date range" />
+            <StatCard label={t("userAnalytics.waterLogs")} value={data.nutritionStats.totalWaterLogs} hint="In the selected date range" />
+            <StatCard label={t("userAnalytics.avgWaterLogsActive")} value={data.nutritionStats.avgWaterLogsPerActiveUser ?? "—"} />
           </div>
         )}
 
         {data && tab === "ai" && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <StatCard label="AI Messages Sent" value={data.aiStats.totalMessages} hint="User prompts, in the selected date range" />
-              <StatCard label="Users Using AI Coach" value={data.aiStats.usersUsingAi} />
-              <StatCard label="Avg Messages / AI User" value={data.aiStats.avgMessagesPerAiUser ?? "—"} />
+              <StatCard label={t("userAnalytics.aiMessagesSent")} value={data.aiStats.totalMessages} hint="User prompts, in the selected date range" />
+              <StatCard label={t("userAnalytics.usersUsingAiCoach")} value={data.aiStats.usersUsingAi} />
+              <StatCard label={t("userAnalytics.avgMessagesAiUser")} value={data.aiStats.avgMessagesPerAiUser ?? "—"} />
             </div>
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">AI Coach messages per day</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.aiCoachMessagesPer")}</div>
               <div className="mt-3 h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.aiStats.messageSeries}>
@@ -305,19 +307,19 @@ export function UserAnalyticsScreen() {
         {data && tab === "geographic" && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <StatCard label="Total Users" value={data.geographic.totalUsers} />
+              <StatCard label={t("userAnalytics.totalUsers")} value={data.geographic.totalUsers} />
               <StatCard
-                label="Countries Represented"
+                label={t("userAnalytics.countriesRepresented")}
                 value={data.geographic.breakdown.filter((r) => r.countryCode !== null).length}
               />
               <StatCard
-                label="Unset"
+                label={t("userAnalytics.unset")}
                 value={`${data.geographic.breakdown.find((r) => r.countryCode === null)?.userPct ?? 0}%`}
                 hint="Users who haven't set a country on Edit Profile"
               />
             </div>
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Users by country</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.usersByCountry")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 A live snapshot of the current user base, independent of the date filter above — same reasoning as
                 Retention Cohorts. Revenue is all-time captured payments, not date-scoped. No map — no mapping
@@ -327,10 +329,10 @@ export function UserAnalyticsScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Country</th>
-                      <th className="px-3 py-2 font-normal">Users</th>
-                      <th className="px-3 py-2 font-normal">% of Total</th>
-                      <th className="px-3 py-2 font-normal">Revenue (all-time)</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.country")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.users")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.ofTotal")}</th>
+                      <th className="px-3 py-2 font-normal">{t("userAnalytics.revenueAllTime")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -338,7 +340,7 @@ export function UserAnalyticsScreen() {
                       <tr key={row.countryCode ?? "unknown"} className="border-b border-border-subtle last:border-0">
                         <td className="px-3 py-2 font-medium text-text-primary">
                           {countryName(row.countryCode)}
-                          {row.countryCode === null && <span className="ml-2 text-[11px] text-text-dim">(profile not set)</span>}
+                          {row.countryCode === null && <span className="ml-2 text-[11px] text-text-dim">{t("userAnalytics.profileNotSet")}</span>}
                         </td>
                         <td className="px-3 py-2 text-text-secondary">{row.userCount}</td>
                         <td className="px-3 py-2 text-text-secondary">{row.userPct}%</td>
@@ -355,7 +357,7 @@ export function UserAnalyticsScreen() {
         {data && notAvailableTab[tab] && (
           <NotAvailablePanel
             keys={[notAvailableTab[tab]]}
-            subtitle="No backing data exists anywhere in this build for this tab — see this screen's own doc comment for why."
+            subtitle={t("userAnalytics.noBackingDataExists")}
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -59,6 +60,7 @@ async function fetchAvailable(): Promise<AvailableProfessional[]> {
  * match here is a capacity-and-service decision, not a purchase.
  */
 export function AssignmentQueueScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("open");
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -79,10 +81,10 @@ export function AssignmentQueueScreen() {
   const pros = professionals.data ?? [];
 
   return (
-    <AppShell title="Professional Assignment" subNav={RELATIONSHIPS_SUB_NAV}>
+    <AppShell title={t("assignmentQueue.professionalAssignment")} subNav={RELATIONSHIPS_SUB_NAV}>
       <div className="mb-4 flex items-center gap-3">
         <label className="text-xs text-text-dim" htmlFor="assignment-status">
-          Status
+          {t("assignmentQueue.status")}
         </label>
         <select
           id="assignment-status"
@@ -90,11 +92,11 @@ export function AssignmentQueueScreen() {
           onChange={(e) => setStatus(e.target.value)}
           className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary"
         >
-          <option value="open">Open</option>
-          <option value="offered">Offer sent</option>
-          <option value="exhausted">No match found</option>
-          <option value="fulfilled">Fulfilled</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="open">{t("assignmentQueue.open")}</option>
+          <option value="offered">{t("assignmentQueue.offerSent")}</option>
+          <option value="exhausted">{t("assignmentQueue.noMatchFound")}</option>
+          <option value="fulfilled">{t("assignmentQueue.fulfilled")}</option>
+          <option value="cancelled">{t("assignmentQueue.cancelled")}</option>
         </select>
       </div>
 
@@ -105,7 +107,7 @@ export function AssignmentQueueScreen() {
       ) : null}
 
       {queue.isLoading ? (
-        <p className="text-sm text-text-dim">Loading…</p>
+        <p className="text-sm text-text-dim">{t("assignmentQueue.loading")}</p>
       ) : queue.isError ? (
         <p className="text-sm text-danger">{extractErrorMessage(queue.error, "Could not load the queue.")}</p>
       ) : rows.length === 0 ? (
@@ -118,11 +120,11 @@ export function AssignmentQueueScreen() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-              <th className="py-2 pr-4">User</th>
-              <th className="py-2 pr-4">Service</th>
-              <th className="py-2 pr-4">Asked</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Match</th>
+              <th className="py-2 pr-4">{t("assignmentQueue.user")}</th>
+              <th className="py-2 pr-4">{t("assignmentQueue.service")}</th>
+              <th className="py-2 pr-4">{t("assignmentQueue.asked")}</th>
+              <th className="py-2 pr-4">{t("assignmentQueue.status")}</th>
+              <th className="py-2 pr-4">{t("assignmentQueue.match")}</th>
             </tr>
           </thead>
           <tbody>
@@ -156,7 +158,7 @@ export function AssignmentQueueScreen() {
                         onChange={(e) => setSelected((s) => ({ ...s, [r.id]: e.target.value }))}
                         className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
                       >
-                        <option value="">Select a professional…</option>
+                        <option value="">{t("assignmentQueue.selectAProfessional")}</option>
                         {pros.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.fullName}
@@ -172,7 +174,7 @@ export function AssignmentQueueScreen() {
                         onClick={() => match.mutate({ requestId: r.id, professionalId: selected[r.id] })}
                         className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-black disabled:opacity-40"
                       >
-                        Send offer
+                        {t("assignmentQueue.sendOffer")}
                       </button>
                     </div>
                   ) : (

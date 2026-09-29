@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminSupportTicketDetailResponse,
@@ -83,6 +84,7 @@ async function fetchDetail(id: string): Promise<AdminSupportTicketDetailResponse
  * separate, explicit action.
  */
 export function SupportTicketsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ status: "", category: "", priority: "", search: "" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -149,14 +151,14 @@ export function SupportTicketsScreen() {
   const isDirty = !!ticket && (draft.status !== ticket.status || draft.priority !== ticket.priority || draft.category !== ticket.category);
 
   return (
-    <AppShell title="Support Tickets" subNav={SUPPORT_SUB_NAV}>
+    <AppShell title={t("supportTickets.supportTickets")} subNav={SUPPORT_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-4 gap-3">
-            <StatCard label="Open" value={data.stats.open} />
-            <StatCard label="In Progress" value={data.stats.inProgress} />
-            <StatCard label="Resolved" value={data.stats.resolved} />
-            <StatCard label="Closed" value={data.stats.closed} />
+            <StatCard label={t("supportTickets.open")} value={data.stats.open} />
+            <StatCard label={t("supportTickets.inProgress")} value={data.stats.inProgress} />
+            <StatCard label={t("supportTickets.resolved")} value={data.stats.resolved} />
+            <StatCard label={t("supportTickets.closed")} value={data.stats.closed} />
           </div>
         )}
 
@@ -165,27 +167,27 @@ export function SupportTicketsScreen() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border-subtle bg-surface p-3">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Status
+                {t("supportTickets.status")}
                 <select
                   value={filters.status}
                   onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  <option value="">All</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
+                  <option value="">{t("supportTickets.all")}</option>
+                  <option value="open">{t("supportTickets.open")}</option>
+                  <option value="in_progress">{t("supportTickets.inProgress")}</option>
+                  <option value="resolved">{t("supportTickets.resolved")}</option>
+                  <option value="closed">{t("supportTickets.closed")}</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Category
+                {t("supportTickets.category")}
                 <select
                   value={filters.category}
                   onChange={(e) => setFilter("category", e.target.value as Filters["category"])}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  <option value="">All</option>
+                  <option value="">{t("supportTickets.all")}</option>
                   {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
@@ -194,23 +196,23 @@ export function SupportTicketsScreen() {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Priority
+                {t("supportTickets.priority")}
                 <select
                   value={filters.priority}
                   onChange={(e) => setFilter("priority", e.target.value as Filters["priority"])}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  <option value="">All</option>
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
+                  <option value="">{t("supportTickets.all")}</option>
+                  <option value="low">{t("supportTickets.low")}</option>
+                  <option value="normal">{t("supportTickets.normal")}</option>
+                  <option value="high">{t("supportTickets.high")}</option>
                 </select>
               </label>
               <label className="flex flex-1 min-w-[140px] flex-col gap-1 text-xs text-text-dim">
-                Search
+                {t("supportTickets.search")}
                 <input
                   type="search"
-                  placeholder="Subject, message, user…"
+                  placeholder={t("supportTickets.subjectMessageUser")}
                   value={filters.search}
                   onChange={(e) => setFilter("search", e.target.value)}
                   className="w-full rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -218,12 +220,12 @@ export function SupportTicketsScreen() {
               </label>
             </div>
 
-            {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+            {isLoading && <p className="text-sm text-text-secondary">{t("supportTickets.loading")}</p>}
             {isError && (
               <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
                 {extractErrorMessage(error, "Couldn't load support tickets.")}
                 <button type="button" onClick={() => refetch()} className="ml-3 underline">
-                  Retry
+                  {t("supportTickets.retry")}
                 </button>
               </div>
             )}
@@ -258,7 +260,7 @@ export function SupportTicketsScreen() {
                     </li>
                   ))}
                   {data.tickets.length === 0 && (
-                    <li className="px-4 py-8 text-center text-sm text-text-dim">No tickets match these filters.</li>
+                    <li className="px-4 py-8 text-center text-sm text-text-dim">{t("supportTickets.noTicketsMatchThese")}</li>
                   )}
                 </ul>
               </div>
@@ -267,7 +269,7 @@ export function SupportTicketsScreen() {
             {data && (
               <NotAvailablePanel
                 keys={data.notAvailable}
-                subtitle="No backing data exists yet for this Figma-spec'd field — see adminSupport.service.ts."
+                subtitle={t("supportTickets.noBackingDataExists")}
               />
             )}
           </div>
@@ -275,14 +277,14 @@ export function SupportTicketsScreen() {
           {/* Right panel — selected ticket detail */}
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
             {!selectedId && (
-              <p className="text-sm text-text-dim">Select a ticket from the list to view its detail and triage it.</p>
+              <p className="text-sm text-text-dim">{t("supportTickets.selectATicketFrom")}</p>
             )}
 
-            {selectedId && isDetailLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+            {selectedId && isDetailLoading && <p className="text-sm text-text-secondary">{t("supportTickets.loading")}</p>}
 
             {selectedId && isDetailError && (
               <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
-                Couldn't load this ticket.
+                {t("supportTickets.couldnTLoadThis")}
               </div>
             )}
 
@@ -299,15 +301,15 @@ export function SupportTicketsScreen() {
                 </div>
 
                 <div className="rounded-md border border-border-subtle bg-surface-raised p-3">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Message</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.message")}</div>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{ticket.message}</p>
                 </div>
 
                 <div className="rounded-md border border-border-subtle p-3">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Conversation</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.conversation")}</div>
                   <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-border-subtle bg-surface-raised p-2">
                     {(detail?.messages ?? []).length === 0 && (
-                      <p className="px-1 py-2 text-center text-xs text-text-dim">No replies yet.</p>
+                      <p className="px-1 py-2 text-center text-xs text-text-dim">{t("supportTickets.noRepliesYet")}</p>
                     )}
                     {(detail?.messages ?? []).map((m) => (
                       <div
@@ -323,7 +325,7 @@ export function SupportTicketsScreen() {
                     ))}
                   </div>
                   <textarea
-                    placeholder="Write a reply…"
+                    placeholder={t("supportTickets.writeAReply")}
                     value={replyDraft}
                     onChange={(e) => setReplyDraft(e.target.value)}
                     className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -335,7 +337,7 @@ export function SupportTicketsScreen() {
                     onClick={() => sendMessageMutation.mutate()}
                     className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Send Reply
+                    {t("supportTickets.sendReply")}
                   </button>
                   {sendMessageMutation.isError && (
                     <p className="mt-2 text-xs text-danger">
@@ -345,35 +347,35 @@ export function SupportTicketsScreen() {
                 </div>
 
                 <div className="rounded-md border border-border-subtle p-3">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Triage</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.triage")}</div>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      Status
+                      {t("supportTickets.status")}
                       <select
                         value={draft.status}
                         onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value as SupportTicketStatus }))}
                         className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                       >
-                        <option value="open">Open</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
+                        <option value="open">{t("supportTickets.open")}</option>
+                        <option value="in_progress">{t("supportTickets.inProgress")}</option>
+                        <option value="resolved">{t("supportTickets.resolved")}</option>
+                        <option value="closed">{t("supportTickets.closed")}</option>
                       </select>
                     </label>
                     <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      Priority
+                      {t("supportTickets.priority")}
                       <select
                         value={draft.priority}
                         onChange={(e) => setDraft((d) => ({ ...d, priority: e.target.value as SupportTicketPriority }))}
                         className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                       >
-                        <option value="low">Low</option>
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
+                        <option value="low">{t("supportTickets.low")}</option>
+                        <option value="normal">{t("supportTickets.normal")}</option>
+                        <option value="high">{t("supportTickets.high")}</option>
                       </select>
                     </label>
                     <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      Category
+                      {t("supportTickets.category")}
                       <select
                         value={draft.category}
                         onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value as SupportTicketCategory }))}
@@ -393,7 +395,7 @@ export function SupportTicketsScreen() {
                     onClick={() => updateMutation.mutate()}
                     className="mt-3 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Save Triage
+                    {t("supportTickets.saveTriage")}
                   </button>
                   {updateMutation.isError && (
                     <p className="mt-2 text-xs text-danger">
@@ -404,18 +406,18 @@ export function SupportTicketsScreen() {
 
                 <NotAvailablePanel
                   keys={detail?.notAvailable ?? []}
-                  subtitle="No backing data exists yet for this Figma-spec'd field — see adminSupport.service.ts."
+                  subtitle={t("supportTickets.noBackingDataExists")}
                 />
 
                 <div className="rounded-md border border-border-subtle p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs uppercase tracking-wide text-text-dim">Escalation</div>
+                    <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.escalation")}</div>
                     {detail?.escalation && <StatusBadge status={detail.escalation.status} />}
                   </div>
                   {detail?.escalation ? (
                     <div className="mt-2 text-xs text-text-secondary">
                       <p>
-                        <span className="text-text-dim">Reason: </span>
+                        <span className="text-text-dim">{t("supportTickets.reason")}</span>
                         {detail.escalation.reason}
                       </p>
                       <p className="mt-1 text-text-dim">
@@ -428,12 +430,12 @@ export function SupportTicketsScreen() {
                       </p>
                     </div>
                   ) : (
-                    <p className="mt-1 text-xs text-text-dim">This ticket hasn't been escalated.</p>
+                    <p className="mt-1 text-xs text-text-dim">{t("supportTickets.thisTicketHasnT")}</p>
                   )}
                   {(!detail?.escalation || detail.escalation.status === "resolved") && (
                     <div className="mt-3">
                       <textarea
-                        placeholder="Why does this need escalation?"
+                        placeholder={t("supportTickets.whyDoesThisNeed")}
                         value={escalateReason}
                         onChange={(e) => setEscalateReason(e.target.value)}
                         className="w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -445,7 +447,7 @@ export function SupportTicketsScreen() {
                         onClick={() => escalateMutation.mutate()}
                         className="mt-2 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Escalate
+                        {t("supportTickets.escalate")}
                       </button>
                       {escalateMutation.isError && (
                         <p className="mt-2 text-xs text-danger">
@@ -457,7 +459,7 @@ export function SupportTicketsScreen() {
                 </div>
 
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Triage history</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.triageHistory")}</div>
                   <ul className="mt-2 divide-y divide-border-subtle rounded-md border border-border-subtle">
                     {(detail?.history ?? []).map((h) => (
                       <li key={h.id} className="px-3 py-2">
@@ -473,7 +475,7 @@ export function SupportTicketsScreen() {
                       </li>
                     ))}
                     {(detail?.history ?? []).length === 0 && (
-                      <li className="px-3 py-4 text-center text-xs text-text-dim">No triage changes yet.</li>
+                      <li className="px-3 py-4 text-center text-xs text-text-dim">{t("supportTickets.noTriageChangesYet")}</li>
                     )}
                   </ul>
                 </div>

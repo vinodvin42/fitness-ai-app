@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminEngagementAnalyticsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -46,6 +47,7 @@ const FUNNEL_STAGES: { key: keyof AdminEngagementAnalyticsResponse["funnel"]; la
  * `computeWeeklyRetention` for the full logic.
  */
 export function EngagementScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ startDate: "", endDate: "" });
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -56,15 +58,15 @@ export function EngagementScreen() {
   });
 
   return (
-    <AppShell title="Engagement" subNav={ANALYTICS_SUB_NAV}>
+    <AppShell title={t("engagement.engagement")} subNav={ANALYTICS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <p className="max-w-md text-xs text-text-secondary">
-            How new signups convert to active users, and whether they stick around a week later.
+            {t("engagement.howNewSignupsConvert")}
           </p>
           <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              From
+              {t("engagement.from")}
               <input
                 type="date"
                 value={filters.startDate}
@@ -81,17 +83,17 @@ export function EngagementScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
-            <span className="pb-1.5 text-[11px] text-text-dim">Defaults to last 30 days</span>
+            <span className="pb-1.5 text-[11px] text-text-dim">{t("engagement.defaultsToLast30")}</span>
           </div>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("engagement.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load engagement analytics.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("engagement.retry")}
             </button>
           </div>
         )}
@@ -99,7 +101,7 @@ export function EngagementScreen() {
         {data && (
           <>
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">Signup → Retention Funnel</div>
+              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("engagement.signupRetentionFunnel")}</div>
               <div className="grid grid-cols-4 gap-3">
                 {FUNNEL_STAGES.map((stage, i) => {
                   const value = data.funnel[stage.key];
@@ -117,7 +119,7 @@ export function EngagementScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Weekly Retention — last 6 weeks</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("engagement.weeklyRetentionLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 % of each week's new signups who logged ≥1 workout in that relative week. Independent of the date
                 filter above, same reasoning as 09.01's monthly cohort table.
@@ -126,12 +128,12 @@ export function EngagementScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Week of</th>
-                      <th className="px-3 py-2 font-normal">Size</th>
-                      <th className="px-3 py-2 font-normal">Week 0</th>
-                      <th className="px-3 py-2 font-normal">Week 1</th>
-                      <th className="px-3 py-2 font-normal">Week 2</th>
-                      <th className="px-3 py-2 font-normal">Week 3</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.weekOf")}</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.size")}</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.week0")}</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.week1")}</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.week2")}</th>
+                      <th className="px-3 py-2 font-normal">{t("engagement.week3")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -162,16 +164,16 @@ export function EngagementScreen() {
 
             {data.byDay && (
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Day-by-day funnel</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("engagement.dayByDayFunnel")}</div>
                 <div className="mt-3 max-h-72 overflow-y-auto overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="sticky top-0 border-b border-border-subtle bg-surface text-xs uppercase tracking-wide text-text-dim">
-                        <th className="px-3 py-2 font-normal">Date</th>
-                        <th className="px-3 py-2 font-normal">Signed Up</th>
-                        <th className="px-3 py-2 font-normal">Onboarded</th>
-                        <th className="px-3 py-2 font-normal">First Workout</th>
-                        <th className="px-3 py-2 font-normal">Retained (7d)</th>
+                        <th className="px-3 py-2 font-normal">{t("engagement.date")}</th>
+                        <th className="px-3 py-2 font-normal">{t("engagement.signedUp")}</th>
+                        <th className="px-3 py-2 font-normal">{t("engagement.onboarded")}</th>
+                        <th className="px-3 py-2 font-normal">{t("engagement.firstWorkout")}</th>
+                        <th className="px-3 py-2 font-normal">{t("engagement.retained7d")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -192,7 +194,7 @@ export function EngagementScreen() {
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="The day-by-day funnel table only computes for date ranges of 31 days or fewer — the funnel/retention numbers above still cover the full range."
+              subtitle={t("engagement.theDayByDay")}
             />
           </>
         )}

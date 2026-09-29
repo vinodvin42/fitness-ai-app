@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -41,6 +42,7 @@ const CATEGORY_LABEL: Record<string, string> = {
  * is worth keeping in mind while typing.
  */
 export function GymHelpRequestsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("open");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -66,7 +68,7 @@ export function GymHelpRequestsScreen() {
   const rows = requests.data ?? [];
 
   return (
-    <AppShell title="Gym Help Requests" subNav={GYMS_SUB_NAV}>
+    <AppShell title={t("gymHelpRequests.gymHelpRequests")} subNav={GYMS_SUB_NAV}>
       <p className="mb-5 max-w-3xl text-sm text-text-secondary">
         Operational requests from gym partners. Your reply is shown to the gym word for word. We can't discuss an
         individual member's training, food or health with a partner, however the question is phrased.
@@ -74,7 +76,7 @@ export function GymHelpRequestsScreen() {
 
       <div className="mb-5 flex items-center gap-3">
         <label className="text-xs text-text-dim" htmlFor="help-status">
-          Status
+          {t("gymHelpRequests.status")}
         </label>
         <select
           id="help-status"
@@ -82,9 +84,9 @@ export function GymHelpRequestsScreen() {
           onChange={(e) => setStatus(e.target.value)}
           className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-primary"
         >
-          <option value="open">Open</option>
-          <option value="in_progress">In progress</option>
-          <option value="resolved">Resolved</option>
+          <option value="open">{t("gymHelpRequests.open")}</option>
+          <option value="in_progress">{t("gymHelpRequests.inProgress")}</option>
+          <option value="resolved">{t("gymHelpRequests.resolved")}</option>
         </select>
       </div>
 
@@ -95,9 +97,9 @@ export function GymHelpRequestsScreen() {
       ) : null}
 
       {requests.isLoading ? (
-        <p className="text-sm text-text-dim">Loading…</p>
+        <p className="text-sm text-text-dim">{t("gymHelpRequests.loading")}</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-text-dim">Nothing in this state.</p>
+        <p className="text-sm text-text-dim">{t("gymHelpRequests.nothingInThisState")}</p>
       ) : (
         <div className="space-y-4">
           {rows.map((r) => (
@@ -136,7 +138,7 @@ export function GymHelpRequestsScreen() {
               {r.status !== "resolved" ? (
                 <div className="mt-4">
                   <label className="block text-xs text-text-dim" htmlFor={`reply-${r.id}`}>
-                    Your reply to the gym
+                    {t("gymHelpRequests.yourReplyToThe")}
                   </label>
                   <textarea
                     id={`reply-${r.id}`}
@@ -152,7 +154,7 @@ export function GymHelpRequestsScreen() {
                       onClick={() => respond.mutate({ id: r.id, next: "resolved" })}
                       className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-black disabled:opacity-40"
                     >
-                      Reply & resolve
+                      {t("gymHelpRequests.replyResolve")}
                     </button>
                     <button
                       type="button"
@@ -160,7 +162,7 @@ export function GymHelpRequestsScreen() {
                       onClick={() => respond.mutate({ id: r.id, next: "in_progress" })}
                       className="rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary disabled:opacity-40"
                     >
-                      Reply, keep open
+                      {t("gymHelpRequests.replyKeepOpen")}
                     </button>
                   </div>
                 </div>

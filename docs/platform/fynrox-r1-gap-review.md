@@ -621,10 +621,10 @@ open, and that page changes when the plans do.
    task rather than an engineering one. **Both partner portals are complete too** (gym 50
    strings to 0, creator 46 to 0), on the same setup and with the same "no preference to
    read yet" caveat — a `Gym` and an `Influencer` have no `languagePreference` column
-   either. **`apps/admin-web` is deliberately not started**: ~645 strings whose readers
-   are FynroX staff hired into an English console, so it is the lowest value per string
-   and uses the identical setup when it happens. **`apps/landing` still has no mechanism
-   at all**, and needs a different one — static HTML, no build step, no framework, so
+   either. **`apps/admin-web` is complete too** — 65 components and ~1,150 keys,
+   migrated by a three-pass script rather than by hand, with every one of its 1,253 call
+   sites verified against the pre-migration source from git. **`apps/landing` is the only
+   surface left**, and needs a different mechanism entirely — static HTML, no build step, no framework, so
    react-i18next cannot go there at all. `docs/mobile/i18n.md` carries the coverage table
    and the reasoning for both.
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.

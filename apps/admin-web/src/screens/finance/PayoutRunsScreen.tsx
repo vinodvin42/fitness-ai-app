@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -54,6 +55,7 @@ const KIND_LABEL: Record<RunKind, string> = {
  * professional says they were never paid.
  */
 export function PayoutRunsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<RunKind>("professional_earning");
   const [settling, setSettling] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export function PayoutRunsScreen() {
   const payoutReal = providers.data?.providers?.payout?.configured ?? false;
 
   return (
-    <AppShell title="Payout Runs" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("payoutRuns.payoutRuns")} subNav={FINANCE_SUB_NAV}>
       {/* D5 is open. An admin completing a run needs to know whether they
           are moving money or recording an intention to. */}
       {!payoutReal ? (
@@ -116,7 +118,7 @@ export function PayoutRunsScreen() {
 
       <div className="mb-5 flex items-center gap-3">
         <label className="text-xs text-text-dim" htmlFor="payout-kind">
-          Ledger
+          {t("payoutRuns.ledger")}
         </label>
         <select
           id="payout-kind"
@@ -130,24 +132,24 @@ export function PayoutRunsScreen() {
       </div>
 
       <section className="mb-8 rounded-lg border border-border bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">Next run — impact preview</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("payoutRuns.nextRunImpactPreview")}</h2>
         {preview.isLoading ? (
-          <p className="mt-2 text-sm text-text-dim">Loading…</p>
+          <p className="mt-2 text-sm text-text-dim">{t("payoutRuns.loading")}</p>
         ) : preview.isError ? (
           <p className="mt-2 text-sm text-danger">{extractErrorMessage(preview.error, "Couldn't load the preview.")}</p>
         ) : (
           <>
             <div className="mt-3 grid gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-xs uppercase tracking-widest text-text-dim">Rows</p>
+                <p className="text-xs uppercase tracking-widest text-text-dim">{t("payoutRuns.rows")}</p>
                 <p className="mt-1 text-2xl font-semibold text-text-primary">{p?.itemCount ?? 0}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-widest text-text-dim">Payees</p>
+                <p className="text-xs uppercase tracking-widest text-text-dim">{t("payoutRuns.payees")}</p>
                 <p className="mt-1 text-2xl font-semibold text-text-primary">{p?.payeeCount ?? 0}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-widest text-text-dim">Total</p>
+                <p className="text-xs uppercase tracking-widest text-text-dim">{t("payoutRuns.total")}</p>
                 <p className="mt-1 text-2xl font-semibold text-text-primary">{money(p?.totalCents ?? 0)}</p>
               </div>
             </div>
@@ -166,7 +168,7 @@ export function PayoutRunsScreen() {
                   } totalling ${money(p.totalCents)} across ${p.payeeCount} payee${
                     p.payeeCount === 1 ? "" : "s"
                   } into a new batch.`}
-                  actionLabel="Start run"
+                  actionLabel={t("payoutRuns.startRun")}
                   isPending={createRun.isPending}
                   onConfirm={(reason) => createRun.mutate(reason)}
                   tone="warning"
@@ -174,28 +176,28 @@ export function PayoutRunsScreen() {
               </div>
             ) : (
               <p className="mt-4 text-sm text-text-dim">
-                Nothing approved and unbatched. Approve eligible rows on the Settlements screen first.
+                {t("payoutRuns.nothingApprovedAndUnbatched")}
               </p>
             )}
           </>
         )}
       </section>
 
-      <h2 className="mb-3 text-sm font-semibold text-text-primary">Past runs</h2>
+      <h2 className="mb-3 text-sm font-semibold text-text-primary">{t("payoutRuns.pastRuns")}</h2>
       {runs.isLoading ? (
-        <p className="text-sm text-text-dim">Loading…</p>
+        <p className="text-sm text-text-dim">{t("payoutRuns.loading")}</p>
       ) : (runs.data ?? []).length === 0 ? (
-        <p className="text-sm text-text-dim">No runs yet.</p>
+        <p className="text-sm text-text-dim">{t("payoutRuns.noRunsYet")}</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-dim">
-              <th className="py-2 pr-4">Started</th>
-              <th className="py-2 pr-4">Ledger</th>
-              <th className="py-2 pr-4">Rows</th>
-              <th className="py-2 pr-4">Total</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Action</th>
+              <th className="py-2 pr-4">{t("payoutRuns.started")}</th>
+              <th className="py-2 pr-4">{t("payoutRuns.ledger")}</th>
+              <th className="py-2 pr-4">{t("payoutRuns.rows")}</th>
+              <th className="py-2 pr-4">{t("payoutRuns.total")}</th>
+              <th className="py-2 pr-4">{t("payoutRuns.status")}</th>
+              <th className="py-2 pr-4">{t("payoutRuns.action")}</th>
             </tr>
           </thead>
           <tbody>
@@ -214,14 +216,14 @@ export function PayoutRunsScreen() {
                     settling === r.id ? (
                       <div className="max-w-sm">
                         <label className="block text-[11px] text-text-dim" htmlFor={`failed-${r.id}`}>
-                          Row ids that failed (blank if all paid)
+                          {t("payoutRuns.rowIdsThatFailed")}
                         </label>
                         <textarea
                           id={`failed-${r.id}`}
                           rows={2}
                           value={failedIdsText}
                           onChange={(e) => setFailedIdsText(e.target.value)}
-                          placeholder="Paste any ids the bank rejected"
+                          placeholder={t("payoutRuns.pasteAnyIdsThe")}
                           className="mt-1 w-full rounded-md border border-border bg-canvas px-2 py-1 text-xs text-text-primary"
                         />
                         {settle.isError ? (
@@ -231,9 +233,9 @@ export function PayoutRunsScreen() {
                         ) : null}
                         <div className="mt-2">
                           <ReasonGatedAction
-                            title="Record the outcome"
-                            description="Marks every row in this batch paid, except any id listed above."
-                            actionLabel="Record outcome"
+                            title={t("payoutRuns.recordTheOutcome")}
+                            description={t("payoutRuns.marksEveryRowIn")}
+                            actionLabel={t("payoutRuns.recordOutcome")}
                             isPending={settle.isPending}
                             onConfirm={(reason) => settle.mutate({ id: r.id, reason })}
                             tone="warning"
@@ -246,7 +248,7 @@ export function PayoutRunsScreen() {
                         onClick={() => setSettling(r.id)}
                         className="rounded-md border border-border px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
                       >
-                        Record outcome
+                        {t("payoutRuns.recordOutcome")}
                       </button>
                     )
                   ) : (

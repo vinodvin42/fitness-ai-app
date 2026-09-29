@@ -22,8 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// admin-web is absent on purpose — see docs/mobile/i18n.md.
-const APPS = ['user-mobile', 'coach-mobile', 'gym-portal', 'creator-portal'].map((name) => ({
+const APPS = ['user-mobile', 'coach-mobile', 'gym-portal', 'creator-portal', 'admin-web'].map((name) => ({
   name,
   root: path.join(import.meta.dirname, `../apps/${name}/src`),
 }));
@@ -39,6 +38,21 @@ function walk(dir) {
   return out;
 }
 
+/*
+ * Strings that render to a user but are NOT copy, so no translator
+ * should be paid to look at them and no key should exist for them:
+ *
+ *   - A URL or URL placeholder. "https://…" means the same thing in
+ *     every language, and a translated one would be wrong.
+ *   - A standard finance or metrics acronym (CAC, LTV, ARPU, MRR). These
+ *     are used untranslated in Indian finance and product writing; an
+ *     expansion would be less recognisable, not more.
+ *
+ * Listed explicitly rather than pattern-matched, so adding one is a
+ * decision someone makes on purpose.
+ */
+const NOT_COPY = new Set(['https://…', 'https://...', 'CAC', 'LTV', 'ARPU', 'MRR']);
+
 /** Props whose string value is rendered to the user. */
 const TEXT_PROPS = /\b(label|title|subtitle|placeholder|message|actionLabel|accessibilityLabel|accessibilityHint)=\{?"([^"]{2,})"\}?/g;
 /** A JSX text node: >Some words< with at least one space or a letter run. */
@@ -50,12 +64,15 @@ for (const app of APPS) {
   for (const file of walk(app.root)) {
     const src = fs.readFileSync(file, 'utf8');
     const inline = new Set();
-    for (const m of src.matchAll(TEXT_PROPS)) inline.add(m[2].trim());
+    for (const m of src.matchAll(TEXT_PROPS)) {
+      const text = m[2].trim();
+      if (!NOT_COPY.has(text)) inline.add(text);
+    }
     for (const m of src.matchAll(JSX_TEXT)) {
       const text = m[1].trim();
       // Skip things that are plainly not sentences: a single capitalised
       // identifier with no space is usually a component or a unit.
-      if (/\s/.test(text)) inline.add(text);
+      if (/\s/.test(text) && !NOT_COPY.has(text)) inline.add(text);
     }
     const translated = (src.match(/\bt\(\s*["`]/g) || []).length;
     rows.push({ file: path.relative(app.root, file), inline: inline.size, translated, strings: [...inline] });

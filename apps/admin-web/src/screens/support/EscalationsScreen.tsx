@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminEscalationListResponse, EscalationStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -31,6 +32,7 @@ async function fetchEscalations(status: EscalationStatus | ""): Promise<AdminEsc
  * row, so the queue stays an honest per-incident history).
  */
 export function EscalationsScreen() {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<EscalationStatus | "">("open");
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
@@ -47,13 +49,13 @@ export function EscalationsScreen() {
   });
 
   return (
-    <AppShell title="Escalations" subNav={SUPPORT_SUB_NAV}>
+    <AppShell title={t("escalations.escalations")} subNav={SUPPORT_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total" value={data.counts.total} />
-            <StatCard label="Open" value={data.counts.open} />
-            <StatCard label="Resolved" value={data.counts.resolved} />
+            <StatCard label={t("escalations.total")} value={data.counts.total} />
+            <StatCard label={t("escalations.open")} value={data.counts.open} />
+            <StatCard label={t("escalations.resolved")} value={data.counts.resolved} />
           </div>
         )}
 
@@ -66,26 +68,26 @@ export function EscalationsScreen() {
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("escalations.status")}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as EscalationStatus | "")}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="open">Open</option>
-              <option value="resolved">Resolved</option>
-              <option value="">All</option>
+              <option value="open">{t("escalations.open")}</option>
+              <option value="resolved">{t("escalations.resolved")}</option>
+              <option value="">{t("escalations.all")}</option>
             </select>
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("escalations.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load escalations.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("escalations.retry")}
             </button>
           </div>
         )}
@@ -110,25 +112,25 @@ export function EscalationsScreen() {
               </div>
 
               <p className="mt-3 text-sm text-text-secondary">
-                <span className="text-xs text-text-dim">Reason: </span>
+                <span className="text-xs text-text-dim">{t("escalations.reason")}</span>
                 {e.reason}
               </p>
 
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                 <div>
-                  <dt className="text-xs text-text-dim">Escalated by</dt>
+                  <dt className="text-xs text-text-dim">{t("escalations.escalatedBy")}</dt>
                   <dd className="text-text-secondary">{e.escalatedByName}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Date</dt>
+                  <dt className="text-xs text-text-dim">{t("escalations.date")}</dt>
                   <dd className="text-text-secondary">{new Date(e.createdAt).toLocaleDateString()}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Resolved by</dt>
+                  <dt className="text-xs text-text-dim">{t("escalations.resolvedBy")}</dt>
                   <dd className="text-text-secondary">{e.resolvedByName ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Resolved</dt>
+                  <dt className="text-xs text-text-dim">{t("escalations.resolved")}</dt>
                   <dd className="text-text-secondary">
                     {e.resolvedAt ? new Date(e.resolvedAt).toLocaleDateString() : "—"}
                   </dd>
@@ -138,7 +140,7 @@ export function EscalationsScreen() {
               {e.status === "open" ? (
                 <div className="mt-3">
                   <textarea
-                    placeholder="Resolution notes (optional)"
+                    placeholder={t("escalations.resolutionNotesOptional")}
                     value={resolutionNotes[e.id] ?? ""}
                     onChange={(ev) => setResolutionNotes((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                     className="w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -150,7 +152,7 @@ export function EscalationsScreen() {
                     onClick={() => resolveMutation.mutate(e.id)}
                     className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                   >
-                    Resolve
+                    {t("escalations.resolve")}
                   </button>
                   {resolveMutation.isError && (
                     <p className="mt-2 text-xs text-danger">
@@ -161,7 +163,7 @@ export function EscalationsScreen() {
               ) : (
                 e.resolutionNotes && (
                   <p className="mt-3 text-xs text-text-secondary">
-                    <span className="text-text-dim">Resolution notes: </span>
+                    <span className="text-text-dim">{t("escalations.resolutionNotes")}</span>
                     {e.resolutionNotes}
                   </p>
                 )

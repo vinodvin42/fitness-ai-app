@@ -5,6 +5,7 @@ import { en as userEn } from "../../user-mobile/src/i18n/locales/en";
 import { en as coachEn } from "../../coach-mobile/src/i18n/locales/en";
 import { en as gymEn } from "../../gym-portal/src/i18n/locales/en";
 import { en as creatorEn } from "../../creator-portal/src/i18n/locales/en";
+import { en as adminEn } from "../../admin-web/src/i18n/locales/en";
 
 /**
  * Guards every translation catalogue in the repo.
@@ -26,6 +27,7 @@ const APPS = [
   { name: "coach-mobile", src: path.join(__dirname, "../../coach-mobile/src"), catalogue: coachEn },
   { name: "gym-portal", src: path.join(__dirname, "../../gym-portal/src"), catalogue: gymEn },
   { name: "creator-portal", src: path.join(__dirname, "../../creator-portal/src"), catalogue: creatorEn },
+  { name: "admin-web", src: path.join(__dirname, "../../admin-web/src"), catalogue: adminEn },
 ];
 
 function sourceFiles(dir: string): string[] {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -42,6 +43,7 @@ const STATUS_HELP: Record<string, string> = {
 };
 
 export function PrivacyRequestsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("received");
   const [exportUrl, setExportUrl] = useState<Record<string, string>>({});
@@ -73,7 +75,7 @@ export function PrivacyRequestsScreen() {
   const rows = requests.data ?? [];
 
   return (
-    <AppShell title="Privacy Requests" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("privacyRequests.privacyRequests")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <p className="mb-5 max-w-3xl text-sm text-text-secondary">
         Data-subject requests under the DPDP Act. Verify who someone is before you act on their request —
         fulfilling an unverified deletion is itself the breach.
@@ -81,7 +83,7 @@ export function PrivacyRequestsScreen() {
 
       <div className="mb-5 flex items-center gap-3">
         <label className="text-xs text-text-dim" htmlFor="privacy-status">
-          Status
+          {t("privacyRequests.status")}
         </label>
         <select
           id="privacy-status"
@@ -105,9 +107,9 @@ export function PrivacyRequestsScreen() {
       ) : null}
 
       {requests.isLoading ? (
-        <p className="text-sm text-text-dim">Loading…</p>
+        <p className="text-sm text-text-dim">{t("privacyRequests.loading")}</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-text-dim">Nothing in this state.</p>
+        <p className="text-sm text-text-dim">{t("privacyRequests.nothingInThisState")}</p>
       ) : (
         <div className="space-y-4">
           {rows.map((r) => (
@@ -139,9 +141,9 @@ export function PrivacyRequestsScreen() {
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {r.status === "received" ? (
                   <ReasonGatedAction
-                    title="Verify identity"
-                    description="Record how you confirmed this is really the account holder. Do this before anything else."
-                    actionLabel="Mark verified"
+                    title={t("privacyRequests.verifyIdentity")}
+                    description={t("privacyRequests.recordHowYouConfirmed")}
+                    actionLabel={t("privacyRequests.markVerified")}
                     isPending={step.isPending}
                     onConfirm={(reason) => step.mutate({ id: r.id, action: "verify", reason })}
                     tone="warning"
@@ -150,13 +152,13 @@ export function PrivacyRequestsScreen() {
 
                 {r.status === "verifying" ? (
                   <ReasonGatedAction
-                    title="Start fulfilment"
+                    title={t("privacyRequests.startFulfilment")}
                     description={
                       r.type === "deletion"
                         ? "Schedules the deletion 30 days out. The user can cancel during that window."
                         : "Moves the request into fulfilment so an export can be prepared."
                     }
-                    actionLabel="Start"
+                    actionLabel={t("privacyRequests.start")}
                     isPending={step.isPending}
                     onConfirm={(reason) => step.mutate({ id: r.id, action: "start", reason })}
                     tone="warning"
@@ -168,7 +170,7 @@ export function PrivacyRequestsScreen() {
                     {r.type === "export" ? (
                       <div>
                         <label className="block text-xs text-text-dim" htmlFor={`url-${r.id}`}>
-                          Export download link
+                          {t("privacyRequests.exportDownloadLink")}
                         </label>
                         <input
                           id={`url-${r.id}`}
@@ -177,7 +179,7 @@ export function PrivacyRequestsScreen() {
                           placeholder="https://…"
                           className="mt-1 w-full rounded-md border border-border bg-canvas px-2 py-1 text-sm text-text-primary"
                         />
-                        <p className="mt-1 text-[11px] text-text-dim">Expires 72 hours after you complete this.</p>
+                        <p className="mt-1 text-[11px] text-text-dim">{t("privacyRequests.expires72HoursAfter")}</p>
                       </div>
                     ) : null}
                     <ReasonGatedAction
@@ -187,7 +189,7 @@ export function PrivacyRequestsScreen() {
                           ? "Irreversible. Removes this person's data; the audit trail survives with an anonymized actor."
                           : "Marks the export ready and sends the link to the user."
                       }
-                      actionLabel="Complete"
+                      actionLabel={t("privacyRequests.complete")}
                       isPending={resolve.isPending}
                       onConfirm={(reason) =>
                         resolve.mutate({ id: r.id, action: "complete", reason, url: exportUrl[r.id] })
@@ -199,9 +201,9 @@ export function PrivacyRequestsScreen() {
 
                 {r.status !== "completed" && r.status !== "rejected" ? (
                   <ReasonGatedAction
-                    title="Refuse this request"
-                    description="Give a reason the person can be told. Refusing a statutory right without one isn't defensible."
-                    actionLabel="Refuse"
+                    title={t("privacyRequests.refuseThisRequest")}
+                    description={t("privacyRequests.giveAReasonThe")}
+                    actionLabel={t("privacyRequests.refuse")}
                     isPending={resolve.isPending}
                     onConfirm={(reason) => resolve.mutate({ id: r.id, action: "reject", reason })}
                     tone="danger"

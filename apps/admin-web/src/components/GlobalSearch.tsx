@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminSearchResponse, AdminSearchResultItem, AdminSearchResultType } from "@fitness-ai-app/types";
@@ -39,6 +40,7 @@ async function fetchSearch(q: string): Promise<AdminSearchResponse> {
 }
 
 export function GlobalSearch() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
@@ -91,13 +93,13 @@ export function GlobalSearch() {
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        placeholder="Search users, professionals, gyms, campaigns…"
+        placeholder={t("globalSearch.searchUsersProfessionalsGyms")}
         className="w-full rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent"
       />
 
       {showPanel && (
         <div className="absolute right-0 top-[calc(100%+4px)] z-50 max-h-96 w-96 overflow-y-auto rounded-lg border border-border-subtle bg-surface shadow-lg">
-          {isLoading && <div className="px-4 py-3 text-xs text-text-secondary">Searching…</div>}
+          {isLoading && <div className="px-4 py-3 text-xs text-text-secondary">{t("globalSearch.searching")}</div>}
 
           {isError && (
             <div className="px-4 py-3 text-xs text-danger">

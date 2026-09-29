@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -63,12 +64,13 @@ const queryClient = new QueryClient({
 });
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
+  const { t } = useTranslation();
   const { adminUser, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-text-secondary">
-        Loading…
+        {t("app.loading")}
       </div>
     );
   }
@@ -90,12 +92,13 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
  * isLoading/adminUser check in the opposite direction.
  */
 function RedirectIfAuthed({ children }: { children: React.ReactElement }) {
+  const { t } = useTranslation();
   const { adminUser, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-text-secondary">
-        Loading…
+        {t("app.loading")}
       </div>
     );
   }

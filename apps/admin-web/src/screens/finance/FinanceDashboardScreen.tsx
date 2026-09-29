@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { AdminFinanceDashboardResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -35,21 +36,22 @@ async function fetchDashboard(): Promise<AdminFinanceDashboardResponse> {
  * own doc comment for why.
  */
 export function FinanceDashboardScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-finance-dashboard"],
     queryFn: fetchDashboard,
   });
 
   return (
-    <AppShell title="Finance Dashboard" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("financeDashboard.financeDashboard")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("financeDashboard.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the Finance dashboard.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("financeDashboard.retry")}
             </button>
           </div>
         )}
@@ -57,33 +59,33 @@ export function FinanceDashboardScreen() {
         {data && (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <StatCard label="Revenue (MTD)" value={money(data.kpis.revenueMtdCents)} />
-              <StatCard label="Expenses (MTD)" value={money(data.kpis.expensesMtdCents)} />
+              <StatCard label={t("financeDashboard.revenueMtd")} value={money(data.kpis.revenueMtdCents)} />
+              <StatCard label={t("financeDashboard.expensesMtd")} value={money(data.kpis.expensesMtdCents)} />
               <StatCard
-                label="Net Profit (MTD)"
+                label={t("financeDashboard.netProfitMtd")}
                 value={money(data.kpis.netProfitMtdCents)}
                 hint={data.kpis.netProfitMtdCents < 0 ? "Running at a loss this month" : undefined}
               />
-              <StatCard label="Accounts Receivable" value={money(data.kpis.accountsReceivableCents)} />
-              <StatCard label="Accounts Payable" value={money(data.kpis.accountsPayableCents)} hint="Expenses only — see below" />
-              <StatCard label="Cash Balance" value={money(data.kpis.cashBalanceCents)} hint="All-time paid revenue minus paid expenses" />
+              <StatCard label={t("financeDashboard.accountsReceivable")} value={money(data.kpis.accountsReceivableCents)} />
+              <StatCard label={t("financeDashboard.accountsPayable")} value={money(data.kpis.accountsPayableCents)} hint="Expenses only — see below" />
+              <StatCard label={t("financeDashboard.cashBalance")} value={money(data.kpis.cashBalanceCents)} hint="All-time paid revenue minus paid expenses" />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <StatCard
-                label="Burn Rate (avg/mo, trailing 6mo)"
+                label={t("financeDashboard.burnRateAvgMo")}
                 value={data.burnRateCents === null ? "—" : money(data.burnRateCents)}
                 hint={data.burnRateCents === null ? "Net cash flow hasn't been negative on average" : undefined}
               />
               <StatCard
-                label="Runway"
+                label={t("financeDashboard.runway")}
                 value={data.runwayMonths === null ? "—" : `${data.runwayMonths} mo`}
                 hint={data.runwayMonths === null ? "No sustained burn to project against" : "Cash balance ÷ burn rate"}
               />
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">Cash flow — trailing 6 months</div>
+              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("financeDashboard.cashFlowTrailing6")}</div>
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.cashFlow}>
@@ -99,22 +101,22 @@ export function FinanceDashboardScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">Required financial actions</div>
+              <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("financeDashboard.requiredFinancialActions")}</div>
               <div className="flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
-                <span className="text-text-secondary">Overdue receivables</span>
+                <span className="text-text-secondary">{t("financeDashboard.overdueReceivables")}</span>
                 <span className="text-text-primary">
                   {data.requiredActions.overdueReceivables.count} · {money(data.requiredActions.overdueReceivables.amountCents)}
                 </span>
               </div>
               <div className="mt-2 flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
-                <span className="text-text-secondary">Open refund requests</span>
+                <span className="text-text-secondary">{t("financeDashboard.openRefundRequests")}</span>
                 <span className="text-text-primary">{data.requiredActions.openRefundRequests}</span>
               </div>
             </div>
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="No backing data exists yet for this Figma-spec'd field — see adminFinance.service.ts."
+              subtitle={t("financeDashboard.noBackingDataExists")}
             />
           </>
         )}

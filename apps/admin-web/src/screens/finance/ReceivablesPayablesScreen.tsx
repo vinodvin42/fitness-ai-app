@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { AdminReceivablesPayablesResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
@@ -25,21 +26,22 @@ async function fetchReceivablesPayables(): Promise<AdminReceivablesPayablesRespo
  * adminFinance.service.ts's own doc comment).
  */
 export function ReceivablesPayablesScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-finance-receivables-payables"],
     queryFn: fetchReceivablesPayables,
   });
 
   return (
-    <AppShell title="Receivables & Payables" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("receivablesPayables.receivablesPayables")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("receivablesPayables.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load receivables & payables.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("receivablesPayables.retry")}
             </button>
           </div>
         )}
@@ -47,9 +49,9 @@ export function ReceivablesPayablesScreen() {
         {data && (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <StatCard label="Receivables" value={money(data.receivablesTotalCents)} hint={`${data.receivables.length} items`} />
-              <StatCard label="Payables" value={money(data.payablesTotalCents)} hint={`${data.payables.length} items — expenses only`} />
-              <StatCard label="Net Position" value={money(data.netPositionCents)} />
+              <StatCard label={t("receivablesPayables.receivables")} value={money(data.receivablesTotalCents)} hint={`${data.receivables.length} items`} />
+              <StatCard label={t("receivablesPayables.payables")} value={money(data.payablesTotalCents)} hint={`${data.payables.length} items — expenses only`} />
+              <StatCard label={t("receivablesPayables.netPosition")} value={money(data.netPositionCents)} />
             </div>
 
             <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
@@ -60,14 +62,14 @@ export function ReceivablesPayablesScreen() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
                 <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                  Receivables
+                  {t("receivablesPayables.receivables")}
                 </div>
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">From</th>
-                      <th className="px-3 py-2 font-normal">Amount</th>
-                      <th className="px-3 py-2 font-normal">Aging</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.from")}</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.amount")}</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.aging")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -86,7 +88,7 @@ export function ReceivablesPayablesScreen() {
                     {data.receivables.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-3 py-8 text-center text-text-dim">
-                          Nothing outstanding.
+                          {t("receivablesPayables.nothingOutstanding")}
                         </td>
                       </tr>
                     )}
@@ -96,14 +98,14 @@ export function ReceivablesPayablesScreen() {
 
               <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
                 <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                  Payables (expenses only)
+                  {t("receivablesPayables.payablesExpensesOnly")}
                 </div>
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Expense</th>
-                      <th className="px-3 py-2 font-normal">Amount</th>
-                      <th className="px-3 py-2 font-normal">Aging</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.expense")}</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.amount")}</th>
+                      <th className="px-3 py-2 font-normal">{t("receivablesPayables.aging")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -122,7 +124,7 @@ export function ReceivablesPayablesScreen() {
                     {data.payables.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-3 py-8 text-center text-text-dim">
-                          Nothing outstanding.
+                          {t("receivablesPayables.nothingOutstanding")}
                         </td>
                       </tr>
                     )}

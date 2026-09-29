@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminSettlementsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -32,6 +33,7 @@ async function fetchSettlements(month: string): Promise<AdminSettlementsResponse
  * run through Razorpay yet. See adminSettlements.service.ts.
  */
 export function SettlementsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
   const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
@@ -55,20 +57,20 @@ export function SettlementsScreen() {
   });
 
   return (
-    <AppShell title="Coach Settlements" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("settlements.coachSettlements")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-4 gap-3">
-            <StatCard label="Gross (booking value)" value={money(data.summary.grossCents)} />
-            <StatCard label="Platform commission" value={money(data.summary.commissionCents)} />
-            <StatCard label="Coach net" value={money(data.summary.netCents)} />
-            <StatCard label="Unsettled net" value={money(data.summary.unsettledNetCents)} />
+            <StatCard label={t("settlements.grossBookingValue")} value={money(data.summary.grossCents)} />
+            <StatCard label={t("settlements.platformCommission")} value={money(data.summary.commissionCents)} />
+            <StatCard label={t("settlements.coachNet")} value={money(data.summary.netCents)} />
+            <StatCard label={t("settlements.unsettledNet")} value={money(data.summary.unsettledNetCents)} />
           </div>
         )}
 
         <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Month
+            {t("settlements.month")}
             <input
               type="month"
               value={month}
@@ -82,12 +84,12 @@ export function SettlementsScreen() {
           </p>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("settlements.loading")}</p>}
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load settlements.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("settlements.retry")}
             </button>
           </div>
         )}
@@ -100,13 +102,13 @@ export function SettlementsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Coach</th>
-                  <th className="px-4 py-3 font-normal">Bookings</th>
-                  <th className="px-4 py-3 font-normal">Gross</th>
-                  <th className="px-4 py-3 font-normal">Commission %</th>
-                  <th className="px-4 py-3 font-normal">Net payable</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Action</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.coach")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.bookings")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.gross")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.commission")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.netPayable")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("settlements.action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +144,7 @@ export function SettlementsScreen() {
                               }
                               className="rounded-md border border-border-subtle px-2 py-1 text-xs text-accent hover:border-accent"
                             >
-                              Save
+                              {t("settlements.save")}
                             </button>
                           )}
                         </div>
@@ -153,7 +155,7 @@ export function SettlementsScreen() {
                       </td>
                       <td className="px-4 py-3">
                         {settled ? (
-                          <span className="text-xs text-text-dim">Settled</span>
+                          <span className="text-xs text-text-dim">{t("settlements.settled")}</span>
                         ) : (
                           <button
                             type="button"
@@ -161,7 +163,7 @@ export function SettlementsScreen() {
                             disabled={settleMutation.isPending || r.netCents <= 0}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
                           >
-                            Settle
+                            {t("settlements.settle")}
                           </button>
                         )}
                       </td>
@@ -171,7 +173,7 @@ export function SettlementsScreen() {
                 {data.rows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No delivered coaching bookings in this month.
+                      {t("settlements.noDeliveredCoachingBookings")}
                     </td>
                   </tr>
                 )}
@@ -183,7 +185,7 @@ export function SettlementsScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="Influencer payouts live under Growth → Influencers — see adminSettlements.service.ts."
+            subtitle={t("settlements.influencerPayoutsLiveUnder")}
           />
         )}
       </div>

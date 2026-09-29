@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminUserConsentsResponse, AdminUserDirectoryResponse, ConsentType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -49,6 +50,7 @@ function fullDate(iso: string | null): string {
  * for this wave for the fuller reasoning behind defaulting to read-only.
  */
 export function ConsentManagementScreen() {
+  const { t } = useTranslation();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export function ConsentManagementScreen() {
   });
 
   return (
-    <AppShell title="Consent Management" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("consentManagement.consentManagement")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
         <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
           Real, per-user consent state — marketing emails, data analytics, and health-data processing — exactly as
@@ -83,10 +85,10 @@ export function ConsentManagementScreen() {
           className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4"
         >
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Search for a user
+            {t("consentManagement.searchForAUser")}
             <input
               type="search"
-              placeholder="Name or email…"
+              placeholder={t("consentManagement.nameOrEmail")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-72 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -97,11 +99,11 @@ export function ConsentManagementScreen() {
             className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
             disabled={!searchInput.trim()}
           >
-            Search
+            {t("consentManagement.search")}
           </button>
         </form>
 
-        {searchQuery.isLoading && <p className="text-sm text-text-secondary">Searching…</p>}
+        {searchQuery.isLoading && <p className="text-sm text-text-secondary">{t("consentManagement.searching")}</p>}
 
         {searchQuery.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -114,8 +116,8 @@ export function ConsentManagementScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">User</th>
-                  <th className="px-4 py-3 font-normal">Email</th>
+                  <th className="px-4 py-3 font-normal">{t("consentManagement.user")}</th>
+                  <th className="px-4 py-3 font-normal">{t("consentManagement.email")}</th>
                   <th className="px-4 py-3 font-normal"></th>
                 </tr>
               </thead>
@@ -130,7 +132,7 @@ export function ConsentManagementScreen() {
                         onClick={() => setSelectedUserId(u.id)}
                         className="text-xs text-accent hover:underline"
                       >
-                        View consents →
+                        {t("consentManagement.viewConsents")}
                       </button>
                     </td>
                   </tr>
@@ -154,10 +156,10 @@ export function ConsentManagementScreen() {
               onClick={() => setSelectedUserId(null)}
               className="text-xs text-text-dim hover:text-text-primary"
             >
-              ← Back to search results
+              {t("consentManagement.backToSearchResults")}
             </button>
 
-            {consentsQuery.isLoading && <p className="mt-3 text-sm text-text-secondary">Loading…</p>}
+            {consentsQuery.isLoading && <p className="mt-3 text-sm text-text-secondary">{t("consentManagement.loading")}</p>}
 
             {consentsQuery.isError && (
               <div className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -176,9 +178,9 @@ export function ConsentManagementScreen() {
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                        <th className="px-3 py-2 font-normal">Consent Type</th>
-                        <th className="px-3 py-2 font-normal">State</th>
-                        <th className="px-3 py-2 font-normal">Last Updated</th>
+                        <th className="px-3 py-2 font-normal">{t("consentManagement.consentType")}</th>
+                        <th className="px-3 py-2 font-normal">{t("consentManagement.state")}</th>
+                        <th className="px-3 py-2 font-normal">{t("consentManagement.lastUpdated")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -188,15 +190,15 @@ export function ConsentManagementScreen() {
                           <td className="px-3 py-2">
                             {c.updatedAt === null ? (
                               <span className="inline-flex items-center rounded-full bg-text-dim/15 px-2.5 py-0.5 text-[11px] font-medium text-text-dim">
-                                Never set
+                                {t("consentManagement.neverSet")}
                               </span>
                             ) : c.granted ? (
                               <span className="inline-flex items-center rounded-full bg-accent/15 px-2.5 py-0.5 text-[11px] font-medium text-accent">
-                                Granted
+                                {t("consentManagement.granted")}
                               </span>
                             ) : (
                               <span className="inline-flex items-center rounded-full bg-danger/15 px-2.5 py-0.5 text-[11px] font-medium text-danger">
-                                Revoked
+                                {t("consentManagement.revoked")}
                               </span>
                             )}
                           </td>
