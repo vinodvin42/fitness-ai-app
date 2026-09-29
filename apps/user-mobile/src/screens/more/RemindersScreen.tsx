@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Pressable, Switch, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -61,6 +62,7 @@ function formatDays(daysOfWeek: number[]) {
  * infrastructure anywhere in this app.
  */
 export function RemindersScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: reminders, isLoading, isError, refetch } = useQuery({ queryKey: ["reminders"], queryFn: fetchReminders });
@@ -94,7 +96,7 @@ export function RemindersScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Reminders">
+      <ScreenContainer title={t("remindersList.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -102,20 +104,20 @@ export function RemindersScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Reminders">
+      <ScreenContainer title={t("remindersList.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Reminders">
-      <Button label="+ Add Reminder" onPress={() => navigation.navigate("ReminderForm", {})} />
+    <ScreenContainer title={t("remindersList.title")}>
+      <Button label={t("remindersList.add")} onPress={() => navigation.navigate("ReminderForm", {})} />
 
       {(reminders ?? []).length === 0 ? (
         <EmptyState
-          title="No reminders yet"
-          subtitle="Add one for workouts, meals, water, or measurements."
+          title={t("remindersList.emptyTitle")}
+          subtitle={t("remindersList.emptySubtitle")}
           style={{ marginTop: spacing.md }}
         />
       ) : (

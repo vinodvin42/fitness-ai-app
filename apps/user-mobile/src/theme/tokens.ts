@@ -25,7 +25,15 @@ export const colors = {
 
   textPrimary: "#EDF0F5",
   textSecondary: "#98A2B3",
-  textMuted: "#5E6675",
+  // Lightened from #5E6675 on 29 Sep 2026. A WCAG 2.1 AA contrast pass
+  // over this palette measured it at 2.55:1 on `surfaceHigh` against a
+  // 4.5:1 requirement — and it is used for exactly the text a low-vision
+  // reader most needs (captions, hints, timestamps, the label under every
+  // MacroChip). #8B919C is the smallest lightening that clears AA on the
+  // worst surface, at 4.65:1. The same token, same value, was wrong in
+  // apps/landing's CSS, which was ported from this file; axe-core found
+  // 189 instances of it there.
+  textMuted: "#8B919C",
   textOnAccent: "#04120E", // near-black green, for text on the mint accent
 
   accent: "#35E6C5", // signature mint-cyan (recovery/energy) — v2 headline
@@ -45,7 +53,12 @@ export const colors = {
   // Secondary/data hues — infrared (strain/streak/calories), pink (fat macro),
   // cyan (hydration/cardio).
   orange: "#FF6552", // "infrared" in the spec
-  pink: "#EC4899",
+  // #EC4899 measured 4.17:1 on `surfaceHigh` — under AA for normal text,
+  // and it IS normal text: RecipeDetailScreen's MacroChip renders the fat
+  // value in it at 18px, below the 18.66px large-text threshold. Nudged
+  // the minimum needed to reach 4.62:1. The derived `rgba(236,72,153,.16)`
+  // tints are untouched — those are backgrounds, held to 3:1 at most.
+  pink: "#EE59A3",
   cyan: "#22D3EE",
 
   overlay: "rgba(0,0,0,0.6)",

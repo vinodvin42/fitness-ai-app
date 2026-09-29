@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "23PrimeFit Coach",
-    "slug": "23primefit-coach-mobile",
+    "name": "FynroX Coach",
+    "slug": "fynrox-coach-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "primefitcoach",
+    "scheme": "fynroxcoach",
     "userInterfaceStyle": "dark",
     "platforms": ["ios", "android", "web"],
     "ios": {
@@ -19,8 +19,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "23PrimeFit Coach uses your camera to photograph a certification or KYC document.",
-          "photosPermission": "23PrimeFit Coach uses your photo library so you can upload a certification or KYC document.",
+          "cameraPermission": "FynroX Coach uses your camera to photograph a certification or KYC document.",
+          "photosPermission": "FynroX Coach uses your photo library so you can upload a certification or KYC document.",
           "microphonePermission": false
         }
       ]

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import QRCode from "qrcode";
 import type { AdminGymMemberActivationSummary, GymPortalProfileResponse } from "@fitness-ai-app/types";
@@ -39,11 +40,12 @@ async function fetchMemberActivationSummary(): Promise<AdminGymMemberActivationS
  * lib/twoFactor.ts's TOTP-setup QR), reused here rather than introducing a
  * second QR library into this build. Encodes the exact deep-link shape
  * apps/user-mobile's acquisitionContext.ts already expects
- * (`primefit://join?source=gym&code=<code>`) — see gyms.service.ts's own
+ * (`fynrox://join?source=gym&code=<code>`) — see gyms.service.ts's own
  * doc comment on the invite code for why that string, not a bare code, is
  * what's meaningful to scan.
  */
 export function DashboardScreen() {
+  const { t } = useTranslation();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -61,7 +63,7 @@ export function DashboardScreen() {
       setQrDataUrl(null);
       return;
     }
-    const deepLink = `primefit://join?source=gym&code=${data.gym.inviteCode}`;
+    const deepLink = `fynrox://join?source=gym&code=${data.gym.inviteCode}`;
     let cancelled = false;
     QRCode.toDataURL(deepLink, { margin: 1, width: 200 })
       .then((url) => {
@@ -76,7 +78,7 @@ export function DashboardScreen() {
   }, [data?.gym.inviteCode]);
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell title={t("nav.dashboard")}>
       {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
 
       {isError && (
@@ -101,14 +103,12 @@ export function DashboardScreen() {
             {data.gym.contactPhone && <div className="text-xs text-text-dim">{data.gym.contactPhone}</div>}
             {data.gym.status === "application" && (
               <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
-                Your partner application is still under review — your invite code and dashboard are ready, but
-                they'll go live for real signups once PrimeFit approves your account.
+                {t("dashboard.underReview")}
               </p>
             )}
             {data.gym.status === "suspended" && (
               <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
-                Your partner account is currently suspended. Contact PrimeFit support (see the Support tab) to
-                resolve this.
+                {t("dashboard.suspended")}
               </p>
             )}
           </div>
@@ -116,9 +116,9 @@ export function DashboardScreen() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Invite code / QR — "Unique QR/invite/link access" */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Member Invite</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.memberInvite")}</div>
               <p className="mt-2 text-sm text-text-secondary">
-                Share this code or QR with your members so PrimeFit signups can be attributed to your gym.
+                {t("dashboard.shareCode")}
               </p>
               <div className="mt-3 flex items-center gap-4">
                 {qrDataUrl && (
@@ -129,7 +129,7 @@ export function DashboardScreen() {
                   />
                 )}
                 <div>
-                  <div className="text-[11px] text-text-dim">Invite code</div>
+                  <div className="text-[11px] text-text-dim">{t("dashboard.inviteCode")}</div>
                   <div className="font-mono text-lg tracking-wider text-text-primary">{data.gym.inviteCode}</div>
                 </div>
               </div>
@@ -138,18 +138,17 @@ export function DashboardScreen() {
             {/* Member activation summary — "First-workout and privacy-safe
                 activity/re-entry indicators". Aggregate counts only. */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Member Activity</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.memberActivity")}</div>
               {isSummaryLoading && <p className="mt-3 text-sm text-text-secondary">Loading…</p>}
               {summary && (
                 <dl className="mt-3 space-y-2 text-sm">
-                  <Row label="Members joined via your invite" value={summary.memberCount} />
-                  <Row label="Onboarding completed" value={summary.onboardingCompletedCount} />
-                  <Row label="First workout completed" value={summary.firstWorkoutCompletedCount} />
+                  <Row label={t("dashboard.membersJoined")} value={summary.memberCount} />
+                  <Row label={t("dashboard.onboardingCompleted")} value={summary.onboardingCompletedCount} />
+                  <Row label={t("dashboard.firstWorkout")} value={summary.firstWorkoutCompletedCount} />
                 </dl>
               )}
               <p className="mt-3 text-[11px] text-text-dim">
-                Aggregate counts only — PrimeFit never shares a member list, individual activity, nutrition logs,
-                medical/safety data, or private conversations with your gym.
+                {t("dashboard.aggregateNote")}
               </p>
             </div>
           </div>
@@ -169,7 +168,7 @@ export function DashboardScreen() {
               ))}
               {data.gym.locations.length === 0 && (
                 <p className="text-sm text-text-dim">
-                  No locations on file yet — contact PrimeFit support to add one.
+                  {t("dashboard.noLocations")}
                 </p>
               )}
             </div>
@@ -179,11 +178,11 @@ export function DashboardScreen() {
               never the raw negotiated commission/rate figures (see
               gyms.routes.ts's own comment on why this route trims those). */}
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="text-xs uppercase tracking-wide text-text-dim">Commercial Status</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.commercialStatus")}</div>
             <p className="mt-2 text-sm text-text-secondary">
               {data.gym.commercialConfigured
-                ? "Your commercial terms are configured. Contact your PrimeFit account manager for details."
-                : "Commercial terms have not been configured yet — reach out to your PrimeFit account manager."}
+                ? "Your commercial terms are configured. Contact your FynroX account manager for details."
+                : "Commercial terms have not been configured yet — reach out to your FynroX account manager."}
             </p>
           </div>
         </div>

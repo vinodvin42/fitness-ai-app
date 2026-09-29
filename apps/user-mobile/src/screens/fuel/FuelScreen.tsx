@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -22,12 +23,11 @@ const DAILY_TARGETS = { calories: 2000, proteinG: 150, carbsG: 200, fatG: 65 };
 const WATER_GOAL_GLASSES = 8; // placeholder — see gap §25
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
-const MEAL_LABELS: Record<MealType, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
-};
+// `MEAL_LABELS` used to live here. The labels moved to the catalogue
+// (`fuel.mealTypes.*`) and nothing replaced the map: the timeline already
+// iterates `MEAL_TYPES`, so the order was never this file's to own.
+// Resolving labels at module level would have frozen whichever language
+// was active when this file first loaded, anyway.
 
 /**
  * Nutrition Dashboard (fuel-01) — docs/mobile/03-screen-inventory.md §D. 31
@@ -36,6 +36,7 @@ const MEAL_LABELS: Record<MealType, string> = {
  * (MealLog/WaterLog totals, per-slot timeline, +1 Glass) is unchanged.
  */
 export function FuelScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: mealLogs, isLoading, isError, refetch } = useQuery({
     queryKey: ["mealLogs", "today"],
@@ -70,7 +71,7 @@ export function FuelScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Fuel">
+      <ScreenContainer title={t("fuel.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -91,7 +92,7 @@ export function FuelScreen({ navigation }: Props) {
   const remaining = Math.max(0, DAILY_TARGETS.calories - totals.calories);
 
   return (
-    <ScreenContainer title="Fuel" subtitle="Today's nutrition">
+    <ScreenContainer title={t("fuel.title")} subtitle={t("fuel.todaysNutrition")}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
           <ProgressRing progress={totals.calories / DAILY_TARGETS.calories} size={116} strokeWidth={12} color={colors.orange}>
@@ -103,17 +104,17 @@ export function FuelScreen({ navigation }: Props) {
           <View style={{ flex: 1, gap: spacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
               <Icon name="flame" size={18} color={colors.orange} />
-              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Calories</Text>
+              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("fuel.calories")}</Text>
             </View>
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>{remaining} kcal remaining</Text>
-            <MacroBar label="Protein" value={totals.proteinG} target={DAILY_TARGETS.proteinG} color={colors.success} />
-            <MacroBar label="Carbs" value={totals.carbsG} target={DAILY_TARGETS.carbsG} color={colors.warning} />
-            <MacroBar label="Fat" value={totals.fatG} target={DAILY_TARGETS.fatG} color={colors.pink} />
+            <MacroBar label={t("fuel.macros.protein")} value={totals.proteinG} target={DAILY_TARGETS.proteinG} color={colors.success} />
+            <MacroBar label={t("fuel.macros.carbs")} value={totals.carbsG} target={DAILY_TARGETS.carbsG} color={colors.warning} />
+            <MacroBar label={t("fuel.macros.fat")} value={totals.fatG} target={DAILY_TARGETS.fatG} color={colors.pink} />
           </View>
         </View>
       </Card>
 
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.sm }}>Meals</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.sm }}>{t("fuel.meals")}</Text>
       <View style={{ gap: spacing.sm }}>
         {MEAL_TYPES.map((mt) => {
           const logs = byMealType[mt];
@@ -124,8 +125,8 @@ export function FuelScreen({ navigation }: Props) {
               icon="utensils"
               tint={colors.success}
               tintSoft={colors.successSoft}
-              title={MEAL_LABELS[mt]}
-              subtitle={logs.length > 0 ? logs.map((l) => l.name).join(", ") : "Tap to add"}
+              title={t(`fuel.mealTypes.${mt}`)}
+              subtitle={logs.length > 0 ? logs.map((l) => l.name).join(", ") : t("fuel.tapToAdd")}
               onPress={() => !isLoading && navigation.navigate("LogMeal", { mealType: mt })}
               right={
                 <Text style={{ color: logs.length > 0 ? colors.textPrimary : colors.textMuted, ...typography.label }}>
@@ -139,13 +140,13 @@ export function FuelScreen({ navigation }: Props) {
 
       <Card style={{ marginTop: spacing.sm }}>
         {isWaterError ? (
-          <ErrorState message="Couldn't load today's water intake." onRetry={() => refetchWater()} />
+          <ErrorState message={t("fuel.waterError")} onRetry={() => refetchWater()} />
         ) : (
           <>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                 <Icon name="droplet" size={18} color={colors.cyan} />
-                <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hydration</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("fuel.hydration")}</Text>
               </View>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>
                 {totalGlasses} / {WATER_GOAL_GLASSES}
@@ -171,7 +172,7 @@ export function FuelScreen({ navigation }: Props) {
               ))}
             </View>
             <Button
-              label="+1 Glass"
+              label={t("fuel.addGlass")}
               variant="secondary"
               onPress={onAddGlass}
               loading={isLoggingWater}
@@ -184,24 +185,24 @@ export function FuelScreen({ navigation }: Props) {
       <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
         <ListRow
           icon="apple"
-          title="Recipes"
-          subtitle="Browse & log meals"
+          title={t("fuel.links.recipes.label")}
+          subtitle={t("fuel.links.recipes.subtitle")}
           tint={colors.pink}
           tintSoft={"rgba(236,72,153,0.16)"}
           onPress={() => navigation.navigate("Recipes")}
         />
         <ListRow
           icon="calendar"
-          title="Nutrition Calendar"
-          subtitle="Compliance & history"
+          title={t("fuel.links.calendar.label")}
+          subtitle={t("fuel.links.calendar.subtitle")}
           tint={colors.warning}
           tintSoft={colors.warningSoft}
           onPress={() => navigation.navigate("NutritionCalendar")}
         />
         <ListRow
           icon="sparkles"
-          title="Meal Plan"
-          subtitle="AI-generated, from real recipes"
+          title={t("fuel.links.mealPlan.label")}
+          subtitle={t("fuel.links.mealPlan.subtitle")}
           tint={colors.success}
           tintSoft={colors.successSoft}
           onPress={() => navigation.navigate("MealPlan")}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
@@ -36,6 +37,7 @@ const EMPTY_FORM: ChangePasswordForm = { currentPassword: "", newPassword: "", c
  * someone without direct database access. This closes that gap for real.
  */
 export function SecurityScreen() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<ChangePasswordForm>(EMPTY_FORM);
   const [justChanged, setJustChanged] = useState(false);
 
@@ -64,13 +66,13 @@ export function SecurityScreen() {
   }
 
   return (
-    <AppShell title="Security" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("security.security")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
         <form
           onSubmit={handleSubmit}
           className="max-w-md space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
         >
-          <div className="text-sm font-medium">Change password</div>
+          <div className="text-sm font-medium">{t("security.changePassword")}</div>
           <p className="text-xs text-text-secondary">
             Changing your password does not sign you out of this session, but you'll need the new one next
             time you log in — there's no "sign out other sessions" here, admin sessions have no session list to
@@ -78,7 +80,7 @@ export function SecurityScreen() {
           </p>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Current password
+            {t("security.currentPassword")}
             <input
               required
               type="password"
@@ -90,7 +92,7 @@ export function SecurityScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            New password
+            {t("security.newPassword")}
             <input
               required
               type="password"
@@ -104,7 +106,7 @@ export function SecurityScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Confirm new password
+            {t("security.confirmNewPassword")}
             <input
               required
               type="password"
@@ -113,7 +115,7 @@ export function SecurityScreen() {
               onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             />
-            {confirmMismatch && <span className="text-danger">Doesn't match.</span>}
+            {confirmMismatch && <span className="text-danger">{t("security.doesnTMatch")}</span>}
           </label>
 
           {changePasswordMutation.isError && (
@@ -123,7 +125,7 @@ export function SecurityScreen() {
           )}
 
           {justChanged && !changePasswordMutation.isError && (
-            <p className="text-xs text-accent">Password changed.</p>
+            <p className="text-xs text-accent">{t("security.passwordChanged")}</p>
           )}
 
           <button
@@ -137,7 +139,7 @@ export function SecurityScreen() {
 
         <NotAvailablePanel
           keys={["twoFactorAuth", "passwordPolicy", "sessionSettings", "securityEventsTable"]}
-          subtitle="The rest of 12.05's spec'd security-config card and events table — none of this exists anywhere in this API yet."
+          subtitle={t("security.theRestOf12")}
         />
       </div>
     </AppShell>

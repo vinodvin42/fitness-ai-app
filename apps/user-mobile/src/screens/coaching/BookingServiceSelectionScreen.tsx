@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -61,6 +62,7 @@ function serviceLabel(serviceType: string | null) {
  * program elsewhere in this app.
  */
 export function BookingServiceSelectionScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { professionalId } = route.params;
   const queryClient = useQueryClient();
 
@@ -147,7 +149,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   if (profileLoading) {
     return (
-      <ScreenContainer title="Book a Session">
+      <ScreenContainer title={t("coaching.booking.selectTitle")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -155,14 +157,14 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   if (profileError || !profile) {
     return (
-      <ScreenContainer title="Book a Session">
+      <ScreenContainer title={t("coaching.booking.selectTitle")}>
         <ErrorState onRetry={refetchProfile} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Book a Session">
+    <ScreenContainer title={t("coaching.booking.selectTitle")}>
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{profile.fullName}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
@@ -171,7 +173,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       </Card>
 
       <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-        Choose a service
+        {t("coaching.booking.chooseService")}
       </Text>
       <View style={{ gap: spacing.xs }}>
         {profile.offerings.map((o) => (
@@ -185,7 +187,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Choose a date</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("coaching.booking.chooseDate")}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: spacing.xs }}>
           {days.map((d) => {
@@ -206,7 +208,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         </View>
       </ScrollView>
 
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Choose a time</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("coaching.booking.chooseTime")}</Text>
       {availabilityLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : (
@@ -229,7 +231,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         <TextInput
           value={couponCode}
           onChangeText={(v) => setCouponCode(v.toUpperCase())}
-          placeholder="Have a coupon? Enter code"
+          placeholder={t("coaching.booking.couponPlaceholder")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           style={{

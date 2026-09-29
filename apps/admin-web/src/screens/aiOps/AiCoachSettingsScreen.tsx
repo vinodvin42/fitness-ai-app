@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { AdminAiCoachSettingsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
@@ -37,6 +38,7 @@ async function fetchAiCoachSettings(): Promise<AdminAiCoachSettingsResponse> {
  * "half-real" module in this build.
  */
 export function AiCoachSettingsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
@@ -52,12 +54,12 @@ export function AiCoachSettingsScreen() {
   });
 
   return (
-    <AppShell title="AI Operations">
+    <AppShell title={t("aiCoachSettings.aiOperations")}>
       <div className="space-y-4">
         <div className="max-w-xl rounded-lg border border-border-subtle bg-surface p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-medium">AI Coach chat</div>
+              <div className="text-sm font-medium">{t("aiCoachSettings.aiCoachChat")}</div>
               <p className="mt-1 text-xs text-text-secondary">
                 The one real AI capability in this build. Turning this off returns a real "temporarily
                 disabled" response to every user — it doesn't just hide a button in the app.
@@ -83,7 +85,7 @@ export function AiCoachSettingsScreen() {
             )}
           </div>
 
-          {isLoading && <p className="mt-3 text-xs text-text-dim">Loading…</p>}
+          {isLoading && <p className="mt-3 text-xs text-text-dim">{t("aiCoachSettings.loading")}</p>}
           {isError && (
             <p className="mt-3 text-xs text-danger">{extractErrorMessage(error, "Couldn't load AI Coach settings.")}</p>
           )}
@@ -110,7 +112,7 @@ export function AiCoachSettingsScreen() {
 
         <NotAvailablePanel
           keys={["aiFeatureConsole", "aiUsageMetrics", "aiSafetyOverridesLog"]}
-          subtitle="The rest of 11.01–11.03's spec'd Feature Console, Usage, and Safety/Overrides screens — only 1 real AI capability exists in this build, so a full console would misrepresent 3 rows that don't exist. See apps/api's adminAiOps.service.ts."
+          subtitle={t("aiCoachSettings.theRestOf11")}
         />
       </div>
     </AppShell>

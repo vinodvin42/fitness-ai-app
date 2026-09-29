@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -7,9 +8,9 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { AIBanner } from "../../components/AIBanner";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "RecoverHub">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "RecoverHub">;
 
 /**
  * Recover — docs/mobile/03-screen-inventory.md §E (5 screens) + §H (AI
@@ -32,10 +33,11 @@ type Props = NativeStackScreenProps<MoreStackParamList, "RecoverHub">;
  *     rather than the design's global floating action button.
  */
 export function RecoverScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
-    <ScreenContainer title="Recover" subtitle="Rest, recovery & AI guidance">
+    <ScreenContainer title={t("recoverHub.title")} subtitle={t("recoverHub.subtitle")}>
       <AIBanner
-        title="Chat with 23Prime AI"
+        title={t("recoverHub.chat")}
         body="Training, nutrition, and recovery guidance grounded in your real goals and progress."
         ctaLabel="Open chat"
         onPress={() => navigation.navigate("AiCoach")}
@@ -56,9 +58,9 @@ export function RecoverScreen({ navigation }: Props) {
             <Icon name="heart-pulse" size={24} color={colors.danger} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Recovery Log</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("recoverHub.log")}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-              Resting HR, sleep, HRV, soreness & energy
+              {t("recoverHub.logSubtitle")}
             </Text>
           </View>
         </View>
@@ -67,7 +69,7 @@ export function RecoverScreen({ navigation }: Props) {
           native integration this build can't do yet.
         </Text>
         <Button
-          label="Open Recovery"
+          label={t("recoverHub.open")}
           variant="secondary"
           onPress={() => navigation.navigate("Recovery")}
           style={{ marginTop: spacing.md }}

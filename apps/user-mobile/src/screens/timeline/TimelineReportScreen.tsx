@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -31,6 +32,7 @@ const BADGE_LABEL: Record<TimelineEventType, string> = {
  * isn't already in the full event list.
  */
 export function TimelineReportScreen({ route }: Props) {
+  const { t } = useTranslation();
   const { year } = route.params;
   const { data: events, isLoading, isError, refetch } = useQuery({ queryKey: ["timeline"], queryFn: fetchTimeline });
 
@@ -85,7 +87,7 @@ export function TimelineReportScreen({ route }: Props) {
         ))}
       </Card>
 
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>By month</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("timelineExtra.byMonth")}</Text>
       <Card>
         {MONTH_NAMES.map((name, i) => (
           <View

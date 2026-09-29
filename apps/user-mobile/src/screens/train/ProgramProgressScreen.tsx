@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ProgramProgress">;
  * proper "consecutive days/weeks" definition this pass doesn't attempt.
  */
 export function ProgramProgressScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { programId } = route.params;
   const { data: progress, isLoading, isError, refetch } = useQuery({
     queryKey: ["program", programId, "progress"],
@@ -32,7 +34,7 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Program Progress">
+      <ScreenContainer title={t("workout.programProgress.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -40,7 +42,7 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
 
   if (isLoading || !progress) {
     return (
-      <ScreenContainer title="Program Progress">
+      <ScreenContainer title={t("workout.programProgress.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -84,14 +86,14 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
         <Card style={{ marginTop: spacing.md }}>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>🎉 Program complete!</Text>
           <Button
-            label="View Completion"
+            label={t("workout.programProgress.viewCompletion")}
             onPress={() => navigation.replace("ProgramCompletion", { programId })}
             style={{ marginTop: spacing.md }}
           />
         </Card>
       ) : (
         <Button
-          label="View Workouts"
+          label={t("workout.programProgress.viewWorkouts")}
           variant="secondary"
           onPress={() => navigation.navigate("ProgramDetail", { programId })}
           style={{ marginTop: spacing.lg }}

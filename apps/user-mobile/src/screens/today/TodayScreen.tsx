@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -62,6 +63,7 @@ function todayLabel(): string {
  * Links when only the Plan card's data failed to load (or vice versa).
  */
 export function TodayScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const {
@@ -131,19 +133,19 @@ export function TodayScreen({ navigation }: Props) {
       }
     >
       <AIBanner
-        title="Your AI Coach is ready"
-        body="Ask 23Prime AI for training, nutrition, or recovery guidance grounded in your real progress."
+        title={t("today.aiCoachReady")}
+        body="Ask FynroX AI for training, nutrition, or recovery guidance grounded in your real progress."
         ctaLabel="Open chat"
-        onPress={() => navigation.navigate("More", { screen: "AiCoach" })}
+        onPress={() => navigation.navigate("Recover", { screen: "AiCoach" })}
       />
 
       {isPlanError ? (
-        <ErrorState message="Couldn't load your plan for today." onRetry={onRetryPlan} />
+        <ErrorState message={t("today.planError")} onRetry={onRetryPlan} />
       ) : inProgressToday ? (
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
             <Icon name="dumbbell" size={18} color={colors.accent} />
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Continue Workout</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("today.continueWorkout")}</Text>
           </View>
           <Text style={{ color: colors.textSecondary }}>
             {inProgressToday.workoutName} · {inProgressToday.programName}
@@ -152,7 +154,7 @@ export function TodayScreen({ navigation }: Props) {
             {inProgressToday.totalSets} set{inProgressToday.totalSets === 1 ? "" : "s"} logged so far
           </Text>
           <Button
-            label="Resume session"
+            label={t("today.resumeSession")}
             onPress={() =>
               navigation.navigate("Train", {
                 screen: "ActiveWorkout",
@@ -166,7 +168,7 @@ export function TodayScreen({ navigation }: Props) {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
             <Icon name="target" size={18} color={colors.accent} />
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Today's Plan</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("today.todaysPlan")}</Text>
           </View>
           <Text style={{ color: colors.textSecondary }}>
             {nextWorkout.workout.name} · {nextWorkout.plan.programName}
@@ -177,7 +179,7 @@ export function TodayScreen({ navigation }: Props) {
             </Text>
           ) : null}
           <Button
-            label="Start Workout"
+            label={t("today.startWorkout")}
             onPress={() =>
               navigation.navigate("Train", {
                 screen: "WorkoutDetail",
@@ -197,7 +199,7 @@ export function TodayScreen({ navigation }: Props) {
       ) : null}
 
       {isWaterError ? (
-        <ErrorState message="Couldn't load today's hydration." onRetry={() => refetchWater()} />
+        <ErrorState message={t("today.hydrationError")} onRetry={() => refetchWater()} />
       ) : (
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
@@ -216,7 +218,7 @@ export function TodayScreen({ navigation }: Props) {
               {Math.max(0, WATER_GOAL_GLASSES - totalGlasses)} glasses to your goal
             </Text>
             <Button
-              label="+1 Glass"
+              label={t("fuel.addGlass")}
               variant="secondary"
               onPress={onAddGlass}
               loading={isLoggingWater}
@@ -227,15 +229,36 @@ export function TodayScreen({ navigation }: Props) {
       </Card>
       )}
 
+      {/* Handoff §2 decision #1: "Progress lives in More, plus a Progress
+          card on Today." Moving Progress off the tab bar without this
+          card would bury it two levels down, which is the burial the
+          14 Sep swap was originally trying to fix — the card is what
+          makes the move safe rather than a regression. */}
+      <Card>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1, paddingRight: spacing.md }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("today.progressCard.title")}</Text>
+            <Text style={{ color: colors.textMuted, ...typography.body, marginTop: 2 }}>
+              {t("today.progressCard.subtitle")}
+            </Text>
+          </View>
+          <Button
+            label={t("common.open")}
+            variant="secondary"
+            onPress={() => navigation.navigate("More", { screen: "ProgressTab" })}
+          />
+        </View>
+      </Card>
+
       <View>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Quick links</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickLinks")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <QuickLink icon="dumbbell" label="Train" onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
-          <QuickLink icon="utensils" label="Fuel" onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />
+          <QuickLink icon="dumbbell" label={t("nav.train")} onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
+          <QuickLink icon="utensils" label={t("nav.fuel")} onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />
           <QuickLink
             icon="heart-pulse"
-            label="Recover"
-            onPress={() => navigation.navigate("More", { screen: "RecoverHub" })}
+            label={t("nav.recover")}
+            onPress={() => navigation.navigate("Recover", { screen: "RecoverHub" })}
             tint={colors.aiAccent}
             tintSoft={colors.aiAccentSoft}
           />

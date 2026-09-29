@@ -1,4 +1,4 @@
-# MVP Launch Plan — 23PrimeFit Consumer Mobile App
+# MVP Launch Plan — FynroX Consumer Mobile App
 
 **Written 20 Aug 2026.** This is a delivery plan, not a new roadmap — it reuses `docs/platform/roadmap.md`'s phases and `docs/mobile/07-open-questions-gaps.md`'s gap numbers rather than re-deriving them, and narrows down to one question: what actually has to happen, in what order, to get this app in front of real users.
 

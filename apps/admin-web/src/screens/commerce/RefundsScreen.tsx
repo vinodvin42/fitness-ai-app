@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminRefundsResponse, RefundStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -40,6 +41,7 @@ async function fetchRefunds(filters: Filters): Promise<AdminRefundsResponse> {
  * screens. See adminRefunds.service.ts.
  */
 export function RefundsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ status: "" });
   const [showForm, setShowForm] = useState(false);
@@ -64,28 +66,28 @@ export function RefundsScreen() {
   });
 
   return (
-    <AppShell title="Refunds" subNav={COMMERCE_SUB_NAV}>
+    <AppShell title={t("refunds.refunds")} subNav={COMMERCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total refunds" value={data.summary.totalCount} />
-            <StatCard label="Processed" value={money(data.summary.processedCents)} />
-            <StatCard label="Pending" value={money(data.summary.pendingCents)} />
+            <StatCard label={t("refunds.totalRefunds")} value={data.summary.totalCount} />
+            <StatCard label={t("refunds.processed")} value={money(data.summary.processedCents)} />
+            <StatCard label={t("refunds.pending")} value={money(data.summary.pendingCents)} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("refunds.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilters({ status: e.target.value as Filters["status"] })}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="processed">Processed</option>
-              <option value="failed">Failed</option>
+              <option value="">{t("refunds.all")}</option>
+              <option value="pending">{t("refunds.pending")}</option>
+              <option value="processed">{t("refunds.processed")}</option>
+              <option value="failed">{t("refunds.failed")}</option>
             </select>
           </label>
           <button
@@ -111,7 +113,7 @@ export function RefundsScreen() {
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Payment id
+                {t("refunds.paymentId")}
                 <input
                   required
                   value={form.paymentId}
@@ -120,7 +122,7 @@ export function RefundsScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Amount
+                {t("refunds.amount")}
                 <input
                   required
                   type="number"
@@ -133,7 +135,7 @@ export function RefundsScreen() {
               </label>
             </div>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Reason (optional)
+              {t("refunds.reasonOptional")}
               <input
                 value={form.reason}
                 onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}
@@ -153,12 +155,12 @@ export function RefundsScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("refunds.loading")}</p>}
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load refunds.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("refunds.retry")}
             </button>
           </div>
         )}
@@ -168,11 +170,11 @@ export function RefundsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">User</th>
-                  <th className="px-4 py-3 font-normal">Amount</th>
-                  <th className="px-4 py-3 font-normal">Reason</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Date</th>
+                  <th className="px-4 py-3 font-normal">{t("refunds.user")}</th>
+                  <th className="px-4 py-3 font-normal">{t("refunds.amount")}</th>
+                  <th className="px-4 py-3 font-normal">{t("refunds.reason")}</th>
+                  <th className="px-4 py-3 font-normal">{t("refunds.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("refunds.date")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,7 +197,7 @@ export function RefundsScreen() {
                 {data.refunds.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                      No refunds match these filters.
+                      {t("refunds.noRefundsMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -207,7 +209,7 @@ export function RefundsScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="Gateway health telemetry isn't surfaced here — see adminRefunds.service.ts."
+            subtitle={t("refunds.gatewayHealthTelemetryIsn")}
           />
         )}
       </div>

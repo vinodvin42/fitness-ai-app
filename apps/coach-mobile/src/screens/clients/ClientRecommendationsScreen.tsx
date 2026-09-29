@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -39,6 +40,7 @@ import { colors, spacing, typography } from "../../theme/tokens";
  * honest that they're still awaiting a decision.
  */
 export function ClientRecommendationsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const route = useRoute<RouteProp<ClientsStackParamList, "ClientRecommendations">>();
@@ -69,8 +71,8 @@ export function ClientRecommendationsScreen() {
 
       {data && data.length === 0 && (
         <EmptyState
-          title="Nothing pending"
-          subtitle="When this client's AI Plan Recommendation engine has a real recommendation awaiting a decision, it will show up here."
+          title={t("clients.recommendations.emptyTitle")}
+          subtitle={t("clients.recommendations.emptySubtitle")}
         />
       )}
 
@@ -99,12 +101,13 @@ function RecommendationCard({
   isBusy: boolean;
   onDecide: (input: DecideRecommendationInput) => void;
 }) {
+  const { t } = useTranslation();
   const title =
     recommendation.kind === "no_change" ? "Continue Current Plan" : `Switch to ${recommendation.suggestedProgramName ?? "a new program"}`;
 
   return (
     <Card>
-      <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "600" }}>Awaiting your review</Text>
+      <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "600" }}>{t("clients.recommendations.awaiting")}</Text>
       <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: 2 }}>{title}</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>{recommendation.rationale}</Text>
 
@@ -117,7 +120,7 @@ function RecommendationCard({
           style={{ flex: 1 }}
         />
         <Button
-          label="Reject"
+          label={t("clients.recommendations.reject")}
           variant="secondary"
           onPress={() => onDecide({ action: "decline" })}
           loading={isBusy}

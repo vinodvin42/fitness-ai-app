@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Image, Share, Switch, Text, TextInput, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,8 +26,17 @@ import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import type { SetupTwoFactorResponse } from "@fitness-ai-app/types";
 
-function idleTimeoutLabel(minutes: BiometricLockIdleTimeoutMinutes): string {
-  return minutes === 0 ? "Immediately" : `${minutes} min`;
+// Returns a KEY plus its interpolation, because this is module-level and
+// cannot reach the `t` hook. "min" is also a unit that pluralises
+// differently across the ten languages offered, so it goes through
+// i18next's count rather than string concatenation.
+function idleTimeoutKey(minutes: BiometricLockIdleTimeoutMinutes): {
+  key: string;
+  options?: { count: number };
+} {
+  return minutes === 0
+    ? { key: "security.biometric.immediately" }
+    : { key: "security.biometric.minutes", options: { count: minutes } };
 }
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Security">;
@@ -90,6 +100,7 @@ function formatDate(iso: string) {
  * library is wired up this pass.
  */
 export function SecurityScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const {
     user,
     refreshUser,
@@ -279,7 +290,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
     try {
       const data = await fetchDataExport();
       await Share.share({
-        title: "My 23PrimeFit data",
+        title: "My FynroX data",
         message: JSON.stringify(data, null, 2),
       });
     } catch (err) {
@@ -315,12 +326,12 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Security & Privacy">
+    <ScreenContainer title={t("security.title")}>
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Change Password</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("security.changePassword")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Current password"
+          placeholder={t("security.currentPassword")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={currentPassword}
@@ -328,7 +339,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
         />
         <TextInput
           style={[styles.input, { marginTop: spacing.sm }]}
-          placeholder="New password (min. 8 characters)"
+          placeholder={t("security.newPassword")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={newPassword}
@@ -336,7 +347,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
         />
         <TextInput
           style={[styles.input, { marginTop: spacing.sm }]}
-          placeholder="Confirm new password"
+          placeholder={t("security.confirmNewPassword")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={confirmPassword}
@@ -346,7 +357,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
           <Text style={{ color: colors.danger, marginTop: spacing.sm }}>{passwordError}</Text>
         ) : null}
         <Button
-          label="Change Password"
+          label={t("security.changePassword")}
           onPress={onChangePassword}
           loading={isChangingPassword}
           disabled={!canChangePassword}
@@ -356,14 +367,13 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>
-          Two-Factor Authentication
+          {t("security.twoFactor.title")}
         </Text>
 
         {twoFactorStep === "recoveryCodes" ? (
           <>
             <Text style={{ color: colors.textPrimary, marginBottom: spacing.sm }}>
-              Two-factor authentication is on. Save these recovery codes somewhere safe — each works once, and this
-              is the only time they'll be shown.
+              {t("security.twoFactor.recoveryCodes")}
             </Text>
             <View style={styles.recoveryCodesBox}>
               {twoFactorRecoveryCodes.map((code) => (
@@ -373,32 +383,31 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
               ))}
             </View>
             <Button
-              label="Copy Codes"
+              label={t("security.twoFactor.copyCodes")}
               variant="secondary"
               onPress={onCopyRecoveryCodes}
               style={{ marginTop: spacing.md }}
             />
-            <Button label="Done" onPress={onFinishTwoFactorSetup} style={{ marginTop: spacing.sm }} />
+            <Button label={t("common.done")} onPress={onFinishTwoFactorSetup} style={{ marginTop: spacing.sm }} />
           </>
         ) : twoFactorStep === "setup" && twoFactorSetupData ? (
           <>
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-              Scan this with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the
-              6-digit code it shows.
+              {t("security.twoFactor.scan")}
             </Text>
             <View style={styles.qrWrapper}>
               <Image source={{ uri: twoFactorSetupData.qrCodeDataUrl }} style={styles.qrImage} />
             </View>
             <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.xs }}>
-              Can't scan it? Enter this code manually:
+              {t("security.twoFactor.cantScan")}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
               <Text style={[styles.manualSecret, { flex: 1 }]}>{twoFactorSetupData.secret}</Text>
-              <Button label="Copy" variant="secondary" onPress={onCopyTwoFactorSecret} style={{ height: 36, paddingHorizontal: spacing.md }} />
+              <Button label={t("security.twoFactor.copy")} variant="secondary" onPress={onCopyTwoFactorSecret} style={{ height: 36, paddingHorizontal: spacing.md }} />
             </View>
             <TextInput
               style={styles.input}
-              placeholder="6-digit code"
+              placeholder={t("security.twoFactor.code")}
               placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               maxLength={6}
@@ -409,30 +418,29 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
               <Text style={{ color: colors.danger, marginTop: spacing.sm }}>{twoFactorError}</Text>
             ) : null}
             <Button
-              label="Enable"
+              label={t("security.twoFactor.enable")}
               onPress={onConfirmEnableTwoFactor}
               loading={isEnablingTwoFactor}
               disabled={twoFactorCode.trim().length !== 6}
               style={{ marginTop: spacing.md }}
             />
-            <Button label="Cancel" variant="secondary" onPress={onCancelTwoFactorSetup} style={{ marginTop: spacing.sm }} />
+            <Button label={t("common.cancel")} variant="secondary" onPress={onCancelTwoFactorSetup} style={{ marginTop: spacing.sm }} />
           </>
         ) : user?.twoFactorEnabled ? (
           <>
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-              Two-factor authentication is on — logins need a code from your authenticator app. Enter your password
-              to turn it off.
+              {t("security.twoFactor.on")}
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="Password"
+              placeholder={t("security.password")}
               placeholderTextColor={colors.textMuted}
               secureTextEntry
               value={disableTwoFactorPassword}
               onChangeText={setDisableTwoFactorPassword}
             />
             <Button
-              label="Turn Off"
+              label={t("security.twoFactor.turnOff")}
               variant="secondary"
               onPress={onDisableTwoFactor}
               loading={isDisablingTwoFactor}
@@ -443,22 +451,21 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
         ) : (
           <>
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-              Add a second step at login using an authenticator app — even if your password leaks, your account
-              stays protected.
+              {t("security.twoFactor.pitch")}
             </Text>
-            <Button label="Set Up" onPress={onStartTwoFactorSetup} loading={isStartingTwoFactorSetup} />
+            <Button label={t("security.twoFactor.setUp")} onPress={onStartTwoFactorSetup} loading={isStartingTwoFactorSetup} />
           </>
         )}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Active Sessions</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("security.sessions.title")}</Text>
         {sessionsLoading ? (
           <ActivityIndicator color={colors.accent} />
         ) : sessionsError ? (
           <ErrorState onRetry={() => refetchSessions()} />
         ) : (sessions ?? []).length === 0 ? (
-          <EmptyState title="No active sessions" />
+          <EmptyState title={t("security.sessions.empty")} />
         ) : (
           <View style={{ gap: spacing.sm }}>
             {(sessions ?? []).map((session) => (
@@ -472,7 +479,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
                     Expires {formatDate(session.expiresAt)}
                   </Text>
                 </View>
-                <Button label="Sign Out" variant="secondary" onPress={() => onRevokeSession(session.id)} style={{ height: 36, paddingHorizontal: spacing.md }} />
+                <Button label={t("security.sessions.signOut")} variant="secondary" onPress={() => onRevokeSession(session.id)} style={{ height: 36, paddingHorizontal: spacing.md }} />
               </View>
             ))}
           </View>
@@ -482,13 +489,13 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View style={{ flex: 1, marginRight: spacing.md }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Biometric Unlock</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("security.biometric.title")}</Text>
             <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
               {!isBiometricHardwareChecked
-                ? "Checking this device…"
+                ? t("security.biometric.checking")
                 : isBiometricHardwareReady
-                  ? "Require Face ID or Touch ID to open the app after it's been backgrounded."
-                  : "No Face ID or Touch ID is set up on this device."}
+                  ? t("security.biometric.ready")
+                  : t("security.biometric.unavailable")}
             </Text>
           </View>
           <Switch
@@ -504,13 +511,13 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
         {isBiometricLockEnabled ? (
           <View style={{ marginTop: spacing.md }}>
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-              Lock after being backgrounded for
+              {t("security.biometric.lockAfter")}
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
               {BIOMETRIC_LOCK_IDLE_TIMEOUT_OPTIONS.map((minutes) => (
                 <Chip
                   key={minutes}
-                  label={idleTimeoutLabel(minutes)}
+                  label={t(idleTimeoutKey(minutes).key, idleTimeoutKey(minutes).options)}
                   selected={biometricLockIdleTimeoutMinutes === minutes}
                   onPress={() => setBiometricLockIdleTimeout(minutes)}
                 />
@@ -521,29 +528,28 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Data & Privacy</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("security.data.title")}</Text>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-          Download everything this app has stored about you — profile, workouts, meals, measurements, purchases,
-          and reminders — as JSON.
+          {t("security.data.body")}
         </Text>
-        <Button label="Download My Data" variant="secondary" onPress={onDownloadData} loading={isExporting} />
+        <Button label={t("security.data.download")} variant="secondary" onPress={onDownloadData} loading={isExporting} />
       </Card>
 
       <Card style={{ marginTop: spacing.md, borderColor: colors.danger }}>
-        <Text style={{ color: colors.danger, ...typography.h2, marginBottom: spacing.sm }}>Delete Account</Text>
+        <Text style={{ color: colors.danger, ...typography.h2, marginBottom: spacing.sm }}>{t("security.deleteAccount.title")}</Text>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-          Permanently deletes your account and everything in it. Enter your password to confirm.
+          {t("security.deleteAccount.body")}
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={t("security.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={deletePassword}
           onChangeText={setDeletePassword}
         />
         <Button
-          label="Delete Account"
+          label={t("security.deleteAccount.submit")}
           variant="secondary"
           onPress={onDeleteAccount}
           loading={isDeleting}

@@ -21,14 +21,23 @@ export const colors = {
 
   textPrimary: "#F5F5F7",
   textSecondary: "#9A9AA5",
-  textMuted: "#65656F",
+  // Lightened from #65656F on 29 Sep 2026 — 2.84:1 on `surfaceRaised`
+  // against AA's 4.5:1. See apps/user-mobile/src/theme/tokens.ts for the
+  // same finding in the user app's palette; both were eyeballed, neither
+  // had been measured.
+  textMuted: "#88888F",
 
   accent: "#D4FF00",
   accentAlt: "#C6F000",
 
   success: "#22C55E",
   warning: "#F59E0B",
-  danger: "#EF4444",
+  // #EF4444 measured 4.35:1 on `surfaceRaised`, and every use of it is
+  // small text — form errors at `typography.meta`, the payout-failure
+  // reason on Earnings, StatusBadge's foreground over its own 15% tint
+  // (which raises the effective background and makes it worse still).
+  // Nudged the minimum needed to reach 4.60:1.
+  danger: "#F04E4E",
 } as const;
 
 export const spacing = {

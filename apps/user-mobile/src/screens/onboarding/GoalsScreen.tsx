@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -22,15 +23,16 @@ const GOALS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Goals" — multi-select chip grid. */
 export function GoalsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={3}
       total={8}
-      label="Goals"
-      title="What are your goals?"
-      subtitle="Select as many as apply — you can change these later."
+      label={t("onboarding.goals.step")}
+      title={t("onboarding.goals.title")}
+      subtitle={t("onboarding.goals.subtitle")}
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("TrainingLevel");

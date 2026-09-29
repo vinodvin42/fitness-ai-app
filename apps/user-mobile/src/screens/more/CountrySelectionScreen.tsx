@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "CountrySelection">;
  * format, not list membership (see users.schema.ts's own comment).
  */
 export function CountrySelectionScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const { user, updateProfile } = useAuth();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | undefined>(user?.countryCode ?? undefined);
@@ -55,10 +57,10 @@ export function CountrySelectionScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Country">
+    <ScreenContainer title={t("country.title")}>
       <TextInput
         style={styles.input}
-        placeholder="Search countries"
+        placeholder={t("country.search")}
         placeholderTextColor={colors.textMuted}
         value={query}
         onChangeText={setQuery}
@@ -75,21 +77,21 @@ export function CountrySelectionScreen({ navigation: _navigation }: Props) {
 
       <View style={{ marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, marginBottom: spacing.xs }}>
-          Don't see your country?
+          {t("country.dontSee")}
         </Text>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-          This list covers common markets only — enter your country's 2-letter code directly (e.g. US, IN, DE).
+          {t("country.dontSeeNote")}
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="2-letter code"
+          placeholder={t("country.manualCode")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           maxLength={2}
           value={manualCode}
           onChangeText={setManualCode}
         />
-        <Button label="Set country code" variant="secondary" onPress={onSaveManualCode} style={{ marginTop: spacing.sm }} />
+        <Button label={t("country.setCode")} variant="secondary" onPress={onSaveManualCode} style={{ marginTop: spacing.sm }} />
       </View>
     </ScreenContainer>
   );

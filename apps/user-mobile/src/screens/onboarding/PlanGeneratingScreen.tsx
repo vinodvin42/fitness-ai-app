@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { Plan } from "@fitness-ai-app/types";
@@ -42,6 +43,7 @@ type ScreenState =
  * infrastructure problem that isn't theirs to fix.
  */
 export function PlanGeneratingScreen(_props: Props) {
+  const { t } = useTranslation();
   const { clearDraft } = useOnboardingWizard();
   const { markOnboardingCompleted } = useAuth();
   const [screenState, setScreenState] = useState<ScreenState>({ phase: "generating" });
@@ -93,11 +95,11 @@ export function PlanGeneratingScreen(_props: Props) {
 
   if (screenState.phase === "generating") {
     return (
-      <ScreenContainer title="Building your plan" scroll={false}>
+      <ScreenContainer title={t("onboarding.generating.building")} scroll={false}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={{ color: colors.textSecondary, ...typography.body, marginTop: spacing.md, textAlign: "center" }}>
-            Picking the right program for your goals and safety context…
+            {t("onboarding.generating.picking")}
           </Text>
         </View>
       </ScreenContainer>
@@ -107,7 +109,7 @@ export function PlanGeneratingScreen(_props: Props) {
   if (screenState.phase === "generated") {
     const { plan } = screenState;
     return (
-      <ScreenContainer title="Your plan is ready">
+      <ScreenContainer title={t("onboarding.generating.ready")}>
         <Card>
           <Text style={{ fontSize: 40, textAlign: "center" }}>🎯</Text>
           <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.sm, textAlign: "center" }}>
@@ -119,26 +121,26 @@ export function PlanGeneratingScreen(_props: Props) {
             </Text>
           ) : null}
         </Card>
-        <Button label="Get Started" onPress={finishOnboarding} style={{ marginTop: spacing.lg }} />
+        <Button label={t("onboarding.generating.getStarted")} onPress={finishOnboarding} style={{ marginTop: spacing.lg }} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Couldn't build your plan">
+    <ScreenContainer title={t("onboarding.generating.failed")}>
       <Card>
         <Text style={{ color: colors.danger, ...typography.body }}>{screenState.errorMessage}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-          Your assessment answers are saved — nothing is lost. Try again below.
+          {t("onboarding.generating.answersSaved")}
         </Text>
       </Card>
       <Button
-        label="Retry"
+        label={t("onboarding.generating.retry")}
         onPress={() => (screenState.plan ? runRetry(screenState.plan.id) : runGenerate())}
         style={{ marginTop: spacing.lg }}
       />
       <Button
-        label="Skip for now — I'll set this up later"
+        label={t("onboarding.generating.skip")}
         variant="secondary"
         onPress={finishOnboarding}
         style={{ marginTop: spacing.sm }}

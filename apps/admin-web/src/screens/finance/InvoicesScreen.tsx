@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminInvoiceListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -38,6 +39,7 @@ async function fetchInvoices(filters: Filters): Promise<AdminInvoiceListResponse
  * back to exactly one real, gateway-verified Payment.
  */
 export function InvoicesScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ search: "", startDate: "", endDate: "" });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -49,18 +51,18 @@ export function InvoicesScreen() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <AppShell title="Invoices" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("invoices.invoices")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Total Invoices" value={data.summary.totalCount} />
-            <StatCard label="Total Amount" value={money(data.summary.totalCents)} />
+            <StatCard label={t("invoices.totalInvoices")} value={data.summary.totalCount} />
+            <StatCard label={t("invoices.totalAmount")} value={money(data.summary.totalCents)} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("invoices.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -78,10 +80,10 @@ export function InvoicesScreen() {
             />
           </label>
           <label className="ml-auto flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("invoices.search")}
             <input
               type="search"
-              placeholder="Invoice number, user…"
+              placeholder={t("invoices.invoiceNumberUser")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -89,13 +91,13 @@ export function InvoicesScreen() {
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("invoices.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load invoices.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("invoices.retry")}
             </button>
           </div>
         )}
@@ -105,10 +107,10 @@ export function InvoicesScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Invoice</th>
-                  <th className="px-4 py-3 font-normal">User</th>
-                  <th className="px-4 py-3 font-normal">Amount</th>
-                  <th className="px-4 py-3 font-normal">Issued</th>
+                  <th className="px-4 py-3 font-normal">{t("invoices.invoice")}</th>
+                  <th className="px-4 py-3 font-normal">{t("invoices.user")}</th>
+                  <th className="px-4 py-3 font-normal">{t("invoices.amount")}</th>
+                  <th className="px-4 py-3 font-normal">{t("invoices.issued")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,7 +128,7 @@ export function InvoicesScreen() {
                 {data.invoices.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
-                      No invoices match these filters.
+                      {t("invoices.noInvoicesMatchThese")}
                     </td>
                   </tr>
                 )}

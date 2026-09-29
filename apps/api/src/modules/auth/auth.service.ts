@@ -19,6 +19,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { ForgotPasswordInput, LoginInput, ResetPasswordInput, SignupInput } from "./auth.schema";
 import { hasCompletedOnboarding, verifyTwoFactorLoginCode } from "../users/users.service";
 import { redeemReferralCode } from "../referrals/referrals.service";
+import { BRAND_NAME } from "@fitness-ai-app/config";
 
 async function issueTokenPair(userId: string, email: string) {
   const access = signAccessToken({ sub: userId, email });
@@ -229,13 +230,13 @@ export async function forgotPassword(input: ForgotPasswordInput): Promise<{ emai
     return { emailSent: false };
   }
 
-  const resetLink = `primefit://reset-password?token=${rawToken}`;
+  const resetLink = `fynrox://reset-password?token=${rawToken}`;
   try {
     await sendEmail({
       to: user.email,
-      subject: "Reset your 23PrimeFit password",
+      subject: `Reset your ${BRAND_NAME} password`,
       text: [
-        `We received a request to reset your 23PrimeFit password.`,
+        `We received a request to reset your ${BRAND_NAME} password.`,
         ``,
         `Reset it here: ${resetLink}`,
         ``,

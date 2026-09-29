@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type { AdminProfessionalDetailResponse, UpdateMaxActiveClientsInput } from "@fitness-ai-app/types";
@@ -48,6 +49,7 @@ async function fetchDetail(id: string): Promise<AdminProfessionalDetailResponse>
  * same real endpoints, not a separate implementation.
  */
 export function ProfessionalProfileScreen() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
   const [draftCapacity, setDraftCapacity] = useState("");
@@ -79,14 +81,14 @@ export function ProfessionalProfileScreen() {
   const isDirty = data != null && isValidCapacity && parsedCapacity !== data.professional.maxActiveClients;
 
   return (
-    <AppShell title="Professional Profile" subNav={PROFESSIONALS_SUB_NAV}>
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("professionalProfile.professionalProfile")} subNav={PROFESSIONALS_SUB_NAV}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("professionalProfile.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           {extractErrorMessage(error, "Couldn't load this professional.")}
           <button type="button" onClick={() => refetch()} className="ml-3 underline">
-            Retry
+            {t("professionalProfile.retry")}
           </button>
         </div>
       )}
@@ -112,7 +114,7 @@ export function ProfessionalProfileScreen() {
               </div>
             </div>
             <Link to="/professionals" className="text-xs text-text-secondary hover:text-text-primary">
-              ← Back to Directory
+              {t("professionalProfile.backToDirectory")}
             </Link>
           </div>
 
@@ -136,30 +138,30 @@ export function ProfessionalProfileScreen() {
           {tab === "overview" && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Profile</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.profile")}</div>
                 <dl className="mt-3 space-y-2 text-sm">
-                  <Row label="Years experience" value={data.professional.yearsExperience ?? "—"} />
-                  <Row label="Specializations" value={data.professional.specializationTags.join(", ") || "—"} />
-                  <Row label="Bio" value={data.professional.bio ?? "—"} />
-                  <Row label="Joined" value={new Date(data.professional.createdAt).toLocaleDateString()} />
+                  <Row label={t("professionalProfile.yearsExperience")} value={data.professional.yearsExperience ?? "—"} />
+                  <Row label={t("professionalProfile.specializations")} value={data.professional.specializationTags.join(", ") || "—"} />
+                  <Row label={t("professionalProfile.bio")} value={data.professional.bio ?? "—"} />
+                  <Row label={t("professionalProfile.joined")} value={new Date(data.professional.createdAt).toLocaleDateString()} />
                 </dl>
               </div>
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Identity Verification (KYC)</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.identityVerificationKyc")}</div>
                   <StatusBadge status={data.professional.kycStatus} />
                 </div>
                 {data.professional.adminNotes && (
                   <p className="mt-3 text-xs text-text-secondary">Notes: {data.professional.adminNotes}</p>
                 )}
                 <p className="mt-3 text-[11px] text-text-dim">
-                  Review and approve/reject KYC from the Credential Verification queue.
+                  {t("professionalProfile.reviewAndApproveReject")}
                 </p>
               </div>
 
               <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Lifecycle & Capacity</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.lifecycleCapacity")}</div>
                   <StatusBadge status={data.professional.lifecycleStatus} />
                 </div>
                 <p className="mt-2 text-xs text-text-secondary">
@@ -168,7 +170,7 @@ export function ProfessionalProfileScreen() {
 
                 <div className="mt-4 flex flex-wrap items-end gap-4">
                   <div>
-                    <div className="text-[11px] text-text-dim">Active clients</div>
+                    <div className="text-[11px] text-text-dim">{t("professionalProfile.activeClients")}</div>
                     <div className="text-sm text-text-primary">
                       {data.clients.filter((c) => c.status === "active").length} of {data.professional.maxActiveClients}
                     </div>
@@ -213,7 +215,7 @@ export function ProfessionalProfileScreen() {
                   </p>
                 )}
                 {capacityMutation.isSuccess && !capacityMutation.isPending && (
-                  <p className="mt-3 text-xs text-accent">Capacity updated.</p>
+                  <p className="mt-3 text-xs text-accent">{t("professionalProfile.capacityUpdated")}</p>
                 )}
               </div>
             </div>
@@ -224,10 +226,10 @@ export function ProfessionalProfileScreen() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Client</th>
-                    <th className="px-4 py-3 font-normal">Service</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Since</th>
+                    <th className="px-4 py-3 font-normal">{t("professionalProfile.client")}</th>
+                    <th className="px-4 py-3 font-normal">{t("professionalProfile.service")}</th>
+                    <th className="px-4 py-3 font-normal">{t("professionalProfile.status")}</th>
+                    <th className="px-4 py-3 font-normal">{t("professionalProfile.since")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,7 +262,7 @@ export function ProfessionalProfileScreen() {
           {tab === "credentials" && (
             <div className="space-y-3">
               {data.professional.credentials.length === 0 && (
-                <p className="text-sm text-text-dim">No services selected yet.</p>
+                <p className="text-sm text-text-dim">{t("professionalProfile.noServicesSelectedYet")}</p>
               )}
               {data.professional.credentials.map((c) => (
                 <div key={c.id} className="rounded-lg border border-border-subtle bg-surface p-4">
@@ -269,13 +271,13 @@ export function ProfessionalProfileScreen() {
                     <StatusBadge status={c.status} />
                   </div>
                   <dl className="mt-2 space-y-1 text-xs text-text-secondary">
-                    <Row label="Certification" value={c.certificationName ?? "—"} />
-                    <Row label="Certifying body" value={c.certifyingBody ?? "—"} />
-                    <Row label="Year obtained" value={c.yearObtained ?? "—"} />
-                    {c.adminNotes && <Row label="Admin notes" value={c.adminNotes} />}
+                    <Row label={t("professionalProfile.certification")} value={c.certificationName ?? "—"} />
+                    <Row label={t("professionalProfile.certifyingBody")} value={c.certifyingBody ?? "—"} />
+                    <Row label={t("professionalProfile.yearObtained")} value={c.yearObtained ?? "—"} />
+                    {c.adminNotes && <Row label={t("professionalProfile.adminNotes")} value={c.adminNotes} />}
                   </dl>
                   <Link to="/professionals/verification" className="mt-3 inline-block text-xs text-accent hover:underline">
-                    Review in Credential Verification →
+                    {t("professionalProfile.reviewInCredentialVerification")}
                   </Link>
                 </div>
               ))}
@@ -285,7 +287,7 @@ export function ProfessionalProfileScreen() {
           {(tab === "sessions" || tab === "earnings" || tab === "reviews") && (
             <NotAvailablePanel
               keys={[tab]}
-              subtitle="No backing entity exists yet for this tab — see adminProfessionals.service.ts's doc comment."
+              subtitle={t("professionalProfile.noBackingEntityExists")}
             />
           )}
         </div>

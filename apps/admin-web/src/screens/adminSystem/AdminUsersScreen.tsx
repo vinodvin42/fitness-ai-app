@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminAccountDirectoryResponse,
@@ -79,6 +80,7 @@ const EMPTY_FORM: CreateAdminUserInput = { email: "", fullName: "", role: "suppo
  * through earlier.
  */
 export function AdminUsersScreen() {
+  const { t } = useTranslation();
   const { adminUser: viewer } = useAuth();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ role: "", status: "", search: "" });
@@ -136,25 +138,25 @@ export function AdminUsersScreen() {
   }
 
   return (
-    <AppShell title="Admin Users" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("adminUsers.adminUsers")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total Admins" value={data.counts.total} />
-            <StatCard label="Active" value={data.counts.active} />
-            <StatCard label="Disabled" value={data.counts.disabled} />
+            <StatCard label={t("adminUsers.totalAdmins")} value={data.counts.total} />
+            <StatCard label={t("adminUsers.active")} value={data.counts.active} />
+            <StatCard label={t("adminUsers.disabled")} value={data.counts.disabled} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Role
+            {t("adminUsers.role")}
             <select
               value={filters.role}
               onChange={(e) => setFilter("role", e.target.value as Filters["role"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("adminUsers.all")}</option>
               {ROLE_OPTIONS.map((r) => (
                 <option key={r} value={r}>
                   {roleLabel(r)}
@@ -164,23 +166,23 @@ export function AdminUsersScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("adminUsers.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="disabled">Disabled</option>
+              <option value="">{t("adminUsers.all")}</option>
+              <option value="active">{t("adminUsers.active")}</option>
+              <option value="disabled">{t("adminUsers.disabled")}</option>
             </select>
           </label>
 
           <label className="ml-0 flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("adminUsers.search")}
             <input
               type="search"
-              placeholder="Name or email…"
+              placeholder={t("adminUsers.nameOrEmail")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -204,14 +206,14 @@ export function AdminUsersScreen() {
             }}
             className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
           >
-            <div className="text-sm font-medium">Create Admin User</div>
+            <div className="text-sm font-medium">{t("adminUsers.createAdminUser")}</div>
             <p className="text-xs text-text-secondary">
               Relabeled from the Figma's "Invite" — there's no email/SMTP infrastructure in this build to send
               one. A temporary password is generated here and shown once for you to relay directly.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Full name
+                {t("adminUsers.fullName")}
                 <input
                   required
                   value={form.fullName}
@@ -220,7 +222,7 @@ export function AdminUsersScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Email
+                {t("adminUsers.email")}
                 <input
                   required
                   type="email"
@@ -230,7 +232,7 @@ export function AdminUsersScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Role
+                {t("adminUsers.role")}
                 <select
                   value={form.role}
                   onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as AdminRole }))}
@@ -269,7 +271,7 @@ export function AdminUsersScreen() {
 
         {createdResult && (
           <div className="space-y-3 rounded-lg border border-accent/40 bg-accent/5 p-4">
-            <div className="text-sm font-medium text-accent">Admin account created</div>
+            <div className="text-sm font-medium text-accent">{t("adminUsers.adminAccountCreated")}</div>
             <p className="text-xs text-text-secondary">
               {createdResult.adminUser.fullName} ({createdResult.adminUser.email}) can sign in with the temporary
               password below. This is shown once — it is not stored in plaintext and cannot be retrieved again.
@@ -290,18 +292,18 @@ export function AdminUsersScreen() {
               onClick={closeCreatedPanel}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-accent hover:text-accent"
             >
-              Done
+              {t("adminUsers.done")}
             </button>
           </div>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("adminUsers.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load admin users.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("adminUsers.retry")}
             </button>
           </div>
         )}
@@ -317,12 +319,12 @@ export function AdminUsersScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Name &amp; Email</th>
-                  <th className="px-4 py-3 font-normal">Role</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Last Login</th>
-                  <th className="px-4 py-3 font-normal">Created</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.nameEmail")}</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.role")}</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.lastLogin")}</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.created")}</th>
+                  <th className="px-4 py-3 font-normal">{t("adminUsers.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -334,7 +336,7 @@ export function AdminUsersScreen() {
                         <div className="font-medium text-text-primary">
                           {a.fullName}
                           {isSelf && (
-                            <span className="ml-2 text-[10px] uppercase tracking-wide text-text-dim">You</span>
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-text-dim">{t("adminUsers.you")}</span>
                           )}
                         </div>
                         <div className="text-xs text-text-dim">{a.email}</div>
@@ -356,7 +358,7 @@ export function AdminUsersScreen() {
                             onClick={() => disableMutation.mutate(a.id)}
                             className="rounded-md border border-danger/40 px-2.5 py-1 text-xs text-danger disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            Disable
+                            {t("adminUsers.disable")}
                           </button>
                         ) : (
                           <button
@@ -365,7 +367,7 @@ export function AdminUsersScreen() {
                             onClick={() => enableMutation.mutate(a.id)}
                             className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
                           >
-                            Enable
+                            {t("adminUsers.enable")}
                           </button>
                         )}
                       </td>
@@ -375,7 +377,7 @@ export function AdminUsersScreen() {
                 {data.adminUsers.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
-                      No admin users match these filters.
+                      {t("adminUsers.noAdminUsersMatch")}
                     </td>
                   </tr>
                 )}

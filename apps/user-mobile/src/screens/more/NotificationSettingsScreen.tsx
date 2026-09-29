@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Switch, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -28,6 +29,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "NotificationSettings">;
  * screen's own per-reminder `isEnabled` toggle.
  */
 export function NotificationSettingsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, updateProfile } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(user?.notificationsEnabled ?? true);
   const [isSaving, setIsSaving] = useState(false);
@@ -46,11 +48,11 @@ export function NotificationSettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Notifications">
+    <ScreenContainer title={t("settings.notifications")}>
       <Card>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View style={{ flex: 1, marginRight: spacing.md }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Reminder notifications</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("settings.reminderNotifications")}</Text>
             <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
               Master switch for every Reminder's local, on-device notification. Turning this off cancels all of
               them without deleting or disabling any individual reminder.
@@ -66,7 +68,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
       </Card>
 
       <Button
-        label="Manage Reminders"
+        label={t("settings.manageReminders")}
         variant="secondary"
         onPress={() => navigation.navigate("Reminders")}
         style={{ marginTop: spacing.md }}

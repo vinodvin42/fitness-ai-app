@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -11,6 +12,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
 /** docs/coach/03-screen-inventory.md §A "Coach Login" — email/password (no Google SSO configured, same "plain functional auth" precedent as every other app in this build). */
 export function LoginScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,12 +36,12 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome back, Coach</Text>
-        <Text style={styles.subtitle}>Log in to manage your clients.</Text>
+        <Text style={styles.title}>{t("auth.login.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("auth.login.email")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -48,7 +50,7 @@ export function LoginScreen({ navigation }: Props) {
         />
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={t("auth.login.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
@@ -57,9 +59,9 @@ export function LoginScreen({ navigation }: Props) {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Button label="Log In" onPress={onSubmit} loading={loading} disabled={!email || !password} />
+        <Button label={t("auth.login.submit")} onPress={onSubmit} loading={loading} disabled={!email || !password} />
         <Button
-          label="Create an account"
+          label={t("auth.login.createAccount")}
           variant="secondary"
           onPress={() => navigation.navigate("Signup")}
           style={styles.secondaryButton}

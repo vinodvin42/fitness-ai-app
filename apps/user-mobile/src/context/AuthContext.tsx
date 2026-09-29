@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { AppState } from "react-native";
 import type { DeleteAccountInput, LoginInput, SignupInput, UpdateProfileInput, User } from "@fitness-ai-app/types";
 import { clearTokens, getStoredTokens, storeTokens } from "../api/client";
 import { fetchMe, loginRequest, logoutRequest, signupRequest, verifyTwoFactorLoginRequest } from "../api/auth";
 import { deleteAccount as deleteAccountRequest, updateProfile as updateProfileRequest } from "../api/users";
+import { applyLanguagePreference } from "../i18n";
 import {
   type BiometricLockIdleTimeoutMinutes,
   getBiometricLockEnabled,
@@ -71,7 +72,23 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
+
+  /**
+   * The app's language follows the signed-in user's own
+   * `languagePreference`, and this is the single place that happens.
+   * Wrapping the setter rather than calling `applyLanguagePreference`
+   * at each of the eight call sites means a future one cannot forget:
+   * the language cannot drift from the user it belongs to.
+   *
+   * Signing out resets to English rather than leaving the previous
+   * user's language on the sign-in screen for whoever picks up the
+   * device next.
+   */
+  const setUser = useCallback((next: User | null) => {
+    setUserState(next);
+    applyLanguagePreference(next?.languagePreference ?? "en");
+  }, []);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -233,7 +250,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const enableBiometricLock = async (): Promise<boolean> => {
-    const success = await promptBiometricUnlock("Enable Face ID / Touch ID to unlock 23PrimeFit");
+    const success = await promptBiometricUnlock("Enable Face ID / Touch ID to unlock FynroX");
     if (!success) return false;
     await setBiometricLockEnabled(true);
     setIsBiometricLockEnabledState(true);
@@ -248,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const unlock = async (): Promise<boolean> => {
-    const success = await promptBiometricUnlock("Unlock 23PrimeFit");
+    const success = await promptBiometricUnlock("Unlock FynroX");
     if (success) setIsUnlocked(true);
     return success;
   };

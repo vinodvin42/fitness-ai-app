@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminProgramDirectoryResponse, AdminProgramListItem, ProgramType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -96,6 +97,7 @@ function formToPayload(form: FormState) {
  * what that queue does and why it doesn't gate Publish.
  */
 export function ProgramsDirectoryScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ type: "", status: "", search: "", startDate: "", endDate: "" });
   const [showForm, setShowForm] = useState(false);
@@ -174,25 +176,25 @@ export function ProgramsDirectoryScreen() {
   const saveError = createMutation.error ?? updateMutation.error;
 
   return (
-    <AppShell title="Programs" subNav={PROGRAMS_SUB_NAV}>
+    <AppShell title={t("programsDirectory.programs")} subNav={PROGRAMS_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total Programs" value={data.counts.total} />
-            <StatCard label="Published" value={data.counts.published} />
-            <StatCard label="Draft" value={data.counts.draft} />
+            <StatCard label={t("programsDirectory.totalPrograms")} value={data.counts.total} />
+            <StatCard label={t("programsDirectory.published")} value={data.counts.published} />
+            <StatCard label={t("programsDirectory.draft")} value={data.counts.draft} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Type
+            {t("programsDirectory.type")}
             <select
               value={filters.type}
               onChange={(e) => setFilter("type", e.target.value as Filters["type"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("programsDirectory.all")}</option>
               {TYPE_OPTIONS.map((t) => (
                 <option key={t} value={t}>
                   {TYPE_LABELS[t]}
@@ -202,20 +204,20 @@ export function ProgramsDirectoryScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("programsDirectory.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
+              <option value="">{t("programsDirectory.all")}</option>
+              <option value="published">{t("programsDirectory.published")}</option>
+              <option value="draft">{t("programsDirectory.draft")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Created from
+            {t("programsDirectory.createdFrom")}
             <input
               type="date"
               value={filters.startDate}
@@ -225,7 +227,7 @@ export function ProgramsDirectoryScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Created to
+            {t("programsDirectory.createdTo")}
             <input
               type="date"
               value={filters.endDate}
@@ -235,10 +237,10 @@ export function ProgramsDirectoryScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("programsDirectory.search")}
             <input
               type="search"
-              placeholder="Name or description…"
+              placeholder={t("programsDirectory.nameOrDescription")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -268,18 +270,18 @@ export function ProgramsDirectoryScreen() {
               <div className="text-sm font-medium">{editingId ? "Edit Program" : "Create Program"}</div>
               {editingId && (
                 <button type="button" onClick={closeForm} className="text-xs text-text-dim hover:text-text-primary">
-                  Cancel
+                  {t("programsDirectory.cancel")}
                 </button>
               )}
             </div>
             {!editingId && (
               <p className="text-xs text-text-secondary">
-                New programs start as a Draft — not visible to consumers until you Publish them.
+                {t("programsDirectory.newProgramsStartAs")}
               </p>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Name
+                {t("programsDirectory.name")}
                 <input
                   required
                   value={form.name}
@@ -288,7 +290,7 @@ export function ProgramsDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Type
+                {t("programsDirectory.type")}
                 <select
                   value={form.type}
                   onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value as ProgramType }))}
@@ -303,7 +305,7 @@ export function ProgramsDirectoryScreen() {
               </label>
             </div>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Description
+              {t("programsDirectory.description")}
               <textarea
                 required
                 rows={3}
@@ -313,7 +315,7 @@ export function ProgramsDirectoryScreen() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Cover image URL (optional)
+              {t("programsDirectory.coverImageUrlOptional")}
               <input
                 type="url"
                 value={form.imageUrl}
@@ -324,7 +326,7 @@ export function ProgramsDirectoryScreen() {
             </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Duration (weeks)
+                {t("programsDirectory.durationWeeks")}
                 <input
                   required
                   type="number"
@@ -336,7 +338,7 @@ export function ProgramsDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Price (USD)
+                {t("programsDirectory.priceUsd")}
                 <input
                   type="number"
                   min={0}
@@ -353,7 +355,7 @@ export function ProgramsDirectoryScreen() {
                   onChange={(e) => setForm((prev) => ({ ...prev, isAiOnly: e.target.checked }))}
                   className="h-4 w-4"
                 />
-                AI-only (no human coach)
+                {t("programsDirectory.aiOnlyNoHuman")}
               </label>
             </div>
             {saveError && (
@@ -369,13 +371,13 @@ export function ProgramsDirectoryScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("programsDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load programs.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("programsDirectory.retry")}
             </button>
           </div>
         )}
@@ -394,16 +396,16 @@ export function ProgramsDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Cover</th>
-                  <th className="px-4 py-3 font-normal">Name</th>
-                  <th className="px-4 py-3 font-normal">Creator</th>
-                  <th className="px-4 py-3 font-normal">Type</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Duration</th>
-                  <th className="px-4 py-3 font-normal">Exercises</th>
-                  <th className="px-4 py-3 font-normal">Subscribers</th>
-                  <th className="px-4 py-3 font-normal">Updated</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.cover")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.name")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.creator")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.type")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.duration")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.exercises")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.subscribers")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.updated")}</th>
+                  <th className="px-4 py-3 font-normal">{t("programsDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,7 +443,7 @@ export function ProgramsDirectoryScreen() {
                           onClick={() => startEdit(p)}
                           className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                         >
-                          Edit
+                          {t("programsDirectory.edit")}
                         </button>
                         {p.status === "published" ? (
                           <button
@@ -450,7 +452,7 @@ export function ProgramsDirectoryScreen() {
                             onClick={() => unpublishMutation.mutate(p.id)}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
                           >
-                            Unpublish
+                            {t("programsDirectory.unpublish")}
                           </button>
                         ) : (
                           <>
@@ -460,7 +462,7 @@ export function ProgramsDirectoryScreen() {
                               onClick={() => publishMutation.mutate(p.id)}
                               className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
                             >
-                              Publish
+                              {t("programsDirectory.publish")}
                             </button>
                             <button
                               type="button"
@@ -468,7 +470,7 @@ export function ProgramsDirectoryScreen() {
                               onClick={() => submitReviewMutation.mutate(p.id)}
                               className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
                             >
-                              Submit for Review
+                              {t("programsDirectory.submitForReview")}
                             </button>
                           </>
                         )}
@@ -479,7 +481,7 @@ export function ProgramsDirectoryScreen() {
                 {data.programs.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-8 text-center text-text-dim">
-                      No programs match these filters.
+                      {t("programsDirectory.noProgramsMatchThese")}
                     </td>
                   </tr>
                 )}

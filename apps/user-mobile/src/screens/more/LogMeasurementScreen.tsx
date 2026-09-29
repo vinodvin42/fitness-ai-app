@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -30,6 +31,7 @@ const FIELDS: Array<{ key: "weightKg" | "chestCm" | "waistCm" | "hipsCm" | "arms
  * About You stepper).
  */
 export function LogMeasurementScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +60,7 @@ export function LogMeasurementScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Log Measurement">
+    <ScreenContainer title={t("measurements.logTitle")}>
       <Card>
         {FIELDS.map(({ key, label }) => (
           <React.Fragment key={key}>
@@ -75,7 +77,7 @@ export function LogMeasurementScreen({ navigation }: Props) {
         ))}
       </Card>
 
-      <Button label="Save" onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Button label={t("common.save")} onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
     </ScreenContainer>
   );
 }

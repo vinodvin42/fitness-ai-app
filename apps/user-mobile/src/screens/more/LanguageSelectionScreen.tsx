@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -37,6 +38,7 @@ const LANGUAGES: Array<{ code: string; label: string }> = [
  * every screen in this build still renders English text.
  */
 export function LanguageSelectionScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const { user, updateProfile } = useAuth();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(user?.languagePreference ?? "en");
@@ -59,10 +61,10 @@ export function LanguageSelectionScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Language">
+    <ScreenContainer title={t("settings.language")}>
       <TextInput
         style={styles.input}
-        placeholder="Search languages"
+        placeholder={t("settings.searchLanguages")}
         placeholderTextColor={colors.textMuted}
         value={query}
         onChangeText={setQuery}

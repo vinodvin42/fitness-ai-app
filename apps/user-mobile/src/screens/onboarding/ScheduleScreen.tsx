@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -32,15 +33,16 @@ const SESSION_LENGTHS = [30, 45, 60, 90];
  * comment for why that's this pass's job to collect, not to act on.
  */
 export function ScheduleScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, update, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={2}
       total={8}
-      label="Schedule"
-      title="When can you train?"
-      subtitle="A rough idea helps us understand your availability — this doesn't lock you into a fixed schedule."
+      label={t("onboarding.schedule.step")}
+      title={t("onboarding.schedule.title")}
+      subtitle={t("onboarding.schedule.subtitle")}
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("Goals");
@@ -48,7 +50,7 @@ export function ScheduleScreen({ navigation }: Props) {
       }}
     >
       <Stepper
-        label="Days per week"
+        label={t("onboarding.schedule.daysPerWeek")}
         value={state.trainingDaysPerWeek}
         unit="days"
         step={1}
@@ -58,7 +60,7 @@ export function ScheduleScreen({ navigation }: Props) {
       />
 
       <Text style={{ ...typography.h2, color: colors.textPrimary, marginTop: spacing.lg, marginBottom: spacing.xs }}>
-        Which days work best?
+        {t("onboarding.schedule.whichDays")}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
         {DAYS.map((day) => (
@@ -72,7 +74,7 @@ export function ScheduleScreen({ navigation }: Props) {
       </View>
 
       <Text style={{ ...typography.h2, color: colors.textPrimary, marginTop: spacing.lg, marginBottom: spacing.xs }}>
-        Typical session length
+        {t("onboarding.schedule.sessionLength")}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
         {SESSION_LENGTHS.map((minutes) => (

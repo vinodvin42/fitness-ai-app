@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -44,6 +45,7 @@ const TYPE_LABELS: Record<ProgramType, string> = {
  * work of its own.
  */
 export function ProgramsMarketplaceScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: programs, isLoading, isError, refetch } = useQuery({
     queryKey: ["programs"],
     queryFn: fetchPrograms,
@@ -70,15 +72,15 @@ export function ProgramsMarketplaceScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Browse Programs">
+      <ScreenContainer title={t("workout.marketplace.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Browse Programs" scroll={false}>
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search programs" />
+    <ScreenContainer title={t("workout.marketplace.title")} scroll={false}>
+      <SearchBar value={query} onChangeText={setQuery} placeholder={t("workout.marketplace.search")} />
 
       <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.md }}>TYPE</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
@@ -157,7 +159,7 @@ export function ProgramsMarketplaceScreen({ navigation }: Props) {
             </Card>
           </Pressable>
         )}
-        ListEmptyComponent={<EmptyState title="No programs match" subtitle="Try a different search or filter." />}
+        ListEmptyComponent={<EmptyState title={t("workout.marketplace.emptyTitle")} subtitle={t("workout.marketplace.emptySubtitle")} />}
       />
     </ScreenContainer>
   );

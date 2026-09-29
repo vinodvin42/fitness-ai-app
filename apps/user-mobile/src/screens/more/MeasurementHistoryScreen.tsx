@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -24,13 +25,14 @@ const ROWS: Array<{ key: keyof BodyMeasurement; label: string; unit: string }> =
 
 /** Body Measurements (docs/mobile/03-screen-inventory.md §F) — a plain reverse-chronological list, not the design's body-diagram visual (no diagram asset exists yet). */
 export function MeasurementHistoryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: measurements, isLoading, isError, refetch } = useQuery({
     queryKey: ["progress", "measurements"],
     queryFn: fetchMeasurements,
   });
 
   return (
-    <ScreenContainer title="Measurement History" scroll={false}>
+    <ScreenContainer title={t("measurements.historyTitle")} scroll={false}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError ? (
@@ -56,9 +58,9 @@ export function MeasurementHistoryScreen({ navigation }: Props) {
           )}
           ListEmptyComponent={
             <EmptyState
-              title="No measurements logged yet"
-              subtitle="Log your weight and body measurements to start tracking progress."
-              actionLabel="Log Measurement"
+              title={t("measurements.emptyTitle")}
+              subtitle={t("measurements.emptySubtitle")}
+              actionLabel={t("measurements.logTitle")}
               onAction={() => navigation.navigate("LogMeasurement")}
             />
           }

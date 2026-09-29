@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
@@ -75,6 +76,7 @@ function PartyCard({ label, name, email }: { label: string; name: string; email:
  * endRelationship + createOffer rather than a second transfer model.
  */
 export function RelationshipDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("overview");
@@ -131,14 +133,14 @@ export function RelationshipDetailScreen() {
   const relationship = data?.relationship;
 
   return (
-    <AppShell title="Relationship Detail" subNav={RELATIONSHIPS_SUB_NAV}>
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("relationshipDetail.relationshipDetail")} subNav={RELATIONSHIPS_SUB_NAV}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("relationshipDetail.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           {extractErrorMessage(error, "Couldn't load this relationship.")}
           <button type="button" onClick={() => refetch()} className="ml-3 underline">
-            Retry
+            {t("relationshipDetail.retry")}
           </button>
         </div>
       )}
@@ -147,12 +149,12 @@ export function RelationshipDetailScreen() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-1 items-center gap-3">
-              <PartyCard label="User" name={relationship.userFullName} email={relationship.userEmail} />
+              <PartyCard label={t("relationshipDetail.user")} name={relationship.userFullName} email={relationship.userEmail} />
               <span className="text-2xl text-text-dim">⇄</span>
-              <PartyCard label="Professional" name={relationship.professionalFullName} email={relationship.professionalEmail} />
+              <PartyCard label={t("relationshipDetail.professional")} name={relationship.professionalFullName} email={relationship.professionalEmail} />
             </div>
             <Link to="/relationships" className="ml-4 text-xs text-text-secondary hover:text-text-primary">
-              ← Back to Directory
+              {t("relationshipDetail.backToDirectory")}
             </Link>
           </div>
 
@@ -177,21 +179,21 @@ export function RelationshipDetailScreen() {
             <div className="space-y-4">
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Pairing</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("relationshipDetail.pairing")}</div>
                   <StatusBadge status={relationship.status} />
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div>
-                    <dt className="text-xs text-text-dim">Service</dt>
+                    <dt className="text-xs text-text-dim">{t("relationshipDetail.service")}</dt>
                     <dd className="text-text-secondary">{SERVICE_LABELS[relationship.serviceType] ?? relationship.serviceType}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-text-dim">Started</dt>
+                    <dt className="text-xs text-text-dim">{t("relationshipDetail.started")}</dt>
                     <dd className="text-text-secondary">{new Date(relationship.createdAt).toLocaleDateString()}</dd>
                   </div>
                   {relationship.endedAt && (
                     <div>
-                      <dt className="text-xs text-text-dim">Ended</dt>
+                      <dt className="text-xs text-text-dim">{t("relationshipDetail.ended")}</dt>
                       <dd className="text-text-secondary">{new Date(relationship.endedAt).toLocaleDateString()}</dd>
                     </div>
                   )}
@@ -200,15 +202,15 @@ export function RelationshipDetailScreen() {
 
               <NotAvailablePanel
                 keys={data.notAvailable}
-                subtitle="No backing field exists yet for these Figma-spec'd Overview fields — see adminRelationships.service.ts."
+                subtitle={t("relationshipDetail.noBackingFieldExists")}
               />
 
               {relationship.status === "active" ? (
                 <>
                   <ReasonGatedAction
-                    title="End Relationship"
-                    description="Ends this pairing — reversible via Reactivate below while it's still shown here. The user finds a new professional themselves via Discovery (there's no reassignment picker on this action — for that, use Handover below instead). A reason is required and recorded to the audit trail."
-                    actionLabel="End Relationship"
+                    title={t("relationshipDetail.endRelationship")}
+                    description={t("relationshipDetail.endsThisPairingReversible")}
+                    actionLabel={t("relationshipDetail.endRelationship")}
                     isPending={endMutation.isPending}
                     isError={endMutation.isError}
                     error={endMutation.error}
@@ -227,7 +229,7 @@ export function RelationshipDetailScreen() {
                     ReasonGatedAction owns its own reason state internally.
                   */}
                   <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                    <div className="text-xs uppercase tracking-wide text-text-dim">Handover to Another Coach</div>
+                    <div className="text-xs uppercase tracking-wide text-text-dim">{t("relationshipDetail.handoverToAnotherCoach")}</div>
                     <p className="mt-1 text-xs text-text-secondary">
                       Ends this pairing and, if you pick a replacement below, creates a real offer for them targeting
                       the same client/service — the coach still has to accept it before a new Relationship exists.
@@ -235,10 +237,10 @@ export function RelationshipDetailScreen() {
                     </p>
 
                     <div className="mt-3">
-                      <label className="text-[11px] text-text-dim">Replacement professional (optional)</label>
+                      <label className="text-[11px] text-text-dim">{t("relationshipDetail.replacementProfessionalOptional")}</label>
                       <input
                         type="text"
-                        placeholder="Search by name…"
+                        placeholder={t("relationshipDetail.searchByName")}
                         value={handoverSearch}
                         onChange={(e) => setHandoverSearch(e.target.value)}
                         className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -264,8 +266,8 @@ export function RelationshipDetailScreen() {
 
                     <div className="mt-3">
                       <ReasonGatedAction
-                        title="Confirm Handover"
-                        description="A reason is required and recorded to the audit trail."
+                        title={t("relationshipDetail.confirmHandover")}
+                        description={t("relationshipDetail.aReasonIsRequired")}
                         actionLabel={handoverProfessionalId ? "Hand Over" : "End Relationship"}
                         tone="warning"
                         isPending={handoverMutation.isPending}
@@ -278,15 +280,15 @@ export function RelationshipDetailScreen() {
                 </>
               ) : (
                 <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                  <div className="text-sm font-medium">Reactivate Relationship</div>
-                  <p className="mt-1 text-xs text-text-secondary">Reopens this pairing as active.</p>
+                  <div className="text-sm font-medium">{t("relationshipDetail.reactivateRelationship")}</div>
+                  <p className="mt-1 text-xs text-text-secondary">{t("relationshipDetail.reopensThisPairingAs")}</p>
                   <button
                     type="button"
                     disabled={reactivateMutation.isPending}
                     onClick={() => reactivateMutation.mutate()}
                     className="mt-3 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:opacity-40"
                   >
-                    Reactivate
+                    {t("relationshipDetail.reactivate")}
                   </button>
                   {reactivateMutation.isError && (
                     <p className="mt-2 text-xs text-danger">
@@ -301,7 +303,7 @@ export function RelationshipDetailScreen() {
           {tab === "history" && (
             <div className="rounded-lg border border-border-subtle bg-surface">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                Admin action history — not a session/payment log, see this screen's own doc comment
+                {t("relationshipDetail.adminActionHistoryNot")}
               </div>
               <ul className="divide-y divide-border-subtle">
                 {data.history.map((h) => (
@@ -314,7 +316,7 @@ export function RelationshipDetailScreen() {
                   </li>
                 ))}
                 {data.history.length === 0 && (
-                  <li className="px-4 py-8 text-center text-sm text-text-dim">No admin actions recorded yet.</li>
+                  <li className="px-4 py-8 text-center text-sm text-text-dim">{t("relationshipDetail.noAdminActionsRecorded")}</li>
                 )}
               </ul>
             </div>

@@ -1,8 +1,8 @@
-# Product Requirements — PrimeFit Super Admin Console
+# Product Requirements — FynroX Super Admin Console
 
 ## 1. Summary
 
-PrimeFit is a two-sided marketplace: **end users** (people seeking fitness and nutrition coaching) are matched with **professionals** (certified coaches/nutritionists), pay for subscriptions and programs, and interact with AI-powered features. This document covers only the **Super Admin Console** — the internal, web-based back office that PrimeFit staff use to operate the business. It does not cover the end-user mobile/web app or the professional-facing app; those were not present in the reviewed Figma file.
+FynroX is a two-sided marketplace: **end users** (people seeking fitness and nutrition coaching) are matched with **professionals** (certified coaches/nutritionists), pay for subscriptions and programs, and interact with AI-powered features. This document covers only the **Super Admin Console** — the internal, web-based back office that FynroX staff use to operate the business. It does not cover the end-user mobile/web app or the professional-facing app; those were not present in the reviewed Figma file.
 
 Everything below is derived from reading the 54 screens in the `vi-admin` Figma file (single page, single canvas, one frame per screen, organized in a 12-row grid by module). Nothing here describes functionality beyond what the screens show or clearly imply through labeled UI (e.g., a button labeled "Approve" implies an approval action, even where the resulting state change isn't drawn).
 
@@ -28,7 +28,7 @@ Inferred from the "Roles & Permissions" screen (12.02) and the role badges shown
 | Analytics | Read-only analytics and reports. |
 | Support | Ticket management and user assistance (Support & Safety). |
 
-The console itself is used exclusively by internal PrimeFit staff — there is no external/self-service persona in this file.
+The console itself is used exclusively by internal FynroX staff — there is no external/self-service persona in this file.
 
 ## 4. Scope — the 12 functional modules
 

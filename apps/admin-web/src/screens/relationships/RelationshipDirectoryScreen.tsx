@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { AdminRelationshipDirectoryResponse, ProfessionalServiceType, RelationshipStatus } from "@fitness-ai-app/types";
@@ -49,6 +50,7 @@ async function fetchDirectory(filters: Filters): Promise<AdminRelationshipDirect
  * `RELATIONSHIPS_SUB_NAV`.
  */
 export function RelationshipDirectoryScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({
     serviceType: "",
     status: "",
@@ -66,37 +68,37 @@ export function RelationshipDirectoryScreen() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <AppShell title="Relationship Directory" subNav={RELATIONSHIPS_SUB_NAV}>
+    <AppShell title={t("relationshipDirectory.relationshipDirectory")} subNav={RELATIONSHIPS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Service
+            {t("relationshipDirectory.service")}
             <select
               value={filters.serviceType}
               onChange={(e) => setFilter("serviceType", e.target.value as Filters["serviceType"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="fitness">Fitness</option>
-              <option value="nutrition">Nutrition</option>
+              <option value="">{t("relationshipDirectory.all")}</option>
+              <option value="fitness">{t("relationshipDirectory.fitness")}</option>
+              <option value="nutrition">{t("relationshipDirectory.nutrition")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("relationshipDirectory.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="ended">Ended</option>
+              <option value="">{t("relationshipDirectory.all")}</option>
+              <option value="active">{t("relationshipDirectory.active")}</option>
+              <option value="ended">{t("relationshipDirectory.ended")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Start from
+            {t("relationshipDirectory.startFrom")}
             <input
               type="date"
               value={filters.startDate}
@@ -106,7 +108,7 @@ export function RelationshipDirectoryScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Start to
+            {t("relationshipDirectory.startTo")}
             <input
               type="date"
               value={filters.endDate}
@@ -116,10 +118,10 @@ export function RelationshipDirectoryScreen() {
           </label>
 
           <label className="ml-auto flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("relationshipDirectory.search")}
             <input
               type="search"
-              placeholder="User or professional…"
+              placeholder={t("relationshipDirectory.userOrProfessional")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -127,13 +129,13 @@ export function RelationshipDirectoryScreen() {
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("relationshipDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load relationships.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("relationshipDirectory.retry")}
             </button>
           </div>
         )}
@@ -143,12 +145,12 @@ export function RelationshipDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">User</th>
-                  <th className="px-4 py-3 font-normal">Professional</th>
-                  <th className="px-4 py-3 font-normal">Service</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Start</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.user")}</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.professional")}</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.service")}</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.start")}</th>
+                  <th className="px-4 py-3 font-normal">{t("relationshipDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,7 +171,7 @@ export function RelationshipDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <Link to={`/relationships/${r.id}`} className="text-xs text-accent hover:underline">
-                        View →
+                        {t("relationshipDirectory.view")}
                       </Link>
                     </td>
                   </tr>
@@ -177,7 +179,7 @@ export function RelationshipDirectoryScreen() {
                 {data.relationships.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
-                      No relationships match these filters.
+                      {t("relationshipDirectory.noRelationshipsMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -189,7 +191,7 @@ export function RelationshipDirectoryScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing field exists yet for these Figma-spec'd directory columns/filters — see adminRelationships.service.ts."
+            subtitle={t("relationshipDirectory.noBackingFieldExists")}
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminAcquisitionReportResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -51,6 +52,7 @@ function pct(part: number, whole: number): string {
  * not faked here.
  */
 export function AcquisitionReportScreen() {
+  const { t } = useTranslation();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -60,11 +62,11 @@ export function AcquisitionReportScreen() {
   });
 
   return (
-    <AppShell title="Acquisition Report" subNav={GROWTH_SUB_NAV}>
+    <AppShell title={t("acquisitionReport.acquisitionReport")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("acquisitionReport.from")}
             <input
               type="date"
               value={startDate}
@@ -90,7 +92,7 @@ export function AcquisitionReportScreen() {
               }}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-accent hover:text-accent"
             >
-              Clear (all-time)
+              {t("acquisitionReport.clearAllTime")}
             </button>
           )}
           <span className="text-xs text-text-dim">
@@ -98,12 +100,12 @@ export function AcquisitionReportScreen() {
           </span>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("acquisitionReport.loading")}</p>}
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the acquisition report.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("acquisitionReport.retry")}
             </button>
           </div>
         )}
@@ -111,28 +113,28 @@ export function AcquisitionReportScreen() {
         {data && (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatCard label="Registrations" value={data.totals.registrations} />
-              <StatCard label="Activated" value={`${data.totals.activatedUsers} (${pct(data.totals.activatedUsers, data.totals.registeredUsers)})`} />
+              <StatCard label={t("acquisitionReport.registrations")} value={data.totals.registrations} />
+              <StatCard label={t("acquisitionReport.activated")} value={`${data.totals.activatedUsers} (${pct(data.totals.activatedUsers, data.totals.registeredUsers)})`} />
               <StatCard
-                label="Logged 1st workout"
+                label={t("acquisitionReport.logged1stWorkout")}
                 value={`${data.totals.usersWithFirstWorkout} (${pct(data.totals.usersWithFirstWorkout, data.totals.registeredUsers)})`}
               />
               <StatCard
-                label="Paid conversions"
+                label={t("acquisitionReport.paidConversions")}
                 value={`${data.totals.paidConversions} (${pct(data.totals.paidConversions, data.totals.registeredUsers)})`}
               />
             </div>
 
-            <div className="text-xs uppercase tracking-wide text-text-dim">By channel</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("acquisitionReport.byChannel")}</div>
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Channel</th>
-                    <th className="px-4 py-3 font-normal">Registrations</th>
-                    <th className="px-4 py-3 font-normal">Activated</th>
-                    <th className="px-4 py-3 font-normal">1st Workout</th>
-                    <th className="px-4 py-3 font-normal">Paid</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.channel")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.registrations")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.activated")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.n1stWorkout")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.paid")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,18 +158,18 @@ export function AcquisitionReportScreen() {
               </table>
             </div>
 
-            <div className="text-xs uppercase tracking-wide text-text-dim">By campaign</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("acquisitionReport.byCampaign")}</div>
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Campaign</th>
-                    <th className="px-4 py-3 font-normal">Channel</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Registrations</th>
-                    <th className="px-4 py-3 font-normal">Activated</th>
-                    <th className="px-4 py-3 font-normal">1st Workout</th>
-                    <th className="px-4 py-3 font-normal">Paid</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.campaign")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.channel")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.status")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.registrations")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.activated")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.n1stWorkout")}</th>
+                    <th className="px-4 py-3 font-normal">{t("acquisitionReport.paid")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -190,7 +192,7 @@ export function AcquisitionReportScreen() {
                   {data.byCampaign.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                        No campaign-attributed registrations in this range.
+                        {t("acquisitionReport.noCampaignAttributedRegistrations")}
                       </td>
                     </tr>
                   )}
@@ -200,7 +202,7 @@ export function AcquisitionReportScreen() {
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="No existing precedent in this codebase for time-windowed retention math sliced by channel — see adminAcquisition.service.ts."
+              subtitle={t("acquisitionReport.noExistingPrecedentIn")}
             />
           </>
         )}

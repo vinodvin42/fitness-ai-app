@@ -22,4 +22,7 @@ export const GROWTH_SUB_NAV = [
   { label: "Influencers", path: "/growth/influencers" },
   { label: "Campaigns", path: "/growth/campaigns" },
   { label: "Acquisition Report", path: "/growth/acquisition-report" },
+  // Spec §8 (28 Sep 2026) — the public website's forms finally have a
+  // queue an admin can work, rather than writing to a table nobody reads.
+  { label: "Applications", path: "/growth/applications" },
 ];

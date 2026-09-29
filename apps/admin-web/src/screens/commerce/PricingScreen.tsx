@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminPlanDirectoryResponse, AdminPlanListItem, BillingCycle, SubscriptionTier } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -71,6 +72,7 @@ function formToPayload(form: FormState) {
  * `adminPlans.service.ts`'s own doc comment for the full reasoning.
  */
 export function PricingScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ tier: "", billingCycle: "", status: "" });
   const [showForm, setShowForm] = useState(false);
@@ -137,25 +139,25 @@ export function PricingScreen() {
   const toggleError = archiveMutation.error ?? reactivateMutation.error;
 
   return (
-    <AppShell title="Pricing" subNav={COMMERCE_SUB_NAV}>
+    <AppShell title={t("pricing.pricing")} subNav={COMMERCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total Plans" value={data.counts.total} />
-            <StatCard label="Active" value={data.counts.active} />
-            <StatCard label="Archived" value={data.counts.archived} />
+            <StatCard label={t("pricing.totalPlans")} value={data.counts.total} />
+            <StatCard label={t("pricing.active")} value={data.counts.active} />
+            <StatCard label={t("pricing.archived")} value={data.counts.archived} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Tier
+            {t("pricing.tier")}
             <select
               value={filters.tier}
               onChange={(e) => setFilter("tier", e.target.value as Filters["tier"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("pricing.all")}</option>
               {TIER_OPTIONS.map((t) => (
                 <option key={t} value={t}>
                   {TIER_LABELS[t]}
@@ -165,28 +167,28 @@ export function PricingScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Billing cycle
+            {t("pricing.billingCycle")}
             <select
               value={filters.billingCycle}
               onChange={(e) => setFilter("billingCycle", e.target.value as Filters["billingCycle"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
+              <option value="">{t("pricing.all")}</option>
+              <option value="monthly">{t("pricing.monthly")}</option>
+              <option value="annual">{t("pricing.annual")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("pricing.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
+              <option value="">{t("pricing.all")}</option>
+              <option value="active">{t("pricing.active")}</option>
+              <option value="archived">{t("pricing.archived")}</option>
             </select>
           </label>
 
@@ -213,18 +215,18 @@ export function PricingScreen() {
               <div className="text-sm font-medium">{editingId ? "Edit Plan" : "Create Plan"}</div>
               {editingId && (
                 <button type="button" onClick={closeForm} className="text-xs text-text-dim hover:text-text-primary">
-                  Cancel
+                  {t("pricing.cancel")}
                 </button>
               )}
             </div>
             {!editingId && (
               <p className="text-xs text-text-secondary">
-                New plans are active immediately and appear to mobile subscribers right away.
+                {t("pricing.newPlansAreActive")}
               </p>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Name
+                {t("pricing.name")}
                 <input
                   required
                   value={form.name}
@@ -233,7 +235,7 @@ export function PricingScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Tier
+                {t("pricing.tier")}
                 <select
                   value={form.tier}
                   onChange={(e) => setForm((prev) => ({ ...prev, tier: e.target.value as SubscriptionTier }))}
@@ -249,18 +251,18 @@ export function PricingScreen() {
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Billing cycle
+                {t("pricing.billingCycle")}
                 <select
                   value={form.billingCycle}
                   onChange={(e) => setForm((prev) => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="annual">Annual</option>
+                  <option value="monthly">{t("pricing.monthly")}</option>
+                  <option value="annual">{t("pricing.annual")}</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Price (USD)
+                {t("pricing.priceUsd")}
                 <input
                   required
                   type="number"
@@ -283,13 +285,13 @@ export function PricingScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("pricing.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load plans.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("pricing.retry")}
             </button>
           </div>
         )}
@@ -301,14 +303,14 @@ export function PricingScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Name</th>
-                  <th className="px-4 py-3 font-normal">Tier</th>
-                  <th className="px-4 py-3 font-normal">Price</th>
-                  <th className="px-4 py-3 font-normal">Billing</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Subscribers</th>
-                  <th className="px-4 py-3 font-normal">Updated</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.name")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.tier")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.price")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.billing")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.subscribers")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.updated")}</th>
+                  <th className="px-4 py-3 font-normal">{t("pricing.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -330,7 +332,7 @@ export function PricingScreen() {
                           onClick={() => startEdit(p)}
                           className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                         >
-                          Edit
+                          {t("pricing.edit")}
                         </button>
                         {p.isActive ? (
                           <button
@@ -338,7 +340,7 @@ export function PricingScreen() {
                             onClick={() => archiveMutation.mutate(p.id)}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger"
                           >
-                            Archive
+                            {t("pricing.archive")}
                           </button>
                         ) : (
                           <button
@@ -346,7 +348,7 @@ export function PricingScreen() {
                             onClick={() => reactivateMutation.mutate(p.id)}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                           >
-                            Reactivate
+                            {t("pricing.reactivate")}
                           </button>
                         )}
                       </div>
@@ -356,7 +358,7 @@ export function PricingScreen() {
                 {data.plans.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
-                      No plans match these filters.
+                      {t("pricing.noPlansMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -366,7 +368,7 @@ export function PricingScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel keys={data.notAvailable} subtitle="No Coupon entity exists anywhere in this build — see adminPlans.service.ts." />
+          <NotAvailablePanel keys={data.notAvailable} subtitle={t("pricing.noCouponEntityExists")} />
         )}
       </div>
     </AppShell>

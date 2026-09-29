@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -61,7 +62,7 @@ function isStalled(createdAtIso: string): boolean {
  * Messages/Clients themselves.
  *
  * **R2 Wave 2 (20 Sep 2026):** a second, real section — "Offers from
- * PrimeFit" — added below Client Requests, backing the new admin-proposes-
+ * FynroX" — added below Client Requests, backing the new admin-proposes-
  * a-specific-pro flow (professionalOffers.service.ts). Deliberately a
  * SECOND section on this same screen, not merged into one indistinguishable
  * list with Client Requests above: a Relationship request already exists as
@@ -73,6 +74,7 @@ function isStalled(createdAtIso: string): boolean {
  * closest real screen" reasoning as the top comment above.
  */
 export function PendingRequestsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
 
@@ -83,7 +85,10 @@ export function PendingRequestsScreen() {
 
   const offersQuery = useQuery({
     queryKey: ["coach-professional-offers"],
-    queryFn: fetchProfessionalOffers,
+    // Wrapped rather than passed directly: fetchProfessionalOffers now
+    // takes an optional status filter (P-M7), and React Query would
+    // otherwise hand it a query context object as that argument.
+    queryFn: () => fetchProfessionalOffers("offered"),
   });
 
   const invalidateAfterAction = () => {
@@ -138,7 +143,7 @@ export function PendingRequestsScreen() {
   const confirmDeclineOffer = (item: ProfessionalOfferForCoach) => {
     Alert.alert(
       "Decline this offer?",
-      `PrimeFit proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
+      `FynroX proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -151,21 +156,21 @@ export function PendingRequestsScreen() {
   };
 
   return (
-    <ScreenContainer title="Pending Requests">
+    <ScreenContainer title={t("clients.pending.title")}>
       <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
         ‹ Clients
       </Text>
 
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.lg }}>Client Requests</Text>
-      <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>Users who requested you directly.</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.lg }}>{t("clients.pending.requests")}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{t("clients.pending.requestsNote")}</Text>
 
       {isLoading && <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       {data && data.requests.length === 0 && (
         <EmptyState
-          title="No pending requests"
-          subtitle="When a user requests you as their coach, their request will show up here for you to accept or decline."
+          title={t("clients.pending.emptyTitle")}
+          subtitle={t("clients.pending.emptySubtitle")}
         />
       )}
 
@@ -183,14 +188,14 @@ export function PendingRequestsScreen() {
                 </Text>
                 <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
                   <Button
-                    label="Accept"
+                    label={t("common.accept")}
                     onPress={() => acceptMutation.mutate(item.relationshipId)}
                     loading={isBusy && acceptMutation.isPending}
                     disabled={isBusy}
                     style={{ flex: 1 }}
                   />
                   <Button
-                    label="Decline"
+                    label={t("common.decline")}
                     variant="secondary"
                     onPress={() => confirmDecline(item)}
                     loading={isBusy && declineMutation.isPending}
@@ -204,9 +209,9 @@ export function PendingRequestsScreen() {
         </View>
       )}
 
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.xl }}>Offers from PrimeFit</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.xl }}>{t("clients.pending.offers")}</Text>
       <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-        PrimeFit proposed you as this client's coach — accepting creates the relationship.
+        {t("clients.pending.offerNote")}
       </Text>
 
       {offersQuery.isLoading && <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} />}
@@ -214,8 +219,8 @@ export function PendingRequestsScreen() {
 
       {offersQuery.data && offersQuery.data.offers.length === 0 && (
         <EmptyState
-          title="No offers right now"
-          subtitle="When PrimeFit proposes you as a coach for a specific client, it'll show up here for you to accept or decline."
+          title={t("clients.pending.offersEmptyTitle")}
+          subtitle={t("clients.pending.offersEmptySubtitle")}
         />
       )}
 
@@ -234,19 +239,19 @@ export function PendingRequestsScreen() {
                 </Text>
                 {isStalled(item.createdAt) && (
                   <Text style={{ color: colors.warning, fontSize: 12, marginTop: 2 }}>
-                    You haven't responded to this yet — PrimeFit support can see this too.
+                    {t("clients.pending.notResponded")}
                   </Text>
                 )}
                 <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
                   <Button
-                    label="Accept"
+                    label={t("common.accept")}
                     onPress={() => acceptOfferMutation.mutate(item.offerId)}
                     loading={isBusy && acceptOfferMutation.isPending}
                     disabled={isBusy}
                     style={{ flex: 1 }}
                   />
                   <Button
-                    label="Decline"
+                    label={t("common.decline")}
                     variant="secondary"
                     onPress={() => confirmDeclineOffer(item)}
                     loading={isBusy && declineOfferMutation.isPending}

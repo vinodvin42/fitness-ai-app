@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -15,15 +16,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AiCoachMessage } from "@fitness-ai-app/types";
+// A product name, not copy — it stays "FynroX AI" in every language, and
+// lives in one constant so a rename is one change.
+import { BRAND_AI_NAME } from "@fitness-ai-app/config";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { Chip } from "../../components/Chip";
 import { fetchAiCoachMessages, fetchAiProviderStatus, sendAiCoachMessage } from "../../api/aiCoach";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "AiCoach">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "AiCoach">;
 
 // docs/mobile/03-screen-inventory.md §H: "guidance-topic chips ... quick-
 // reply suggestion chips below the thread". This build ships one set as
@@ -51,7 +55,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
   const isUser = message.role === "user";
   return (
     <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
-      {!isUser && <Text style={styles.assistantLabel}>23Prime AI</Text>}
+      {!isUser && <Text style={styles.assistantLabel}>{BRAND_AI_NAME}</Text>}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         <Text style={isUser ? styles.bubbleTextUser : styles.bubbleTextAssistant}>{message.content}</Text>
       </View>
@@ -65,7 +69,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
 /**
  * AI Coach Chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
  * Phase 2 §H) — the screen half of gap §13, now that
- * apps/api/src/modules/aiCoach is real. Branded "23Prime AI" per the
+ * apps/api/src/modules/aiCoach is real. Branded "FynroX AI" per the
  * design doc. **R1 Developer 1 U1 (14 Sep 2026):** relocated from its own
  * former Recover tab into MoreStack (see that file's own comment) — "AI
  * is global" per the R1 work package's own nav rule, so the real entry
@@ -92,6 +96,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
  * this build for either).
  */
 export function AiCoachScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const listRef = useRef<FlatList<AiCoachMessage>>(null);
   const [draft, setDraft] = useState("");
@@ -157,11 +162,11 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+          <Text style={styles.headerTitle}>{BRAND_AI_NAME}</Text>
         </View>
         <View style={{ padding: spacing.md }}>
           <Card>
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>AI Coach isn't available yet</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("aiCoach.unavailable")}</Text>
             <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
               This server doesn't have an AI provider configured yet. Nothing's broken on your end — check back
               soon.
@@ -177,7 +182,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.onlineDot} />
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+          <Text style={styles.headerTitle}>{BRAND_AI_NAME}</Text>
         </View>
         <Text style={styles.headerSubtitle}>Online</Text>
       </View>
@@ -206,7 +211,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             ListEmptyComponent={
               <View style={{ paddingTop: spacing.lg, gap: spacing.md }}>
                 <Card>
-                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hey — I'm 23Prime AI.</Text>
+                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("aiCoach.greeting")}</Text>
                   <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
                     Ask me about your training, nutrition, or recovery — I'll ground my answers in your real
                     progress in this app. Try one of these, or just type below.
@@ -222,7 +227,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             ListFooterComponent={
               isSending ? (
                 <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-                  <Text style={styles.assistantLabel}>23Prime AI</Text>
+                  <Text style={styles.assistantLabel}>{BRAND_AI_NAME}</Text>
                   <View style={[styles.bubble, styles.bubbleAssistant]}>
                     <ActivityIndicator color={colors.aiAccent} size="small" />
                   </View>
@@ -245,20 +250,20 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
         <View style={styles.composerRow}>
           <TextInput
             style={styles.composerInput}
-            placeholder="Ask your coach anything…"
+            placeholder={t("aiCoach.placeholder")}
             placeholderTextColor={colors.textMuted}
             value={draft}
             onChangeText={setDraft}
             multiline
             maxLength={2000}
             editable={!isSending}
-            accessibilityLabel="Message to AI Coach"
+            accessibilityLabel={t("aiCoach.messageA11y")}
           />
           <Pressable
             onPress={() => send(draft)}
             disabled={isSending || draft.trim().length === 0}
             accessibilityRole="button"
-            accessibilityLabel="Send message"
+            accessibilityLabel={t("aiCoach.sendA11y")}
             accessibilityState={{ disabled: isSending || draft.trim().length === 0, busy: isSending }}
             style={[
               styles.sendButton,

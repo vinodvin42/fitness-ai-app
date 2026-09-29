@@ -77,6 +77,12 @@ const LABELS: Record<string, string> = {
   // Module 04's RelationshipStatus/SubscriptionStatus.
   offered: "Offered",
   declined: "Declined",
+  // Spec §8 — PublicApplicationStatus. "rejected"/"in_progress" above are
+  // already shared; these four are new.
+  new: "New",
+  in_review: "In Review",
+  contacted: "Contacted",
+  converted: "Converted",
 };
 
 const TONE_CLASSES: Record<string, string> = {
@@ -119,6 +125,15 @@ const TONE_CLASSES: Record<string, string> = {
   available: "bg-accent/15 text-accent",
   offered: "bg-warning/15 text-warning",
   declined: "bg-danger/15 text-danger",
+  // Spec §8 (28 Sep 2026) — PublicApplicationStatus, for the website's
+  // Early Access / partner application / contact queue. "rejected" above
+  // is already shared. `new` is amber rather than neutral on purpose: an
+  // unworked application is a person waiting for an answer, which is a
+  // state to clear, not a resting state.
+  new: "bg-warning/15 text-warning",
+  in_review: "bg-warning/15 text-warning",
+  contacted: "bg-accent/15 text-accent",
+  converted: "bg-accent/15 text-accent",
 };
 
 const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed", "available"]);

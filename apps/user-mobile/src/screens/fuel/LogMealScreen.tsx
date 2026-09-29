@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,7 +16,8 @@ import type { FuelStackParamList } from "../../navigation/FuelStack";
 type Props = NativeStackScreenProps<FuelStackParamList, "LogMeal">;
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
-const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
+// Labels moved to the catalogue (`fuel.mealTypes.*`) — resolved per
+// render, since a module-level map freezes the language at import time.
 
 /**
  * Log Meal (fuel-02) — docs/mobile/03-screen-inventory.md §D: "search with
@@ -45,6 +47,7 @@ const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "
  * through the exact same onSubmit -> POST /meal-logs below.
  */
 export function LogMealScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [mealType, setMealType] = useState<MealType>(route.params?.mealType ?? "breakfast");
   const [description, setDescription] = useState("");
@@ -121,30 +124,30 @@ export function LogMealScreen({ route, navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Log Meal">
+    <ScreenContainer title={t("fuel.logMeal.title")}>
       <Card>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Meal</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>{t("fuel.logMeal.meal")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
           {MEAL_TYPES.map((mt) => (
-            <Chip key={mt} label={MEAL_LABELS[mt]} selected={mealType === mt} onPress={() => setMealType(mt)} />
+            <Chip key={mt} label={t(`fuel.mealTypes.${mt}`)} selected={mealType === mt} onPress={() => setMealType(mt)} />
           ))}
         </View>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Describe what you ate</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("fuel.logMeal.describe")}</Text>
         <Text style={{ color: colors.textMuted, ...typography.caption, marginBottom: spacing.sm }}>
-          AI estimates the calories and macros — you'll review and can edit before it's logged.
+          {t("fuel.logMeal.aiNote")}
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. 2 eggs and a slice of toast"
+          placeholder={t("fuel.logMeal.describePlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
         />
         <Button
-          label="Estimate"
+          label={t("fuel.logMeal.estimate")}
           variant="secondary"
           onPress={onEstimate}
           loading={isEstimating}
@@ -155,9 +158,9 @@ export function LogMealScreen({ route, navigation }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
-          <Text style={{ color: colors.textSecondary }}>Manual entry</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("fuel.logMeal.manualEntry")}</Text>
           <Button
-            label="Scan Barcode"
+            label={t("fuel.logMeal.scanBarcode")}
             variant="secondary"
             onPress={() => navigation.navigate("BarcodeScanner", { mealType })}
             style={{ height: 36, paddingHorizontal: spacing.md }}
@@ -168,14 +171,14 @@ export function LogMealScreen({ route, navigation }: Props) {
         ) : null}
         <TextInput
           style={styles.input}
-          placeholder="What did you eat?"
+          placeholder={t("fuel.logMeal.whatDidYouEat")}
           placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
         />
         <TextInput
           style={[styles.input, { marginTop: spacing.sm }]}
-          placeholder="Calories"
+          placeholder={t("fuel.logMeal.calories")}
           placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
           value={calories}
@@ -184,7 +187,7 @@ export function LogMealScreen({ route, navigation }: Props) {
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
           <TextInput
             style={[styles.input, { flex: 1 }]}
-            placeholder="Protein (g)"
+            placeholder={t("fuel.logMeal.proteinG")}
             placeholderTextColor={colors.textMuted}
             keyboardType="number-pad"
             value={protein}
@@ -192,7 +195,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           />
           <TextInput
             style={[styles.input, { flex: 1 }]}
-            placeholder="Carbs (g)"
+            placeholder={t("fuel.logMeal.carbsG")}
             placeholderTextColor={colors.textMuted}
             keyboardType="number-pad"
             value={carbs}
@@ -200,7 +203,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           />
           <TextInput
             style={[styles.input, { flex: 1 }]}
-            placeholder="Fat (g)"
+            placeholder={t("fuel.logMeal.fatG")}
             placeholderTextColor={colors.textMuted}
             keyboardType="number-pad"
             value={fat}
@@ -209,7 +212,7 @@ export function LogMealScreen({ route, navigation }: Props) {
         </View>
       </Card>
 
-      <Button label="Log Meal" onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Button label={t("fuel.logMeal.title")} onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
     </ScreenContainer>
   );
 }

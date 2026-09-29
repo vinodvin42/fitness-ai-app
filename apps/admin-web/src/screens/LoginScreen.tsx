@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
 
@@ -12,6 +13,7 @@ import { extractErrorMessage } from "../lib/apiError";
  * reset flow yet (see adminAuth.schema.ts's doc comment).
  */
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,15 +41,15 @@ export function LoginScreen() {
             PF
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Super Admin Console</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
+            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("login.superAdminConsole")}</div>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="email">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -62,7 +64,7 @@ export function LoginScreen() {
 
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="password">
-              Password
+              {t("login.password")}
             </label>
             <input
               id="password"

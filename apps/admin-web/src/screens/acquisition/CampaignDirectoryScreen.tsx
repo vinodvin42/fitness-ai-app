@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminAcquisitionSourcesResponse,
@@ -72,6 +73,7 @@ async function fetchGyms(): Promise<GymListResponse> {
  * dropdowns rather than duplicating those lists.
  */
 export function CampaignDirectoryScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -119,12 +121,12 @@ export function CampaignDirectoryScreen() {
   });
 
   return (
-    <AppShell title="Campaigns" subNav={GROWTH_SUB_NAV}>
+    <AppShell title={t("campaignDirectory.campaigns")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         {campaigns.data && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Total campaigns" value={campaigns.data.counts.total} />
-            <StatCard label="Active" value={campaigns.data.counts.active} />
+            <StatCard label={t("campaignDirectory.totalCampaigns")} value={campaigns.data.counts.total} />
+            <StatCard label={t("campaignDirectory.active")} value={campaigns.data.counts.active} />
           </div>
         )}
 
@@ -147,7 +149,7 @@ export function CampaignDirectoryScreen() {
             className="grid grid-cols-1 gap-3 rounded-lg border border-border-subtle bg-surface p-4 sm:grid-cols-3 lg:grid-cols-6"
           >
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Name
+              {t("campaignDirectory.name")}
               <input
                 required
                 value={name}
@@ -156,7 +158,7 @@ export function CampaignDirectoryScreen() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Source
+              {t("campaignDirectory.source")}
               <select
                 required
                 value={sourceId}
@@ -164,7 +166,7 @@ export function CampaignDirectoryScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               >
                 <option value="" disabled>
-                  Select…
+                  {t("campaignDirectory.select")}
                 </option>
                 {sources.data?.sources.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -174,28 +176,28 @@ export function CampaignDirectoryScreen() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Link code
+              {t("campaignDirectory.linkCode2")}
               <input
                 required
-                placeholder="IG-REELS-SEP"
+                placeholder={t("campaignDirectory.igReelsSep")}
                 value={linkCode}
                 onChange={(e) => setLinkCode(e.target.value)}
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Status
+              {t("campaignDirectory.status")}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as "active" | "inactive")}
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{t("campaignDirectory.active")}</option>
+                <option value="inactive">{t("campaignDirectory.inactive")}</option>
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Influencer (optional)
+              {t("campaignDirectory.influencerOptional")}
               <select
                 value={influencerId}
                 onChange={(e) => setInfluencerId(e.target.value)}
@@ -210,7 +212,7 @@ export function CampaignDirectoryScreen() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Gym (optional)
+              {t("campaignDirectory.gymOptional")}
               <select
                 value={gymId}
                 onChange={(e) => setGymId(e.target.value)}
@@ -240,12 +242,12 @@ export function CampaignDirectoryScreen() {
           </div>
         )}
 
-        {campaigns.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {campaigns.isLoading && <p className="text-sm text-text-secondary">{t("campaignDirectory.loading")}</p>}
         {campaigns.isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(campaigns.error, "Couldn't load campaigns.")}
             <button type="button" onClick={() => campaigns.refetch()} className="ml-3 underline">
-              Retry
+              {t("campaignDirectory.retry")}
             </button>
           </div>
         )}
@@ -255,12 +257,12 @@ export function CampaignDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Campaign</th>
-                  <th className="px-4 py-3 font-normal">Channel</th>
-                  <th className="px-4 py-3 font-normal">Link Code</th>
-                  <th className="px-4 py-3 font-normal">Influencer</th>
-                  <th className="px-4 py-3 font-normal">Gym</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.campaign")}</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.channel")}</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.linkCode")}</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.influencer")}</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.gym")}</th>
+                  <th className="px-4 py-3 font-normal">{t("campaignDirectory.status")}</th>
                   <th className="px-4 py-3 font-normal"></th>
                 </tr>
               </thead>
@@ -297,7 +299,7 @@ export function CampaignDirectoryScreen() {
                 {campaigns.data.campaigns.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No campaigns yet.
+                      {t("campaignDirectory.noCampaignsYet")}
                     </td>
                   </tr>
                 )}

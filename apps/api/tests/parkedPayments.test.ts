@@ -6,7 +6,7 @@ import { hashPassword } from "../src/lib/password";
 /**
  * The parked-payment security boundary. Razorpay is deliberately
  * unconfigured in every test/dev/CI environment (RAZORPAY_KEY_ID/SECRET
- * are unset — see src/lib/razorpayClient.ts's isRazorpayConfigured()), so
+ * are unset — see src/providers/razorpayPaymentProvider.ts's isConfigured()), so
  * this suite does not attempt to mock a real Razorpay call. What it does
  * verify for real is the actual boundary that prevents a paid plan,
  * program, or (5 Sep 2026, PAY-01) coach booking from being granted for
@@ -168,7 +168,19 @@ describe("Parked payments: subscriptions, program purchases, bookings, Razorpay"
   it("reports Razorpay as not configured via GET /payments/config", async () => {
     const res = await request(app).get("/payments/config");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ configured: false });
+    // The assertion that matters is unchanged: with no credentials the
+    // gateway reports itself unconfigured and the order routes 503.
+    expect(res.body.configured).toBe(false);
+    // Since the D4 adapter landed, the response also names WHICH provider
+    // is selected. A client showing a payment sheet has to be able to
+    // tell it is talking to the mock, and a QA run that silently used
+    // the mock is a false pass.
+    expect(res.body.provider).toBe("razorpay");
+    expect(res.body.providers.payment).toEqual({ name: "razorpay", configured: false });
+    // D5 and D6 have no real implementation yet, and say so honestly
+    // rather than reporting themselves ready.
+    expect(res.body.providers.payout.configured).toBe(false);
+    expect(res.body.providers.deepLink.configured).toBe(false);
   });
 
   it("503s cleanly creating a Razorpay order while payments are unconfigured", async () => {

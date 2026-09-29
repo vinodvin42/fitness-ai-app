@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminAuditLogDirectoryResponse, AuditLogActorType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -73,6 +74,7 @@ function downloadCsv(entries: AdminAuditLogDirectoryResponse["entries"]) {
  * against both rather than a dropdown that would silently go stale.
  */
 export function AuditLogsScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ actorType: "", search: "", startDate: "", endDate: "" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -85,33 +87,33 @@ export function AuditLogsScreen() {
   });
 
   return (
-    <AppShell title="Audit Logs" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("auditLogs.auditLogs")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-4 gap-3">
-            <StatCard label="Total (in scope)" value={data.stats.totalCount} />
-            <StatCard label="Admin Actions" value={data.stats.adminActions} />
-            <StatCard label="User Actions" value={data.stats.userActions} />
-            <StatCard label="Professional Actions" value={data.stats.professionalActions} />
+            <StatCard label={t("auditLogs.totalInScope")} value={data.stats.totalCount} />
+            <StatCard label={t("auditLogs.adminActions")} value={data.stats.adminActions} />
+            <StatCard label={t("auditLogs.userActions")} value={data.stats.userActions} />
+            <StatCard label={t("auditLogs.professionalActions")} value={data.stats.professionalActions} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Actor
+            {t("auditLogs.actor")}
             <select
               value={filters.actorType}
               onChange={(e) => setFilter("actorType", e.target.value as Filters["actorType"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-              <option value="professional">Professional</option>
+              <option value="">{t("auditLogs.all")}</option>
+              <option value="admin">{t("auditLogs.admin")}</option>
+              <option value="user">{t("auditLogs.user")}</option>
+              <option value="professional">{t("auditLogs.professional")}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("auditLogs.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -129,10 +131,10 @@ export function AuditLogsScreen() {
             />
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("auditLogs.search")}
             <input
               type="search"
-              placeholder="Action or entity type…"
+              placeholder={t("auditLogs.actionOrEntityType")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -144,17 +146,17 @@ export function AuditLogsScreen() {
             onClick={() => data && downloadCsv(data.entries)}
             className="ml-auto rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ⬇ Export CSV
+            {t("auditLogs.exportCsv")}
           </button>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("auditLogs.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load audit logs.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("auditLogs.retry")}
             </button>
           </div>
         )}
@@ -169,16 +171,16 @@ export function AuditLogsScreen() {
         {data && (
           <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
             <div className="flex items-center gap-1.5 border-b border-border-subtle px-4 py-2 text-xs text-text-dim">
-              🔒 Write-once — nothing on this screen or its API can edit or delete an entry.
+              {t("auditLogs.writeOnceNothingOn")}
             </div>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Actor</th>
-                  <th className="px-4 py-3 font-normal">Action</th>
-                  <th className="px-4 py-3 font-normal">Entity</th>
-                  <th className="px-4 py-3 font-normal">Metadata</th>
-                  <th className="px-4 py-3 font-normal">Timestamp</th>
+                  <th className="px-4 py-3 font-normal">{t("auditLogs.actor")}</th>
+                  <th className="px-4 py-3 font-normal">{t("auditLogs.action")}</th>
+                  <th className="px-4 py-3 font-normal">{t("auditLogs.entity")}</th>
+                  <th className="px-4 py-3 font-normal">{t("auditLogs.metadata")}</th>
+                  <th className="px-4 py-3 font-normal">{t("auditLogs.timestamp")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,7 +224,7 @@ export function AuditLogsScreen() {
                 {data.entries.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                      No audit entries match these filters.
+                      {t("auditLogs.noAuditEntriesMatch")}
                     </td>
                   </tr>
                 )}

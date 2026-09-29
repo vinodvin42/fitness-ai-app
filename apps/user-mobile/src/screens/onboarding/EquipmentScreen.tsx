@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -26,15 +27,16 @@ const EQUIPMENT_OPTIONS = [
  * file's buildSelectionPrompt), so it's real, usable context from day one.
  */
 export function EquipmentScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={5}
       total={8}
-      label="Equipment"
-      title="What do you have access to?"
-      subtitle="This helps us steer clear of programs that need equipment you don't have."
+      label={t("onboarding.equipment.step")}
+      title={t("onboarding.equipment.title")}
+      subtitle={t("onboarding.equipment.subtitle")}
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("FoodDiet");

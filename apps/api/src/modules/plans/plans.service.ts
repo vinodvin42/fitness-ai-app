@@ -4,6 +4,7 @@ import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { DecideRecommendationInput } from "./plans.schema";
+import { getDecryptedOnboardingProfile } from "../../lib/healthData";
 
 /**
  * Plan-Generation / Recommendation Engine (14 Sep 2026).
@@ -237,7 +238,11 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
     );
   }
 
-  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  // Health fields are encrypted at rest — read through the one
+  // accessor, never the columns. A direct read here would hand the
+  // plan generator an empty condition list for a user who declared
+  // a heart condition (§10, and the AI safety rules that depend on it).
+  const profile = await getDecryptedOnboardingProfile(userId);
   if (!profile || !profile.completedAt) {
     throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
   }
@@ -276,7 +281,11 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     throw new ApiHttpError(503, "plan_generation_not_configured", "Plan generation isn't configured on this server yet");
   }
 
-  const profile = await prisma.onboardingProfile.findUnique({ where: { userId } });
+  // Health fields are encrypted at rest — read through the one
+  // accessor, never the columns. A direct read here would hand the
+  // plan generator an empty condition list for a user who declared
+  // a heart condition (§10, and the AI safety rules that depend on it).
+  const profile = await getDecryptedOnboardingProfile(userId);
   if (!profile || !profile.completedAt) {
     throw new ApiHttpError(400, "assessment_incomplete", "Complete your assessment before generating a plan");
   }
@@ -626,6 +635,21 @@ export async function decideRecommendation(
     throw new ApiHttpError(409, "recommendation_already_decided", "This recommendation has already been decided");
   }
 
+  // Spec §11 `review.started`. §10's Recommendation state set is the
+  // review: a professional opening a decision is the start of one, and
+  // the decision below completes it. Only emitted for a professional
+  // actor — a user accepting their own AI suggestion is not a
+  // professional review, and counting it as one would inflate the very
+  // metric BR-AI-009/010/011 exist to keep honest.
+  if (decidedByRole === "professional") {
+    await trackEvent(
+      userId,
+      "review.started",
+      { recommendationId, planId: rec.planId, professionalId: actorProfessionalId ?? null },
+      { ruleId: "BR-AI-009" },
+    );
+  }
+
   let newProgramId: string | null = null;
   let newStatus: RecommendationRow["status"];
 
@@ -728,6 +752,20 @@ export async function decideRecommendation(
     { recommendationId, planId: rec.planId, newProgramId },
     { metadata: { action: input.action, decidedByRole } },
   );
+
+  // Spec §11 `review.completed`, paired with the `review.started` above.
+  // Carries the outcome, so "how many reviews ended in No Change" — the
+  // question BR-AI-010/011 make a correctness signal rather than a
+  // product one — is answerable without joining back to the
+  // recommendation.
+  if (decidedByRole === "professional") {
+    await trackEvent(
+      userId,
+      "review.completed",
+      { recommendationId, planId: rec.planId, professionalId: actorProfessionalId ?? null },
+      { ruleId: "BR-AI-009", metadata: { outcome: newStatus } },
+    );
+  }
 
   const name = newProgramId ? (await prisma.program.findUnique({ where: { id: newProgramId }, select: { name: true } }))?.name ?? null : null;
   return toRecommendationDTO(updated, name);

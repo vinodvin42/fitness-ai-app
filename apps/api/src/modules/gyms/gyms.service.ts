@@ -42,7 +42,7 @@ import {
  * alphabet/collision-retry discipline as lib/referralCode.ts), generated
  * once at creation. This is genuinely compatible with what
  * apps/user-mobile's acquisitionContext.ts already expects — that file
- * parses `primefit://join?source=gym&code=<code>` into the raw string
+ * parses `fynrox://join?source=gym&code=<code>` into the raw string
  * `"gym:<code>"` and persists it on `User.acquisitionContext`. Resolving
  * that raw string into a real `User.gymId` relation at signup is
  * DELIBERATELY NOT done here — that's later-wave integration work per the

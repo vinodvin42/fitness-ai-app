@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminRecipeDirectoryResponse, AdminRecipeListItem } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -96,6 +97,7 @@ function formToPayload(form: FormState) {
  * ReviewQueueScreen.tsx.
  */
 export function RecipesDirectoryScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ mealType: "", status: "", search: "" });
   const [showForm, setShowForm] = useState(false);
@@ -176,25 +178,25 @@ export function RecipesDirectoryScreen() {
   const saveError = createMutation.error ?? updateMutation.error;
 
   return (
-    <AppShell title="Recipes" subNav={PROGRAMS_SUB_NAV}>
+    <AppShell title={t("recipesDirectory.recipes")} subNav={PROGRAMS_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total Recipes" value={data.counts.total} />
-            <StatCard label="Published" value={data.counts.published} />
-            <StatCard label="Draft" value={data.counts.draft} />
+            <StatCard label={t("recipesDirectory.totalRecipes")} value={data.counts.total} />
+            <StatCard label={t("recipesDirectory.published")} value={data.counts.published} />
+            <StatCard label={t("recipesDirectory.draft")} value={data.counts.draft} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Meal type
+            {t("recipesDirectory.mealType2")}
             <select
               value={filters.mealType}
               onChange={(e) => setFilter("mealType", e.target.value as Filters["mealType"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("recipesDirectory.all")}</option>
               {MEAL_TYPE_OPTIONS.map((m) => (
                 <option key={m} value={m}>
                   {MEAL_TYPE_LABELS[m]}
@@ -203,22 +205,22 @@ export function RecipesDirectoryScreen() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("recipesDirectory.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
+              <option value="">{t("recipesDirectory.all")}</option>
+              <option value="published">{t("recipesDirectory.published")}</option>
+              <option value="draft">{t("recipesDirectory.draft")}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("recipesDirectory.search")}
             <input
               type="search"
-              placeholder="Name or tag…"
+              placeholder={t("recipesDirectory.nameOrTag")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -248,18 +250,18 @@ export function RecipesDirectoryScreen() {
               <div className="text-sm font-medium">{editingId ? "Edit Recipe" : "Create Recipe"}</div>
               {editingId && (
                 <button type="button" onClick={closeForm} className="text-xs text-text-dim hover:text-text-primary">
-                  Cancel
+                  {t("recipesDirectory.cancel")}
                 </button>
               )}
             </div>
             {!editingId && (
               <p className="text-xs text-text-secondary">
-                New recipes start as a Draft — not visible to consumers until you Publish them.
+                {t("recipesDirectory.newRecipesStartAs")}
               </p>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Name
+                {t("recipesDirectory.name")}
                 <input
                   required
                   value={form.name}
@@ -268,7 +270,7 @@ export function RecipesDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Meal type
+                {t("recipesDirectory.mealType2")}
                 <select
                   value={form.mealType}
                   onChange={(e) => setForm((prev) => ({ ...prev, mealType: e.target.value as MealType }))}
@@ -284,7 +286,7 @@ export function RecipesDirectoryScreen() {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Calories
+                {t("recipesDirectory.calories")}
                 <input
                   required
                   type="number"
@@ -295,7 +297,7 @@ export function RecipesDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Protein (g)
+                {t("recipesDirectory.proteinG")}
                 <input
                   type="number"
                   min={0}
@@ -305,7 +307,7 @@ export function RecipesDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Carbs (g)
+                {t("recipesDirectory.carbsG")}
                 <input
                   type="number"
                   min={0}
@@ -315,7 +317,7 @@ export function RecipesDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Fat (g)
+                {t("recipesDirectory.fatG")}
                 <input
                   type="number"
                   min={0}
@@ -325,7 +327,7 @@ export function RecipesDirectoryScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Prep time (min)
+                {t("recipesDirectory.prepTimeMin")}
                 <input
                   required
                   type="number"
@@ -337,16 +339,16 @@ export function RecipesDirectoryScreen() {
               </label>
             </div>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Tags (comma-separated)
+              {t("recipesDirectory.tagsCommaSeparated")}
               <input
                 value={form.tagsText}
                 onChange={(e) => setForm((prev) => ({ ...prev, tagsText: e.target.value }))}
-                placeholder="high-protein, quick, vegetarian"
+                placeholder={t("recipesDirectory.highProteinQuickVegetarian")}
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Hero image URL (optional)
+              {t("recipesDirectory.heroImageUrlOptional")}
               <input
                 type="url"
                 value={form.imageUrl}
@@ -368,13 +370,13 @@ export function RecipesDirectoryScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("recipesDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load recipes.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("recipesDirectory.retry")}
             </button>
           </div>
         )}
@@ -393,16 +395,16 @@ export function RecipesDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Image</th>
-                  <th className="px-4 py-3 font-normal">Name</th>
-                  <th className="px-4 py-3 font-normal">Meal Type</th>
-                  <th className="px-4 py-3 font-normal">Calories</th>
-                  <th className="px-4 py-3 font-normal">Prep Time</th>
-                  <th className="px-4 py-3 font-normal">Tags</th>
-                  <th className="px-4 py-3 font-normal">Times Logged</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Updated</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.image")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.name")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.mealType")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.calories")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.prepTime")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.tags")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.timesLogged")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.updated")}</th>
+                  <th className="px-4 py-3 font-normal">{t("recipesDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,7 +443,7 @@ export function RecipesDirectoryScreen() {
                           onClick={() => startEdit(r)}
                           className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                         >
-                          Edit
+                          {t("recipesDirectory.edit")}
                         </button>
                         {r.status === "published" ? (
                           <button
@@ -450,7 +452,7 @@ export function RecipesDirectoryScreen() {
                             onClick={() => unpublishMutation.mutate(r.id)}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
                           >
-                            Unpublish
+                            {t("recipesDirectory.unpublish")}
                           </button>
                         ) : (
                           <>
@@ -460,7 +462,7 @@ export function RecipesDirectoryScreen() {
                               onClick={() => publishMutation.mutate(r.id)}
                               className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
                             >
-                              Publish
+                              {t("recipesDirectory.publish")}
                             </button>
                             <button
                               type="button"
@@ -468,7 +470,7 @@ export function RecipesDirectoryScreen() {
                               onClick={() => submitReviewMutation.mutate(r.id)}
                               className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
                             >
-                              Submit for Review
+                              {t("recipesDirectory.submitForReview")}
                             </button>
                           </>
                         )}
@@ -479,7 +481,7 @@ export function RecipesDirectoryScreen() {
                 {data.recipes.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-8 text-center text-text-dim">
-                      No recipes match these filters.
+                      {t("recipesDirectory.noRecipesMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -491,7 +493,7 @@ export function RecipesDirectoryScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing field exists yet for these Figma-spec'd columns/filters — see adminPrograms.service.ts."
+            subtitle={t("recipesDirectory.noBackingFieldExists")}
           />
         )}
       </div>

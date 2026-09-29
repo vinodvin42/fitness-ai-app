@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Image, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -37,6 +38,7 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ProgramDetail">;
  * was purely a missing field on this particular screen.
  */
 export function ProgramDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { programId } = route.params;
   const queryClient = useQueryClient();
   const [couponCode, setCouponCode] = useState("");
@@ -60,7 +62,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Program">
+      <ScreenContainer title={t("workout.program")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -68,7 +70,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
   if (isLoading || !program) {
     return (
-      <ScreenContainer title="Program">
+      <ScreenContainer title={t("workout.program")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -109,9 +111,9 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
             <Pill label={`${program.durationWeeks} weeks`} icon="calendar" />
             <Pill label={program.type} />
             {program.priceCents === 0 ? (
-              <Pill label="Free" tone="success" />
+              <Pill label={t("workout.programDetail.free")} tone="success" />
             ) : program.purchased ? (
-              <Pill label="Purchased" tone="success" icon="check" />
+              <Pill label={t("workout.programDetail.purchased")} tone="success" icon="check" />
             ) : (
               <Pill label={`₹${(program.priceCents / 100).toFixed(0)}`} tone="accent" />
             )}
@@ -124,7 +126,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
       {needsPurchase ? (
         <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Purchase this program</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("workout.programDetail.purchase")}</Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
             {paymentsConfigured
               ? `One-time purchase — unlocks every workout in ${program.name}.`
@@ -134,7 +136,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
             <TextInput
               value={couponCode}
               onChangeText={(v) => setCouponCode(v.toUpperCase())}
-              placeholder="Have a coupon? Enter code"
+              placeholder={t("workout.programDetail.couponPlaceholder")}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="characters"
               style={{
@@ -175,7 +177,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
           />
         ))}
         {program.workouts.length === 0 ? (
-          <Text style={{ color: colors.textMuted }}>No workouts in this program yet.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("workout.programDetail.noWorkouts")}</Text>
         ) : null}
       </View>
 

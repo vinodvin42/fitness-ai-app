@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -18,14 +19,15 @@ const LEVELS = [
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Training Level" — 4 experience-level cards. */
 export function TrainingLevelScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, update, markScreenReached } = useOnboardingWizard();
 
   return (
     <WizardLayout
       step={4}
       total={8}
-      label="Training Level"
-      title="What's your experience level?"
+      label={t("onboarding.level.step")}
+      title={t("onboarding.level.title")}
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("Equipment");

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
@@ -71,16 +72,15 @@ const SERVICE_LABEL: Record<string, string> = { fitness: "Fitness", nutrition: "
  * banner is the client-side half of that honesty, not a duplicate report.
  */
 function StuckRelationshipsBanner({ items }: { items: { relationshipId: string; clientFullName: string; serviceType: string; stuckSince: string }[] }) {
+  const { t } = useTranslation();
   if (items.length === 0) return null;
   return (
     <Card style={{ borderColor: colors.warning, borderWidth: 1 }}>
       <Text style={{ color: colors.warning, ...typography.h2, marginBottom: spacing.xs }}>
-        Needs attention — stuck activating
+        {t("notifications.stuckActivating")}
       </Text>
       <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.sm }}>
-        {items.length === 1 ? "This client relationship" : `These ${items.length} client relationships`} didn't
-        finish activating and won't show up under Clients yet. This has been flagged to PrimeFit support — no
-        action is required from you, but reach out to support if you expected this to be resolved by now.
+        {t("today.stuck", { count: items.length })}
       </Text>
       <View style={{ gap: spacing.xs }}>
         {items.map((item) => (
@@ -97,6 +97,7 @@ function StuckRelationshipsBanner({ items }: { items: { relationshipId: string; 
 }
 
 function EarningsCard() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-earnings"],
     queryFn: fetchEarnings,
@@ -107,19 +108,19 @@ function EarningsCard() {
 
   return (
     <Card>
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Earnings</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.earnings")}</Text>
 
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && (
         <ErrorState
-          message="Couldn't load your earnings. Check your connection and try again."
+          message={t("today.earningsError")}
           onRetry={() => refetch()}
         />
       )}
 
       {data && hasNoEarningsYet && (
         <Text style={{ color: colors.textSecondary }}>
-          No earnings yet — this fills in once your first confirmed, paid booking lands.
+          {t("today.noEarningsYet")}
         </Text>
       )}
 
@@ -131,7 +132,7 @@ function EarningsCard() {
                 <Text
                   style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}
                 >
-                  This month (net)
+                  {t("today.thisMonthNet")}
                 </Text>
                 <StatusBadge status="pending" />
               </View>
@@ -141,7 +142,7 @@ function EarningsCard() {
             </View>
             <View style={{ justifyContent: "center" }}>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                Gross {money(data.currentMonth.grossCents)} · {data.commissionPct}% platform fee
+                {t("today.grossLine", { gross: money(data.currentMonth.grossCents), pct: data.commissionPct })}
               </Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                 Lifetime paid {money(data.lifetimePaidCents)}
@@ -164,11 +165,11 @@ function EarningsCard() {
                 marginBottom: spacing.xs,
               }}
             >
-              Settlement History
+              {t("today.settlementHistory")}
             </Text>
             {data.settlements.length === 0 ? (
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                No settlements yet — your first one is created once a full month of bookings closes out.
+                {t("today.noSettlements")}
               </Text>
             ) : (
               <View style={{ gap: spacing.sm }}>
@@ -244,6 +245,7 @@ function timeLabel(iso: string): string {
  * StuckRelationshipsBanner's own doc comment.
  */
 export function TodayScreen() {
+  const { t } = useTranslation();
   const { professional, logout } = useAuth();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-dashboard-stats"],
@@ -251,7 +253,7 @@ export function TodayScreen() {
   });
 
   return (
-    <ScreenContainer title="Today">
+    <ScreenContainer title={t("today.title")}>
       <View>
         <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{professional?.fullName}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>{professional?.email}</Text>
@@ -267,7 +269,7 @@ export function TodayScreen() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {data.services.length === 0 ? (
               <Card style={{ flex: 1 }}>
-                <Text style={{ color: colors.textSecondary }}>No services selected yet.</Text>
+                <Text style={{ color: colors.textSecondary }}>{t("today.noServices")}</Text>
               </Card>
             ) : (
               data.services.map((s) => (
@@ -284,7 +286,7 @@ export function TodayScreen() {
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <Card style={{ flex: 1 }}>
               <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Active Clients
+                {t("today.activeClients")}
               </Text>
               <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs }}>
                 {data.activeClients}
@@ -292,7 +294,7 @@ export function TodayScreen() {
             </Card>
             <Card style={{ flex: 1 }}>
               <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Sessions This Week
+                {t("today.sessionsThisWeek")}
               </Text>
               <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs }}>
                 {data.sessionsThisWeek}
@@ -302,10 +304,10 @@ export function TodayScreen() {
 
           <Card>
             <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>
-              Today's Schedule
+              {t("today.schedule")}
             </Text>
             {data.todaysSchedule.length === 0 ? (
-              <Text style={{ color: colors.textSecondary }}>No sessions scheduled today.</Text>
+              <Text style={{ color: colors.textSecondary }}>{t("today.noSessions")}</Text>
             ) : (
               <View style={{ gap: spacing.sm }}>
                 {data.todaysSchedule.map((item) => (
@@ -324,21 +326,21 @@ export function TodayScreen() {
           <EarningsCard />
 
           <Card>
-            <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Quick Actions</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickActions")}</Text>
             <View style={{ gap: spacing.xs }}>
-              <Text style={{ color: colors.textMuted }}>Create Workout Plan — not built yet</Text>
-              <Text style={{ color: colors.textMuted }}>Create Nutrition Plan — not built yet</Text>
-              <Text style={{ color: colors.textMuted }}>Schedule Client Session — not built yet</Text>
+              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltWorkoutPlan")}</Text>
+              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltNutritionPlan")}</Text>
+              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltSchedule")}</Text>
             </View>
           </Card>
 
           {data.notAvailable.length > 0 && (
             <Card style={{ borderStyle: "dashed" }}>
               <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Not available yet
+                {t("today.notAvailableYet")}
               </Text>
               <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-                Avg. Rating has no backing entity anywhere in this build — no Review model exists yet.
+                {t("today.noRatingEntity")}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
                 {data.notAvailable.map((key) => (
@@ -365,7 +367,7 @@ export function TodayScreen() {
         onPress={() => logout()}
         style={{ color: colors.textSecondary, textAlign: "center", marginTop: spacing.md, textDecorationLine: "underline" }}
       >
-        Log Out
+        {t("today.logOut")}
       </Text>
     </ScreenContainer>
   );

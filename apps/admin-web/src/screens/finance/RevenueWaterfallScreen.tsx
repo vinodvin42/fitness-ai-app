@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminRevenueWaterfallResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -79,6 +80,7 @@ function WaterfallRow({
  * screen.
  */
 export function RevenueWaterfallScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ startDate: "", endDate: "" });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -90,11 +92,11 @@ export function RevenueWaterfallScreen() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <AppShell title="Revenue Waterfall" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("revenueWaterfall.revenueWaterfall")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("revenueWaterfall.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -111,16 +113,16 @@ export function RevenueWaterfallScreen() {
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             />
           </label>
-          <span className="pb-1.5 text-[11px] text-text-dim">Defaults to all-time</span>
+          <span className="pb-1.5 text-[11px] text-text-dim">{t("revenueWaterfall.defaultsToAllTime")}</span>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("revenueWaterfall.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the revenue waterfall.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("revenueWaterfall.retry")}
             </button>
           </div>
         )}
@@ -128,14 +130,14 @@ export function RevenueWaterfallScreen() {
         {data && (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <StatCard label="Gross Revenue" value={money(data.stages.grossCents)} hint="Before any discount" />
+              <StatCard label={t("revenueWaterfall.grossRevenue")} value={money(data.stages.grossCents)} hint="Before any discount" />
               <StatCard
-                label="Net of Discounts"
+                label={t("revenueWaterfall.netOfDiscounts")}
                 value={money(data.stages.netOfDiscountsCents)}
                 hint="What was actually charged"
               />
               <StatCard
-                label="Net Revenue"
+                label={t("revenueWaterfall.netRevenue")}
                 value={money(data.stages.netRevenueCents)}
                 hint="After refunds & coach settlements"
               />
@@ -143,38 +145,38 @@ export function RevenueWaterfallScreen() {
 
             <div className="rounded-lg border border-border-subtle bg-surface">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                Gross → Net, stage by stage
+                {t("revenueWaterfall.grossNetStageBy")}
               </div>
               <WaterfallRow
-                label="Gross Revenue"
+                label={t("revenueWaterfall.grossRevenue")}
                 cents={data.stages.grossCents}
                 runningTotalCents={data.stages.grossCents}
                 grossCents={data.stages.grossCents}
                 tone="neutral"
               />
               <WaterfallRow
-                label="− Discounts"
+                label={t("revenueWaterfall.discounts")}
                 cents={data.stages.discountCents}
                 runningTotalCents={data.stages.netOfDiscountsCents}
                 grossCents={data.stages.grossCents}
                 tone="negative"
               />
               <WaterfallRow
-                label="− Refunds"
+                label={t("revenueWaterfall.refunds")}
                 cents={data.stages.refundCents}
                 runningTotalCents={data.stages.netOfDiscountsCents - data.stages.refundCents}
                 grossCents={data.stages.grossCents}
                 tone="negative"
               />
               <WaterfallRow
-                label="− Coach Settlements"
+                label={t("revenueWaterfall.coachSettlements")}
                 cents={data.stages.coachSettlementCents}
                 runningTotalCents={data.stages.netRevenueCents}
                 grossCents={data.stages.grossCents}
                 tone="negative"
               />
               <WaterfallRow
-                label="= Net Revenue"
+                label={t("revenueWaterfall.netRevenue2")}
                 cents={data.stages.netRevenueCents}
                 runningTotalCents={data.stages.netRevenueCents}
                 grossCents={data.stages.grossCents}
@@ -191,7 +193,7 @@ export function RevenueWaterfallScreen() {
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="Influencer payouts are admin-entered amounts, not computed from real attributed revenue — see adminFinance.service.ts."
+              subtitle={t("revenueWaterfall.influencerPayoutsAreAdmin")}
             />
           </>
         )}

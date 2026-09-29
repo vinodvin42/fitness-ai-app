@@ -4,6 +4,10 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { SupportScreen } from "./screens/SupportScreen";
+import { InviteScreen } from "./screens/InviteScreen";
+import { EquipmentScreen } from "./screens/EquipmentScreen";
+import { HelpRequestsScreen } from "./screens/HelpRequestsScreen";
+import { PartnershipScreen } from "./screens/PartnershipScreen";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -58,6 +62,38 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <DashboardScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/invite"
+        element={
+          <RequireAuth>
+            <InviteScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/equipment"
+        element={
+          <RequireAuth>
+            <EquipmentScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/help"
+        element={
+          <RequireAuth>
+            <HelpRequestsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/partnership"
+        element={
+          <RequireAuth>
+            <PartnershipScreen />
           </RequireAuth>
         }
       />

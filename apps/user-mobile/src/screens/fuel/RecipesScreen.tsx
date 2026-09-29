@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -24,10 +25,11 @@ type Props = NativeStackScreenProps<FuelStackParamList, "Recipes">;
  * ListRow's `imageUrl` prop.
  */
 export function RecipesScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const recipesQuery = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes });
 
   return (
-    <ScreenContainer title="Recipes" scroll={false}>
+    <ScreenContainer title={t("recipes.title")} scroll={false}>
       {recipesQuery.isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : recipesQuery.isError ? (
@@ -50,7 +52,7 @@ export function RecipesScreen({ navigation }: Props) {
               right={<Pill label={`${item.calories} kcal`} tone="warning" />}
             />
           )}
-          ListEmptyComponent={<EmptyState title="No recipes yet" />}
+          ListEmptyComponent={<EmptyState title={t("recipes.empty")} />}
         />
       )}
     </ScreenContainer>

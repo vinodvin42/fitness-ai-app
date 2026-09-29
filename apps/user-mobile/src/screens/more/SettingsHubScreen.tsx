@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -35,8 +36,9 @@ const ROWS: Array<{
 ];
 
 export function SettingsHubScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
-    <ScreenContainer title="Settings">
+    <ScreenContainer title={t("settings.title")}>
       <View style={{ gap: spacing.sm }}>
         {ROWS.map((r) => (
           <ListRow
@@ -54,9 +56,9 @@ export function SettingsHubScreen({ navigation }: Props) {
       <Card style={{ borderStyle: "dashed", flexDirection: "row", alignItems: "center", gap: spacing.md }}>
         <Icon name="heart-pulse" size={20} color={colors.textMuted} />
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textSecondary, ...typography.h3 }}>Health Connect</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.h3 }}>{t("settings.healthConnect")}</Text>
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
-            Wearable sync needs a native Bluetooth/HealthKit integration this build can't do yet.
+            {t("settings.healthConnectNote")}
           </Text>
         </View>
       </Card>

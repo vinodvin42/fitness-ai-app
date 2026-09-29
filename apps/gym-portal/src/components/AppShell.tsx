@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
@@ -8,12 +9,20 @@ import { useAuth } from "../lib/auth";
  * narrow "Lite" scope — two real destinations (Dashboard, Support), not
  * the admin console's 13-module sidebar.
  */
+// Keys, not labels — this array is module-level and evaluated once at
+// import, so a translated string in it would freeze whichever language
+// was active when the module first loaded.
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "/", glyph: "▦" },
-  { label: "Support", path: "/support", glyph: "◑" },
+  { key: "dashboard", path: "/", glyph: "▦" },
+  { key: "invite", path: "/invite", glyph: "▢" },
+  { key: "equipment", path: "/equipment", glyph: "▣" },
+  { key: "help", path: "/help", glyph: "◉" },
+  { key: "partnership", path: "/partnership", glyph: "◈" },
+  { key: "support", path: "/support", glyph: "◑" },
 ];
 
 export function AppShell({ children, title }: { children: ReactNode; title: string }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const { gym, logout } = useAuth();
 
@@ -22,11 +31,11 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
         <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
+            FX
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Gym Partner Portal</div>
+            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
+            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("shell.portalName")}</div>
           </div>
         </div>
 
@@ -44,14 +53,14 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
                 }`}
               >
                 <span className="w-4 text-center">{item.glyph}</span>
-                {item.label}
+                {t(`nav.${item.key}`)}
               </Link>
             );
           })}
         </nav>
 
         <div className="border-t border-border-subtle px-4 py-3 text-[10px] text-text-dim">
-          Aggregate data only — never a member list (see Support for details).
+          {t("shell.aggregateOnly")}
         </div>
       </aside>
 
@@ -71,7 +80,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
               onClick={logout}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-danger hover:text-danger"
             >
-              Sign out
+              {t("shell.signOut")}
             </button>
           </div>
         </header>

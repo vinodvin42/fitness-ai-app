@@ -3,7 +3,8 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
-import { lookupBarcode, BarcodeLookupResult } from "../../lib/openFoodFactsClient";
+import type { BarcodeLookupResult } from "../../lib/openFoodFactsClient";
+import { foodDataProvider } from "../../providers";
 import { ConfirmFoodEstimateInput, CreateFoodEstimateInput, LogMealInput, LogWaterInput } from "./nutrition.schema";
 
 /**
@@ -409,7 +410,8 @@ export async function confirmFoodEstimate(userId: string, estimateId: string, in
 export async function lookupBarcodeProduct(userId: string, code: string): Promise<BarcodeLookupResult> {
   let result: BarcodeLookupResult;
   try {
-    result = await lookupBarcode(code);
+    // D8 — through the adapter, so the vendor is a config value.
+    result = await foodDataProvider.lookupBarcode(code);
   } catch (err) {
     throw new ApiHttpError(
       502,

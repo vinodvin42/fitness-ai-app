@@ -2,4 +2,6 @@
 export const RELATIONSHIPS_SUB_NAV = [
   { label: "Directory", path: "/relationships" },
   { label: "Change / Intervention Queue", path: "/relationships/change-queue" },
+  // A-M1 — the assignment queue that turns a guidance request into an offer.
+  { label: "Assignment Queue", path: "/relationships/assignment-queue" },
 ];

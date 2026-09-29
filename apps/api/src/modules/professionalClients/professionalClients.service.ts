@@ -2,6 +2,10 @@ import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import * as plansService from "../plans/plans.service";
 import type { DecideRecommendationInput } from "../plans/plans.schema";
+import { recordAudit } from "../../middleware/auditLog";
+import { encryptStringList } from "../../lib/fieldCrypto";
+import { createActionItem } from "../../lib/adminActionQueue";
+import { trackEvent } from "../../lib/analytics";
 
 /**
  * Coach Client Profile (docs/coach/03-screen-inventory.md §D), added 31 Aug
@@ -526,4 +530,77 @@ export async function decideClientRecommendation(
   // comment names for Prisma model types; the shape below is structurally
   // identical to it, not a redefinition of its meaning.
   return plansService.decideRecommendation(userId, recommendationId, input, "professional", professionalId);
+}
+
+/**
+ * P-M12 — "Client safety flag + escalation route. Pain is handled only
+ * inside chat."
+ *
+ * A professional noticing something concerning — a client reporting
+ * chest pain mid-session, a pattern that reads as disordered eating —
+ * currently has nowhere to put it except a chat message, which nobody
+ * monitors and which is not an escalation. This is the route out of
+ * that.
+ *
+ * BR-SAF-004: "Safety escalation runs independently of recovery /
+ * readiness logic." It is also independent of the relationship's own
+ * lifecycle on purpose — a professional must be able to raise a concern
+ * about a client whose relationship is ending, which is exactly when
+ * some concerns surface.
+ */
+export async function flagClientSafety(
+  professionalId: string,
+  userId: string,
+  input: { concern: string; urgent: boolean },
+) {
+  // Any relationship, not only an active one — see above.
+  const relationship = await prisma.relationship.findFirst({
+    where: { professionalId, userId },
+    select: { id: true, status: true },
+  });
+  if (!relationship) {
+    throw new ApiHttpError(404, "client_not_found", "You don't have a relationship with this client");
+  }
+
+  const escalation = await prisma.safetyEscalation.create({
+    data: {
+      userId,
+      // The professional's words, encrypted like any other health note
+      // about this person (§10). Stored as a single-item list so it uses
+      // the same encrypted shape as everything else on this model.
+      medicalConditions: [],
+      injuries: [],
+      medicalConditionsEnc: encryptStringList([input.concern]),
+      injuriesEnc: null,
+    },
+  });
+
+  await createActionItem({
+    type: "safety_escalation",
+    entityType: "SafetyEscalation",
+    entityId: escalation.id,
+    // A professional choosing to raise a flag has already applied
+    // judgement, so this outranks the automatic onboarding escalations.
+    severity: input.urgent ? "high" : "medium",
+    metadata: { userId, raisedByProfessionalId: professionalId, urgent: input.urgent },
+  });
+
+  await recordAudit({
+    actorProfessionalId: professionalId,
+    action: "safety.escalated",
+    entityType: "SafetyEscalation",
+    entityId: escalation.id,
+    ruleId: "BR-SAF-004",
+    stateAfter: { source: "professional", urgent: input.urgent },
+    metadata: { userId, relationshipStatus: relationship.status },
+  });
+
+  await trackEvent(
+    userId,
+    "safety.escalated",
+    { safetyEscalationId: escalation.id, professionalId },
+    { ruleId: "BR-SAF-004", metadata: { source: "professional", urgent: input.urgent } },
+  );
+
+  return { id: escalation.id, raised: true };
 }

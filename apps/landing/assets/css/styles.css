@@ -1,5 +1,5 @@
 /*
- * 23PrimeFit — landing page styles
+ * FynroX — landing page styles
  *
  * Design tokens below are ported 1:1 from apps/user-mobile/src/theme/tokens.ts
  * (Design System v2, 31 Aug 2026 — the OLED-first "instrument panel" look).
@@ -29,7 +29,29 @@
   /* Text */
   --text-primary: #edf0f5;
   --text-secondary: #98a2b3;
-  --text-muted: #5e6675;
+  /*
+   * Lightened from #5e6675 on 29 Sep 2026. An axe-core pass over all 24
+   * pages at WCAG 2.1 AA returned 189 contrast failures and every single
+   * one was this token: 3.38:1 on the canvas, 2.88:1 on a raised
+   * surface, against a 4.5:1 requirement. It is used for exactly the
+   * text a low-vision reader most needs — footer column headings, dates,
+   * "not built yet" notes, field hints.
+   *
+   * #8b919c measures 4.65:1 on --surface-high, the lightest surface in
+   * this palette and therefore the worst case, and better on every other.
+   *
+   * The first attempt at this fix was #838b98, chosen because it cleared
+   * every combination axe-core actually flagged. The palette-level test
+   * (apps/api/tests/designTokenContrast.test.ts) then failed it at 4.28:1
+   * on --surface-high — a pairing no page happens to render today, so no
+   * DOM audit could have caught it, and the next card built on that
+   * surface would have shipped the failure back. Fixing the palette beats
+   * fixing the pages that use it.
+   *
+   * Same value as apps/user-mobile/src/theme/tokens.ts's `textMuted`,
+   * which this file is ported from and which had the identical defect.
+   */
+  --text-muted: #8b919c;
   --text-on-accent: #04120e;
 
   /* Brand accent (mint-cyan) */
@@ -1395,8 +1417,434 @@ button {
   font-size: 0.8125rem;
 }
 
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .footer__copy {
   margin-top: var(--space-4);
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+
+/*
+ * Language picker. Hidden by the `hidden` attribute in the markup and
+ * un-hidden by assets/js/i18n.js once there is more than one language
+ * to choose between, which is the same honest order the mobile nav
+ * toggle uses: a control that cannot do anything is worse than no
+ * control.
+ */
+.footer__lang-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.footer__lang-wrap[hidden] {
+  /* `hidden` loses to `display: flex` in the cascade — the same bug the
+     forms had, and the reason .form[hidden] exists further up. */
+  display: none;
+}
+
+.footer__lang-label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.footer__lang {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.6rem;
+}
+
+.footer__lang:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------
+   Cookie consent banner (W-M3)
+   Fixed to the bottom rather than an overlay: a modal that blocks the
+   page until you choose is a dark pattern in the other direction, and
+   this site's content is readable whether or not you have decided.
+   ------------------------------------------------------------------ */
+.cookie-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--surface, #14161c);
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  padding: 14px 0;
+}
+
+.cookie-bar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cookie-bar__text {
+  margin: 0;
+  flex: 1 1 320px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #a8adba);
+}
+
+.cookie-bar__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .cookie-bar__actions {
+    width: 100%;
+  }
+  .cookie-bar__actions .btn {
+    flex: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Mobile navigation (spec §8 — "mobile navigation")                       */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The nav used to be one flat row that simply wrapped on a phone, which
+ * put eight links and a button over three lines above the fold. Below
+ * 900px it collapses behind a toggle instead; above it, nothing changes.
+ *
+ * The toggle is a real <button aria-expanded>, and the panel is hidden
+ * with `display:none` rather than opacity — a link a sighted user cannot
+ * see must not be reachable by tab or read by a screen reader either.
+ */
+.nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  /* 44px minimum touch target. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-toggle__bars {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-toggle__bars span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+@media (min-width: 900px) {
+  .nav-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  /*
+   * Scoped to `.has-nav-toggle`, which main.js adds to <html> only once
+   * it has a working toggle to offer. Without JS the nav keeps its old
+   * wrapped layout — visually busier, but reachable, which a collapsed
+   * panel with no button to open it would not be.
+   */
+  .has-nav-toggle .nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--space-3);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .has-nav-toggle .nav.is-open {
+    display: flex;
+  }
+
+  .has-nav-toggle .nav .nav__link {
+    padding: 0.85rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .has-nav-toggle .nav .btn {
+    margin-top: var(--space-3);
+    text-align: center;
+  }
+
+  .site-header__inner {
+    position: relative;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Forms (spec §8 — Early Access, partner applications, contact)           */
+/* ---------------------------------------------------------------------- */
+
+.form {
+  margin-top: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  max-width: 34rem;
+}
+
+/*
+ * `display: grid` beats the `hidden` attribute, so a form hidden on
+ * success stayed on screen underneath its own "you're on the list"
+ * message. Found by driving the real page, not by reading this file.
+ * Scoped to the elements that set a display, rather than a blanket
+ * `[hidden] { display: none !important }`.
+ */
+.form[hidden],
+.form-state[hidden],
+.field[hidden] {
+  display: none;
+}
+
+.form--wide {
+  max-width: none;
+}
+
+@media (min-width: 720px) {
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.field__input,
+.field__textarea,
+.field__select {
+  width: 100%;
+  /* 44px minimum, so the tap target matches the buttons. */
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.field__textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.field__input:focus-visible,
+.field__textarea:focus-visible,
+.field__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/*
+ * Field-level errors, driven by the API's own `fields` array rather than
+ * by a second copy of the validation rules in the browser. A form that
+ * disagrees with the server about what is valid is a form that rejects
+ * submissions the server would have accepted.
+ */
+.field.is-invalid .field__input,
+.field.is-invalid .field__textarea,
+.field.is-invalid .field__select {
+  border-color: var(--danger);
+}
+
+.field__error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.field--check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.field--check input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.field--check .field__label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/*
+ * The four states §8 names for these forms. Each is a real region with
+ * `role="status"`, so the outcome is announced rather than merely
+ * appearing somewhere below the fold.
+ */
+.form-state {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+
+.form-state__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+}
+
+.form-state__body {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.form-state--success {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.form-state--error {
+  border-color: var(--danger);
+}
+
+.form-state--known {
+  border-color: var(--border-strong);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Learn (spec §8 — Learn category index + article template)               */
+/* ---------------------------------------------------------------------- */
+
+.article-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .article-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.article-card {
+  display: block;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.article-card:hover,
+.article-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.article-card__category {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.article-card__title {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+}
+
+.article-card__body {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.article-card__meta {
+  margin-top: var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* The article template itself — reuses the legal pages' reading column,
+   which is already tuned for long-form text. */
+.article__meta {
+  margin-top: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.article__review {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-raised);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
 }

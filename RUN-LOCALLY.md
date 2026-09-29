@@ -1,8 +1,8 @@
-# Running PrimeFit locally so you can click through it for real
+# Running FynroX locally so you can click through it for real
 
 Two ways to test right now, from fastest to most complete:
 
-1. **Instant, zero-setup demo** — a live click-through build of the actual admin console, running on realistic sample data instead of a real database. No install required, works in any browser, right now: **[open the demo](https://claude.ai/code/artifact/d2972acc-b611-4f4e-8c27-f945a6dd9a10)**. An amber "Demo mode" banner marks it as sample data. Sign in with the pre-filled `demo@primefit.app` / `demo` — any email/password works. Click through Users, Professionals, Payments, Pricing, Programs, Integrations, Analytics, and more; actions like archiving a plan or approving a credential really update the screen. This is a snapshot of today's build (25 Aug 2026) — it won't include anything added after this.
+1. **Instant, zero-setup demo** — a live click-through build of the actual admin console, running on realistic sample data instead of a real database. No install required, works in any browser, right now: **[open the demo](https://claude.ai/code/artifact/d2972acc-b611-4f4e-8c27-f945a6dd9a10)**. An amber "Demo mode" banner marks it as sample data. Sign in with the pre-filled `demo@fynrox.app` / `demo` — any email/password works. Click through Users, Professionals, Payments, Pricing, Programs, Integrations, Analytics, and more; actions like archiving a plan or approving a credential really update the screen. This is a snapshot of today's build (25 Aug 2026) — it won't include anything added after this.
 
 2. **The real thing, running on your machine** — the actual backend against a real Postgres database, so you're testing genuine behavior end to end rather than sample data. This is what the rest of this guide walks through.
 
@@ -56,7 +56,7 @@ npm run dev --workspace=apps/admin-web
 
 Open **http://localhost:5173** in your browser. Sign in with the account the seed script just created:
 
-- **Email:** `admin@23primefit.com`
+- **Email:** `admin@fynrox.com`
 - **Password:** `ChangeMe123!`
 
 (Set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` env vars before seeding if you'd rather have different credentials from the start.)

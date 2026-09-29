@@ -108,6 +108,31 @@ coachingRouter.post(
   },
 );
 
+// P-M11 — "Programme completed / relationship ended state: 'Complete
+// programme' has no result." §10 makes COMPLETED distinct from ENDED:
+// ending says the arrangement stopped, completing says the work
+// finished. Both revoke access; only one is something to be pleased
+// about, and collapsing them would deny a professional and their client
+// the difference.
+coachingRouter.post(
+  "/professionals/me/relationships/:id/complete",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = endRelationshipActionSchema.parse(req.body ?? {});
+      const relationship = await relationshipLifecycleService.completeRelationship(
+        { professionalId: req.professionalId as string },
+        req.params.id,
+        input.reason,
+      );
+      res.json({ relationship });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 coachingRouter.post(
   "/professionals/me/relationships/:id/handover",
   requireProfessionalAuth,

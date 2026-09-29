@@ -1,8 +1,8 @@
-# Product Requirements — 23PrimeFit Coach App
+# Product Requirements — FynroX Coach App
 
 ## 1. Summary
 
-This covers the third Figma file reviewed for this project: **v1-coach** (`fileKey: rWjLV3qEnwuEy6Avuo7ggT`), a single page ("Page 1") containing **16 screens** for the professional/coach-facing side of 23PrimeFit — same "23" brand mark as the other two apps, but a **distinct lime/yellow-green accent color**, different again from the consumer app's blue and the admin console's mint green (see [04-design-system.md](04-design-system.md) and the open question in [07-open-questions-gaps.md](07-open-questions-gaps.md)).
+This covers the third Figma file reviewed for this project: **v1-coach** (`fileKey: rWjLV3qEnwuEy6Avuo7ggT`), a single page ("Page 1") containing **16 screens** for the professional/coach-facing side of FynroX — same "23" brand mark as the other two apps, but a **distinct lime/yellow-green accent color**, different again from the consumer app's blue and the admin console's mint green (see [04-design-system.md](04-design-system.md) and the open question in [07-open-questions-gaps.md](07-open-questions-gaps.md)).
 
 This is the smallest of the three reviewed surfaces, and it is tightly scoped: coach onboarding/verification, a coach-facing dashboard (with variants per service type), client relationship management, and — notably — a second copy of the "find and book a coach" flow that also exists (differently) in the consumer app. See §3.
 

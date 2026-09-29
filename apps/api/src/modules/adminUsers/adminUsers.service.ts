@@ -3,6 +3,7 @@ import { hasPermission } from "../../middleware/adminPermissions";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { listConsents } from "../users/users.service";
+import { getDecryptedOnboardingProfile } from "../../lib/healthData";
 import {
   CreateSensitiveAccessRequestInput,
   ListUsersQuery,
@@ -290,18 +291,22 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     injuries: string[];
   } | null = null;
   if (permitted) {
-    const onboardingProfile = await prisma.onboardingProfile.findUnique({
-      where: { userId: id },
-      select: {
-        gender: true,
-        age: true,
-        weightKg: true,
-        heightCm: true,
-        allergens: true,
-        medicalConditions: true,
-        injuries: true,
-      },
-    });
+    // Read through the shared accessor — the health columns are
+    // encrypted at rest (§10) and a direct select would show this
+    // permission-gated panel an empty condition list, which reads as
+    // "this user declared nothing" rather than "this failed to decrypt".
+    const decrypted = await getDecryptedOnboardingProfile(id);
+    const onboardingProfile = decrypted
+      ? {
+          gender: decrypted.gender,
+          age: decrypted.age,
+          weightKg: decrypted.weightKg,
+          heightCm: decrypted.heightCm,
+          allergens: decrypted.allergens,
+          medicalConditions: decrypted.medicalConditions,
+          injuries: decrypted.injuries,
+        }
+      : null;
     // A granted admin sees whatever real data exists — null fields if the
     // user never completed onboarding, not a fabricated placeholder.
     sensitiveHealthMetrics = onboardingProfile ?? {

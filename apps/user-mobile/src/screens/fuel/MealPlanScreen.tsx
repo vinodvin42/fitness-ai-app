@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -43,6 +44,7 @@ const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
  * action, "Regenerate" the same action once one already exists.
  */
 export function MealPlanScreen(_props: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export function MealPlanScreen(_props: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Meal Plan" scroll={false}>
+      <ScreenContainer title={t("fuel.mealPlan.title")} scroll={false}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={colors.accent} />
         </View>
@@ -97,7 +99,7 @@ export function MealPlanScreen(_props: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Meal Plan">
+      <ScreenContainer title={t("fuel.mealPlan.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -105,11 +107,11 @@ export function MealPlanScreen(_props: Props) {
 
   if (isGenerating) {
     return (
-      <ScreenContainer title="Meal Plan" scroll={false}>
+      <ScreenContainer title={t("fuel.mealPlan.title")} scroll={false}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={{ color: colors.textSecondary, ...typography.body, marginTop: spacing.md, textAlign: "center" }}>
-            Picking real recipes that fit your diet and goals…
+            {t("fuel.mealPlan.picking")}
           </Text>
         </View>
       </ScreenContainer>
@@ -117,7 +119,10 @@ export function MealPlanScreen(_props: Props) {
   }
 
   return (
-    <ScreenContainer title="Meal Plan" subtitle={mealPlan ? `${mealPlan.durationDays}-day plan` : undefined}>
+    <ScreenContainer
+      title={t("fuel.mealPlan.title")}
+      subtitle={mealPlan ? t("fuel.mealPlan.nDayPlan", { days: mealPlan.durationDays }) : undefined}
+    >
       {generationError ? (
         <Card style={{ marginBottom: spacing.sm }}>
           <Text style={{ color: colors.danger, ...typography.body }}>{generationError}</Text>
@@ -132,15 +137,15 @@ export function MealPlanScreen(_props: Props) {
 
       {!mealPlan ? (
         <EmptyState
-          title="No meal plan yet"
-          subtitle="Generate a real, AI-curated meal plan built from your diet type, allergens, and goals — using real recipes from the catalog."
-          actionLabel="Generate Meal Plan"
+          title={t("fuel.mealPlan.emptyTitle")}
+          subtitle={t("fuel.mealPlan.emptySubtitle")}
+          actionLabel={t("fuel.mealPlan.generate")}
           onAction={onGenerate}
         />
       ) : (
         <>
           <Button
-            label="Regenerate"
+            label={t("fuel.mealPlan.regenerate")}
             variant="secondary"
             onPress={() =>
               Alert.alert("Regenerate meal plan?", "This replaces your current plan with a new one.", [

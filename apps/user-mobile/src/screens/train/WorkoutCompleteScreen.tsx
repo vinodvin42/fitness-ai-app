@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ type Props = NativeStackScreenProps<TrainStackParamList, "WorkoutComplete">;
  * data, gap §13/§E).
  */
 export function WorkoutCompleteScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { sessionId, workoutName } = route.params;
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["workoutSessions", sessionId, "summary"],
@@ -38,10 +40,10 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
         <View style={styles.badge}>
           <Icon name="trophy" size={44} color={colors.success} strokeWidth={2} />
         </View>
-        <Text style={styles.title}>Workout Complete!</Text>
+        <Text style={styles.title}>{t("workout.complete.title")}</Text>
         <Card style={styles.card}>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{workoutName}</Text>
-          <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>Nice work — logged and saved.</Text>
+          <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>{t("workout.complete.niceWork")}</Text>
         </Card>
 
         {isError ? (
@@ -52,16 +54,16 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
           <>
             <Card style={styles.card}>
               <View style={{ flexDirection: "row", gap: spacing.md }}>
-                <StatTile label="Sets" value={String(data.totalSets)} />
-                <StatTile label="Volume" value={`${Math.round(data.totalVolumeKg)}kg`} />
-                <StatTile label="Duration" value={data.durationMinutes !== null ? `${data.durationMinutes}m` : "—"} />
+                <StatTile label={t("workout.complete.sets")} value={String(data.totalSets)} />
+                <StatTile label={t("workout.complete.volume")} value={`${Math.round(data.totalVolumeKg)}kg`} />
+                <StatTile label={t("workout.complete.duration")} value={data.durationMinutes !== null ? `${data.durationMinutes}m` : "—"} />
               </View>
             </Card>
 
             <Card style={styles.card}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                 <Icon name="flame" size={18} color={colors.orange} />
-                <Text style={{ color: colors.textSecondary }}>Training streak</Text>
+                <Text style={{ color: colors.textSecondary }}>{t("workout.complete.streak")}</Text>
               </View>
               <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs }}>
                 {data.trainingStreak.currentStreak}{" "}
@@ -78,7 +80,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
               <Card style={styles.card}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
                   <Icon name="trophy" size={18} color={colors.warning} />
-                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>New Personal Records</Text>
+                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("workout.complete.newRecords")}</Text>
                 </View>
                 {data.newPersonalRecords.map((pr) => (
                   <View
@@ -97,7 +99,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
         )}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label="Back to Train" onPress={() => navigation.popToTop()} />
+        <Button label={t("workout.complete.backToTrain")} onPress={() => navigation.popToTop()} />
       </View>
     </SafeAreaView>
   );

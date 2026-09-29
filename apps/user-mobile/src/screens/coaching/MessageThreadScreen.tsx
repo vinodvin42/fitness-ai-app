@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -34,6 +35,7 @@ function timeLabel(iso: string): string {
  * read server-side.
  */
 export function MessageThreadScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { professionalId, fullName } = route.params;
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
@@ -100,7 +102,7 @@ export function MessageThreadScreen({ route, navigation }: Props) {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Message…"
+            placeholder={t("coaching.messages.placeholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             style={{
@@ -116,7 +118,7 @@ export function MessageThreadScreen({ route, navigation }: Props) {
             }}
           />
           <Button
-            label="Send"
+            label={t("coaching.messages.send")}
             onPress={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!canSend}

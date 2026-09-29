@@ -14,7 +14,7 @@ Post-onboarding, a 5-tab bottom bar: **Dashboard, Clients, Calendar, Messages, M
 
 ```mermaid
 flowchart LR
-    Root["23PrimeFit Coach App"]
+    Root["FynroX Coach App"]
 
     Root --> Auth["Auth"]
     Auth --> A1["Coach Signup"]

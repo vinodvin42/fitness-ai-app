@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>For Creators — 23PrimeFit Creator Partner Program</title>
+  <title data-i18n="creators.pageTitle">For Creators — FynroX Creator Partner Program</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Partner with 23PrimeFit as a creator or influencer: a real referral/discount code for your audience and commission on what it drives." />
+  <meta data-i18n-attr="content:creators.metaDescription" name="description" content="Partner with FynroX as a creator or influencer: a real referral/discount code for your audience and commission on what it drives." />
   <meta name="theme-color" content="#0B0C10" />
   <meta name="color-scheme" content="dark" />
 
-  <meta property="og:title" content="For Creators — 23PrimeFit Creator Partner Program" />
-  <meta property="og:description" content="A commission-based creator/influencer partner program — a real referral code and a creator portal." />
+  <meta data-i18n-attr="content:creators.metaOgTitle" property="og:title" content="For Creators — FynroX Creator Partner Program" />
+  <meta data-i18n-attr="content:creators.metaOgDescription" property="og:description" content="A commission-based creator/influencer partner program — a real referral code and a creator portal." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
@@ -24,24 +24,29 @@
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
       <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">23</span>
-        <span class="brand__word">PrimeFit</span>
+        <span class="brand__mark" aria-hidden="true">FX</span>
+        <span class="brand__word">FynroX</span>
       </a>
-      <nav class="nav" aria-label="Primary">
-        <a class="nav__link" href="index.html">Home</a>
-        <a class="nav__link" href="features.html">Features</a>
-        <a class="nav__link" href="pricing.html">Pricing</a>
-        <a class="nav__link" href="gyms.html">For Gyms</a>
-        <a class="nav__link" href="creators.html" aria-current="page">For Creators</a>
-        <a class="nav__link" href="download.html">Download</a>
-        <a class="nav__link" href="/app/">Admin Login</a>
-        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span data-i18n="shell.nav.menu">Menu</span>
+      </button>
+      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">
+        <a class="nav__link" href="index.html" data-i18n="shell.nav.home">Home</a>
+        <a class="nav__link" href="how-it-works.html" data-i18n="shell.nav.howItWorks">How it works</a>
+        <a class="nav__link" href="programs.html" data-i18n="shell.nav.programs">Programs</a>
+        <a class="nav__link" href="professional-guidance.html" data-i18n="shell.nav.guidance">Guidance</a>
+        <a class="nav__link" href="pricing.html" data-i18n="shell.nav.pricing">Pricing</a>
+        <a class="nav__link" href="gyms.html" data-i18n="shell.nav.forGyms">For Gyms</a>
+        <a class="nav__link" href="creators.html" aria-current="page" data-i18n="shell.nav.forCreators">For Creators</a>
+        <a class="nav__link" href="professionals.html" data-i18n="shell.nav.forProfessionals">For Professionals</a>
+        <a class="nav__link" href="learn.html" data-i18n="shell.nav.learn">Learn</a>
+        <a class="btn btn--primary btn--sm" href="early-access.html" data-i18n="shell.nav.cta">Get early access</a>
       </nav>
     </div>
   </header>
@@ -50,19 +55,19 @@
     <section class="page-hero">
       <div class="wrap page-hero__inner">
         <p class="eyebrow">
-          <span class="eyebrow__mark">CREATOR PARTNER PROGRAM</span>
+          <span data-i18n="creators.creatorPartnerProgram" class="eyebrow__mark">CREATOR PARTNER PROGRAM</span>
           <span aria-hidden="true">·</span>
-          <span>Referral-based</span>
+          <span data-i18n="creators.referralBased">Referral-based</span>
         </p>
-        <h1 class="page-hero__title">Share 23PrimeFit with your audience.</h1>
-        <p class="page-hero__subtitle">
-          Fitness creators and influencers can partner with 23PrimeFit — a real, unique referral
+        <h1 data-i18n="creators.shareFynroxWithYour" class="page-hero__title">Share FynroX with your audience.</h1>
+        <p data-i18n="creators.fitnessCreatorsAndInfluencers" class="page-hero__subtitle">
+          Fitness creators and influencers can partner with FynroX — a real, unique referral
           link/code for your audience, a commission on what it drives, and a portal to see your
           own referral activity.
         </p>
         <div class="page-hero__actions">
-          <a class="btn btn--primary btn--lg" href="/portal/creator/login">Creator Partner Portal login</a>
-          <a class="btn btn--ghost btn--lg" href="support.html">Apply to become a partner</a>
+          <a data-i18n="creators.creatorPartnerPortalLogin" class="btn btn--primary btn--lg" href="/portal/creator/login">Creator Partner Portal login</a>
+          <a data-i18n="creators.applyToBecomeA" class="btn btn--ghost btn--lg" href="support.html">Apply to become a partner</a>
         </div>
       </div>
     </section>
@@ -70,15 +75,15 @@
     <section class="content-section">
       <div class="wrap">
         <div class="content-section__head">
-          <p class="section-eyebrow">How it works</p>
-          <h2 class="section-title">Reach out, get set up, share your link</h2>
+          <p data-i18n="creators.howItWorks" class="section-eyebrow">How it works</p>
+          <h2 data-i18n="creators.reachOutGetSet" class="section-title">Reach out, get set up, share your link</h2>
         </div>
 
         <div class="step-grid">
           <article class="step-card">
             <span class="step-card__number">1</span>
-            <h3 class="step-card__title">Reach out</h3>
-            <p class="step-card__body">
+            <h3 data-i18n="creators.reachOut" class="step-card__title">Reach out</h3>
+            <p data-i18n-html="creators.creatorPartnershipsAreSet" class="step-card__body">
               Creator partnerships are set up by our team today, not a self-serve signup form —
               tell us your name, platform, and handle through the
               <a href="support.html" style="color: var(--accent); text-decoration: underline dotted;">Support page</a>.
@@ -86,16 +91,16 @@
           </article>
           <article class="step-card">
             <span class="step-card__number">2</span>
-            <h3 class="step-card__title">Get your code</h3>
-            <p class="step-card__body">
+            <h3 data-i18n="creators.getYourCode" class="step-card__title">Get your code</h3>
+            <p data-i18n="creators.onceSetUpYou" class="step-card__body">
               Once set up, you get a real, unique campaign link/code tied to your profile, plus an
               optional discount code your audience can use at checkout.
             </p>
           </article>
           <article class="step-card">
             <span class="step-card__number">3</span>
-            <h3 class="step-card__title">Track referrals</h3>
-            <p class="step-card__body">
+            <h3 data-i18n="creators.trackReferrals" class="step-card__title">Track referrals</h3>
+            <p data-i18n="creators.fromTheCreatorPartner" class="step-card__body">
               From the Creator Partner Portal, see the activity your link/code has driven —
               clicks, registrations, and conversions — attributed through the app's real
               acquisition-tracking model.
@@ -108,15 +113,15 @@
     <section class="content-section content-section--raised">
       <div class="wrap">
         <div class="content-section__head">
-          <p class="section-eyebrow">Commercial terms</p>
-          <h2 class="section-title">Commission-based, per creator</h2>
-          <p class="section-subtitle">
+          <p data-i18n="creators.commercialTerms" class="section-eyebrow">Commercial terms</p>
+          <h2 data-i18n="creators.commissionBasedPerCreator" class="section-title">Commission-based, per creator</h2>
+          <p data-i18n="creators.eachCreatorPartnerHas" class="section-subtitle">
             Each creator partner has an admin-configurable commission percentage, defaulting to
             20%.
           </p>
         </div>
 
-        <div class="note-box">
+        <div data-i18n-html="creators.commissionPercentagesAreRecorded" class="note-box">
           <strong>Honest note on payouts:</strong> commission percentages are recorded on your
           creator profile, but payouts today are entered manually by our team for an agreed
           period rather than auto-calculated from live attributed revenue — there's no
@@ -127,10 +132,78 @@
       </div>
     </section>
 
+    <section class="content-section">
+      <div class="wrap">
+        <p data-i18n="creators.apply" class="section-eyebrow">APPLY</p>
+        <h2 data-i18n="creators.applyToBecomeACreator" class="section-title">Apply to become a creator partner</h2>
+        <p data-i18n="creators.weReadEveryApplication" class="section-subtitle">
+          We read every application. If your audience is a fit we'll come back with terms; if
+          it isn't, we'll tell you that instead of going quiet.
+        </p>
+        <div class="form-state" id="creatorApplyState" role="status" tabindex="-1" hidden></div>
+        <form data-i18n-attr="data-success-title:creators.successTitleApplicationReceived;data-success-body:creators.successBodyAReal;data-known-body:creators.knownBodyWeAlready"
+          class="form"
+          id="creatorApply"
+          data-kind="creator"
+          data-state-region="creatorApplyState"
+          data-success-title="Application received"
+          data-success-body="A real person will read this and come back to you by email — including if the answer is no." data-known-body="We already have an application from this email address. It's in the queue and we'll come back to you at the same address — there's no need to send another."
+          method="post"
+          action="/api/public/applications"
+          novalidate
+        >
+          <div class="field">
+            <label data-i18n="creators.channelOrHandle" class="field__label" for="creatorApplyorganisation">Channel or handle</label>
+            <p data-i18n="creators.whereYourAudienceActually" class="field__hint">Where your audience actually is — the handle, not a display name.</p>
+            <input class="field__input" type="text" id="creatorApplyorganisation" name="organisation" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label data-i18n="creators.yourName" class="field__label" for="creatorApplyfullName">Your name</label>
+            <input class="field__input" type="text" id="creatorApplyfullName" name="fullName" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label data-i18n="creators.email" class="field__label" for="creatorApplyemail">Email</label>
+            <input class="field__input" type="email" id="creatorApplyemail" name="email" required />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label data-i18n="creators.platformAndAudienceSize" class="field__label" for="creatorApplydetail">Platform and audience size (optional)</label>
+            <p data-i18n="creators.roughlyWereNotGoing" class="field__hint">Roughly — we're not going to hold you to a number.</p>
+            <input class="field__input" type="text" id="creatorApplydetail" name="detail" />
+            <p class="field__error"></p>
+          </div>
+          <div class="field">
+            <label data-i18n="creators.whatYoudWantTo" class="field__label" for="creatorApplymessage">What you'd want to do with FynroX</label>
+            <p data-i18n="creators.theKindOfContent" class="field__hint">The kind of content you make and how FynroX would fit it. Short is fine.</p>
+            <textarea class="field__textarea" id="creatorApplymessage" name="message"></textarea>
+            <p class="field__error"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="creatorApplyConsent" name="consentContact" value="true" required />
+            <label data-i18n-html="creators.iAgreeThatFynrox" class="field__label" for="creatorApplyConsent">
+              I agree that FynroX can contact me about this. Required — we won't email you
+              without it. <a href="privacy.html">How we handle your data</a>.
+            </label>
+            <p class="field__error" id="creatorApplyConsentError"></p>
+          </div>
+          <div class="field field--check">
+            <input type="checkbox" id="creatorApplyMarketing" name="consentMarketing" value="true" />
+            <label data-i18n="creators.optionalSendMeProduct" class="field__label" for="creatorApplyMarketing">
+              Optional: send me product updates as well. Genuinely optional — leaving this
+              unticked changes nothing about the message above.
+            </label>
+          </div>
+          <button data-i18n="creators.sendApplication" class="btn btn--primary btn--lg" type="submit">Send application</button>
+        </form>
+      </div>
+    </section>
+
     <section class="cta-strip">
       <div class="wrap cta-strip__inner">
-        <h2 class="cta-strip__title">Already an approved creator partner?</h2>
-        <a class="btn btn--primary btn--lg" href="/portal/creator/login">Go to the Creator Partner Portal</a>
+        <h2 data-i18n="creators.alreadyAnApprovedCreator" class="cta-strip__title">Already an approved creator partner?</h2>
+        <a data-i18n="creators.goToTheCreator" class="btn btn--primary btn--lg" href="/portal/creator/login">Go to the Creator Partner Portal</a>
       </div>
     </section>
   </main>
@@ -139,43 +212,60 @@
     <div class="wrap footer__inner">
       <div class="footer__brand">
         <span class="brand">
-          <span class="brand__mark" aria-hidden="true">23</span>
-          <span class="brand__word">PrimeFit</span>
+          <span class="brand__mark" aria-hidden="true">FX</span>
+          <span class="brand__word">FynroX</span>
         </span>
-        <p class="footer__tagline">
+        <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
           Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
           publicly available.
         </p>
       </div>
-      <nav class="footer__nav" aria-label="Footer">
+      <nav class="footer__nav" aria-label="Footer" data-i18n-attr="aria-label:shell.footer.ariaLabel">
         <div>
-          <p class="footer__col-title">Product</p>
-          <a class="footer__col-link" href="features.html">Features</a>
-          <a class="footer__col-link" href="pricing.html">Pricing</a>
-          <a class="footer__col-link" href="download.html">Download</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.product">Product</p>
+          <a class="footer__col-link" href="features.html" data-i18n="shell.footer.link.features">Features</a>
+          <a class="footer__col-link" href="how-it-works.html" data-i18n="shell.footer.link.howItWorks">How it works</a>
+          <a class="footer__col-link" href="programs.html" data-i18n="shell.footer.link.programs">Programs</a>
+          <a class="footer__col-link" href="pricing.html" data-i18n="shell.footer.link.pricing">Pricing</a>
+          <a class="footer__col-link" href="download.html" data-i18n="shell.footer.link.download">Download</a>
         </div>
         <div>
-          <p class="footer__col-title">Partners</p>
-          <a class="footer__col-link" href="gyms.html">For Gyms</a>
-          <a class="footer__col-link" href="creators.html">For Creators</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.partners">Partners</p>
+          <a class="footer__col-link" href="gyms.html" data-i18n="shell.footer.link.forGyms">For Gyms</a>
+          <a class="footer__col-link" href="creators.html" data-i18n="shell.footer.link.forCreators">For Creators</a>
+          <a class="footer__col-link" href="professionals.html" data-i18n="shell.footer.link.forProfessionals">For Professionals</a>
+          <a class="footer__col-link" href="professional-guidance.html" data-i18n="shell.footer.link.professionalGuidance">Professional Guidance</a>
         </div>
         <div>
-          <p class="footer__col-title">Company</p>
-          <a class="footer__col-link" href="about.html">About</a>
-          <a class="footer__col-link" href="support.html">Support</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.company">Company</p>
+          <a class="footer__col-link" href="about.html" data-i18n="shell.footer.link.about">About</a>
+          <a class="footer__col-link" href="learn.html" data-i18n="shell.footer.link.learn">Learn</a>
+          <a class="footer__col-link" href="faq.html" data-i18n="shell.footer.link.faq">FAQ</a>
+          <a class="footer__col-link" href="support.html" data-i18n="shell.footer.link.support">Support</a>
+          <a class="footer__col-link" href="early-access.html" data-i18n="shell.footer.link.earlyAccess">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal</p>
-          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
-          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.legalSafety">Legal & safety</p>
+          <a class="footer__col-link" href="safety.html" data-i18n="shell.footer.link.safetyPrivacy">Safety &amp; Privacy</a>
+          <a class="footer__col-link" href="privacy.html" data-i18n="shell.footer.link.privacyPolicy">Privacy Policy</a>
+          <a class="footer__col-link" href="terms.html" data-i18n="shell.footer.link.termsOfService">Terms of Service</a>
+        </div>
+        <div>
+          <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
+          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
         </div>
       </nav>
     </div>
-    <div class="wrap">
-      <p class="footer__copy">© <span id="year">2026</span> 23PrimeFit. Not a substitute for professional medical advice.</p>
+    <div class="wrap footer__bottom">
+      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> FynroX. Not a substitute for professional medical advice.</p>
+      <div class="footer__lang-wrap" data-i18n-picker hidden></div>
     </div>
   </footer>
 
+  <script src="assets/js/i18n.js"></script>
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/forms.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
 </body>
 </html>

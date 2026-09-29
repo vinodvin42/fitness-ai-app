@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
@@ -33,6 +34,7 @@ function formatTime(totalSeconds: number): string {
  * anywhere — see gap §24.
  */
 export function RestTimer({ onDismiss, defaultSeconds = 60 }: RestTimerProps) {
+  const { t } = useTranslation();
   const [totalSeconds, setTotalSeconds] = useState(defaultSeconds);
   const [remainingSeconds, setRemainingSeconds] = useState(defaultSeconds);
   const [isRunning, setIsRunning] = useState(true);
@@ -97,7 +99,7 @@ export function RestTimer({ onDismiss, defaultSeconds = 60 }: RestTimerProps) {
   return (
     <View>
       <Text style={{ color: colors.textSecondary, ...typography.meta, textAlign: "center", marginBottom: spacing.xs }}>
-        REST TIMER
+        {t("restTimer.title")}
       </Text>
       <Text
         style={{
@@ -110,7 +112,7 @@ export function RestTimer({ onDismiss, defaultSeconds = 60 }: RestTimerProps) {
         {formatTime(remainingSeconds)}
       </Text>
       {isComplete ? (
-        <Text style={{ color: colors.success, textAlign: "center", marginTop: spacing.xs }}>Rest complete!</Text>
+        <Text style={{ color: colors.success, textAlign: "center", marginTop: spacing.xs }}>{t("restTimer.complete")}</Text>
       ) : null}
 
       <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden", marginTop: spacing.md }}>
@@ -130,7 +132,7 @@ export function RestTimer({ onDismiss, defaultSeconds = 60 }: RestTimerProps) {
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <Button label="+15s" variant="secondary" onPress={() => addTime(15)} style={{ flex: 1 }} />
+        <Button label={t("restTimer.add15")} variant="secondary" onPress={() => addTime(15)} style={{ flex: 1 }} />
         <Button
           label={isComplete ? "Continue" : "Skip Rest"}
           variant={isComplete ? "primary" : "secondary"}

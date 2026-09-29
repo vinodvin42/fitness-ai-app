@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@fitness-ai-app/config";
 /**
  * Open Food Facts client (barcode scan, R2 Wave, 22 Sep 2026) — the real,
  * free, no-API-key food/barcode database this build uses to back the
@@ -147,7 +148,7 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResul
         // the app (https://wiki.openfoodfacts.org/API/Read#User-Agent) —
         // a real courtesy to a free, donation-run open-data project, not a
         // requirement this build could skip without consequence.
-        "user-agent": "23PrimeFit/1.0 (barcode meal-logging; +https://github.com/vinodvin42)",
+        "user-agent": `${BRAND_NAME}/1.0 (barcode meal-logging; +https://github.com/vinodvin42)`,
       },
     });
     if (!res.ok) {

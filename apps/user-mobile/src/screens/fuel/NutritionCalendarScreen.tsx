@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -52,12 +53,10 @@ function complianceColor(c: Compliance): string {
   return colors.border;
 }
 
-function complianceLabel(c: Compliance): string {
-  if (c === "onTrack") return "On track";
-  if (c === "over") return "Over target";
-  if (c === "under") return "Under target";
-  return "No log";
-}
+// The four labels moved to the catalogue (`fuel.calendar.day.*`), keyed
+// by the same Compliance values, so the pill reads
+// `t(`fuel.calendar.day.${compliance}`)` at the call site rather than
+// going through a function that cannot reach the hook.
 
 function complianceTone(c: Compliance): "success" | "warning" | "accent" | "neutral" {
   if (c === "onTrack") return "success";
@@ -93,6 +92,7 @@ function fmtDay(year: number, month: number, day: number): string {
 // NativeStackScreenProps<...> shape is kept for consistency with every
 // other screen in this stack.
 export function NutritionCalendarScreen(_props: Props) {
+  const { t } = useTranslation();
   const { data: history, isLoading, isError, refetch } = useQuery({
     queryKey: ["mealLogs", "history"],
     queryFn: fetchMealHistory,
@@ -162,7 +162,7 @@ export function NutritionCalendarScreen(_props: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Nutrition Calendar">
+      <ScreenContainer title={t("fuel.calendar.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -170,8 +170,8 @@ export function NutritionCalendarScreen(_props: Props) {
 
   if (!isLoading && (history ?? []).length === 0) {
     return (
-      <ScreenContainer title="Nutrition Calendar">
-        <EmptyState title="No meals logged yet" subtitle="Log a meal from the Nutrition Dashboard to see it here." />
+      <ScreenContainer title={t("fuel.calendar.title")}>
+        <EmptyState title={t("fuel.calendar.emptyTitle")} subtitle={t("fuel.calendar.emptySubtitle")} />
       </ScreenContainer>
     );
   }
@@ -188,25 +188,25 @@ export function NutritionCalendarScreen(_props: Props) {
   };
 
   return (
-    <ScreenContainer title="Nutrition Calendar">
+    <ScreenContainer title={t("fuel.calendar.title")}>
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Compliance</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("fuel.calendar.compliance")}</Text>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
           {monthlyStats.onTrackDays} of {monthlyStats.daysWithLogs} logged days on track this month
         </Text>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
-          <StatTile label="On Track" value={String(monthlyStats.onTrackDays)} color={colors.success} />
-          <StatTile label="Under" value={String(monthlyStats.underDays)} color={colors.accent} />
-          <StatTile label="Over" value={String(monthlyStats.overDays)} color={colors.warning} />
+          <StatTile label={t("fuel.calendar.onTrack")} value={String(monthlyStats.onTrackDays)} color={colors.success} />
+          <StatTile label={t("fuel.calendar.under")} value={String(monthlyStats.underDays)} color={colors.accent} />
+          <StatTile label={t("fuel.calendar.over")} value={String(monthlyStats.overDays)} color={colors.warning} />
         </View>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>This Month</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("fuel.calendar.thisMonth")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.md }}>
-          <StatTile label="Days Logged" value={String(monthlyStats.daysWithLogs)} />
-          <StatTile label="Meals Logged" value={String(monthlyStats.mealsLogged)} />
-          <StatTile label="Avg kcal/day" value={String(monthlyStats.avgCalories)} />
+          <StatTile label={t("fuel.calendar.daysLogged")} value={String(monthlyStats.daysWithLogs)} />
+          <StatTile label={t("fuel.calendar.mealsLogged")} value={String(monthlyStats.mealsLogged)} />
+          <StatTile label={t("fuel.calendar.avgKcal")} value={String(monthlyStats.avgCalories)} />
         </View>
       </Card>
 
@@ -275,12 +275,12 @@ export function NutritionCalendarScreen(_props: Props) {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
             <Text style={{ color: colors.textPrimary, ...typography.h2, flex: 1 }}>{fmtDay(year, month, selectedDay)}</Text>
             <Pill
-              label={complianceLabel(complianceByDay.get(selectedDay) ?? "none")}
+              label={t(`fuel.calendar.day.${complianceByDay.get(selectedDay) ?? "none"}`)}
               tone={complianceTone(complianceByDay.get(selectedDay) ?? "none")}
             />
           </View>
           {selectedDayLogs.length === 0 ? (
-            <Text style={{ color: colors.textSecondary }}>No meals logged this day.</Text>
+            <Text style={{ color: colors.textSecondary }}>{t("fuel.calendar.noMealsThisDay")}</Text>
           ) : (
             <>
               <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>

@@ -57,6 +57,28 @@ export async function createActionItem(input: {
     },
     select: { id: true },
   });
+
+  // Spec §11 `admin.action_required.created`. The queue row itself was
+  // always real; what was missing is the event, so "how often does the
+  // platform need a human" was unanswerable from the event stream. Audit
+  // rather than analytics: an AdminActionItem has no owning consumer, and
+  // `trackEvent` requires a userId it would have to invent.
+  //
+  // Never allowed to fail the action that queued it — same discipline as
+  // this file's top comment states for the item write itself.
+  try {
+    await recordAudit({
+      action: "admin_action_item.created",
+      entityType: "AdminActionItem",
+      entityId: item.id,
+      ruleId: "BR-ADM-005",
+      stateAfter: { type: input.type, severity: input.severity, status: "open" },
+      metadata: { entityType: input.entityType, entityId: input.entityId },
+    });
+  } catch {
+    // Swallowed deliberately — see above.
+  }
+
   return item;
 }
 

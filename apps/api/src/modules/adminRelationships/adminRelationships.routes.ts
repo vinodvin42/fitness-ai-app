@@ -8,6 +8,7 @@ import {
   reviewChangeRequestSchema,
 } from "./adminRelationships.schema";
 import { handoverRelationshipSchema } from "../relationshipLifecycle/relationshipLifecycle.schema";
+import { completeRelationship } from "../relationshipLifecycle/relationshipLifecycle.service";
 import * as adminRelationshipsService from "./adminRelationships.service";
 
 export const adminRelationshipsRouter = Router();
@@ -98,6 +99,29 @@ adminRelationshipsRouter.post(
     try {
       const input = endRelationshipSchema.parse(req.body ?? {});
       const relationship = await adminRelationshipsService.endRelationship(req.adminUserId as string, req.params.id, input);
+      res.status(200).json({ relationship });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// P-M11 / U-M8 — "Complete programme". §10 makes COMPLETED a distinct
+// terminal state from ENDED: ending says the arrangement stopped,
+// completing says the work finished, and the user's completion summary
+// and the professional's own record are about the latter.
+adminRelationshipsRouter.post(
+  "/admin/relationships/:id/complete",
+  requireAdminAuth,
+  requirePermission("relationships", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = endRelationshipSchema.parse(req.body ?? {});
+      const relationship = await completeRelationship(
+        { adminId: req.adminUserId as string },
+        req.params.id,
+        input.reason,
+      );
       res.status(200).json({ relationship });
     } catch (err) {
       next(err);

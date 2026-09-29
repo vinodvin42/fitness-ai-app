@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import Svg, { Circle, Polyline } from "react-native-svg";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCheckInStatus, fetchProgressOverview } from "../../api/progress";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
+import { r1Flags } from "@fitness-ai-app/config";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
 
@@ -51,6 +53,7 @@ type Props = NativeStackScreenProps<ProgressStackParamList, "Progress">;
  * done or not, with no fabricated in-between "pending" state.
  */
 export function ProgressOverviewScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["progress", "overview"],
     queryFn: fetchProgressOverview,
@@ -59,7 +62,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Progress">
+      <ScreenContainer title={t("progress.title")}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -67,7 +70,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
 
   if (isLoading || !data) {
     return (
-      <ScreenContainer title="Progress">
+      <ScreenContainer title={t("progress.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -79,11 +82,11 @@ export function ProgressOverviewScreen({ navigation }: Props) {
   const weeklyDone = checkInStatus?.weekly.submitted ?? false;
 
   return (
-    <ScreenContainer title="Progress">
+    <ScreenContainer title={t("progress.title")}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Icon name="check" size={18} color={colors.success} />
-          <Text style={{ color: colors.textSecondary }}>Check-In</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.checkIn")}</Text>
         </View>
         <Text style={{ color: colors.textPrimary, marginTop: spacing.xs }}>
           {dailyDone ? "Today's check-in done" : "Today's check-in not done yet"}
@@ -91,7 +94,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
           {weeklyDone ? "this week's done" : "this week's not done yet"}
         </Text>
         <Button
-          label={dailyDone && weeklyDone ? "View Check-In" : "Check In"}
+          label={dailyDone && weeklyDone ? t("progress.viewCheckIn") : t("progress.doCheckIn")}
           variant="secondary"
           onPress={() => navigation.navigate("CheckIn")}
           style={{ marginTop: spacing.md, height: 42 }}
@@ -101,7 +104,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Icon name="trending-up" size={18} color={colors.accent} />
-          <Text style={{ color: colors.textSecondary }}>Weight trend</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.weightTrend")}</Text>
         </View>
         {weightHistory.length > 0 ? (
           <>
@@ -112,7 +115,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
           </>
         ) : (
           <Text style={{ color: colors.textMuted, marginTop: spacing.xs }}>
-            No weigh-ins yet — log one to start a trend.
+            {t("progress.noWeighIns")}
           </Text>
         )}
       </Card>
@@ -123,11 +126,11 @@ export function ProgressOverviewScreen({ navigation }: Props) {
             Latest measurements ({new Date(latestMeasurement.loggedAt).toLocaleDateString()})
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
-            <Measurement label="Chest" value={latestMeasurement.chestCm} />
-            <Measurement label="Waist" value={latestMeasurement.waistCm} />
-            <Measurement label="Hips" value={latestMeasurement.hipsCm} />
-            <Measurement label="Arms" value={latestMeasurement.armsCm} />
-            <Measurement label="Thighs" value={latestMeasurement.thighsCm} />
+            <Measurement label={t("progress.measurements.chest")} value={latestMeasurement.chestCm} />
+            <Measurement label={t("progress.measurements.waist")} value={latestMeasurement.waistCm} />
+            <Measurement label={t("progress.measurements.hips")} value={latestMeasurement.hipsCm} />
+            <Measurement label={t("progress.measurements.arms")} value={latestMeasurement.armsCm} />
+            <Measurement label={t("progress.measurements.thighs")} value={latestMeasurement.thighsCm} />
           </View>
         </Card>
       ) : null}
@@ -135,7 +138,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <Icon name="trophy" size={18} color={colors.warning} />
-          <Text style={{ color: colors.textSecondary }}>Personal records</Text>
+          <Text style={{ color: colors.textSecondary }}>{t("progress.personalRecords")}</Text>
         </View>
         {personalRecords.length > 0 ? (
           personalRecords.map((pr) => (
@@ -150,23 +153,30 @@ export function ProgressOverviewScreen({ navigation }: Props) {
             </View>
           ))
         ) : (
-          <Text style={{ color: colors.textMuted }}>Complete a workout with weighted sets to see PRs here.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("progress.noRecords")}</Text>
         )}
       </Card>
 
       <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
         <ListRow
           icon="sparkles"
-          title="Progress Review"
-          subtitle="Recent activity and what your plan suggests"
+          title={t("progress.links.review.label")}
+          subtitle={t("progress.links.review.subtitle")}
           tint={colors.aiAccent}
           tintSoft={colors.aiAccentSoft}
           onPress={() => navigation.navigate("ProgressReview")}
         />
-        <ListRow icon="plus" title="Log Measurement" tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("LogMeasurement")} />
-        <ListRow icon="calendar" title="Measurement History" tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("MeasurementHistory")} />
-        <ListRow icon="flame" title="Streak Tracker" tint={colors.orange} tintSoft="rgba(251,146,60,0.16)" onPress={() => navigation.navigate("StreakTracker")} />
-        <ListRow icon="heart" title="Progress Photos" tint={colors.pink} tintSoft="rgba(236,72,153,0.16)" onPress={() => navigation.navigate("ProgressPhotos")} />
+        <ListRow icon="plus" title={t("progress.links.logMeasurement")} tint={colors.accent} tintSoft={colors.accentSoft} onPress={() => navigation.navigate("LogMeasurement")} />
+        <ListRow icon="calendar" title={t("progress.links.measurementHistory")} tint={colors.textSecondary} tintSoft={colors.surfaceHigh} onPress={() => navigation.navigate("MeasurementHistory")} />
+        {/* Handoff §2 decision #13 and the Overview's "Gamification: None
+            in R1 (no streaks, badges, achievements)". Hidden behind the
+            R1 flag rather than deleted — the screen, its API and its
+            tests still work, so restoring it is a config change if the
+            decision is revisited. Default is off, i.e. spec-compliant. */}
+        {r1Flags.GAMIFICATION_ENABLED ? (
+          <ListRow icon="flame" title={t("progress.links.streakTracker")} tint={colors.orange} tintSoft="rgba(251,146,60,0.16)" onPress={() => navigation.navigate("StreakTracker")} />
+        ) : null}
+        <ListRow icon="heart" title={t("progress.links.photos")} tint={colors.pink} tintSoft="rgba(236,72,153,0.16)" onPress={() => navigation.navigate("ProgressPhotos")} />
       </View>
     </ScreenContainer>
   );

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -37,23 +38,24 @@ function formatPrice(cents: number) {
  * Workout History's Compare action.
  */
 export function BookingConfirmationScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { booking } = route.params;
 
   return (
-    <ScreenContainer title="Booking Confirmed">
+    <ScreenContainer title={t("coaching.booking.confirmedTitle")}>
       <Card style={{ alignItems: "center" }}>
-        <Text style={{ color: colors.success, ...typography.h1 }}>Booked ✓</Text>
+        <Text style={{ color: colors.success, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           Your session with {booking.professionalFullName} is confirmed.
         </Text>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Row label="Coach" value={booking.professionalFullName} />
-        <Row label="Service" value={booking.offeringLabel} />
-        <Row label="Date & Time" value={formatDateTime(booking.scheduledAt)} />
-        <Row label="Duration" value={`${booking.durationMinutes} min`} />
-        <Row label="Amount" value={formatPrice(booking.priceCents)} last />
+        <Row label={t("coaching.booking.coach")} value={booking.professionalFullName} />
+        <Row label={t("coaching.booking.service")} value={booking.offeringLabel} />
+        <Row label={t("coaching.booking.dateTime")} value={formatDateTime(booking.scheduledAt)} />
+        <Row label={t("coaching.booking.duration")} value={`${booking.durationMinutes} min`} />
+        <Row label={t("coaching.booking.amount")} value={formatPrice(booking.priceCents)} last />
       </Card>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
@@ -62,12 +64,12 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
       </Text>
 
       <Button
-        label="View My Bookings"
+        label={t("coaching.booking.viewBookings")}
         onPress={() => navigation.navigate("MyProfessionalTeam")}
         style={{ marginTop: spacing.lg }}
       />
       <Button
-        label="Back to Home"
+        label={t("coaching.booking.backHome")}
         variant="secondary"
         onPress={() => navigation.popToTop()}
         style={{ marginTop: spacing.sm }}

@@ -147,7 +147,10 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
     const res = await request(app)
       .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
-      .send({ goals: ["strength"], trainingLevel: "beginner", medicalConditions: ["asthma"], injuries: [] });
+      // D14: a heart condition is the Safety Pause tier, which is what
+      // makes this a HIGH-severity queue item. "asthma" (the previous
+      // fixture) is now correctly the low-severity warning tier.
+      .send({ goals: ["strength"], trainingLevel: "beginner", medicalConditions: ["heart condition"], injuries: [] });
     expect(res.status).toBe(200);
 
     const escalation = await prisma.safetyEscalation.findFirst({ where: { userId } });
@@ -194,7 +197,14 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
     const refundRes = await request(app)
       .post(`/admin/payments/${payment.id}/refunds`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ amountCents: 50000, reason: "Test refund" });
+      // BR-ADM-005: a refund is a high-impact action, so the reason must
+      // clear the 10-character floor and the confirmation word is
+      // required. "Test refund" alone is now correctly rejected.
+      .send({
+        amountCents: 50000,
+        reason: "Duplicate charge reported by the user in ticket 4471",
+        confirmation: "RESOLVE",
+      });
     expect(refundRes.status).toBe(201);
     expect(refundRes.body.refund.status).toBe("pending"); // Razorpay is unconfigured in this suite
     const refundId = refundRes.body.refund.id;

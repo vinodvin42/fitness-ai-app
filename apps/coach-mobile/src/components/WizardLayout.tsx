@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StepProgressBar } from "./StepProgressBar";
@@ -33,6 +34,7 @@ export function WizardLayout({
   nextDisabled,
   nextLoading,
 }: WizardLayoutProps) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -44,7 +46,7 @@ export function WizardLayout({
       <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
 
       <View style={styles.footer}>
-        {onBack ? <Button label="Back" variant="secondary" onPress={onBack} style={styles.backButton} /> : null}
+        {onBack ? <Button label={t("common.back")} variant="secondary" onPress={onBack} style={styles.backButton} /> : null}
         <Button
           label={nextLabel}
           onPress={onNext}

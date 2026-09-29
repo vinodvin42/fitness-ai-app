@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { AdminProfessionalDirectoryResponse, ProfessionalDirectoryTab } from "@fitness-ai-app/types";
@@ -71,6 +72,7 @@ async function fetchDirectory(tab: ProfessionalDirectoryTab, search: string): Pr
  * suspend/reactivate build below, which mirrors this exact pattern.
  */
 export function ProfessionalDirectoryScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<ProfessionalDirectoryTab>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<CapacitySort>("recent");
@@ -98,7 +100,7 @@ export function ProfessionalDirectoryScreen() {
     : [];
 
   return (
-    <AppShell title="Professional Directory" subNav={PROFESSIONALS_SUB_NAV}>
+    <AppShell title={t("professionalDirectory.professionalDirectory")} subNav={PROFESSIONALS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
@@ -123,7 +125,7 @@ export function ProfessionalDirectoryScreen() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as CapacitySort)}
-              aria-label="Sort by capacity utilization"
+              aria-label={t("professionalDirectory.sortByCapacityUtilization")}
               className="rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-xs text-text-secondary outline-none focus:border-accent"
             >
               {SORT_OPTIONS.map((opt) => (
@@ -134,7 +136,7 @@ export function ProfessionalDirectoryScreen() {
             </select>
             <input
               type="search"
-              placeholder="Search name or email…"
+              placeholder={t("professionalDirectory.searchNameOrEmail")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -142,13 +144,13 @@ export function ProfessionalDirectoryScreen() {
           </div>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("professionalDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load professionals.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("professionalDirectory.retry")}
             </button>
           </div>
         )}
@@ -158,14 +160,14 @@ export function ProfessionalDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Professional</th>
-                  <th className="px-4 py-3 font-normal">Services</th>
-                  <th className="px-4 py-3 font-normal">Experience</th>
-                  <th className="px-4 py-3 font-normal">Active Clients</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.professional")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.services")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.experience")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.activeClients")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.status")}</th>
                   <th className="px-4 py-3 font-normal">KYC</th>
-                  <th className="px-4 py-3 font-normal">Lifecycle</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.lifecycle")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,7 +235,7 @@ export function ProfessionalDirectoryScreen() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Link to={`/professionals/${p.id}`} className="text-xs text-accent hover:underline">
-                            View →
+                            {t("professionalDirectory.view")}
                           </Link>
                           {p.status === "suspended" && (
                             <button
@@ -255,7 +257,7 @@ export function ProfessionalDirectoryScreen() {
                 {sortedProfessionals.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
-                      No professionals in this view.
+                      {t("professionalDirectory.noProfessionalsInThis")}
                     </td>
                   </tr>
                 )}
@@ -273,7 +275,7 @@ export function ProfessionalDirectoryScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing field exists yet for these Figma-spec'd directory columns — see adminProfessionals.service.ts."
+            subtitle={t("professionalDirectory.noBackingFieldExists")}
           />
         )}
       </div>

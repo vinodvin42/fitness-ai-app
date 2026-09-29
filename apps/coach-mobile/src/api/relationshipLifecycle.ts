@@ -40,3 +40,13 @@ export function fetchAvailableProfessionalsForHandover(search?: string) {
     })
     .then((r) => r.data);
 }
+
+/**
+ * P-M11 — complete a programme. §10 makes COMPLETED distinct from ENDED:
+ * ending says the arrangement stopped, completing says the work finished.
+ */
+export function completeRelationship(relationshipId: string, reason: string) {
+  return apiClient
+    .post(`/professionals/me/relationships/${relationshipId}/complete`, { reason })
+    .then((r) => r.data);
+}

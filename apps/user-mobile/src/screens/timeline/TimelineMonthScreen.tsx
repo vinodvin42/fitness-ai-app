@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -33,6 +34,7 @@ const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
  * navigating here right after Overview costs no extra network call.
  */
 export function TimelineMonthScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const now = new Date();
   const [year, setYear] = useState(route.params?.year ?? now.getFullYear());
   const [month, setMonth] = useState(route.params?.month ?? now.getMonth());
@@ -66,7 +68,7 @@ export function TimelineMonthScreen({ route, navigation }: Props) {
   const selectedDayEvents = selectedDay ? eventsByDay.get(selectedDay) ?? [] : [];
 
   return (
-    <ScreenContainer title="Timeline">
+    <ScreenContainer title={t("timeline.title")}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
         <Pressable onPress={() => goToMonth(-1)}>
           <Text style={{ color: colors.accent, ...typography.h2 }}>{"‹"}</Text>

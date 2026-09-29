@@ -1,6 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { env } from "../../config/env";
-import { isRazorpayConfigured } from "../../lib/razorpayClient";
+import { paymentProvider, providerStatus } from "../../providers";
 import { getAiProviderStatus } from "../../lib/aiClient";
 import { isSentryConfigured } from "../../lib/sentry";
 
@@ -10,13 +10,13 @@ import { isSentryConfigured } from "../../lib/sentry";
  * an API keys card" — this ships the integrations table only, and every
  * row in that table is entirely real: each external service this build
  * wires up already had a real, reusable status helper written for a
- * different reason (`lib/razorpayClient.ts`'s `isRazorpayConfigured()`,
- * gap §14; `lib/aiClient.ts`'s `getAiProviderStatus()`, gap §13/§38; and
+ * different reason (`providers/`'s `paymentProvider.isConfigured()`,
+ * gap §14, moved behind the D4 adapter 28 Sep 2026; `lib/aiClient.ts`'s `getAiProviderStatus()`, gap §13/§38; and
  * `lib/sentry.ts`'s `isSentryConfigured()`, added the same go-live
  * hardening pass as this module) — this is the first admin surface to
  * actually read any of them.
  *
- * - **Razorpay (Payment Gateway)** — real `isRazorpayConfigured()` status
+ * - **Razorpay (Payment Gateway)** — real `paymentProvider.isConfigured()` status
  *   (`RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` both set) plus a real usage
  *   summary: count and captured-revenue sum of every `paid` `Payment` row
  *   with `provider: "razorpay"` (the only provider this build has ever
@@ -69,8 +69,8 @@ export async function listIntegrations() {
       id: "razorpay",
       name: "Razorpay",
       category: "payment_gateway" as const,
-      configured: isRazorpayConfigured(),
-      detail: isRazorpayConfigured()
+      configured: paymentProvider.isConfigured(),
+      detail: paymentProvider.isConfigured()
         ? `Live — webhook ${env.RAZORPAY_WEBHOOK_SECRET ? "configured" : "not configured"}, settlement currency ${env.RAZORPAY_CURRENCY}`
         : "Not configured — set RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET",
       usageSummary:
@@ -100,8 +100,57 @@ export async function listIntegrations() {
     },
   ];
 
+  // The R1 adapter layer (spec §11 "adapter interfaces with a mock
+  // implementation"). Surfaced here so staff can see, on one screen,
+  // which side of each open decision an environment is actually running
+  // — a QA pass that silently used the payment mock is a false pass, and
+  // a payout marked "sent" by a placeholder provider is worse.
+  const adapters = providerStatus();
+  const adapterRows = [
+    {
+      id: "payment_provider",
+      name: `Payments — ${adapters.payment.name}`,
+      category: "payment_gateway" as const,
+      configured: adapters.payment.configured,
+      detail:
+        adapters.payment.name === "mock"
+          ? "MOCK provider — no real money moves. D4 is still open; set RAZORPAY_KEY_ID/SECRET or PAYMENT_PROVIDER=razorpay."
+          : "Real gateway selected via the D4 adapter.",
+      usageSummary: null,
+    },
+    {
+      id: "payout_provider",
+      name: `Payouts — ${adapters.payout.name}`,
+      category: "payout_provider" as const,
+      configured: adapters.payout.configured,
+      detail:
+        "D5 is still open — no real payout provider exists yet. Payout runs record intent; they do not move money.",
+      usageSummary: null,
+    },
+    {
+      id: "food_data_provider",
+      name: `Food data — ${adapters.foodData.name}`,
+      category: "food_data" as const,
+      configured: adapters.foodData.configured,
+      detail:
+        adapters.foodData.name === "seed"
+          ? "Offline seed list (4 products) — set FOOD_DATA_PROVIDER=openfoodfacts for the real catalogue."
+          : "Open Food Facts, via the D8 adapter.",
+      usageSummary: null,
+    },
+    {
+      id: "deep_link_provider",
+      name: `Deep links — ${adapters.deepLink.name}`,
+      category: "deep_link" as const,
+      configured: adapters.deepLink.configured,
+      detail:
+        "D6 is still open — no deferred deep linking. Links resolve on the web; an install loses its attribution.",
+      usageSummary: null,
+    },
+  ];
+
   return {
-    integrations,
+    integrations: [...integrations, ...adapterRows],
     notAvailable: ["apiKeys"],
   };
 }

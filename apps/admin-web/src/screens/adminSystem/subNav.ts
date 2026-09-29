@@ -36,6 +36,11 @@ export const ADMIN_SYSTEM_SUB_NAV = [
   { label: "Roles & Permissions", path: "/admin-system/roles" },
   { label: "Audit Logs", path: "/admin-system/audit-logs" },
   { label: "Privacy & Data Governance", path: "/admin-system/privacy" },
+  // A-M5 (28 Sep 2026) — the live subject-rights QUEUE, distinct from
+  // Privacy & Data Governance above, which surfaces the historical
+  // AuditLog trail of requests already fulfilled. One is work to do,
+  // the other is a record of work done.
+  { label: "Privacy Requests", path: "/admin-system/privacy-requests" },
   // Consent Management (Wave 4, 20 Sep 2026) — a separate screen from
   // Privacy & Data Governance rather than a third card there, since it's
   // naturally scoped to one user at a time (search, then view) rather

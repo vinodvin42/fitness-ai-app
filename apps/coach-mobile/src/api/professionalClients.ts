@@ -55,3 +55,13 @@ export function decideClientRecommendation(userId: string, recommendationId: str
     .post<Recommendation>(`/professionals/me/clients/${userId}/recommendations/${recommendationId}/decide`, input)
     .then((r) => r.data);
 }
+
+/**
+ * P-M12 — raise a safety concern about a client. Deliberately not a chat
+ * message: chat is not monitored and is not an escalation.
+ */
+export function flagClientSafety(userId: string, input: { concern: string; urgent: boolean }) {
+  return apiClient
+    .post<{ id: string; raised: boolean }>(`/professionals/me/clients/${userId}/safety-flag`, input)
+    .then((r) => r.data);
+}

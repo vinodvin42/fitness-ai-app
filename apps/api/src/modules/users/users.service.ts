@@ -1,4 +1,6 @@
 import type { User } from "@prisma/client";
+import { classifySafetyOutcome } from "@fitness-ai-app/config";
+import { encryptStringList, readHealthList } from "../../lib/fieldCrypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
@@ -94,8 +96,45 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
  * logMeasurement), so this is the user's real, honest day-one baseline —
  * not a second, competing measurements table bolted onto OnboardingProfile.
  */
+
+/**
+ * Decrypts an onboarding profile's health fields on the way out, so
+ * every caller sees the same shape it always did.
+ *
+ * The encrypted columns themselves are stripped from the result: they
+ * are storage detail, and leaving them on a DTO is how ciphertext ends
+ * up in a log or an API response someone later treats as opaque-but-safe.
+ */
+function withDecryptedHealth<
+  T extends {
+    medicalConditions: string[];
+    injuries: string[];
+    medicalConditionsEnc: string | null;
+    injuriesEnc: string | null;
+  },
+>(profile: T) {
+  const { medicalConditionsEnc, injuriesEnc, ...rest } = profile;
+  return {
+    ...rest,
+    medicalConditions: readHealthList({ encrypted: medicalConditionsEnc, plaintext: profile.medicalConditions }),
+    injuries: readHealthList({ encrypted: injuriesEnc, plaintext: profile.injuries }),
+  };
+}
+
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
-  const { bodyFatPercent, waistCm, hipsCm, ...profileFields } = input;
+  const { bodyFatPercent, waistCm, hipsCm, medicalConditions, injuries, ...rest } = input;
+
+  // Spec §10: health data is stored encrypted. The two plaintext columns
+  // are written as empty from here on — they exist only so the backfill
+  // can migrate pre-existing rows without downtime, and a new write must
+  // never add to the plaintext that backfill is trying to remove.
+  const profileFields = {
+    ...rest,
+    medicalConditions: [],
+    injuries: [],
+    medicalConditionsEnc: encryptStringList(medicalConditions),
+    injuriesEnc: encryptStringList(injuries),
+  };
 
   // BR-SAF-004 (R1 Developer 1, 18 Sep 2026) needs to know, BEFORE the
   // upsert below, whether this call is a genuinely NEW completion or a
@@ -153,9 +192,32 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // editOnboardingProfileSchema's own comment), so it's structurally
   // incapable of reaching this branch. A real escalation only fires once,
   // at the one real moment this data is first reported.
-  if (isNewCompletion && (input.medicalConditions.length > 0 || input.injuries.length > 0)) {
+  // D14 — "Which health conditions trigger Safety Pause vs a warning";
+  // build-to default "Heart condition -> Pause; others -> warning +
+  // consent". Until R1 this branch escalated on ANY declared condition
+  // or injury, which made acceptance test 5 ("selecting a SERIOUS health
+  // condition shows the Safety Pause screen") vacuously true and left
+  // the warning path unreachable — a user reporting mild asthma got the
+  // same full stop as one reporting a cardiac event.
+  //
+  // Injuries alone never pause: they are a plan-personalisation input,
+  // and the handoff routes only "serious conditions" to Safety Pause.
+  const safetyOutcome = classifySafetyOutcome(input.medicalConditions);
+  const shouldEscalate = isNewCompletion && safetyOutcome === "pause";
+  const shouldWarn =
+    isNewCompletion && safetyOutcome === "warning" && input.medicalConditions.length + input.injuries.length > 0;
+
+  if (shouldEscalate) {
     const escalation = await prisma.safetyEscalation.create({
-      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+      data: {
+        userId,
+        // Encrypted here too — a safety escalation holds exactly the
+        // same declared conditions as the profile it came from.
+        medicalConditions: [],
+        injuries: [],
+        medicalConditionsEnc: encryptStringList(input.medicalConditions),
+        injuriesEnc: encryptStringList(input.injuries),
+      },
     });
 
     // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — `high`
@@ -184,12 +246,64 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
         metadata: {
           medicalConditionsCount: input.medicalConditions.length,
           injuriesCount: input.injuries.length,
+          outcome: "pause",
+        },
+      },
+    );
+  } else if (shouldWarn) {
+    // The warning tier. A real SafetyEscalation row is still written —
+    // this IS reported health data and the safety team should be able
+    // to see it — but at `low` severity and without the Pause, so the
+    // user continues onboarding with a warning and a consent step
+    // rather than being stopped. Recording it as an escalation the
+    // console can filter is the honest middle ground between "full
+    // stop" and "no trace at all".
+    const escalation = await prisma.safetyEscalation.create({
+      data: {
+        userId,
+        // Encrypted here too — a safety escalation holds exactly the
+        // same declared conditions as the profile it came from.
+        medicalConditions: [],
+        injuries: [],
+        medicalConditionsEnc: encryptStringList(input.medicalConditions),
+        injuriesEnc: encryptStringList(input.injuries),
+      },
+    });
+
+    await createActionItem({
+      type: "safety_escalation",
+      entityType: "SafetyEscalation",
+      entityId: escalation.id,
+      severity: "low",
+      metadata: {
+        userId,
+        medicalConditionsCount: input.medicalConditions.length,
+        injuriesCount: input.injuries.length,
+        outcome: "warning",
+      },
+    });
+
+    await trackEvent(
+      userId,
+      "safety.escalated",
+      { safetyEscalationId: escalation.id, onboardingProfileId: profile.userId },
+      {
+        ruleId: "BR-SAF-004",
+        metadata: {
+          medicalConditionsCount: input.medicalConditions.length,
+          injuriesCount: input.injuries.length,
+          outcome: "warning",
         },
       },
     );
   }
 
-  return profile;
+  // D14's outcome travels with the response so the client knows whether
+  // to show the Safety Pause screen or a warning + consent step. Derived
+  // server-side rather than re-derived in each client: which conditions
+  // are serious is a safety rule, and BR-SAF-004 plus the Definition of
+  // Done both require rules to be enforced by the API, not the UI.
+  return { ...withDecryptedHealth(profile), safetyOutcome };
 }
 
 /**
@@ -206,7 +320,7 @@ export async function getOnboardingProfile(userId: string) {
   if (!profile) {
     throw new ApiHttpError(404, "onboarding_profile_not_found", "Onboarding profile not found");
   }
-  return profile;
+  return withDecryptedHealth(profile);
 }
 
 /**
@@ -232,7 +346,7 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
     metadata: { fields: Object.keys(input) },
   });
 
-  return profile;
+  return withDecryptedHealth(profile);
 }
 
 /**
@@ -356,7 +470,9 @@ export async function exportUserData(userId: string) {
   return {
     exportedAt: new Date().toISOString(),
     profile: toPublicUser(user),
-    onboardingProfile,
+    // A data export must contain the user's real declared conditions,
+    // not ciphertext — the whole point is that they can read it.
+    onboardingProfile: onboardingProfile ? withDecryptedHealth(onboardingProfile) : null,
     workoutSessions,
     mealLogs,
     bodyMeasurements,
@@ -401,6 +517,39 @@ export async function deleteAccount(userId: string, input: DeleteAccountInput) {
     entityId: userId,
     severity: "medium",
     metadata: { requestType: "account_deletion" },
+  });
+
+  await prisma.user.delete({ where: { id: userId } });
+}
+
+/**
+ * The same hard delete, reached from an admin-fulfilled PrivacyRequest
+ * rather than from the user's own password-confirmed self-service path.
+ *
+ * Kept here, next to `deleteAccount`, rather than reimplemented in the
+ * privacy module: both must stay in step about what "delete a user"
+ * cascades to, and two copies of that knowledge is how one of them ends
+ * up leaving rows behind. The password check is deliberately absent —
+ * the identity proof for this path is the admin's own verification step
+ * (`privacyRequests.service.ts#verifyPrivacyRequest`), which is what
+ * A-M5's "verify identity" action records.
+ *
+ * Acceptance test 17: everything user-owned cascades via Prisma's
+ * onDelete: Cascade; AuditLog survives by its own onDelete: SetNull with
+ * an anonymized actor, which is the "keeps only records the law
+ * requires" half of that test.
+ */
+export async function hardDeleteUserForPrivacyRequest(userId: string) {
+  const existing = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!existing) return;
+
+  await recordAudit({
+    actorId: userId,
+    action: "user.account_deleted",
+    entityType: "User",
+    entityId: userId,
+    ruleId: "BR-PRV-001",
+    metadata: { via: "privacy_request" },
   });
 
   await prisma.user.delete({ where: { id: userId } });

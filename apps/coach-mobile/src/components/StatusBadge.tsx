@@ -12,6 +12,21 @@ const LABELS: Record<string, string> = {
   // already fits; "paid" added here for coach-mobile's earnings screen
   // (10 Sep 2026, Wave 3 earnings-view polish).
   paid: "Paid",
+  // R1 (§10 professional earning): the payout lifecycle gained an
+  // approval step and a failure state. `pending` above IS the spec's
+  // PAYOUT_PENDING, so it needs no new label.
+  eligible: "Earned",
+  approved: "Approved",
+  payout_failed: "Payout failed",
+  // R1 (§10 professional account) — P-M3's lifecycle end states.
+  needs_action: "Action needed",
+  restricted: "Restricted",
+  suspended: "Suspended",
+  // Relationship states the app can now show.
+  offered: "Offered",
+  declined: "Declined",
+  expired: "Expired",
+  completed: "Completed",
 };
 
 const TONES: Record<string, { bg: string; fg: string }> = {
@@ -20,6 +35,16 @@ const TONES: Record<string, { bg: string; fg: string }> = {
   verified: { bg: "rgba(34,197,94,0.15)", fg: colors.success },
   rejected: { bg: "rgba(239,68,68,0.15)", fg: colors.danger },
   paid: { bg: "rgba(34,197,94,0.15)", fg: colors.success },
+  eligible: { bg: "#2A2A33", fg: colors.textSecondary },
+  approved: { bg: "rgba(245,158,11,0.15)", fg: colors.warning },
+  payout_failed: { bg: "rgba(239,68,68,0.15)", fg: colors.danger },
+  needs_action: { bg: "rgba(245,158,11,0.15)", fg: colors.warning },
+  restricted: { bg: "rgba(245,158,11,0.15)", fg: colors.warning },
+  suspended: { bg: "rgba(239,68,68,0.15)", fg: colors.danger },
+  offered: { bg: "rgba(245,158,11,0.15)", fg: colors.warning },
+  declined: { bg: "#2A2A33", fg: colors.textSecondary },
+  expired: { bg: "#2A2A33", fg: colors.textSecondary },
+  completed: { bg: "rgba(34,197,94,0.15)", fg: colors.success },
 };
 
 /**

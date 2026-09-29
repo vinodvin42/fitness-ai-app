@@ -180,6 +180,11 @@ type SettlementHistoryRow = {
   netCents: number;
   status: string;
   paidAt: Date | null;
+  // R1: the payout lifecycle gained approval and failure states, and a
+  // professional whose transfer bounced needs the reason more than
+  // anyone.
+  approvedAt: Date | null;
+  payoutFailureReason: string | null;
 };
 
 /**
@@ -221,14 +226,42 @@ export async function getEarnings(professionalId: string) {
     .filter((s) => s.status === "paid")
     .reduce((sum, s) => sum + s.netCents, 0);
 
+  // The §10 payout lifecycle, from the payee's side. `pending` is the
+  // spec's PAYOUT_PENDING (see PayoutStatus's own comment), so anything
+  // approved-or-later but unpaid is money owed.
+  const awaitingPayoutCents = history
+    .filter((s) => s.status === "approved" || s.status === "pending")
+    .reduce((sum, s) => sum + s.netCents, 0);
+  const failedPayouts = history.filter((s) => s.status === "payout_failed");
+
   return {
     commissionPct,
     currentMonth: {
       grossCents: monthGrossCents,
       commissionCents: monthCommissionCents,
       netCents: monthGrossCents - monthCommissionCents,
+      // The current-month figure is derived from per-session bookings,
+      // which only exist under the marketplace model that decision #4
+      // turns off. Under controlled assignment a professional's income
+      // comes from settlements, not sessions, so this reads zero and
+      // saying so is better than a professional concluding they earned
+      // nothing this month.
+      derivedFromBookings: true,
+      hasBookingData: monthBookings.length > 0,
     },
     lifetimePaidCents,
+    awaitingPayoutCents,
+    // Surfaced separately so the app can lead with it: a bounced transfer
+    // is usually the professional's own bank details, and every day it
+    // goes unnoticed is a day they are not paid.
+    payoutFailure:
+      failedPayouts.length > 0
+        ? {
+            count: failedPayouts.length,
+            amountCents: failedPayouts.reduce((sum, s) => sum + s.netCents, 0),
+            reason: failedPayouts[0].payoutFailureReason,
+          }
+        : null,
     settlements: history.map((s) => ({
       id: s.id,
       periodStart: s.periodStart,
@@ -236,7 +269,9 @@ export async function getEarnings(professionalId: string) {
       commissionPct: s.commissionPct,
       netCents: s.netCents,
       status: s.status,
+      approvedAt: s.approvedAt,
       paidAt: s.paidAt,
+      payoutFailureReason: s.payoutFailureReason,
     })),
   };
 }

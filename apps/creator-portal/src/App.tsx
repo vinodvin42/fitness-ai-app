@@ -3,6 +3,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
+import { CampaignsScreen } from "./screens/CampaignsScreen";
+import { ReferralToolsScreen } from "./screens/ReferralToolsScreen";
+import { CommissionScreen } from "./screens/CommissionScreen";
+import { AgreementScreen } from "./screens/AgreementScreen";
+import { AccountScreen } from "./screens/AccountScreen";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -63,6 +68,46 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <DashboardScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/campaigns"
+        element={
+          <RequireAuth>
+            <CampaignsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/referral-tools"
+        element={
+          <RequireAuth>
+            <ReferralToolsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/commission"
+        element={
+          <RequireAuth>
+            <CommissionScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/agreement"
+        element={
+          <RequireAuth>
+            <AgreementScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/account"
+        element={
+          <RequireAuth>
+            <AccountScreen />
           </RequireAuth>
         }
       />

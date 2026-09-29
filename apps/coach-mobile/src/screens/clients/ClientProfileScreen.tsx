@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -20,7 +21,9 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
+import { flagClientSafety } from "../../api/professionalClients";
 import {
+  completeRelationship,
   endRelationship,
   fetchAvailableProfessionalsForHandover,
   handoverRelationship,
@@ -85,6 +88,7 @@ function sessionLine(item: CoachScheduleItem): string {
  * dropdown already established, not a second invented pattern.
  */
 export function ClientProfileScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ClientsStackParamList, "ClientProfile">>();
   const route = useRoute<RouteProp<ClientsStackParamList, "ClientProfile">>();
   const { userId, fullName } = route.params;
@@ -132,7 +136,7 @@ export function ClientProfileScreen() {
         <>
           <ClientProfileBody profile={data} />
           <Button
-            label="Review Recommendations"
+            label={t("clients.recommendations.review")}
             variant="secondary"
             onPress={() => navigation.navigate("ClientRecommendations", { userId, fullName })}
           />
@@ -141,15 +145,28 @@ export function ClientProfileScreen() {
       )}
 
       {isSummaryLoading && <ActivityIndicator color={colors.accent} />}
-      {isSummaryError && <ErrorState onRetry={() => refetchSummary()} message="Couldn't load this client's activity." />}
+      {isSummaryError && <ErrorState onRetry={() => refetchSummary()} message={t("clients.profile.activityError")} />}
       {summary && <ClientSummarySection summary={summary} />}
 
+      {/* P-M12 — above private notes on purpose: a note is for the
+          coach, a flag is for the safety team, and a coach reaching
+          for somewhere to record a worry should meet the escalation
+          route first. */}
+      <SafetyFlagCard userId={userId} fullName={fullName} />
       <NotesSection userId={userId} />
     </ScreenContainer>
   );
 }
 
-type RelationshipMode = "end" | "handover";
+/**
+ * P-M11 (28 Sep 2026) — `complete` joins the two existing outcomes.
+ * §10 makes COMPLETED distinct from ENDED: ending says the arrangement
+ * stopped, completing says the work finished. Both revoke access, but
+ * only one is something to be pleased about, and collapsing them denies
+ * a coach and their client that difference — "Complete programme" had
+ * no destination before this.
+ */
+type RelationshipMode = "end" | "handover" | "complete";
 
 /**
  * See this screen's own top comment (Wave 3, R1 U6) for the full design.
@@ -167,6 +184,7 @@ function RelationshipActionsSection({
   relationships: CoachClientProfile["relationships"];
   onComplete: (message: string) => void;
 }) {
+  const { t } = useTranslation();
   const [openRelationshipId, setOpenRelationshipId] = useState<string | null>(null);
   const [mode, setMode] = useState<RelationshipMode>("end");
   const [reason, setReason] = useState("");
@@ -193,6 +211,16 @@ function RelationshipActionsSection({
       onComplete("This relationship has ended.");
     },
     onError: (err) => Alert.alert("Couldn't end this relationship", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (relationshipId: string) => completeRelationship(relationshipId, reason.trim()),
+    onSuccess: () => {
+      resetForm();
+      onComplete("Programme marked complete. This client's access has ended.");
+    },
+    onError: (err) =>
+      Alert.alert("Couldn't complete this programme", extractErrorMessage(err, "Please try again.")),
   });
 
   const handoverMutation = useMutation({
@@ -224,17 +252,30 @@ function RelationshipActionsSection({
 
     const isHandoverWithReplacement = mode === "handover" && replacementId != null;
     Alert.alert(
-      mode === "handover" ? "Confirm handover" : "Confirm end relationship",
+      mode === "handover"
+        ? "Confirm handover"
+        : mode === "complete"
+          ? "Confirm programme complete"
+          : "Confirm end relationship",
       isHandoverWithReplacement
         ? "This ends your relationship with this client and sends the replacement coach a real offer for them. This can't be undone from here."
-        : "This ends your relationship with this client. This can't be undone from here.",
+        : mode === "complete"
+          ? "This marks the programme finished and ends your access to this client's data. They'll see a completion summary. This can't be undone from here."
+          : "This ends your relationship with this client. This can't be undone from here.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: mode === "handover" ? "Hand Over" : "End Relationship",
-          style: "destructive",
+          text: mode === "handover" ? "Hand Over" : mode === "complete" ? "Complete" : "End Relationship",
+          // Completing is not destructive in the way the other two are —
+          // it is the good ending, and styling it red would tell a coach
+          // finishing a programme well that they are doing damage.
+          style: mode === "complete" ? "default" : "destructive",
           onPress: () =>
-            mode === "handover" ? handoverMutation.mutate(relationshipId) : endMutation.mutate(relationshipId),
+            mode === "handover"
+              ? handoverMutation.mutate(relationshipId)
+              : mode === "complete"
+                ? completeMutation.mutate(relationshipId)
+                : endMutation.mutate(relationshipId),
         },
       ],
     );
@@ -249,7 +290,8 @@ function RelationshipActionsSection({
         const isOpen = openRelationshipId === r.relationshipId;
         const isBusy =
           (endMutation.isPending && endMutation.variables === r.relationshipId) ||
-          (handoverMutation.isPending && handoverMutation.variables === r.relationshipId);
+          (handoverMutation.isPending && handoverMutation.variables === r.relationshipId) ||
+          (completeMutation.isPending && completeMutation.variables === r.relationshipId);
 
         return (
           <View key={r.relationshipId} style={{ marginBottom: spacing.md }}>
@@ -258,15 +300,23 @@ function RelationshipActionsSection({
             </Text>
 
             {!isOpen ? (
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+                {/* Listed first because finishing a programme is the
+                    outcome everyone wants, and burying it behind the two
+                    ways things go wrong makes it look like the exception. */}
                 <Button
-                  label="End Relationship"
+                  label={t("clients.profile.completeProgramme")}
+                  onPress={() => openForm(r.relationshipId, "complete")}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  label={t("clients.profile.endRelationship")}
                   variant="secondary"
                   onPress={() => openForm(r.relationshipId, "end")}
                   style={{ flex: 1 }}
                 />
                 <Button
-                  label="Handover to Another Coach"
+                  label={t("clients.profile.handover")}
                   variant="secondary"
                   onPress={() => openForm(r.relationshipId, "handover")}
                   style={{ flex: 1 }}
@@ -275,7 +325,7 @@ function RelationshipActionsSection({
             ) : (
               <View style={{ gap: spacing.sm }}>
                 <TextInput
-                  placeholder="Reason (required)"
+                  placeholder={t("clients.profile.reasonRequired")}
                   placeholderTextColor={colors.textMuted}
                   value={reason}
                   onChangeText={setReason}
@@ -295,10 +345,10 @@ function RelationshipActionsSection({
                 {mode === "handover" && (
                   <View>
                     <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: spacing.xs }}>
-                      Propose a replacement (optional) — leave unselected to just end the relationship.
+                      {t("clients.profile.proposeReplacement")}
                     </Text>
                     <TextInput
-                      placeholder="Search available professionals…"
+                      placeholder={t("clients.profile.searchProfessionals")}
                       placeholderTextColor={colors.textMuted}
                       value={replacementSearch}
                       onChangeText={setReplacementSearch}
@@ -334,7 +384,7 @@ function RelationshipActionsSection({
                     })}
                     {availableProfessionalsQuery.data?.professionals.length === 0 && (
                       <Text style={{ color: colors.textMuted, fontSize: 12 }}>
-                        No professionals are currently available for new clients.
+                        {t("clients.profile.noProfessionalsAvailable")}
                       </Text>
                     )}
                   </View>
@@ -348,13 +398,129 @@ function RelationshipActionsSection({
                     loading={isBusy}
                     style={{ flex: 1 }}
                   />
-                  <Button label="Cancel" variant="secondary" onPress={resetForm} style={{ flex: 1 }} disabled={isBusy} />
+                  <Button label={t("common.cancel")} variant="secondary" onPress={resetForm} style={{ flex: 1 }} disabled={isBusy} />
                 </View>
               </View>
             )}
           </View>
         );
       })}
+    </Card>
+  );
+}
+
+/**
+ * P-M12 — "Client safety flag + escalation route. Pain is handled only
+ * inside chat."
+ *
+ * DESIGN-PENDING P-M12.
+ *
+ * A coach noticing something concerning — a client reporting chest pain
+ * mid-session, a pattern that reads as disordered eating — had nowhere
+ * to put it except a chat message, which nobody monitors and which is
+ * not an escalation. This is that route, and it is deliberately
+ * separate from private notes: a note is for the coach, a flag is for
+ * the safety team.
+ *
+ * The urgent toggle raises queue severity. It does NOT page anyone, and
+ * the screen says so — a coach who believes they have summoned help
+ * when they have queued a ticket is worse off than one who knows to
+ * call emergency services.
+ */
+function SafetyFlagCard({ userId, fullName }: { userId: string; fullName: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [concern, setConcern] = useState("");
+  const [urgent, setUrgent] = useState(false);
+
+  const raise = useMutation({
+    mutationFn: () => flagClientSafety(userId, { concern: concern.trim(), urgent }),
+    onSuccess: () => {
+      setOpen(false);
+      setConcern("");
+      setUrgent(false);
+      Alert.alert(
+        "Flag raised",
+        "Our safety team has been notified and will review this. You'll be contacted if they need anything from you.",
+      );
+    },
+    onError: (err) => Alert.alert("Couldn't raise the flag", extractErrorMessage(err, "Please try again.")),
+  });
+
+  return (
+    <Card>
+      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Safety</Text>
+      {!open ? (
+        <>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
+            Worried about {fullName.split(" ")[0]}'s safety or wellbeing? Raise it here rather than in chat — chat
+            isn't monitored.
+          </Text>
+          <Button
+            label={t("clients.profile.raiseSafety")}
+            variant="secondary"
+            onPress={() => setOpen(true)}
+            style={{ marginTop: spacing.md }}
+          />
+        </>
+      ) : (
+        <View style={{ marginTop: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+            {t("clients.profile.safetyPrompt")}
+          </Text>
+          <TextInput
+            value={concern}
+            onChangeText={setConcern}
+            multiline
+            numberOfLines={4}
+            maxLength={2000}
+            placeholder={t("clients.profile.safetyPlaceholder")}
+            placeholderTextColor={colors.textMuted}
+            style={{
+              color: colors.textPrimary,
+              backgroundColor: colors.surfaceRaised,
+              borderRadius: radius.card,
+              padding: spacing.md,
+              marginTop: spacing.xs,
+              minHeight: 96,
+              textAlignVertical: "top",
+            }}
+          />
+
+          <Text
+            onPress={() => setUrgent((u) => !u)}
+            style={{ color: urgent ? colors.warning : colors.textSecondary, marginTop: spacing.md }}
+          >
+            {urgent ? "☑" : "☐"}  This needs attention today
+          </Text>
+          {/* Stated plainly. A coach who thinks they have summoned help
+              when they have queued a ticket is worse off than one who
+              knows to call emergency services. */}
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+            This raises the priority of the review. It does not alert anyone immediately. If someone is in immediate
+            danger, call emergency services.
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+            <Button
+              label={t("clients.profile.raiseFlag")}
+              onPress={() => raise.mutate()}
+              loading={raise.isPending}
+              disabled={concern.trim().length < 10}
+              style={{ flex: 1 }}
+            />
+            <Button
+              label={t("common.cancel")}
+              variant="secondary"
+              onPress={() => {
+                setOpen(false);
+                setConcern("");
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      )}
     </Card>
   );
 }
@@ -370,6 +536,7 @@ function RelationshipActionsSection({
  * since the list endpoint itself is scoped to the calling coach).
  */
 function NotesSection({ userId }: { userId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -421,16 +588,16 @@ function NotesSection({ userId }: { userId: string }) {
 
   return (
     <Card>
-      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Private notes</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("clients.profile.privateNotes")}</Text>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
-        Only you can see these — the client never does.
+        {t("clients.profile.notesPrivate")}
       </Text>
 
       {isLoading && <ActivityIndicator color={colors.accent} />}
-      {isError && <ErrorState onRetry={() => refetch()} message="Couldn't load notes." />}
+      {isError && <ErrorState onRetry={() => refetch()} message={t("clients.profile.notesError")} />}
 
       {notes && notes.length === 0 && (
-        <Text style={{ color: colors.textMuted, marginBottom: spacing.sm }}>No notes yet.</Text>
+        <Text style={{ color: colors.textMuted, marginBottom: spacing.sm }}>{t("clients.profile.noNotes")}</Text>
       )}
 
       {notes &&
@@ -455,14 +622,14 @@ function NotesSection({ userId }: { userId: string }) {
               />
               <View style={{ flexDirection: "row", gap: spacing.sm }}>
                 <Button
-                  label="Save"
+                  label={t("common.save")}
                   onPress={() => updateMutation.mutate(note.id)}
                   loading={updateMutation.isPending}
                   disabled={editDraft.trim().length === 0}
                   style={{ flex: 1 }}
                 />
                 <Button
-                  label="Cancel"
+                  label={t("common.cancel")}
                   variant="secondary"
                   onPress={() => {
                     setEditingId(null);
@@ -519,7 +686,7 @@ function NotesSection({ userId }: { userId: string }) {
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Add a private note about this client…"
+          placeholder={t("clients.profile.notePlaceholder")}
           placeholderTextColor={colors.textMuted}
           multiline
           style={{
@@ -535,7 +702,7 @@ function NotesSection({ userId }: { userId: string }) {
           }}
         />
         <Button
-          label="Save note"
+          label={t("clients.profile.saveNote")}
           onPress={() => createMutation.mutate()}
           loading={createMutation.isPending}
           disabled={draft.trim().length === 0}
@@ -554,10 +721,11 @@ function NotesSection({ userId }: { userId: string }) {
  * apps/api's professionalClients.service.ts's getClientSummary doc comment.
  */
 function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
+  const { t } = useTranslation();
   if (!summary.consentGranted) {
     return (
       <Card style={{ borderStyle: "dashed" }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Client activity</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("clients.profile.activity")}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
           This client hasn&apos;t enabled data sharing with their coach yet, so training, nutrition, and check-in
           activity aren&apos;t shown here. They can turn this on anytime from their own Privacy settings.
@@ -574,7 +742,7 @@ function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
           {summary.training.completedCount} of {summary.training.totalCount} recent sessions completed
         </Text>
         {summary.training.recentSessions.length === 0 ? (
-          <Text style={{ color: colors.textMuted }}>No workout sessions in the last 30 days.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("clients.profile.noWorkouts")}</Text>
         ) : (
           summary.training.recentSessions.map((s) => <WorkoutSessionRow key={s.id} session={s} />)
         )}
@@ -583,7 +751,7 @@ function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Nutrition</Text>
         {summary.nutrition.recentLogs.length === 0 ? (
-          <Text style={{ color: colors.textMuted }}>No meal logs in the last 30 days.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("clients.profile.noMeals")}</Text>
         ) : (
           summary.nutrition.recentLogs.map((m) => <MealLogRow key={m.id} log={m} />)
         )}
@@ -592,16 +760,16 @@ function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Check-ins</Text>
         {summary.checkIns.length === 0 ? (
-          <Text style={{ color: colors.textMuted }}>No check-ins in the last 30 days.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("clients.profile.noCheckIns")}</Text>
         ) : (
           summary.checkIns.map((c) => <CheckInRow key={c.id} checkIn={c} />)
         )}
       </Card>
 
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Body measurements</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("clients.profile.measurements")}</Text>
         {summary.bodyMeasurements.length === 0 ? (
-          <Text style={{ color: colors.textMuted }}>No measurements logged in the last 30 days.</Text>
+          <Text style={{ color: colors.textMuted }}>{t("clients.profile.noMeasurements")}</Text>
         ) : (
           summary.bodyMeasurements.map((b) => <BodyMeasurementRow key={b.id} measurement={b} />)
         )}
@@ -610,10 +778,10 @@ function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
       {summary.notAvailable.length > 0 && (
         <Card style={{ borderStyle: "dashed" }}>
           <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Not available
+            {t("clients.profile.notAvailable")}
           </Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-            Progress photos and AI coach conversation content aren&apos;t shown to coaches.
+            {t("clients.profile.mediaWithheld")}
           </Text>
         </Card>
       )}
@@ -666,6 +834,7 @@ function BodyMeasurementRow({ measurement }: { measurement: CoachClientSummaryBo
 }
 
 function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
+  const { t } = useTranslation();
   return (
     <>
       <Card style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, alignItems: "center" }}>
@@ -690,17 +859,20 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
       </Card>
 
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Coaching profile</Text>
-        <ProfileRow label="Goals" value={profile.coaching.goals.length ? profile.coaching.goals.join(", ") : "Not set"} />
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("clients.profile.coachingProfile")}</Text>
         <ProfileRow
-          label="Training level"
+          label={t("clients.profile.goals")}
+          value={profile.coaching.goals.length ? profile.coaching.goals.join(", ") : t("common.notSet")}
+        />
+        <ProfileRow
+          label={t("clients.profile.trainingLevel")}
           value={
             profile.coaching.trainingLevel
               ? LEVEL_LABELS[profile.coaching.trainingLevel] ?? profile.coaching.trainingLevel
               : "Not set"
           }
         />
-        <ProfileRow label="Diet" value={profile.coaching.dietType ?? "Not set"} />
+        <ProfileRow label={t("clients.profile.diet")} value={profile.coaching.dietType ?? t("common.notSet")} />
       </Card>
 
       <Card>
@@ -713,7 +885,7 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
           Upcoming
         </Text>
         {profile.sessions.upcoming.length === 0 ? (
-          <Text style={{ color: colors.textSecondary, marginTop: 2 }}>None scheduled.</Text>
+          <Text style={{ color: colors.textSecondary, marginTop: 2 }}>{t("clients.profile.noneScheduled")}</Text>
         ) : (
           profile.sessions.upcoming.map((item) => (
             <Text key={item.id} style={{ color: colors.textPrimary, marginTop: 2 }}>
@@ -746,7 +918,7 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
             ))}
             {profile.sessions.pastTruncated ? (
               <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.xs }}>
-                Showing the most recent 50 sessions.
+                {t("clients.profile.recentLimit")}
               </Text>
             ) : null}
           </>
@@ -756,11 +928,10 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
       {profile.notAvailable.length > 0 && (
         <Card style={{ borderStyle: "dashed" }}>
           <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Not available
+            {t("clients.profile.notAvailable")}
           </Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-            Sensitive health data (age, weight, height, medical conditions, injuries) isn't shown to coaches — it's
-            gated behind a consent workflow this build doesn't have yet.
+            {t("clients.profile.healthWithheld")}
           </Text>
         </Card>
       )}

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Switch, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -45,6 +46,7 @@ const CONSENT_COPY: Record<ConsentType, { title: string; description: string }> 
  * doc comment.
  */
 export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -66,9 +68,9 @@ export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Privacy & Consent">
+    <ScreenContainer title={t("settings.privacy")}>
       <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-        Control what 23PrimeFit is allowed to do with your data. Each of these is a real, independent setting — you
+        Control what FynroX is allowed to do with your data. Each of these is a real, independent setting — you
         can change your mind at any time.
       </Text>
 
@@ -105,7 +107,7 @@ export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
 
       {mutation.isError ? (
         <Text style={{ color: colors.danger, marginTop: spacing.md }}>
-          Couldn't save that preference. Check your connection and try again.
+          {t("settings.savePreferenceFailed")}
         </Text>
       ) : null}
     </ScreenContainer>

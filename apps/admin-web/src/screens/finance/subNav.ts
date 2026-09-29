@@ -15,6 +15,10 @@ export const FINANCE_SUB_NAV = [
   { label: "Revenue Waterfall", path: "/finance/waterfall" },
   { label: "Expenses & Payouts", path: "/finance/expenses" },
   { label: "Settlements", path: "/finance/settlements" },
+  // A-M3 (28 Sep 2026) — the payout run the settlement rows were
+  // waiting on. Sits next to Settlements because that is where an
+  // admin approves the rows a run then claims.
+  { label: "Payout Runs", path: "/finance/payout-runs" },
   { label: "Invoices", path: "/finance/invoices" },
   { label: "Receivables & Payables", path: "/finance/receivables-payables" },
   { label: "Taxes & Compliance", path: "/finance/taxes" },

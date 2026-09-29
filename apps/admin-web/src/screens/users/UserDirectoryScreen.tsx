@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { AdminUserDirectoryResponse, MembershipTier, UserAccountStatus } from "@fitness-ai-app/types";
@@ -71,6 +72,7 @@ function reactivateOne(id: string) {
  * reported per-row rather than silently rolled back or silently ignored.
  */
 export function UserDirectoryScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ plan: "", status: "", search: "", startDate: "", endDate: "" });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -122,39 +124,39 @@ export function UserDirectoryScreen() {
     });
 
   return (
-    <AppShell title="User Directory">
+    <AppShell title={t("userDirectory.userDirectory")}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Plan
+            {t("userDirectory.plan")}
             <select
               value={filters.plan}
               onChange={(e) => setFilter("plan", e.target.value as Filters["plan"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="free">Free</option>
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-              <option value="elite">Elite</option>
+              <option value="">{t("userDirectory.all")}</option>
+              <option value="free">{t("userDirectory.free")}</option>
+              <option value="basic">{t("userDirectory.basic")}</option>
+              <option value="pro">{t("userDirectory.pro")}</option>
+              <option value="elite">{t("userDirectory.elite")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("userDirectory.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
+              <option value="">{t("userDirectory.all")}</option>
+              <option value="active">{t("userDirectory.active")}</option>
+              <option value="suspended">{t("userDirectory.suspended")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Registered from
+            {t("userDirectory.registeredFrom")}
             <input
               type="date"
               value={filters.startDate}
@@ -164,7 +166,7 @@ export function UserDirectoryScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Registered to
+            {t("userDirectory.registeredTo")}
             <input
               type="date"
               value={filters.endDate}
@@ -174,10 +176,10 @@ export function UserDirectoryScreen() {
           </label>
 
           <label className="ml-auto flex flex-col gap-1 text-xs text-text-dim">
-            Search
+            {t("userDirectory.search")}
             <input
               type="search"
-              placeholder="Name or email…"
+              placeholder={t("userDirectory.nameOrEmail")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               className="w-56 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -194,7 +196,7 @@ export function UserDirectoryScreen() {
               onClick={() => bulkMutation.mutate("suspend")}
               className="rounded-md border border-danger/40 px-3 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
             >
-              Suspend selected
+              {t("userDirectory.suspendSelected")}
             </button>
             <button
               type="button"
@@ -202,15 +204,15 @@ export function UserDirectoryScreen() {
               onClick={() => bulkMutation.mutate("reactivate")}
               className="rounded-md border border-accent/40 px-3 py-1 text-xs text-accent hover:bg-accent/10 disabled:opacity-50"
             >
-              Reactivate selected
+              {t("userDirectory.reactivateSelected")}
             </button>
-            {bulkMutation.isPending && <span className="text-xs text-text-dim">Working…</span>}
+            {bulkMutation.isPending && <span className="text-xs text-text-dim">{t("userDirectory.working")}</span>}
             <button
               type="button"
               onClick={() => setSelected(new Set())}
               className="ml-auto text-xs text-text-dim hover:text-text-primary"
             >
-              Clear
+              {t("userDirectory.clear")}
             </button>
           </div>
         )}
@@ -219,13 +221,13 @@ export function UserDirectoryScreen() {
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">{bulkError}</div>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("userDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load users.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("userDirectory.retry")}
             </button>
           </div>
         )}
@@ -240,15 +242,15 @@ export function UserDirectoryScreen() {
                       type="checkbox"
                       checked={allOnPageSelected}
                       onChange={toggleAllOnPage}
-                      aria-label="Select all users on this page"
+                      aria-label={t("userDirectory.selectAllUsersOn")}
                     />
                   </th>
-                  <th className="px-4 py-3 font-normal">User &amp; Account ID</th>
-                  <th className="px-4 py-3 font-normal">Membership</th>
-                  <th className="px-4 py-3 font-normal">Channel</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Registered</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.userAccountId")}</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.membership")}</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.channel")}</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.registered")}</th>
+                  <th className="px-4 py-3 font-normal">{t("userDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -275,7 +277,7 @@ export function UserDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <Link to={`/users/${u.id}`} className="text-xs text-accent hover:underline">
-                        View →
+                        {t("userDirectory.view")}
                       </Link>
                     </td>
                   </tr>
@@ -283,7 +285,7 @@ export function UserDirectoryScreen() {
                 {users.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No users match these filters.
+                      {t("userDirectory.noUsersMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -295,7 +297,7 @@ export function UserDirectoryScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing field exists yet for these Figma-spec'd directory columns/filters — see adminUsers.service.ts."
+            subtitle={t("userDirectory.noBackingFieldExists")}
           />
         )}
       </div>

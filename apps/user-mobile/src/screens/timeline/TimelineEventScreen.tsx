@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { TimelineEventType } from "@fitness-ai-app/types";
@@ -34,10 +35,11 @@ const BADGE_COLOR: Record<TimelineEventType, string> = {
  * left as plain text instead of a fragile cross-stack navigation call.
  */
 export function TimelineEventScreen({ route }: Props) {
+  const { t } = useTranslation();
   const { event } = route.params;
 
   return (
-    <ScreenContainer title="Timeline Event">
+    <ScreenContainer title={t("timelineExtra.eventTitle")}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BADGE_COLOR[event.type] }} />
