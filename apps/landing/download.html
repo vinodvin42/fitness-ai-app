@@ -86,8 +86,16 @@
                logging, AI meal-plan generation, mindfulness streak, plus
                the R2 Wave 1-7 admin/partner-portal backend work). Real
                artifact confirmed (200, application/octet-stream,
-               88,422,622 bytes / ~84MB) before wiring this link in. Update
-               this href again whenever a new preview build replaces it. -->
+               88,422,622 bytes / ~84MB) before wiring this link in.
+
+               To replace it: run the "Build Android APK (EAS)" workflow
+               (Actions tab), which builds the APK, downloads it to check
+               it is really a >10MB zip and not an error page, and prints
+               the artifact URL, version, versionCode and exact byte size
+               to its run summary. Update the href, the visible size copy
+               below, and this comment from that summary — then regenerate
+               apps/landing/assets/i18n/en.js, because the size string is a
+               translated key and landingI18n.test.ts fails on the drift. -->
           <article class="platform-card">
             <div class="platform-card__top">
               <span class="platform-card__icon" aria-hidden="true">
