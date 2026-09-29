@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -26,22 +27,16 @@ type Props = NativeStackScreenProps<MoreStackParamList, "Purchases">;
  * "did I get my money back" is a question about a purchase, not about an
  * event a user would think to go looking for.
  */
-const REFUND_COPY: Record<string, { label: string; tone: "accent" | "success" | "warning" | "danger"; detail: string }> = {
-  pending: {
-    label: "Refund pending",
-    tone: "accent",
-    detail: "Your refund has been approved and is being sent to your bank.",
-  },
-  processed: {
-    label: "Refunded",
-    tone: "success",
-    detail: "Your refund has been sent. Banks usually take 5–7 working days to show it.",
-  },
-  failed: {
-    label: "Refund failed",
-    tone: "danger",
-    detail: "The refund couldn't be completed. Our team has been notified — contact support if it doesn't resolve.",
-  },
+/**
+ * Tone only. The label and detail for each state moved into the
+ * catalogue (`purchases.refund.*`) on 29 Sep 2026 — a colour is a design
+ * decision and belongs in the component; a sentence is copy and belongs
+ * somewhere a translator can reach it.
+ */
+const REFUND_TONE: Record<string, "accent" | "success" | "warning" | "danger"> = {
+  pending: "accent",
+  processed: "success",
+  failed: "danger",
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
@@ -51,6 +46,7 @@ const PURPOSE_LABEL: Record<string, string> = {
 };
 
 export function PurchaseHistoryScreen(_props: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["purchaseHistory"],
     queryFn: fetchPurchaseHistory,
@@ -58,14 +54,14 @@ export function PurchaseHistoryScreen(_props: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Purchases">
+      <ScreenContainer title={t("purchases.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (isError) {
     return (
-      <ScreenContainer title="Purchases">
+      <ScreenContainer title={t("purchases.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
@@ -74,14 +70,14 @@ export function PurchaseHistoryScreen(_props: Props) {
   const purchases = data ?? [];
   if (purchases.length === 0) {
     return (
-      <ScreenContainer title="Purchases">
-        <EmptyState title="No purchases yet" subtitle="Anything you buy will show up here with its receipt." />
+      <ScreenContainer title={t("purchases.title")}>
+        <EmptyState title={t("purchases.empty.title")} subtitle={t("purchases.empty.subtitle")} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Purchases" subtitle="Receipts and refund status">
+    <ScreenContainer title={t("purchases.title")} subtitle={t("purchases.subtitle")}>
       <View style={{ gap: spacing.sm }}>
         {purchases.map((p) => (
           <PurchaseCard key={p.id} purchase={p} />
@@ -92,8 +88,9 @@ export function PurchaseHistoryScreen(_props: Props) {
 }
 
 function PurchaseCard({ purchase }: { purchase: PurchaseRecord }) {
+  const { t } = useTranslation();
   const money = (cents: number) => `₹${(cents / 100).toFixed(2)}`;
-  const refund = purchase.refund ? REFUND_COPY[purchase.refund.status] : null;
+  const refundTone = purchase.refund ? REFUND_TONE[purchase.refund.status] : null;
 
   return (
     <Card>
@@ -113,15 +110,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseRecord }) {
       {/* §10: a refund never rewrites the payment's own status — the
           payment really did succeed. Both facts are shown, rather than
           one overwriting the other. */}
-      {refund && purchase.refund ? (
+      {refundTone && purchase.refund ? (
         <View style={{ marginTop: spacing.sm }}>
-          <Pill label={refund.label} tone={refund.tone} />
+          <Pill label={t(`purchases.refund.${purchase.refund.status}.label`)} tone={refundTone} />
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-            {refund.detail}
+            {t(`purchases.refund.${purchase.refund.status}.detail`)}
           </Text>
           {purchase.refund.isPartial ? (
             <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
-              Partial refund of {money(purchase.refund.refundedCents)}
+              {t("purchases.refund.partial", { amount: money(purchase.refund.refundedCents) })}
             </Text>
           ) : null}
         </View>
@@ -132,9 +129,9 @@ function PurchaseCard({ purchase }: { purchase: PurchaseRecord }) {
           a support ticket becomes a chargeback. */}
       {purchase.activationFailed ? (
         <View style={{ marginTop: spacing.sm }}>
-          <Pill label="Access not activated" tone="warning" />
+          <Pill label={t("purchases.activationFailed.label")} tone="warning" />
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-            Your payment went through but access didn't activate. Open the payment to retry — you won't be charged again.
+            {t("purchases.activationFailed.detail")}
           </Text>
         </View>
       ) : null}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Image, Share, Switch, Text, TextInput, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -90,6 +91,7 @@ function formatDate(iso: string) {
  * library is wired up this pass.
  */
 export function SecurityScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const {
     user,
     refreshUser,
@@ -415,7 +417,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
               disabled={twoFactorCode.trim().length !== 6}
               style={{ marginTop: spacing.md }}
             />
-            <Button label="Cancel" variant="secondary" onPress={onCancelTwoFactorSetup} style={{ marginTop: spacing.sm }} />
+            <Button label={t("common.cancel")} variant="secondary" onPress={onCancelTwoFactorSetup} style={{ marginTop: spacing.sm }} />
           </>
         ) : user?.twoFactorEnabled ? (
           <>

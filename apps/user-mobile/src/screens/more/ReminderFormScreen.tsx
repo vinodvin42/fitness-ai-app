@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Switch, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -53,6 +54,7 @@ function sameDays(a: number[], b: number[]) {
  * (see ../../lib/reminderNotifications.ts).
  */
 export function ReminderFormScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const existing = route.params?.reminder;
   const queryClient = useQueryClient();
 
@@ -216,7 +218,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
       </Card>
 
       <Button
-        label="Save"
+        label={t("common.save")}
         onPress={onSubmit}
         loading={isSubmitting}
         disabled={!canSubmit}

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -34,24 +35,32 @@ type MoreTarget =
  * changes the BR-USR-001/002 rules that drove the 14 Sep version. See
  * MainTabs.tsx's own comment for the full history.
  */
-const ROWS: Array<{ label: string; subtitle: string; icon: IconName; tint: string; tintSoft: string; target: MoreTarget }> = [
-  { label: "Progress", subtitle: "Measurements, photos & check-ins", icon: "trending-up", tint: colors.accent, tintSoft: colors.accentSoft, target: "ProgressTab" },
-  { label: "Timeline", subtitle: "Milestones & PRs", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
-  { label: "Coaching", subtitle: "Request, status & your team", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
-  { label: "Subscription", subtitle: "Plan & payments", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },
+/**
+ * 29 Sep 2026 — the labels moved into the catalogue (`more.rows.*`) and
+ * this array now carries only the `key` that finds them. It has to: the
+ * array is module-level, evaluated once at import, so a translated label
+ * baked in here would be whatever language was active when the module
+ * first loaded and would never change again.
+ */
+const ROWS: Array<{ key: string; icon: IconName; tint: string; tintSoft: string; target: MoreTarget }> = [
+  { key: "progress", icon: "trending-up", tint: colors.accent, tintSoft: colors.accentSoft, target: "ProgressTab" },
+  { key: "timeline", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
+  { key: "coaching", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
+  { key: "subscription", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },
   // U-M22 — receipts and refund status, previously invisible to the user.
-  { label: "Purchases", subtitle: "Receipts & refund status", icon: "calendar", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Purchases" },
-  { label: "Reminders", subtitle: "Workout, meal & water nudges", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Reminders" },
-  { label: "Refer & Invite", subtitle: "Earn free months", icon: "sparkles", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "Referral" },
-  { label: "Settings", subtitle: "Account, security, language", icon: "settings", tint: colors.textSecondary, tintSoft: colors.surfaceHigh, target: "SettingsHub" },
+  { key: "purchases", icon: "calendar", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Purchases" },
+  { key: "reminders", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Reminders" },
+  { key: "referral", icon: "sparkles", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "Referral" },
+  { key: "settings", icon: "settings", tint: colors.textSecondary, tintSoft: colors.surfaceHigh, target: "SettingsHub" },
 ];
 
 export function MoreScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const initials = (user?.fullName ?? "?").slice(0, 1).toUpperCase();
 
   return (
-    <ScreenContainer title="More">
+    <ScreenContainer title={t("more.title")}>
       <Pressable onPress={() => navigation.navigate("Profile")}>
         <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View
@@ -77,10 +86,10 @@ export function MoreScreen({ navigation }: Props) {
       <View style={{ gap: spacing.sm }}>
         {ROWS.map((r) => (
           <ListRow
-            key={r.label}
+            key={r.key}
             icon={r.icon}
-            title={r.label}
-            subtitle={r.subtitle}
+            title={t(`more.rows.${r.key}.label`)}
+            subtitle={t(`more.rows.${r.key}.subtitle`)}
             tint={r.tint}
             tintSoft={r.tintSoft}
             onPress={() => navigation.navigate(r.target)}
@@ -90,7 +99,7 @@ export function MoreScreen({ navigation }: Props) {
 
       <Pressable onPress={logout}>
         <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm }}>
-          <Text style={{ color: colors.danger, ...typography.label }}>Log out</Text>
+          <Text style={{ color: colors.danger, ...typography.label }}>{t("more.logOut")}</Text>
         </Card>
       </Pressable>
     </ScreenContainer>

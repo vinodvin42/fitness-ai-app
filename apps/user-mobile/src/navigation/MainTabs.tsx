@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { TodayScreen } from "../screens/today/TodayScreen";
@@ -57,6 +58,7 @@ const TAB_ICONS: Record<keyof MainTabsParamList, IconName> = {
 };
 
 export function MainTabs() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -77,11 +79,18 @@ export function MainTabs() {
         ),
       })}
     >
-      <Tab.Screen name="Today" component={TodayScreen} />
-      <Tab.Screen name="Train" component={TrainStack} />
-      <Tab.Screen name="Fuel" component={FuelStack} />
-      <Tab.Screen name="Recover" component={RecoverStack} />
-      <Tab.Screen name="More" component={MoreStack} />
+      {/*
+        `name` is the route id and must stay in English — it is what every
+        `navigation.navigate("Today")` in the app refers to. `title` is
+        what the tab bar actually renders, and that is the translated one.
+        Collapsing the two would make changing a language a navigation
+        bug.
+      */}
+      <Tab.Screen name="Today" component={TodayScreen} options={{ title: t("nav.today") }} />
+      <Tab.Screen name="Train" component={TrainStack} options={{ title: t("nav.train") }} />
+      <Tab.Screen name="Fuel" component={FuelStack} options={{ title: t("nav.fuel") }} />
+      <Tab.Screen name="Recover" component={RecoverStack} options={{ title: t("nav.recover") }} />
+      <Tab.Screen name="More" component={MoreStack} options={{ title: t("nav.more") }} />
     </Tab.Navigator>
   );
 }

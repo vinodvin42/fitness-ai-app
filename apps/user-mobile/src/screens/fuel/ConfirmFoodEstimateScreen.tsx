@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<FuelStackParamList, "ConfirmFoodEstimate">;
  * and an edited one both go through the exact same call.
  */
 export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { estimate } = route.params;
   const queryClient = useQueryClient();
   const [name, setName] = useState(estimate.name ?? "");
@@ -97,7 +99,7 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
 
       <Button label="Log it" onPress={onLogIt} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
       <Button
-        label="Cancel"
+        label={t("common.cancel")}
         variant="secondary"
         onPress={() => navigation.goBack()}
         style={{ marginTop: spacing.sm }}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -69,6 +70,7 @@ const EMPTY_MINDFULNESS = { durationMinutes: "", type: "", note: "" };
  * file's own doc comment for the full design.
  */
 export function RecoveryScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [mindfulForm, setMindfulForm] = useState(EMPTY_MINDFULNESS);
@@ -153,7 +155,7 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
           style={{ ...inputStyle, marginTop: spacing.sm }}
         />
         <Button
-          label="Save"
+          label={t("common.save")}
           onPress={() => mutation.mutate()}
           loading={mutation.isPending}
           disabled={!hasAny || mutation.isPending}

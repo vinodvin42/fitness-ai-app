@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+/*
+ * How much of the user app's copy is translatable, per screen.
+ *
+ *   node scripts/i18n-report.mjs            # summary
+ *   node scripts/i18n-report.mjs --strings  # + the actual strings left
+ *
+ * The Definition of Done requires copy "in English and wired for
+ * translation (no strings in code)". The retrofit is partial and will be
+ * for a while, so the useful thing is a number that moves rather than a
+ * binary that stays false. This prints one.
+ *
+ * Heuristic, and deliberately so: it counts JSX text nodes and the
+ * string literals passed to the props that render text (`label`,
+ * `title`, `subtitle`, `placeholder`, `message`, `actionLabel`,
+ * `accessibilityLabel`). It does NOT understand a string assembled from
+ * variables, and it will occasionally flag something that is not user
+ * facing. Treat the count as a direction of travel, not a score — the
+ * assertion that actually holds the line is
+ * apps/api/tests/i18nCatalogue.test.ts, which runs in CI.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.join(import.meta.dirname, '../apps/user-mobile/src');
+const showStrings = process.argv.includes('--strings');
+
+function walk(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...walk(full));
+    else if (/\.tsx$/.test(e.name) && !full.includes(`${path.sep}i18n${path.sep}`)) out.push(full);
+  }
+  return out;
+}
+
+/** Props whose string value is rendered to the user. */
+const TEXT_PROPS = /\b(label|title|subtitle|placeholder|message|actionLabel|accessibilityLabel|accessibilityHint)=\{?"([^"]{2,})"\}?/g;
+/** A JSX text node: >Some words< with at least one space or a letter run. */
+const JSX_TEXT = />\s*([A-Z][^<>{}\n]{3,})\s*</g;
+
+const rows = [];
+for (const file of walk(ROOT)) {
+  const src = fs.readFileSync(file, 'utf8');
+  const inline = new Set();
+  for (const m of src.matchAll(TEXT_PROPS)) inline.add(m[2].trim());
+  for (const m of src.matchAll(JSX_TEXT)) {
+    const text = m[1].trim();
+    // Skip things that are plainly not sentences: single capitalised
+    // identifiers with no space are usually a component or a unit.
+    if (/\s/.test(text)) inline.add(text);
+  }
+  const translated = (src.match(/\bt\(\s*["`]/g) || []).length;
+  rows.push({ file: path.relative(ROOT, file), inline: inline.size, translated, strings: [...inline] });
+}
+
+rows.sort((a, b) => b.inline - a.inline || a.file.localeCompare(b.file));
+
+const totalInline = rows.reduce((n, r) => n + r.inline, 0);
+const touched = rows.filter((r) => r.translated > 0);
+const clean = rows.filter((r) => r.inline === 0);
+
+console.log(`user-mobile: ${rows.length} components`);
+console.log(`  ${touched.length} call t() at all`);
+console.log(`  ${clean.length} have no inline user-facing strings left`);
+console.log(`  ${totalInline} inline strings remain\n`);
+
+console.log('Worst first:');
+for (const r of rows.slice(0, 25)) {
+  if (r.inline === 0) break;
+  console.log(`  ${String(r.inline).padStart(3)} inline, ${String(r.translated).padStart(3)} t()   ${r.file}`);
+  if (showStrings) for (const s of r.strings) console.log(`        · ${s}`);
+}

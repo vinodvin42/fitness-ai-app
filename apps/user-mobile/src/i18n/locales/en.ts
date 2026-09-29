@@ -19,7 +19,11 @@ export const en = {
     save: "Save",
     done: "Done",
     open: "Open",
-    loading: "Loading…",
+    // `loading` was removed on 29 Sep 2026: nothing in the app renders a
+    // loading *word* — every loading state is an ActivityIndicator — so
+    // it was copy written ahead of a screen that never wanted it. Nine
+    // translators would have been paid to translate a string no user can
+    // ever see.
     somethingWentWrong: "Something went wrong",
     checkConnection: "Check your connection and try again.",
   },
@@ -41,7 +45,10 @@ export const en = {
   },
 
   more: {
+    title: "More",
+    logOut: "Log out",
     rows: {
+      settings: { label: "Settings", subtitle: "Account, security, language" },
       progress: { label: "Progress", subtitle: "Measurements, photos & check-ins" },
       timeline: { label: "Timeline", subtitle: "Milestones & PRs" },
       coaching: { label: "Coaching", subtitle: "Request, status & your team" },
@@ -49,6 +56,72 @@ export const en = {
       purchases: { label: "Purchases", subtitle: "Receipts & refund status" },
       reminders: { label: "Reminders", subtitle: "Workout, meal & water nudges" },
       referral: { label: "Refer & Invite", subtitle: "Earn free months" },
+    },
+  },
+
+  /**
+   * The signed-out flow. Migrated 29 Sep 2026 — first because it is the
+   * only part of the app a user sees BEFORE their `languagePreference`
+   * has been loaded, and because it is where someone who cannot read
+   * English gives up.
+   */
+  auth: {
+    login: {
+      title: "Welcome back",
+      subtitle: "Log in to continue your training.",
+      email: "Email",
+      password: "Password",
+      submit: "Log In",
+      forgot: "Forgot password?",
+      createAccount: "Create an account",
+    },
+    splash: {
+      tagline: "Your complete wellness operating system",
+      getStarted: "Get Started",
+      signIn: "Sign In",
+    },
+    twoFactor: {
+      title: "Two-factor authentication",
+      subtitle: "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+      code: "Code",
+      submit: "Verify",
+      backToLogin: "Back to Login",
+    },
+    signup: {
+      title: "Create your account",
+      subtitle: "Start your fitness journey with FynroX.",
+      fullName: "Full name",
+      email: "Email",
+      password: "Password (min. 8 characters)",
+      passwordA11y: "Password, minimum 8 characters",
+      referral: "Referral code (optional)",
+      referralA11y: "Referral code, optional",
+      submit: "Create Account",
+      haveAccount: "Already have an account? Log in",
+    },
+    forgot: {
+      title: "Forgot password?",
+      subtitle: "Enter your email and we'll send you a link to reset it.",
+      email: "Email",
+      submit: "Send Reset Link",
+      backToLogin: "Back to Login",
+      sentTitle: "Check your email",
+      // Deliberately does not confirm whether the address has an account
+      // — that would make this screen an account-enumeration oracle.
+      sent: "If an account exists for {{email}}, we've sent a link to reset your password. It expires in 30 minutes.",
+      notSent:
+        "Your request was recorded, but we couldn't send the email right now. Please try again shortly or contact support.",
+    },
+    reset: {
+      title: "Set a new password",
+      subtitle: "Choose a new password for your account.",
+      password: "New password (min. 8 characters)",
+      passwordA11y: "New password, minimum 8 characters",
+      confirm: "Confirm new password",
+      confirmA11y: "Confirm new password",
+      submit: "Reset Password",
+      mismatch: "Passwords don't match.",
+      backToLogin: "Back to Login",
     },
   },
 

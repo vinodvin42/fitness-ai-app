@@ -51,9 +51,30 @@ void i18next.use(initReactI18next).init({
   // rendered into a <Text>, so i18next's XSS escaping would only mangle
   // apostrophes and ampersands in copy.
   interpolation: { escapeValue: false },
-  // A missing key in development should be loud; in production it falls
-  // back to English rather than showing the key to a user.
   returnNull: false,
+  // i18next returns THE KEY ITSELF for a key it cannot find, so a typo
+  // renders `auth.login.titel` as visible text and nothing errors. The
+  // comment that used to sit here claimed `returnNull` prevented that;
+  // it does not — it only controls what a key whose value is literally
+  // `null` returns.
+  //
+  // Two real guards replace that wishful comment:
+  //   1. apps/api/tests/i18nCatalogue.test.ts fails the build if any
+  //      `t("...")` in this app has no matching key. That is the one
+  //      that actually holds the line.
+  //   2. This handler, so the same mistake is loud in development
+  //      rather than waiting for the test. Silent in production: a
+  //      console warning helps nobody there, and throwing over a
+  //      missing string would take a screen down over copy.
+  // `saveMissing` is what makes i18next CALL `missingKeyHandler` at all —
+  // with it false the handler below never runs, which would have made
+  // this guard exactly the decorative thing the comment above complains
+  // about. `__DEV__` keeps it to development; with no backend configured
+  // it only invokes the handler, it does not write anywhere.
+  saveMissing: __DEV__,
+  missingKeyHandler: (_lngs, ns, key) => {
+    console.warn(`[i18n] missing key "${key}" in "${ns}" — it will render as itself`);
+  },
 });
 
 /**

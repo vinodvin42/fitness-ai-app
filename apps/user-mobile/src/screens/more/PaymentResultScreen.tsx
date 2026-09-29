@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -37,6 +38,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "PaymentResult">;
  * success state the moment that happens, rather than making them guess.
  */
 export function PaymentResultScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { status, message, paymentId } = route.params;
   const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
@@ -95,7 +97,9 @@ export function PaymentResultScreen({ route, navigation }: Props) {
   const pendingActivation = status === "activation_failed" && !activated;
 
   return (
-    <ScreenContainer title={success ? "Payment Successful" : pendingActivation ? "Finishing Activation" : "Payment Failed"}>
+    <ScreenContainer
+      title={success ? t("payment.successTitle") : pendingActivation ? t("payment.activatingTitle") : t("payment.failedTitle")}
+    >
       <Card style={{ alignItems: "center", paddingVertical: spacing.xl }}>
         <View
           style={{
@@ -116,14 +120,14 @@ export function PaymentResultScreen({ route, navigation }: Props) {
           </Text>
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.md, textAlign: "center" }}>
-          {success ? "You're all set" : pendingActivation ? "Payment received" : "Something went wrong"}
+          {success ? t("payment.allSet") : pendingActivation ? t("payment.received") : t("payment.wentWrong")}
         </Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           {success
-            ? "Your subscription is now active. Enjoy FynroX."
+            ? t("payment.activeNow")
             : pendingActivation
-              ? (message ?? "Your payment went through, but we couldn't finish activating it yet. You have not been charged again.")
-              : (message ?? "Your payment didn't go through.")}
+              ? (message ?? t("payment.activationPending"))
+              : (message ?? t("payment.didNotGoThrough"))}
         </Text>
         {/* U-M3 explicitly names this line: a failed payment must say
             "you were not charged". It used to be part of the default
@@ -136,17 +140,17 @@ export function PaymentResultScreen({ route, navigation }: Props) {
           <Text
             style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm, textAlign: "center" }}
           >
-            You haven't been charged.
+            {t("payment.notCharged")}
           </Text>
         ) : null}
       </Card>
 
       {pendingActivation ? (
-        <Button label="Retry Activation" onPress={onRetry} loading={isRetrying} style={{ marginTop: spacing.lg }} />
+        <Button label={t("payment.retryActivation")} onPress={onRetry} loading={isRetrying} style={{ marginTop: spacing.lg }} />
       ) : null}
 
       <Button
-        label={success ? "Done" : pendingActivation ? "I'll check back later" : "Back to Plans"}
+        label={success ? t("common.done") : pendingActivation ? t("payment.checkBackLater") : t("payment.backToPlans")}
         variant={pendingActivation ? "secondary" : "primary"}
         onPress={() => navigation.navigate("Subscription")}
         style={{ marginTop: spacing.md }}

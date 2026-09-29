@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "ForgotPassword">;
  * silently claiming an email that was never sent.
  */
 export function ForgotPasswordScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [emailSent, setEmailSent] = useState(true);
@@ -48,13 +50,11 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.title}>Check your email</Text>
+          <Text style={styles.title}>{t("auth.forgot.sentTitle")}</Text>
           <Text style={styles.subtitle}>
-            {emailSent
-              ? `If an account exists for ${email.trim()}, we've sent a link to reset your password. It expires in 30 minutes.`
-              : "Your request was recorded, but we couldn't send the email right now. Please try again shortly or contact support."}
+            {emailSent ? t("auth.forgot.sent", { email: email.trim() }) : t("auth.forgot.notSent")}
           </Text>
-          <Button label="Back to Login" onPress={() => navigation.navigate("Login")} style={styles.secondaryButton} />
+          <Button label={t("auth.forgot.backToLogin")} onPress={() => navigation.navigate("Login")} style={styles.secondaryButton} />
         </View>
       </SafeAreaView>
     );
@@ -63,19 +63,19 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Forgot password?</Text>
-        <Text style={styles.subtitle}>Enter your email and we'll send you a link to reset it.</Text>
+        <Text style={styles.title}>{t("auth.forgot.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.forgot.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("auth.forgot.email")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           autoFocus
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          accessibilityLabel="Email"
+          accessibilityLabel={t("auth.forgot.email")}
           textContentType="emailAddress"
         />
 
@@ -85,9 +85,9 @@ export function ForgotPasswordScreen({ navigation }: Props) {
           </Text>
         ) : null}
 
-        <Button label="Send Reset Link" onPress={onSubmit} loading={loading} disabled={!email.trim()} />
+        <Button label={t("auth.forgot.submit")} onPress={onSubmit} loading={loading} disabled={!email.trim()} />
         <Button
-          label="Back to Login"
+          label={t("auth.forgot.backToLogin")}
           variant="secondary"
           onPress={() => navigation.navigate("Login")}
           style={styles.secondaryButton}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,6 +16,7 @@ import {
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
 
 export function SignupScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { signup } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,8 +65,8 @@ export function SignupScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Start your fitness journey with FynroX.</Text>
+        <Text style={styles.title}>{t("auth.signup.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.signup.subtitle")}</Text>
 
         {acquisitionContext && describeAcquisitionContext(acquisitionContext) ? (
           <View style={styles.acquisitionBanner}>
@@ -74,41 +76,41 @@ export function SignupScreen({ navigation }: Props) {
 
         <TextInput
           style={styles.input}
-          placeholder="Full name"
+          placeholder={t("auth.signup.fullName")}
           placeholderTextColor={colors.textMuted}
           value={fullName}
           onChangeText={setFullName}
-          accessibilityLabel="Full name"
+          accessibilityLabel={t("auth.signup.fullName")}
         />
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("auth.signup.email")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          accessibilityLabel="Email"
+          accessibilityLabel={t("auth.signup.email")}
           textContentType="emailAddress"
         />
         <TextInput
           style={styles.input}
-          placeholder="Password (min. 8 characters)"
+          placeholder={t("auth.signup.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-          accessibilityLabel="Password, minimum 8 characters"
+          accessibilityLabel={t("auth.signup.passwordA11y")}
           textContentType="newPassword"
         />
         <TextInput
           style={styles.input}
-          placeholder="Referral code (optional)"
+          placeholder={t("auth.signup.referral")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           value={referralCode}
           onChangeText={setReferralCode}
-          accessibilityLabel="Referral code, optional"
+          accessibilityLabel={t("auth.signup.referralA11y")}
         />
 
         {error ? (
@@ -118,13 +120,13 @@ export function SignupScreen({ navigation }: Props) {
         ) : null}
 
         <Button
-          label="Create Account"
+          label={t("auth.signup.submit")}
           onPress={onSubmit}
           loading={loading}
           disabled={!fullName || !email || password.length < 8}
         />
         <Button
-          label="Already have an account? Log in"
+          label={t("auth.signup.haveAccount")}
           variant="secondary"
           onPress={() => navigation.navigate("Login")}
           style={styles.secondaryButton}

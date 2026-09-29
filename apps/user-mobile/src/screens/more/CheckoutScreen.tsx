@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -35,6 +36,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "Checkout">;
  * growing a second, divergent result state.
  */
 export function CheckoutScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { purpose, referenceId } = route.params;
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<string | undefined>(undefined);
@@ -55,14 +57,14 @@ export function CheckoutScreen({ route, navigation }: Props) {
 
   if (quote.isLoading) {
     return (
-      <ScreenContainer title="Checkout">
+      <ScreenContainer title={t("checkout.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (quote.isError || !quote.data) {
     return (
-      <ScreenContainer title="Checkout">
+      <ScreenContainer title={t("checkout.title")}>
         <ErrorState onRetry={quote.refetch} />
       </ScreenContainer>
     );
@@ -77,31 +79,31 @@ export function CheckoutScreen({ route, navigation }: Props) {
   const busy = purchase.isPurchasing;
 
   return (
-    <ScreenContainer title="Checkout" subtitle={q.itemName}>
+    <ScreenContainer title={t("checkout.title")} subtitle={q.itemName}>
       <Card>
         <Row label={q.itemName} value={money(q.listPriceCents)} />
         {q.discountCents > 0 ? (
-          <Row label={`Discount${q.couponCode ? ` (${q.couponCode})` : ""}`} value={`−${money(q.discountCents)}`} tone="success" />
+          <Row label={`${t("checkout.discount")}${q.couponCode ? ` (${q.couponCode})` : ""}`} value={`−${money(q.discountCents)}`} tone="success" />
         ) : null}
         <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
-        <Row label="Total" value={money(q.totalCents)} emphasis />
+        <Row label={t("checkout.total")} value={money(q.totalCents)} emphasis />
         {/* D3: "incl. GST" — the tax is already inside the total, broken
             out rather than added at the last step, which is what an
             Indian consumer expects to see. */}
         {q.gst ? (
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 4 }}>
-            Incl. {q.gst.percent}% GST ({money(q.gst.taxCents)})
+            {t("checkout.inclGst", { percent: q.gst.percent, amount: money(q.gst.taxCents) })}
           </Text>
         ) : null}
         {/* D3: no trial in R1. Stated only if one is ever enabled, so
             this screen can never imply a free period that isn't real. */}
         {q.trialAvailable ? (
-          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 4 }}>Includes a free trial period</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 4 }}>{t("checkout.includesTrial")}</Text>
         ) : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Have a code?</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("checkout.haveACode")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
           <TextInput
             value={codeInput}
@@ -122,7 +124,7 @@ export function CheckoutScreen({ route, navigation }: Props) {
             }}
           />
           <Button
-            label="Apply"
+            label={t("checkout.apply")}
             variant="secondary"
             onPress={() => setAppliedCode(codeInput.trim() || undefined)}
           />
@@ -135,13 +137,13 @@ export function CheckoutScreen({ route, navigation }: Props) {
         ) : null}
         {q.couponCode ? (
           <Text style={{ color: colors.success, ...typography.meta, marginTop: spacing.xs }}>
-            {q.couponCode} applied
+            {t("checkout.codeApplied", { code: q.couponCode })}
           </Text>
         ) : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Pay with</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("checkout.payWith")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm, flexWrap: "wrap" }}>
           {q.methods
             .filter((m) => m.available)
@@ -155,7 +157,7 @@ export function CheckoutScreen({ route, navigation }: Props) {
         // Honest rather than a dead button: the gateway is genuinely not
         // configured on this server.
         <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.md }}>
-          Payments aren't available on this server yet.
+          {t("checkout.paymentsUnavailable")}
         </Text>
       ) : null}
 
@@ -164,16 +166,16 @@ export function CheckoutScreen({ route, navigation }: Props) {
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <ActivityIndicator color={colors.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Processing your payment</Text>
+              <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("checkout.processing.title")}</Text>
               <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
-                Don't close this screen — we're confirming with your bank.
+                {t("checkout.processing.subtitle")}
               </Text>
             </View>
           </View>
         </Card>
       ) : (
         <Button
-          label={`Pay ${money(q.totalCents)}`}
+          label={t("checkout.pay", { amount: money(q.totalCents) })}
           onPress={() => purchase.purchase(purpose, referenceId, q.couponCode ?? undefined)}
           disabled={!q.canPay}
           style={{ marginTop: spacing.lg }}

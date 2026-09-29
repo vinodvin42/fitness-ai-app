@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -10,6 +11,7 @@ import type { AuthStackParamList } from "../../navigation/AuthStack";
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,28 +39,28 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Log in to continue your training.</Text>
+        <Text style={styles.title}>{t("auth.login.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("auth.login.email")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          accessibilityLabel="Email"
+          accessibilityLabel={t("auth.login.email")}
           textContentType="emailAddress"
         />
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={t("auth.login.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-          accessibilityLabel="Password"
+          accessibilityLabel={t("auth.login.password")}
           textContentType="password"
         />
 
@@ -68,15 +70,15 @@ export function LoginScreen({ navigation }: Props) {
           </Text>
         ) : null}
 
-        <Button label="Log In" onPress={onSubmit} loading={loading} disabled={!email || !password} />
+        <Button label={t("auth.login.submit")} onPress={onSubmit} loading={loading} disabled={!email || !password} />
         <Button
-          label="Forgot password?"
+          label={t("auth.login.forgot")}
           variant="secondary"
           onPress={() => navigation.navigate("ForgotPassword")}
           style={styles.secondaryButton}
         />
         <Button
-          label="Create an account"
+          label={t("auth.login.createAccount")}
           variant="secondary"
           onPress={() => navigation.navigate("Signup")}
           style={styles.secondaryButton}

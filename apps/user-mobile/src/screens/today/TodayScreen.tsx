@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -62,6 +63,7 @@ function todayLabel(): string {
  * Links when only the Plan card's data failed to load (or vice versa).
  */
 export function TodayScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const {
@@ -235,13 +237,13 @@ export function TodayScreen({ navigation }: Props) {
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flex: 1, paddingRight: spacing.md }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Progress</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("today.progressCard.title")}</Text>
             <Text style={{ color: colors.textMuted, ...typography.body, marginTop: 2 }}>
-              Measurements, photos and your weekly check-in
+              {t("today.progressCard.subtitle")}
             </Text>
           </View>
           <Button
-            label="Open"
+            label={t("common.open")}
             variant="secondary"
             onPress={() => navigation.navigate("More", { screen: "ProgressTab" })}
           />
@@ -249,7 +251,7 @@ export function TodayScreen({ navigation }: Props) {
       </Card>
 
       <View>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Quick links</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickLinks")}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <QuickLink icon="dumbbell" label="Train" onPress={() => navigation.navigate("Train")} tint={colors.accent} tintSoft={colors.accentSoft} />
           <QuickLink icon="utensils" label="Fuel" onPress={() => navigation.navigate("Fuel")} tint={colors.success} tintSoft={colors.successSoft} />

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "ResetPassword">;
  * back as a real error here, not a silent failure.
  */
 export function ResetPasswordScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -49,33 +51,33 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Set a new password</Text>
-        <Text style={styles.subtitle}>Choose a new password for your account.</Text>
+        <Text style={styles.title}>{t("auth.reset.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.reset.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="New password (min. 8 characters)"
+          placeholder={t("auth.reset.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           autoFocus
           value={newPassword}
           onChangeText={setNewPassword}
-          accessibilityLabel="New password, minimum 8 characters"
+          accessibilityLabel={t("auth.reset.passwordA11y")}
           textContentType="newPassword"
         />
         <TextInput
           style={styles.input}
-          placeholder="Confirm new password"
+          placeholder={t("auth.reset.confirm")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          accessibilityLabel="Confirm new password"
+          accessibilityLabel={t("auth.reset.confirmA11y")}
           textContentType="newPassword"
         />
 
         {confirmPassword.length > 0 && !passwordsMatch ? (
-          <Text style={styles.error}>Passwords don't match.</Text>
+          <Text style={styles.error}>{t("auth.reset.mismatch")}</Text>
         ) : null}
         {error ? (
           <Text style={styles.error} accessibilityRole="alert">
@@ -84,13 +86,13 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         ) : null}
 
         <Button
-          label="Reset Password"
+          label={t("auth.reset.submit")}
           onPress={onSubmit}
           loading={loading}
           disabled={!passwordsMatch || newPassword.length < 8}
         />
         <Button
-          label="Back to Login"
+          label={t("auth.reset.backToLogin")}
           variant="secondary"
           onPress={() => navigation.reset({ index: 0, routes: [{ name: "Login" }] })}
           style={styles.secondaryButton}

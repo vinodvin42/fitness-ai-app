@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -57,6 +58,7 @@ type Props = NativeStackScreenProps<ProgressStackParamList, "WhyThisChanged">;
  * (plans.service.ts), since those really are mutations.
  */
 export function WhyThisChangedScreen({ route }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const passedRecommendation = route.params?.recommendation;
 
@@ -225,7 +227,7 @@ export function WhyThisChangedScreen({ route }: Props) {
               style={{ marginTop: spacing.lg }}
             />
             <Button
-              label="Cancel"
+              label={t("common.cancel")}
               variant="secondary"
               onPress={() => {
                 setIsPickingReplacement(false);

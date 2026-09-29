@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -12,6 +13,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Splash">;
 
 /** docs/mobile/03-screen-inventory.md §A "Splash/Welcome". */
 export function SplashScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   // Reset Password deep link (18 Sep 2026, gap §53) — Splash is
   // AuthStack's initialRouteName, so it's the first screen that mounts
   // whenever the user is signed out, which is exactly when a real
@@ -34,12 +36,12 @@ export function SplashScreen({ navigation }: Props) {
           <Icon name="zap" size={40} color={colors.textOnAccent} strokeWidth={2.5} />
         </View>
         <Text style={styles.logo}>FynroX</Text>
-        <Text style={styles.tagline}>Your complete wellness operating system</Text>
+        <Text style={styles.tagline}>{t("auth.splash.tagline")}</Text>
       </View>
 
       <View style={styles.actions}>
-        <Button label="Get Started" onPress={() => navigation.navigate("Signup")} />
-        <Button label="Sign In" variant="secondary" onPress={() => navigation.navigate("Login")} />
+        <Button label={t("auth.splash.getStarted")} onPress={() => navigation.navigate("Signup")} />
+        <Button label={t("auth.splash.signIn")} variant="secondary" onPress={() => navigation.navigate("Login")} />
       </View>
     </SafeAreaView>
   );

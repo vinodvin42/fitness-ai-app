@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -33,6 +34,7 @@ type Props = NativeStackScreenProps<FuelStackParamList, "BarcodeScanner">;
  * the AI-estimate card's own "insufficient context" fallback.
  */
 export function BarcodeScannerScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { mealType } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const [isLooking, setIsLooking] = useState(false);
@@ -128,7 +130,7 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
         {isLooking ? <ActivityIndicator color={colors.textOnAccent} style={{ marginTop: spacing.sm }} /> : null}
       </View>
       <View style={styles.footer}>
-        <Button label="Cancel" variant="secondary" onPress={() => navigation.goBack()} />
+        <Button label={t("common.cancel")} variant="secondary" onPress={() => navigation.goBack()} />
       </View>
     </View>
   );

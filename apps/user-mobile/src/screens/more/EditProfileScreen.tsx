@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -38,6 +39,7 @@ const GENDERS = ["male", "female", "other"] as const;
  * since the list is long enough to need search.
  */
 export function EditProfileScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, updateProfile } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -152,7 +154,7 @@ export function EditProfileScreen({ navigation }: Props) {
         )}
       </Card>
 
-      <Button label="Save" onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Button label={t("common.save")} onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
     </ScreenContainer>
   );
 }
