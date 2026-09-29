@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
@@ -32,6 +33,7 @@ const SERVICES: { value: ProfessionalServiceType; title: string; subtitle: strin
  * loop over.
  */
 export function ServiceSelectionScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<ProfessionalServiceType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,9 +59,9 @@ export function ServiceSelectionScreen({ navigation }: Props) {
     <WizardLayout
       step={1}
       total={3}
-      label="Service Selection"
-      title="What do you offer?"
-      subtitle="Select at least one — you can update this later."
+      label={t("onboarding.serviceSelection.step")}
+      title={t("onboarding.serviceSelection.title")}
+      subtitle={t("onboarding.serviceSelection.subtitle")}
       onNext={onNext}
       nextDisabled={selected.length === 0}
       nextLoading={loading}

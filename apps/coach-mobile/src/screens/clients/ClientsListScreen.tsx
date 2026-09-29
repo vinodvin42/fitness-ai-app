@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -28,6 +29,7 @@ function relativeDay(iso: string | null): string {
  * (MainTabs.tsx named this exact gap).
  */
 export function ClientsListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ClientsStackParamList>>();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-clients"],
@@ -43,7 +45,7 @@ export function ClientsListScreen() {
   const pendingCount = pending?.requests.length ?? 0;
 
   return (
-    <ScreenContainer title="Clients">
+    <ScreenContainer title={t("clients.title")}>
       {pendingCount > 0 && (
         <Pressable onPress={() => navigation.navigate("PendingRequests")}>
           <Card
@@ -61,7 +63,7 @@ export function ClientsListScreen() {
                 {pendingCount} pending request{pendingCount === 1 ? "" : "s"}
               </Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-                Review and accept or decline
+                {t("clients.reviewAndRespond")}
               </Text>
             </View>
             <View
@@ -83,8 +85,8 @@ export function ClientsListScreen() {
 
       {data && data.clients.length === 0 && (
         <EmptyState
-          title="No clients yet"
-          subtitle="When a user books you and a coaching relationship starts, they'll appear here."
+          title={t("clients.emptyTitle")}
+          subtitle={t("clients.emptySubtitle")}
         />
       )}
 

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -11,6 +12,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
 
 /** docs/coach/03-screen-inventory.md §A "Coach Signup" — full name, email, phone, password/confirm, terms checkbox. Terms checkbox not enforced server-side (no ToS-acceptance field anywhere in this build) — same omission as apps/user-mobile's own signup. */
 export function SignupScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { signup } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -43,19 +45,19 @@ export function SignupScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Create your coaching account</Text>
-        <Text style={styles.subtitle}>Join as a Professional and connect with clients on FynroX.</Text>
+        <Text style={styles.title}>{t("auth.signup.title")}</Text>
+        <Text style={styles.subtitle}>{t("auth.signup.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Full name"
+          placeholder={t("auth.signup.fullName")}
           placeholderTextColor={colors.textMuted}
           value={fullName}
           onChangeText={setFullName}
         />
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("auth.signup.email")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -64,7 +66,7 @@ export function SignupScreen({ navigation }: Props) {
         />
         <TextInput
           style={styles.input}
-          placeholder="Phone (optional)"
+          placeholder={t("auth.signup.phone")}
           placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           value={phone}
@@ -72,7 +74,7 @@ export function SignupScreen({ navigation }: Props) {
         />
         <TextInput
           style={styles.input}
-          placeholder="Password (min. 8 characters)"
+          placeholder={t("auth.signup.password")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
@@ -80,7 +82,7 @@ export function SignupScreen({ navigation }: Props) {
         />
         <TextInput
           style={styles.input}
-          placeholder="Confirm password"
+          placeholder={t("auth.signup.confirmPassword")}
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={confirmPassword}
@@ -90,13 +92,13 @@ export function SignupScreen({ navigation }: Props) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Button
-          label="Create Account"
+          label={t("auth.signup.submit")}
           onPress={onSubmit}
           loading={loading}
           disabled={!fullName || !email || password.length < 8 || !confirmPassword}
         />
         <Button
-          label="Already have an account? Log in"
+          label={t("auth.signup.haveAccount")}
           variant="secondary"
           onPress={() => navigation.navigate("Login")}
           style={styles.secondaryButton}

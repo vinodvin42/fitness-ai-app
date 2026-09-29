@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
@@ -51,6 +52,7 @@ function timeAgo(iso: string): string {
  * larger gap.
  */
 export function NotificationsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
 
   const dashboardQuery = useQuery({ queryKey: ["professional-dashboard-stats"], queryFn: fetchDashboardStats });
@@ -64,7 +66,7 @@ export function NotificationsScreen() {
   const isEmpty = !isLoading && !isError && stuck.length === 0 && pending.length === 0;
 
   return (
-    <ScreenContainer title="Notifications" showAlerts={false}>
+    <ScreenContainer title={t("notifications.title")} showAlerts={false}>
       <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
         ‹ Back
       </Text>
@@ -80,14 +82,14 @@ export function NotificationsScreen() {
       )}
 
       {isEmpty && (
-        <EmptyState title="Nothing needs your attention" subtitle="Pending requests and account issues will show up here." />
+        <EmptyState title={t("notifications.emptyTitle")} subtitle={t("notifications.emptySubtitle")} />
       )}
 
       {pending.length > 0 && (
         <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Pending client requests</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("notifications.pendingRequests")}</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Open the Clients tab's "Pending Requests" to accept or decline.
+            {t("notifications.openClientsTab")}
           </Text>
           {pending.map((item) => (
             <Card key={item.relationshipId}>
@@ -102,9 +104,9 @@ export function NotificationsScreen() {
 
       {stuck.length > 0 && (
         <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
-          <Text style={{ color: colors.warning, ...typography.h2 }}>Needs attention — stuck activating</Text>
+          <Text style={{ color: colors.warning, ...typography.h2 }}>{t("notifications.stuckActivating")}</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Already flagged to FynroX support — no action required from you.
+            {t("notifications.alreadyFlagged")}
           </Text>
           {stuck.map((item) => (
             <Card key={item.relationshipId} style={{ borderColor: colors.warning, borderWidth: 1 }}>

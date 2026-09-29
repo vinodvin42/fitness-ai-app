@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -43,6 +44,7 @@ const STATUS_COPY: Record<string, string> = {
  *    this month is a support ticket at best.
  */
 export function EarningsScreen(_props: Props) {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professionalEarnings"],
     queryFn: fetchEarnings,
@@ -50,27 +52,27 @@ export function EarningsScreen(_props: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title="Earnings">
+      <ScreenContainer title={t("earnings.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (isError || !data) {
     return (
-      <ScreenContainer title="Earnings">
+      <ScreenContainer title={t("earnings.title")}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Earnings">
+    <ScreenContainer title={t("earnings.title")}>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.lg }}>
         FynroX takes {data.commissionPct}% commission on what you earn.
       </Text>
       {data.payoutFailure ? (
         <Card style={{ borderColor: colors.danger, marginBottom: spacing.lg }}>
-          <Text style={{ color: colors.danger, ...typography.h2 }}>A payout didn't reach you</Text>
+          <Text style={{ color: colors.danger, ...typography.h2 }}>{t("earnings.payoutFailed")}</Text>
           <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
             {money(data.payoutFailure.amountCents)} across {data.payoutFailure.count} settlement
             {data.payoutFailure.count === 1 ? "" : "s"} couldn't be transferred. The money is still owed to you and
@@ -82,18 +84,18 @@ export function EarningsScreen(_props: Props) {
             </Text>
           ) : null}
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-            If your bank details have changed, send the new ones to FynroX support so the retry succeeds.
+            {t("earnings.bankDetailsNote")}
           </Text>
         </Card>
       ) : null}
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
-        <StatTile label="Paid to you" value={money(data.lifetimePaidCents)} />
-        <StatTile label="Awaiting payout" value={money(data.awaitingPayoutCents)} />
+        <StatTile label={t("earnings.paidToYou")} value={money(data.lifetimePaidCents)} />
+        <StatTile label={t("earnings.awaitingPayout")} value={money(data.awaitingPayoutCents)} />
       </View>
 
       <Card style={{ marginTop: spacing.lg }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>This month</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("earnings.thisMonth")}</Text>
         <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>
           {money(data.currentMonth.netCents)}
         </Text>
@@ -115,8 +117,8 @@ export function EarningsScreen(_props: Props) {
 
       {data.settlements.length === 0 ? (
         <EmptyState
-          title="No settlements yet"
-          subtitle="Once a period is settled it'll appear here with its payout status."
+          title={t("earnings.emptyTitle")}
+          subtitle={t("earnings.emptySubtitle")}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>

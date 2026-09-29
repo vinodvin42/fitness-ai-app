@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * How much of the user app's copy is translatable, per screen.
+ * How much of each mobile app's copy is translatable, per screen.
  *
  *   node scripts/i18n-report.mjs            # summary
  *   node scripts/i18n-report.mjs --strings  # + the actual strings left
@@ -22,7 +22,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROOT = path.join(import.meta.dirname, '../apps/user-mobile/src');
+const APPS = ['user-mobile', 'coach-mobile'].map((name) => ({
+  name,
+  root: path.join(import.meta.dirname, `../apps/${name}/src`),
+}));
 const showStrings = process.argv.includes('--strings');
 
 function walk(dir) {
@@ -40,35 +43,43 @@ const TEXT_PROPS = /\b(label|title|subtitle|placeholder|message|actionLabel|acce
 /** A JSX text node: >Some words< with at least one space or a letter run. */
 const JSX_TEXT = />\s*([A-Z][^<>{}\n]{3,})\s*</g;
 
-const rows = [];
-for (const file of walk(ROOT)) {
-  const src = fs.readFileSync(file, 'utf8');
-  const inline = new Set();
-  for (const m of src.matchAll(TEXT_PROPS)) inline.add(m[2].trim());
-  for (const m of src.matchAll(JSX_TEXT)) {
-    const text = m[1].trim();
-    // Skip things that are plainly not sentences: single capitalised
-    // identifiers with no space are usually a component or a unit.
-    if (/\s/.test(text)) inline.add(text);
+let grandTotal = 0;
+for (const app of APPS) {
+  const rows = [];
+  for (const file of walk(app.root)) {
+    const src = fs.readFileSync(file, 'utf8');
+    const inline = new Set();
+    for (const m of src.matchAll(TEXT_PROPS)) inline.add(m[2].trim());
+    for (const m of src.matchAll(JSX_TEXT)) {
+      const text = m[1].trim();
+      // Skip things that are plainly not sentences: a single capitalised
+      // identifier with no space is usually a component or a unit.
+      if (/\s/.test(text)) inline.add(text);
+    }
+    const translated = (src.match(/\bt\(\s*["`]/g) || []).length;
+    rows.push({ file: path.relative(app.root, file), inline: inline.size, translated, strings: [...inline] });
   }
-  const translated = (src.match(/\bt\(\s*["`]/g) || []).length;
-  rows.push({ file: path.relative(ROOT, file), inline: inline.size, translated, strings: [...inline] });
+
+  rows.sort((a, b) => b.inline - a.inline || a.file.localeCompare(b.file));
+
+  const totalInline = rows.reduce((n, r) => n + r.inline, 0);
+  grandTotal += totalInline;
+  const touched = rows.filter((r) => r.translated > 0);
+  const clean = rows.filter((r) => r.inline === 0);
+
+  console.log(`\n${app.name}: ${rows.length} components`);
+  console.log(`  ${touched.length} call t() at all`);
+  console.log(`  ${clean.length} have no inline user-facing strings left`);
+  console.log(`  ${totalInline} inline strings remain`);
+
+  const worst = rows.filter((r) => r.inline > 0).slice(0, 25);
+  if (worst.length) {
+    console.log('  Worst first:');
+    for (const r of worst) {
+      console.log(`    ${String(r.inline).padStart(3)} inline, ${String(r.translated).padStart(3)} t()   ${r.file}`);
+      if (showStrings) for (const str of r.strings) console.log(`          · ${str}`);
+    }
+  }
 }
 
-rows.sort((a, b) => b.inline - a.inline || a.file.localeCompare(b.file));
-
-const totalInline = rows.reduce((n, r) => n + r.inline, 0);
-const touched = rows.filter((r) => r.translated > 0);
-const clean = rows.filter((r) => r.inline === 0);
-
-console.log(`user-mobile: ${rows.length} components`);
-console.log(`  ${touched.length} call t() at all`);
-console.log(`  ${clean.length} have no inline user-facing strings left`);
-console.log(`  ${totalInline} inline strings remain\n`);
-
-console.log('Worst first:');
-for (const r of rows.slice(0, 25)) {
-  if (r.inline === 0) break;
-  console.log(`  ${String(r.inline).padStart(3)} inline, ${String(r.translated).padStart(3)} t()   ${r.file}`);
-  if (showStrings) for (const s of r.strings) console.log(`        · ${s}`);
-}
+console.log(`\n${grandTotal} inline strings across all apps.`);

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
@@ -28,6 +29,7 @@ const SERVICE_LABELS: Record<ProfessionalServiceType, string> = {
  * coach ever saw their verification status.
  */
 export function VerificationStatusScreen() {
+  const { t } = useTranslation();
   const { professional, markOnboardingCompleted } = useAuth();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-onboarding-status"],
@@ -39,7 +41,7 @@ export function VerificationStatusScreen() {
     // onboardingCompleted (see RootNavigator.tsx: OnboardingStack renders
     // outside the RootStack that registers "Notifications"), so this
     // pre-onboarding screen can't navigate there yet.
-    <ScreenContainer title="Verification Status" showAlerts={false}>
+    <ScreenContainer title={t("onboarding.verification.title")} showAlerts={false}>
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{professional?.fullName}</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginBottom: spacing.sm }}>
         {professional?.email}
@@ -60,7 +62,7 @@ export function VerificationStatusScreen() {
           ))}
 
           <Card>
-            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>Identity Verification</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>{t("onboarding.verification.identity")}</Text>
             <View style={{ marginTop: spacing.xs }}>
               <StatusBadge status={data.kycStatus} />
             </View>
@@ -75,7 +77,7 @@ export function VerificationStatusScreen() {
         </View>
       )}
 
-      <Button label="Go to Dashboard" onPress={markOnboardingCompleted} style={{ marginTop: spacing.md }} />
+      <Button label={t("onboarding.verification.goToDashboard")} onPress={markOnboardingCompleted} style={{ marginTop: spacing.md }} />
     </ScreenContainer>
   );
 }

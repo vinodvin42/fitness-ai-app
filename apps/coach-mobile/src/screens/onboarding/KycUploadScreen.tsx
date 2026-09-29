@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Image, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -46,6 +47,7 @@ async function pickImage(fromCamera: boolean): Promise<string | null> {
  * docs/coach/07-open-questions-gaps.md's "20 Aug 2026" entry, gap §7).
  */
 export function KycUploadScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [kycDocumentData, setKycDocumentData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,9 +75,9 @@ export function KycUploadScreen({ navigation }: Props) {
     <WizardLayout
       step={3}
       total={3}
-      label="Identity Verification (KYC)"
-      title="Verify your identity"
-      subtitle="Upload a government ID (e.g. Aadhaar Card) — required once, shared across every service you offer."
+      label={t("onboarding.kyc.step")}
+      title={t("onboarding.kyc.title")}
+      subtitle={t("onboarding.kyc.subtitle")}
       onNext={onNext}
       nextDisabled={!kycDocumentData}
       nextLoading={loading}

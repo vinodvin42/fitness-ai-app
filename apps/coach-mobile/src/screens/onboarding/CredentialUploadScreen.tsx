@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Image, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -94,6 +95,7 @@ function UploadSlot({
  * camera/library-only uploads.
  */
 export function CredentialUploadScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { services, index } = route.params;
   const serviceType = services[index];
 
@@ -137,28 +139,28 @@ export function CredentialUploadScreen({ navigation, route }: Props) {
       total={3}
       label={`Credential Verification — ${index + 1} of ${services.length}`}
       title={`${SERVICE_LABELS[serviceType]} credentials`}
-      subtitle="Add your certification details. You can update these later from Verification Status."
+      subtitle={t("onboarding.credentials.subtitle")}
       onNext={onNext}
       nextLoading={loading}
       nextLabel={index + 1 < services.length ? "Next Service" : "Continue"}
     >
       <TextInput
         style={inputStyle}
-        placeholder="Certification Name"
+        placeholder={t("onboarding.credentials.name")}
         placeholderTextColor={colors.textMuted}
         value={certificationName}
         onChangeText={setCertificationName}
       />
       <TextInput
         style={inputStyle}
-        placeholder="Certifying Body"
+        placeholder={t("onboarding.credentials.body")}
         placeholderTextColor={colors.textMuted}
         value={certifyingBody}
         onChangeText={setCertifyingBody}
       />
       <TextInput
         style={inputStyle}
-        placeholder="Year Obtained"
+        placeholder={t("onboarding.credentials.year")}
         placeholderTextColor={colors.textMuted}
         keyboardType="number-pad"
         value={yearObtained}
@@ -166,13 +168,13 @@ export function CredentialUploadScreen({ navigation, route }: Props) {
       />
 
       <UploadSlot
-        label="Certification Document"
+        label={t("onboarding.credentials.document")}
         hint="A photo or scan of your certification."
         value={certificationDocData}
         onChange={setCertificationDocData}
       />
       <UploadSlot
-        label="Qualification Certificate"
+        label={t("onboarding.credentials.certificate")}
         hint="A photo or scan of your qualification certificate."
         value={qualificationDocData}
         onChange={setQualificationDocData}

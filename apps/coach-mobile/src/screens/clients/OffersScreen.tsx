@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -59,6 +60,7 @@ const EMPTY_COPY: Record<Filter, { title: string; subtitle: string }> = {
  * the waiting client.
  */
 export function OffersScreen(_props: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("offered");
   const [decliningId, setDecliningId] = useState<string | null>(null);
@@ -92,9 +94,9 @@ export function OffersScreen(_props: Props) {
 
   if (offers.isLoading) {
     return (
-      <ScreenContainer title="Offers">
+      <ScreenContainer title={t("clients.offers.title")}>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.lg }}>
-        Clients FynroX has proposed you for.
+        {t("clients.offers.intro")}
       </Text>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
@@ -102,7 +104,7 @@ export function OffersScreen(_props: Props) {
   }
   if (offers.isError) {
     return (
-      <ScreenContainer title="Offers">
+      <ScreenContainer title={t("clients.offers.title")}>
         <ErrorState onRetry={offers.refetch} />
       </ScreenContainer>
     );
@@ -116,7 +118,7 @@ export function OffersScreen(_props: Props) {
   }
 
   return (
-    <ScreenContainer title="Offers">
+    <ScreenContainer title={t("clients.offers.title")}>
       <View style={{ flexDirection: "row", gap: spacing.xs, flexWrap: "wrap", marginBottom: spacing.lg }}>
         {FILTERS.map((f) => (
           <Button
@@ -165,7 +167,7 @@ export function OffersScreen(_props: Props) {
 
                 {o.status === "expired" ? (
                   <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-                    This went back to FynroX to be offered to someone else.
+                    {t("clients.offers.returned")}
                   </Text>
                 ) : null}
 
@@ -173,7 +175,7 @@ export function OffersScreen(_props: Props) {
                   decliningId === o.offerId ? (
                     <View style={{ marginTop: spacing.lg }}>
                       <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-                        Why are you declining? (optional — it helps us match better next time)
+                        {t("clients.offers.whyDeclining")}
                       </Text>
                       <TextInput
                         value={reason}
@@ -181,7 +183,7 @@ export function OffersScreen(_props: Props) {
                         multiline
                         numberOfLines={3}
                         maxLength={500}
-                        placeholder="At capacity, outside my speciality, schedule clash…"
+                        placeholder={t("clients.offers.reasonPlaceholder")}
                         placeholderTextColor={colors.textMuted}
                         style={{
                           color: colors.textPrimary,
@@ -195,12 +197,12 @@ export function OffersScreen(_props: Props) {
                       />
                       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
                         <Button
-                          label="Confirm decline"
+                          label={t("clients.offers.confirmDecline")}
                           onPress={() => decline.mutate(o.offerId)}
                           loading={decline.isPending}
                         />
                         <Button
-                          label="Back"
+                          label={t("common.back")}
                           variant="secondary"
                           onPress={() => {
                             setDecliningId(null);
@@ -214,8 +216,8 @@ export function OffersScreen(_props: Props) {
                     </View>
                   ) : (
                     <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
-                      <Button label="Accept" onPress={() => accept.mutate(o.offerId)} loading={accept.isPending} />
-                      <Button label="Decline" variant="secondary" onPress={() => setDecliningId(o.offerId)} />
+                      <Button label={t("common.accept")} onPress={() => accept.mutate(o.offerId)} loading={accept.isPending} />
+                      <Button label={t("common.decline")} variant="secondary" onPress={() => setDecliningId(o.offerId)} />
                     </View>
                   )
                 ) : null}

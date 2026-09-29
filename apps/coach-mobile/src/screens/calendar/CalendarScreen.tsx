@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { CoachScheduleItem } from "@fitness-ai-app/types";
@@ -72,6 +73,7 @@ function SessionRow({ item }: { item: CoachScheduleItem }) {
  * honest "showing most recent N" note when the real total is larger.
  */
 export function CalendarScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["coach-schedule"], queryFn: fetchMySchedule });
   const [showPast, setShowPast] = useState(false);
 
@@ -79,14 +81,14 @@ export function CalendarScreen() {
   const pastGroups = data ? groupByDay(data.past) : [];
 
   return (
-    <ScreenContainer title="Calendar">
+    <ScreenContainer title={t("calendar.title")}>
       {isLoading && <Text style={{ color: colors.textSecondary }}>Loading…</Text>}
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       {data && (
         <>
           {upcomingGroups.length === 0 ? (
-            <EmptyState title="No upcoming sessions" subtitle="Confirmed bookings will show up here." />
+            <EmptyState title={t("calendar.emptyUpcomingTitle")} subtitle={t("calendar.emptyUpcomingSubtitle")} />
           ) : (
             <View style={{ gap: spacing.sm }}>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Upcoming</Text>
@@ -118,7 +120,7 @@ export function CalendarScreen() {
           {showPast && (
             <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
               {pastGroups.length === 0 ? (
-                <EmptyState title="No past sessions yet" />
+                <EmptyState title={t("calendar.emptyPast")} />
               ) : (
                 <>
                   {pastGroups.map((group) => (
@@ -137,7 +139,7 @@ export function CalendarScreen() {
                     </Card>
                   ))}
                   {data.pastTruncated ? (
-                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>Showing the most recent 50 past sessions.</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("calendar.recentLimit")}</Text>
                   ) : null}
                 </>
               )}

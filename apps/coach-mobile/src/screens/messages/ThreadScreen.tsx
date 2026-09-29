@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +34,7 @@ function timeLabel(iso: string): string {
  * badge clears on next refetch.
  */
 export function ThreadScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<MessagesStackParamList, "Thread">>();
   const { userId, fullName } = route.params;
@@ -101,7 +103,7 @@ export function ThreadScreen() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Message…"
+            placeholder={t("messages.placeholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             style={{
@@ -117,7 +119,7 @@ export function ThreadScreen() {
             }}
           />
           <Button
-            label="Send"
+            label={t("common.send")}
             onPress={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!canSend}

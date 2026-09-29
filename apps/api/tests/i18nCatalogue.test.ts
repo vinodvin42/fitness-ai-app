@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en } from "../../user-mobile/src/i18n/locales/en";
+import { en as userEn } from "../../user-mobile/src/i18n/locales/en";
+import { en as coachEn } from "../../coach-mobile/src/i18n/locales/en";
 
 /**
- * Guards the user app's translation catalogue.
+ * Guards the mobile apps' translation catalogues.
  *
  * i18next returns THE KEY ITSELF when a key is missing. So a typo in
  * `t("today.progressCrad.title")` does not throw, does not fail
@@ -18,7 +19,10 @@ import { en } from "../../user-mobile/src/i18n/locales/en";
  * not tidy; an unguarded catalogue is worse.
  */
 
-const MOBILE = path.join(__dirname, "../../user-mobile/src");
+const APPS = [
+  { name: "user-mobile", src: path.join(__dirname, "../../user-mobile/src"), catalogue: userEn },
+  { name: "coach-mobile", src: path.join(__dirname, "../../coach-mobile/src"), catalogue: coachEn },
+];
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -34,12 +38,12 @@ function sourceFiles(dir: string): string[] {
 }
 
 /** Every `t("some.key")` call in the app, with the file it came from. */
-function translationCalls(): Array<{ key: string; file: string }> {
+function translationCalls(root: string): Array<{ key: string; file: string }> {
   const calls: Array<{ key: string; file: string }> = [];
-  for (const file of sourceFiles(MOBILE)) {
+  for (const file of sourceFiles(root)) {
     const src = fs.readFileSync(file, "utf8");
     for (const m of src.matchAll(/\bt\(\s*"([\w.]+)"/g)) {
-      calls.push({ key: m[1], file: path.relative(MOBILE, file) });
+      calls.push({ key: m[1], file: path.relative(root, file) });
     }
   }
   return calls;
@@ -62,9 +66,9 @@ function translationCalls(): Array<{ key: string; file: string }> {
  * alive) is far smaller than a false positive (the report tells someone
  * to delete live copy).
  */
-function literalKeyMentions(): Set<string> {
+function literalKeyMentions(root: string): Set<string> {
   const mentioned = new Set<string>();
-  for (const file of sourceFiles(MOBILE)) {
+  for (const file of sourceFiles(root)) {
     const src = fs.readFileSync(file, "utf8");
     for (const m of src.matchAll(/"([a-z][\w]*(?:\.[\w]+)+)"/g)) mentioned.add(m[1]);
   }
@@ -81,9 +85,9 @@ function literalKeyMentions(): Set<string> {
  * check, so each template becomes a pattern and any catalogue key it
  * could produce counts as reached.
  */
-function templatePatterns(): RegExp[] {
+function templatePatterns(root: string): RegExp[] {
   const patterns: RegExp[] = [];
-  for (const file of sourceFiles(MOBILE)) {
+  for (const file of sourceFiles(root)) {
     const src = fs.readFileSync(file, "utf8");
     for (const m of src.matchAll(/\bt\(\s*`([^`]+)`/g)) {
       const literal = m[1];
@@ -111,7 +115,6 @@ function flatten(obj: unknown, prefix = ""): Set<string> {
   return keys;
 }
 
-const CATALOGUE = flatten(en);
 
 /**
  * i18next resolves `t("thing", { count })` against `thing_one` /
@@ -123,16 +126,30 @@ function resolves(key: string): boolean {
   return ["_one", "_other", "_zero", "_two", "_few", "_many"].some((s) => CATALOGUE.has(key + s));
 }
 
-describe("user app translation catalogue", () => {
-  const calls = translationCalls();
+describe.each(APPS)("$name translation catalogue", ({ src, catalogue }) => {
+  const CATALOGUE = flatten(catalogue);
+  const calls = translationCalls(src);
+  const mentioned = literalKeyMentions(src);
+  const patterns = templatePatterns(src);
 
-  it("found real t() calls and templates, rather than passing on an empty scan", () => {
-    expect(templatePatterns().length).toBeGreaterThan(0);
-    expect(literalKeyMentions().size).toBeGreaterThan(0);
-    // The scanner is a regex over source text and can fail by matching
-    // nothing, which would make the assertion below vacuous.
+  /**
+   * i18next resolves `t("thing", { count })` against `thing_one` /
+   * `thing_other`, so the bare `thing` is a legitimate call for a key
+   * that does not literally exist. Accepted only when a plural form does.
+   */
+  function resolves(key: string): boolean {
+    if (CATALOGUE.has(key)) return true;
+    return ["_one", "_other", "_zero", "_two", "_few", "_many"].some((suffix) => CATALOGUE.has(key + suffix));
+  }
+
+  it("found real t() calls, templates and key literals, rather than passing on an empty scan", () => {
+    // Every assertion below is a regex over source text, and a regex can
+    // fail by matching nothing. Without this they would all pass
+    // vacuously — the same failure mode the event-registry test had on
+    // its first draft.
     expect(calls.length).toBeGreaterThan(5);
     expect(CATALOGUE.size).toBeGreaterThan(30);
+    expect(mentioned.size).toBeGreaterThan(0);
   });
 
   it("every key the app asks for exists — a missing one renders as itself on screen", () => {
@@ -147,8 +164,6 @@ describe("user app translation catalogue", () => {
     // Not a correctness bug, but a translator is paid per string and a
     // dead key wastes that in nine languages at once.
     const asked = new Set(calls.map((c) => c.key));
-    const mentioned = literalKeyMentions();
-    const patterns = templatePatterns();
     const unreachable = [...CATALOGUE].filter((k) => {
       if (asked.has(k)) return false;
       // A plural key is reached by its base name.

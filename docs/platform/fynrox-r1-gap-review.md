@@ -613,10 +613,13 @@ open, and that page changes when the plans do.
 
 1. ~~i18n (user app).~~ **Complete** — all 115 components, 518 inline strings to 0, guarded
    by `apps/api/tests/i18nCatalogue.test.ts` in CI and measured by
-   `scripts/i18n-report.mjs`. Only `en` is populated; the other nine languages resolve
-   through `fallbackLng` until translations exist, which is a content task rather than an
-   engineering one. **`apps/landing` still has no i18n mechanism at all** and its 24 pages
-   are English-only; `apps/coach-mobile` and the three consoles are likewise untouched.
+   `scripts/i18n-report.mjs`. **`apps/coach-mobile` is complete too** (159 strings to 0,
+   `docs/mobile/i18n-coach.md`), though it has no language preference to read — a
+   `Professional` has no `languagePreference` column, so no selector is shown rather than
+   a picker that saves nowhere. Only `en` is populated in either app; the other nine
+   languages resolve through `fallbackLng` until translations exist, which is a content
+   task rather than an engineering one. **`apps/landing` still has no i18n mechanism at
+   all** and its 24 pages are English-only, as are the three consoles.
 2. **Real providers.** D4, D5, D6 and D8 still need vendor decisions, not code.
 3. **Dropping the plaintext health columns**, once the backfill has run everywhere.
 4. ~~Accessibility.~~ **Audited** — see `docs/platform/accessibility.md`. Every palette in

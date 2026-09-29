@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { StyleProp, Text, ViewStyle } from "react-native";
 import { Card } from "./Card";
 import { Button } from "./Button";
@@ -11,17 +12,20 @@ interface ErrorStateProps {
 }
 
 /** Shared error-state block for a failed data fetch — copied near-verbatim from apps/user-mobile. */
-export function ErrorState({
-  message = "Couldn't load this. Check your connection and try again.",
-  onRetry,
-  style,
-}: ErrorStateProps) {
+export function ErrorState({ message, onRetry, style }: ErrorStateProps) {
+  const { t } = useTranslation();
+  // Resolved here rather than as a default parameter value: a default
+  // would have to call `t` outside the component, where the hook is not
+  // available and the language at module-load time would be frozen in.
+  const body = message ?? t("common.checkConnection");
   return (
     <Card style={[{ alignItems: "center" }, style]}>
-      <Text style={{ color: colors.textPrimary, ...typography.h2, textAlign: "center" }}>Something went wrong</Text>
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>{message}</Text>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, textAlign: "center" }}>
+        {t("common.somethingWentWrong")}
+      </Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>{body}</Text>
       {onRetry ? (
-        <Button label="Retry" variant="secondary" onPress={onRetry} style={{ marginTop: spacing.md, minWidth: 140 }} />
+        <Button label={t("common.retry")} variant="secondary" onPress={onRetry} style={{ marginTop: spacing.md, minWidth: 140 }} />
       ) : null}
     </Card>
   );
