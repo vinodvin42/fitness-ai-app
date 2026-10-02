@@ -130,7 +130,11 @@ jobs:
           API_PID=$!
           ok=""
           for i in $(seq 1 15); do
-            if curl -sf http://localhost:4000/health; then
+            # --max-time for the same reason deploy-azure-api.yml's
+            # health gate needs it: an unbounded curl against a process
+            # that accepts the connection and then hangs blocks this
+            # loop forever rather than retrying.
+            if curl -sf --max-time 10 http://localhost:4000/health; then
               echo
               ok=1
               break

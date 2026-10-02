@@ -165,6 +165,16 @@ jobs:
 
           mb=$(( (bytes + 524288) / 1048576 ))
 
+          # Also to stdout, not only the run summary. The summary is
+          # visible in the Actions UI but absent from the job log, so the
+          # first real build reported a size that could not be read back
+          # through the logs API when it came time to update the
+          # download page.
+          echo "artifact:    $url"
+          echo "version:     $version"
+          echo "versionCode: $code"
+          echo "size:        $bytes bytes / ~${mb}MB"
+
           {
             echo "## Android APK"
             echo

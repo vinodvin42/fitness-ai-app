@@ -209,7 +209,13 @@ jobs:
           url="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
           ok=""
           for i in $(seq 1 48); do
-            if curl -sf "$url"; then
+            # --max-time bounds each ATTEMPT. Without it this loop's
+            # "~4 minutes" was fiction: a cold start that accepts the TCP
+            # connection and then never answers leaves curl blocked
+            # forever, so the loop never reaches its second iteration.
+            # Seen for real — a deploy sat in this step for 7+ minutes
+            # before it was cancelled by hand.
+            if curl -sf --max-time 15 "$url"; then
               echo
               ok=1
               break
