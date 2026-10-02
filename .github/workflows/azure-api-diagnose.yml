@@ -1,0 +1,157 @@
+name: Diagnose the Azure API
+
+# Why this exists separately from deploy-azure-api.yml.
+#
+# That workflow now captures the App Service log when its health gate
+# fails — but only after `npm ci`, a Prisma generate, a migration, a
+# build and a ~5 minute OneDeploy. Asking "why is the app not
+# answering?" cost a 16 minute round trip and another deploy on top of
+# an app that is already down. This asks the same question in about a
+# minute and changes nothing on the app unless you tell it to.
+#
+# workflow_dispatch only, same as the deploy. It reads state, enables
+# filesystem logging (the download comes back empty otherwise, which is
+# how "no log archive" gets mistaken for "no error"), optionally
+# restarts so a boot crash is actually in the window, and prints the log
+# tail.
+#
+# Never prints an app-setting VALUE — a workflow log is readable by
+# anyone with repo access, and these settings hold the JWT and 2FA
+# secrets. Names only, which is what "is it set at all?" needs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      restart:
+        description: 'Restart the Web App first, so a boot crash lands in the log window. Safe while the app is already down; it is a brief outage if it is up.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  # Deliberately shares deploy-azure-api.yml's group: restarting the app
+  # halfway through that workflow's OneDeploy would be a genuinely
+  # confusing thing to do to it.
+  group: deploy-azure-api
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      WEBAPP: ${{ secrets.AZURE_WEBAPP_NAME }}
+      GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What does Azure think the app is doing
+        run: |
+          echo "=== app ==="
+          az webapp show --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "{state:state, availability:availabilityState, enabled:enabled, https:httpsOnly, hostname:defaultHostName}" \
+            -o yaml || echo "could not read the app"
+
+          echo
+          echo "=== how it is told to start ==="
+          az webapp config show --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "{linuxFx:linuxFxVersion, startup:appCommandLine, alwaysOn:alwaysOn, healthCheck:healthCheckPath, nodeVersion:nodeVersion}" \
+            -o yaml || echo "could not read siteConfig"
+
+          echo
+          echo "=== plan ==="
+          plan=$(az webapp show --name "$WEBAPP" --resource-group "$GROUP" --query serverFarmId -o tsv) || true
+          if [ -n "${plan:-}" ]; then
+            az appservice plan show --ids "$plan" \
+              --query "{sku:sku.name, tier:sku.tier, workers:numberOfWorkers, status:status}" -o yaml || true
+          fi
+
+          echo
+          echo "=== app settings present (names only — never values) ==="
+          az webapp config appsettings list --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[].name" -o tsv | sort || echo "could not list app settings"
+
+      # config/env.ts exits on a missing required setting, so "which of
+      # these is absent" is the single most useful question here. Still
+      # names only: this checks for presence and never reads a value.
+      - name: Is every setting the API refuses to boot without present
+        run: |
+          present=$(az webapp config appsettings list \
+            --name "$WEBAPP" --resource-group "$GROUP" --query "[].name" -o tsv | sort)
+          missing=""
+          for key in DATABASE_URL JWT_ACCESS_SECRET JWT_REFRESH_SECRET TWO_FACTOR_ENCRYPTION_KEY HEALTH_DATA_ENCRYPTION_KEY NODE_ENV; do
+            if ! printf '%s\n' "$present" | grep -qx "$key"; then
+              missing="$missing $key"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::not set on the Web App:$missing"
+          else
+            echo "all of the settings checked here are set"
+          fi
+
+      - name: Turn on filesystem logging
+        run: |
+          # Without this the download below returns an empty archive and
+          # a boot crash looks like an absence of evidence.
+          az webapp log config --name "$WEBAPP" --resource-group "$GROUP" \
+            --application-logging filesystem \
+            --docker-container-logging filesystem \
+            --level information --output none || echo "could not enable logging"
+
+      - name: Restart, so a boot crash is in the window
+        if: inputs.restart
+        run: |
+          az webapp restart --name "$WEBAPP" --resource-group "$GROUP" --output none
+          echo "restarted; giving it 75s to try to come up"
+          sleep 75
+
+      - name: Ask /health, once, bounded
+        run: |
+          url="https://$WEBAPP.azurewebsites.net/health"
+          # -o /dev/null -w: a status line is the answer, and --max-time
+          # keeps a socket that accepts and never replies from hanging
+          # the job. Not `-f`: a 500 is a more useful answer than an
+          # error exit.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url") || code="no response"
+          echo "GET /health -> $code"
+
+      - name: The log
+        run: |
+          az webapp log download --name "$WEBAPP" --resource-group "$GROUP" \
+            --log-file "$RUNNER_TEMP/appsvc.zip" || true
+          if [ ! -f "$RUNNER_TEMP/appsvc.zip" ]; then
+            echo "no log archive came back."
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/appsvc"
+          unzip -o -q "$RUNNER_TEMP/appsvc.zip" -d "$RUNNER_TEMP/appsvc" || true
+          found=""
+          # Newest first: a boot crash is the last thing written.
+          for f in $(find "$RUNNER_TEMP/appsvc" -type f \( -name '*.log' -o -name '*.txt' \) \
+                       -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -6 | cut -d' ' -f2-); do
+            found=1
+            echo "--- $f"
+            tail -n 200 "$f"
+            echo
+          done
+          if [ -z "$found" ]; then
+            echo "the archive held no .log or .txt files:"
+            find "$RUNNER_TEMP/appsvc" -type f | head -20
+          fi
+
+      - name: Keep the whole archive, in case the tail is not enough
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appservice-logs
+          path: ${{ runner.temp }}/appsvc.zip
+          if-no-files-found: ignore
+          retention-days: 7
