@@ -91,6 +91,98 @@ jobs:
       - name: Build the API
         run: npm run build --workspace=apps/api
 
+      # Why this exists — the API would not boot in production without it.
+      #
+      # App Service's generated startup script does this, every boot:
+      #
+      #   tar -xzf node_modules.tar.gz -C /node_modules
+      #   mv -f node_modules _del_node_modules
+      #   ln -sfn /node_modules ./node_modules
+      #
+      # It relocates the dependency tree from /home/site/wwwroot to /.
+      # npm workspaces install @fitness-ai-app/config as a RELATIVE
+      # symlink, node_modules/@fitness-ai-app/config -> ../../packages/config,
+      # and tar preserves a symlink as a symlink. Relocated, that link
+      # resolves to /packages/config, which does not exist, so the
+      # container died with
+      #
+      #   Error: Cannot find module '@fitness-ai-app/config'
+      #   Require stack: .../apps/api/dist/lib/referralCode.js
+      #
+      # 90 seconds into every cold start, exit code 1, for three
+      # consecutive deploys. The deploy step itself reported success
+      # throughout, because the package shipped fine — it was the boot
+      # that failed.
+      #
+      # Replacing the link with a real directory makes the tree
+      # relocatable, which is the actual requirement. Reproduced locally
+      # by running those three lines against a copy of the tree: same
+      # MODULE_NOT_FOUND before, resolves after.
+      #
+      # Only packages/* links are materialised. The apps/* ones are
+      # never required at runtime (a grep of apps/api/dist finds exactly
+      # one workspace import, @fitness-ai-app/config) and copying them
+      # would add every other app's source to the package for nothing.
+      - name: Make the dependency tree survive being relocated
+        run: |
+          cd node_modules/@fitness-ai-app
+          for link in *; do
+            [ -L "$link" ] || continue
+            target=$(readlink -f "$link")
+            case "$target" in
+              */packages/*) ;;
+              *) echo "leaving $link -> $target (not a packages/* link)"; continue ;;
+            esac
+            echo "materialising $link from $target"
+            rm "$link"
+            # -L dereferences, so nested links cannot reintroduce the
+            # same problem one level down.
+            cp -RL "$target" "$link"
+            # A nested node_modules would be another relocatable tree
+            # with the same problem, so it goes. Nothing else does:
+            # @fitness-ai-app/types declares main: src/index.ts, so
+            # pruning src/ to save a few kilobytes would ship a package
+            # whose entry point does not exist. It happens to be
+            # harmless today, because nothing requires types at
+            # runtime — and it would turn into this same boot crash the
+            # day somebody exports a value from it.
+            rm -rf "$link/node_modules"
+          done
+
+      # A deploy that ships a tree which cannot boot is worse than a
+      # deploy that fails here, where the log says why.
+      - name: Check the dependency tree can be required after relocation
+        run: |
+          cd node_modules/@fitness-ai-app
+          # Every packages/* entry must now be a real directory whose
+          # declared entry point is present. A deploy that ships a tree
+          # which cannot boot is worse than one that fails here, where
+          # the log says why.
+          for name in config types; do
+            if [ -L "$name" ]; then
+              echo "::error::$name is still a symlink; it will break when App Service relocates node_modules." >&2
+              exit 1
+            fi
+            entry=$(node -e "process.stdout.write(require('./$name/package.json').main || 'index.js')")
+            if [ ! -f "$name/$entry" ]; then
+              echo "::error::$name/$entry is missing — packages/$name was not built before it was copied." >&2
+              exit 1
+            fi
+            echo "$name -> $entry present"
+          done
+
+          # Then resolve for real, the way the relocated container will:
+          # the package copied under a root that is not this repo, with
+          # nothing above it to fall back to. config is the one the
+          # built API actually requires; types is types-only and its
+          # entry is TypeScript, so it is checked for presence above
+          # rather than required here.
+          probe="$RUNNER_TEMP/relocated"
+          rm -rf "$probe"
+          mkdir -p "$probe/node_modules/@fitness-ai-app"
+          cp -R config "$probe/node_modules/@fitness-ai-app/config"
+          ( cd "$probe" && node -e "require('@fitness-ai-app/config'); console.log('requires cleanly from a relocated tree')" )
+
       # OIDC federated-credential login — no client secret stored in
       # GitHub at all. See AZURE-DEPLOY-RUNBOOK.md for the full
       # az ad app / az ad sp / az ad app federated-credential setup this
@@ -197,6 +289,14 @@ jobs:
           # remove any ambiguity about which app is targeted.
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
           package: .
+          # /home is persisted and OneDeploy merges into wwwroot rather
+          # than replacing it, so an oryx-manifest.toml and
+          # node_modules.tar.gz left behind by an earlier build-during-
+          # deploy stay there forever and keep sending every boot down
+          # the "Found tar.gz based node_modules" path above. clean
+          # empties the target first, so what boots is what this run
+          # built and nothing else.
+          clean: true
 
       # Real confirmation, not just "the deploy step exited 0" — same
       # philosophy as ci.yml's own "boot the API and confirm /health
