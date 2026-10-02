@@ -25,7 +25,7 @@
     "db:seed": "npm run db:seed --workspace=apps/api",
     "build:mobile": "npm run build:web --workspace=apps/user-mobile",
     "build:coach": "npm run build:web --workspace=apps/coach-mobile",
-    "typecheck": "npm run typecheck --workspace=apps/api && npm run typecheck --workspace=apps/admin-web && npm run typecheck --workspace=apps/user-mobile && npm run typecheck --workspace=apps/coach-mobile && npm run typecheck --workspace=apps/gym-portal && npm run typecheck --workspace=apps/creator-portal",
+    "typecheck": "npm run build --workspace=@fitness-ai-app/config && npm run typecheck --workspace=apps/api && npm run typecheck --workspace=apps/admin-web && npm run typecheck --workspace=apps/user-mobile && npm run typecheck --workspace=apps/coach-mobile && npm run typecheck --workspace=apps/gym-portal && npm run typecheck --workspace=apps/creator-portal",
     "lint": "npm run lint --workspace=apps/api && npm run lint --workspace=apps/admin-web && npm run lint --workspace=apps/user-mobile && npm run lint --workspace=apps/coach-mobile && npm run lint --workspace=apps/gym-portal && npm run lint --workspace=apps/creator-portal",
     "test": "npm run test --workspace=apps/api"
   },

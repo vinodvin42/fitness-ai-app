@@ -20,6 +20,18 @@ export const BRAND_NAME = "FynroX";
 /** The AI assistant's name. Never "FynroX's AI" — it is a proper noun. */
 export const BRAND_AI_NAME = "FynroX AI";
 
+/**
+ * The square logo mark — the brand's initials, not its name.
+ *
+ * A constant because the rename missed the two places this was written
+ * out by hand: the admin console's login screen and its app shell both
+ * still read "PF", the old PrimeFit mark, and that was visible on the
+ * live console. apps/landing hardcodes the same two letters in HTML,
+ * which cannot import this file (no build step) — if this ever changes,
+ * grep for brand__mark there too.
+ */
+export const BRAND_MARK = "FX";
+
 /** The single R1 paid tier (see `r1Flags.SINGLE_PREMIUM_TIER`). */
 export const BRAND_PREMIUM_NAME = "FynroX Premium";
 

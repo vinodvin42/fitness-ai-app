@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BRAND_MARK } from "@fitness-ai-app/config";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
 
@@ -38,7 +39,7 @@ export function LoginScreen() {
       <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8">
         <div className="mb-6 flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
+            {BRAND_MARK}
           </div>
           <div>
             <div className="text-sm font-semibold tracking-wide">FYNROX</div>
