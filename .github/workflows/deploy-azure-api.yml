@@ -205,6 +205,7 @@ jobs:
       # ci.yml's local boot does, so this polls for up to ~4 minutes
       # rather than ci.yml's ~15 seconds.
       - name: Confirm the deployed API answers /health
+        id: health
         run: |
           url="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
           ok=""
@@ -228,3 +229,50 @@ jobs:
             exit 1
           fi
           echo "Deployed API booted and answered /health successfully."
+
+      # The health gate has always ended by telling a human to go and
+      # read `az webapp log tail`. Nobody can, from a failed CI run that
+      # has already dropped its Azure session — so it never happened, and
+      # a failed deploy left no evidence of WHY the app would not start.
+      # This fetches it while the OIDC login is still good.
+      #
+      # `log tail` streams and never returns, which would hang this job
+      # the way the unbounded curl above used to; `log download` is the
+      # terminating form.
+      - name: Capture the App Service log when health fails
+        if: failure() && steps.health.conclusion == 'failure'
+        env:
+          WEBAPP: ${{ secrets.AZURE_WEBAPP_NAME }}
+          GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          echo "=== app state ==="
+          az webapp show --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "{state:state, availability:availabilityState, https:httpsOnly, linuxFx:siteConfig.linuxFxVersion, alwaysOn:siteConfig.alwaysOn}" \
+            -o yaml || echo "could not read app state"
+
+          echo
+          echo "=== app settings present (names only — never values) ==="
+          az webapp config appsettings list --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[].name" -o tsv | sort || echo "could not list app settings"
+
+          echo
+          echo "=== container / application log ==="
+          # Best effort throughout: a missing log is not a reason to turn
+          # a health failure into a confusing second failure.
+          az webapp log download --name "$WEBAPP" --resource-group "$GROUP" \
+            --log-file "$RUNNER_TEMP/appsvc.zip" || true
+          if [ -f "$RUNNER_TEMP/appsvc.zip" ]; then
+            mkdir -p "$RUNNER_TEMP/appsvc"
+            unzip -o -q "$RUNNER_TEMP/appsvc.zip" -d "$RUNNER_TEMP/appsvc" || true
+            find "$RUNNER_TEMP/appsvc" -type f \( -name '*.log' -o -name '*.txt' \) \
+              -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -4 | cut -d' ' -f2- |
+            while read -r f; do
+              echo "--- $f"
+              tail -n 150 "$f"
+              echo
+            done
+          else
+            echo "no log archive came back — app-service logging may be off:"
+            echo "  az webapp log config --name <app> --resource-group <rg> \\"
+            echo "    --application-logging filesystem --docker-container-logging filesystem"
+          fi
