@@ -80,22 +80,26 @@
     <section class="download">
       <div class="wrap">
         <div class="download-grid">
-          <!-- Android APK updated 22 Sep 2026 — v0.3.0, versionCode 3,
-               built via `eas build --platform android --profile preview`
-               from commit deec0b7 (Programs Marketplace, barcode-scan meal
-               logging, AI meal-plan generation, mindfulness streak, plus
-               the R2 Wave 1-7 admin/partner-portal backend work). Real
-               artifact confirmed (200, application/octet-stream,
-               88,422,622 bytes / ~84MB) before wiring this link in.
+          <!-- Android APK updated 2 Oct 2026 — v0.4.0, versionCode 4,
+               built by the "Build Android APK (EAS)" workflow (run 3) from
+               commit fe1c3cb. Carries the full i18n retrofit, checkout with
+               server-side pricing, subscription states, refund status and
+               the Recover tab. The workflow downloaded the artifact and
+               confirmed it is a >10MB zip before reporting it.
 
-               To replace it: run the "Build Android APK (EAS)" workflow
-               (Actions tab), which builds the APK, downloads it to check
-               it is really a >10MB zip and not an error page, and prints
-               the artifact URL, version, versionCode and exact byte size
-               to its run summary. Update the href, the visible size copy
-               below, and this comment from that summary — then regenerate
-               apps/landing/assets/i18n/en.js, because the size string is a
-               translated key and landingI18n.test.ts fails on the drift. -->
+               ⚠ THIS LINK EXPIRES. EAS gives an internal-distribution
+               artifact a 14-day life: this one dies 16 Oct 2026, and the
+               22 Sep build it replaced expired 6 Oct. A public download
+               page pointing at an expiring URL goes dead without anyone
+               touching it. The durable fix is to host the APK ourselves
+               (Azure blob or this site's own assets) and link that; until
+               then this comment is the only reminder that the clock is
+               running.
+
+               To replace it: run that workflow, then update the href and
+               this comment from its run summary — and regenerate
+               apps/landing/assets/i18n/en.js if any visible copy here
+               changes, because landingI18n.test.ts fails on the drift. -->
           <article class="platform-card">
             <div class="platform-card__top">
               <span class="platform-card__icon" aria-hidden="true">
@@ -112,11 +116,10 @@
             </div>
             <p data-i18n-html="download.aDirectInstallNo" class="platform-card__body">
               A direct <code>.apk</code> install — no Google Play listing, no review wait.
-              ~84MB.
             </p>
             <a data-i18n="download.downloadApk"
               class="btn btn--primary btn--block"
-              href="https://expo.dev/artifacts/eas/NmC8WHDum9Nb7x1xDbBonw3482YW8tO_rYAUerxi_ZY.apk"
+              href="https://expo.dev/artifacts/eas/81d7PFJffKvhq3AvyfyekgwJ3kRHNXbVp_cnI5dfTcA.apk"
             >
               Download APK
             </a>

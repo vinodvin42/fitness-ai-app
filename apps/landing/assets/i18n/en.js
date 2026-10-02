@@ -148,7 +148,7 @@ window.FYNROX_I18N.en = {
   "creators.yourName": "Your name",
 
   /* download */
-  "download.aDirectInstallNo": "A direct <code>.apk</code> install — no Google Play listing, no review wait. ~84MB.",
+  "download.aDirectInstallNo": "A direct <code>.apk</code> install — no Google Play listing, no review wait.",
   "download.android": "Android",
   "download.androidWillAskPermission": "Android will ask permission to \"install from this source\" the first time you open the file — that's expected for a direct install, not a warning sign.",
   "download.comingSoon": "<span class=\"pill__dot\"></span>Coming soon",
