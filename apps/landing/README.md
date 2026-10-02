@@ -85,6 +85,31 @@ item cannot leave one string untranslatable. Edit the lists, run
 `npm run sync-shell --workspace=apps/landing`, commit the result. It is
 idempotent and nothing at deploy time depends on it.
 
+## Where it finds the API
+
+`assets/js/config.js` sets `window.FYNROX_API_BASE_URL`, and `forms.js`
+and `invite.js` read it. The committed value is the local-development
+default (`http://localhost:4000`), matching what the portals fall back
+to when `VITE_API_BASE_URL` is unset.
+
+**The deploy overwrites that one file** with the real origin from the
+`API_BASE_URL` secret, and fails the build if the secret is empty — see
+the "Point the landing site at the real API" step in
+`.github/workflows/azure-static-web-apps-purple-sea-0edcdc910.yml`.
+
+This exists because the no-build-step property has a cost that only
+shows up in production. admin-web and both portals get an absolute API
+URL compiled in by Vite; a folder of static HTML has no compile step to
+inject anything into. Without `config.js` these scripts fell back to a
+same-origin `/api`, which the Static Web App has no route for and no
+linked backend to serve — so every form here, and both invite landings,
+posted into a 404. They failed *honestly* ("We couldn't reach FynroX"),
+which is precisely why the deployed site looked finished.
+
+`apps/api/tests/landingApiBase.test.ts` holds all three parts together:
+the config file, a script tag for it on every page ahead of the scripts
+that call the API, and the deploy step with its empty-secret guard.
+
 ## Translation
 
 The rest of the product uses i18next. This site cannot: no build step,

@@ -80,6 +80,49 @@ jobs:
           apps/admin-web/dist
           apps/gym-portal/dist:portal/gym
           apps/creator-portal/dist:portal/creator
+      # apps/landing has no build step, so unlike admin-web and the two
+      # portals (which get VITE_API_BASE_URL compiled in above) there is
+      # nothing to inject an API origin into its static HTML. Without
+      # this step its scripts fall back to a same-origin "/api", which
+      # this Static Web App has no route for and no linked backend to
+      # serve — so every form on the marketing site and both invite
+      # landings post into a 404. See apps/landing/assets/js/config.js.
+      #
+      # Fails the build on an empty secret rather than deploying a
+      # public site whose forms silently point at localhost. A broken
+      # deploy is recoverable in minutes; a live site quietly dropping
+      # partner applications is not.
+      - name: Point the landing site at the real API
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "::error::The API_BASE_URL secret is empty. apps/landing would ship with its localhost development default and every form on the site would fail." >&2
+            exit 1
+          fi
+
+          target=combined-web-deploy/assets/js/config.js
+          if [ ! -f "$target" ]; then
+            echo "::error::$target is missing. apps/landing/assets/js/config.js should have been copied by merge-web-deploy.js — check that it still exists and is not in that script's skip list." >&2
+            exit 1
+          fi
+
+          base=${API_BASE_URL%/}
+          cat > "$target" <<EOF
+          /* GENERATED at deploy time from the API_BASE_URL secret.
+             The committed version of this file carries the localhost
+             development default; see apps/landing/assets/js/config.js. */
+          window.FYNROX_API_BASE_URL = "$base";
+          EOF
+
+          # Prove the substitution happened, rather than trusting it.
+          if grep -q 'localhost' "$target"; then
+            echo "::error::$target still mentions localhost after rewriting." >&2
+            exit 1
+          fi
+          echo "landing API base set to $base"
+          cat "$target"
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
