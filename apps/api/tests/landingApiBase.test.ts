@@ -94,8 +94,8 @@ describe("landing API base URL", () => {
     expect(yml, "deploy workflow should fail on an empty API_BASE_URL").toMatch(
       /if \[ -z "\$API_BASE_URL" \]/,
     );
-    expect(yml, "deploy workflow should verify localhost is gone after rewriting").toMatch(
-      /grep -q 'localhost'/,
+    expect(yml, "deploy workflow should verify what it actually wrote").toMatch(
+      /written=\$\(grep -oE 'window\\\.FYNROX_API_BASE_URL/,
     );
   });
 });

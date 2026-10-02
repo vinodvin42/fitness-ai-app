@@ -110,14 +110,19 @@ jobs:
           base=${API_BASE_URL%/}
           cat > "$target" <<EOF
           /* GENERATED at deploy time from the API_BASE_URL secret.
-             The committed version of this file carries the localhost
-             development default; see apps/landing/assets/js/config.js. */
+             The committed version of this file carries the development
+             default; see apps/landing/assets/js/config.js. */
           window.FYNROX_API_BASE_URL = "$base";
           EOF
 
-          # Prove the substitution happened, rather than trusting it.
-          if grep -q 'localhost' "$target"; then
-            echo "::error::$target still mentions localhost after rewriting." >&2
+          # Compare the assignment itself against what it should be,
+          # rather than grepping the file for a word. The first version
+          # of this check searched the whole file for "localhost" and
+          # failed on its own generated comment, which explained what
+          # the development default was.
+          written=$(grep -oE 'window\.FYNROX_API_BASE_URL = "[^"]*"' "$target" | head -1)
+          if [ "$written" != "window.FYNROX_API_BASE_URL = \"$base\"" ]; then
+            echo "::error::$target was not rewritten as expected. Wanted the assignment to be $base, found: ${written:-no assignment at all}" >&2
             exit 1
           fi
           echo "landing API base set to $base"

@@ -103,6 +103,81 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # The consoles could not log in at all until this step existed.
+      # `OPTIONS /admin/auth/login` came back with no
+      # Access-Control-Allow-Origin, so the browser cancelled every
+      # request from admin-web and both partner portals before it left
+      # the page. app.ts allows any origin only on /public/* and
+      # /links/* (the marketing site's anonymous endpoints); everything
+      # else is checked against CORS_ORIGINS, and that app setting never
+      # listed the Static Web Apps the consoles are actually served
+      # from. Found by reading a browser Network tab, not the code.
+      #
+      # Reconciled here rather than left as a one-off `az` command
+      # someone runs once and forgets: the deploy already holds
+      # Contributor on the resource group through the OIDC login above,
+      # so the setting can simply be made true on every deploy.
+      #
+      # MERGES, never replaces. Any origin added by hand — a custom
+      # domain, a staging host — survives. To remove one, delete it in
+      # Azure *and* from REQUIRED below, or the next deploy puts it
+      # back.
+      #
+      # Setting an app setting restarts the Web App. That is why this
+      # sits before the deploy rather than after it: the deploy restarts
+      # the app anyway, and the /health gate at the end of this job then
+      # covers both.
+      - name: Make sure CORS_ORIGINS covers the consoles
+        env:
+          WEBAPP: ${{ secrets.AZURE_WEBAPP_NAME }}
+          GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          # Public hostnames, not secrets — they are in the runbook and
+          # in every link to the consoles.
+          REQUIRED="https://purple-sea-0edcdc910.6.azurestaticapps.net
+          https://calm-ground-04d678410.3.azurestaticapps.net"
+
+          current=$(az webapp config appsettings list \
+            --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[?name=='CORS_ORIGINS'].value | [0]" -o tsv 2>/dev/null || true)
+          echo "current CORS_ORIGINS: ${current:-<unset>}"
+
+          # env.ts parses this as a comma-separated list, trimming each
+          # entry and dropping empties — mirror that exactly here.
+          merged=$(
+            {
+              # Trailing newline matters: without it the last existing
+              # origin fuses with the first required one and the result
+              # is a single nonsense entry. Caught by running this
+              # against a non-empty current value.
+              printf '%s\n' "$current" | tr ',' '\n'
+              printf '%s\n' "$REQUIRED"
+            } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' | awk '!seen[$0]++' | paste -sd,
+          )
+
+          if [ "$merged" = "$current" ]; then
+            echo "already correct, leaving it alone"
+          else
+            echo "updating to: $merged"
+            az webapp config appsettings set \
+              --name "$WEBAPP" --resource-group "$GROUP" \
+              --settings CORS_ORIGINS="$merged" --output none
+          fi
+
+          # Read it back. An `az` command that exits 0 having changed
+          # nothing is the failure mode worth catching here.
+          final=$(az webapp config appsettings list \
+            --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[?name=='CORS_ORIGINS'].value | [0]" -o tsv)
+          echo "CORS_ORIGINS is now: $final"
+          printf '%s\n' "$REQUIRED" | sed 's/^[[:space:]]*//' | while read -r origin; do
+            [ -z "$origin" ] && continue
+            case ",$final," in
+              *",$origin,"*) ;;
+              *) echo "::error::$origin is still missing from CORS_ORIGINS after the update." >&2; exit 1 ;;
+            esac
+          done
+
       # Deploys the repo root as-is (dist/ + node_modules + the generated
       # Prisma client + everything else `npm ci` + the build step above
       # produced) — not just apps/api/ — because this monorepo's npm

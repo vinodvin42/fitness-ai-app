@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { BRAND_MARK } from "@fitness-ai-app/config";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { GlobalSearch } from "./GlobalSearch";
@@ -209,7 +210,7 @@ export function AppShell({
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
         <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
+            {BRAND_MARK}
           </div>
           <div>
             <div className="text-sm font-semibold tracking-wide">FYNROX</div>
