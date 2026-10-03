@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
+import { BrandLockup } from "../components/BrandLockup";
 
 /**
  * Copies apps/admin-web's LoginScreen.tsx shape (plain functional auth, no
@@ -33,14 +34,8 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("shell.portalName")}</div>
-          </div>
+        <div className="mb-6 flex items-center">
+          <BrandLockup subtitle={t("shell.portalName")} />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
