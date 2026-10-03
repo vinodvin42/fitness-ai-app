@@ -31,13 +31,13 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 const EMPTY_COPY: Record<Filter, { title: string; subtitle: string }> = {
   offered: {
     title: "No open offers",
-    subtitle: "When FynroX proposes you as a client's professional, it'll appear here to accept or decline.",
+    subtitle: "When Fynrox proposes you as a client's professional, it'll appear here to accept or decline.",
   },
   accepted: { title: "Nothing accepted yet", subtitle: "Offers you take on will be listed here." },
   declined: { title: "Nothing declined", subtitle: "Offers you turn down stay here for your own record." },
   expired: {
     title: "Nothing expired",
-    subtitle: "An offer you don't answer within 48 hours goes back to FynroX to re-match.",
+    subtitle: "An offer you don't answer within 48 hours goes back to Fynrox to re-match.",
   },
 };
 
@@ -50,7 +50,7 @@ const EMPTY_COPY: Record<Filter, { title: string; subtitle: string }> = {
  * Before this the Today queue showed live offers only, so a professional
  * who declined one had no record of what they turned down, and one that
  * expired while they were away simply vanished. Both matter: an offer is
- * a client FynroX thought was a fit, and a professional who keeps
+ * a client Fynrox thought was a fit, and a professional who keeps
  * missing them should be able to see that pattern rather than have it
  * quietly counted against their capacity.
  *
@@ -160,8 +160,8 @@ export function OffersScreen(_props: Props) {
                     }}
                   >
                     {left === 0
-                      ? "Expiring now — this goes back to FynroX to re-match."
-                      : `${left} hour${left === 1 ? "" : "s"} left before this returns to FynroX.`}
+                      ? "Expiring now — this goes back to Fynrox to re-match."
+                      : `${left} hour${left === 1 ? "" : "s"} left before this returns to Fynrox.`}
                   </Text>
                 ) : null}
 

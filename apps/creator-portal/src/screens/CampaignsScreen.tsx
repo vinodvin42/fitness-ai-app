@@ -17,7 +17,7 @@ interface Campaign {
  * Campaigns list. DESIGN-PENDING.
  *
  * Deliberately read-only: a creator does not create or edit their own
- * campaigns in R1 — those are set up by FynroX with agreed terms, and a
+ * campaigns in R1 — those are set up by Fynrox with agreed terms, and a
  * self-serve campaign builder would be the "creator publishing tools"
  * the Overview puts out of scope.
  */

@@ -62,7 +62,7 @@ function isStalled(createdAtIso: string): boolean {
  * Messages/Clients themselves.
  *
  * **R2 Wave 2 (20 Sep 2026):** a second, real section — "Offers from
- * FynroX" — added below Client Requests, backing the new admin-proposes-
+ * Fynrox" — added below Client Requests, backing the new admin-proposes-
  * a-specific-pro flow (professionalOffers.service.ts). Deliberately a
  * SECOND section on this same screen, not merged into one indistinguishable
  * list with Client Requests above: a Relationship request already exists as
@@ -143,7 +143,7 @@ export function PendingRequestsScreen() {
   const confirmDeclineOffer = (item: ProfessionalOfferForCoach) => {
     Alert.alert(
       "Decline this offer?",
-      `FynroX proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
+      `Fynrox proposed ${item.userFullName} as a new client. Declining won't notify them of a reason.`,
       [
         { text: "Cancel", style: "cancel" },
         {

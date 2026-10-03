@@ -70,7 +70,7 @@ export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
   return (
     <ScreenContainer title={t("settings.privacy")}>
       <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-        Control what FynroX is allowed to do with your data. Each of these is a real, independent setting — you
+        Control what Fynrox is allowed to do with your data. Each of these is a real, independent setting — you
         can change your mind at any time.
       </Text>
 

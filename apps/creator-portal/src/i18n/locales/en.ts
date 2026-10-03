@@ -3,7 +3,7 @@
  *
  * Keys are `screen.element`, matching the screen's own file name.
  *
- * Deliberately NOT here: product names (FynroX), and anything the API
+ * Deliberately NOT here: product names (Fynrox), and anything the API
  * sends back — a campaign name, a link code, a status string the server
  * already worded. Those are the API's to translate.
  *
@@ -33,7 +33,7 @@ export const en = {
     password: "Password",
     submit: "Sign in",
     submitting: "Signing in…",
-    noAccess: "No portal access yet? Ask your FynroX contact to grant one.",
+    noAccess: "No portal access yet? Ask your Fynrox contact to grant one.",
   },
 
   // No `title` in these five: each screen's heading IS its nav label,
@@ -42,7 +42,7 @@ export const en = {
   dashboard: {
     yourProfile: "Your profile",
     yourCampaigns: "Your campaigns & link codes",
-    noCampaigns: "No campaigns are credited to you yet — ask your FynroX contact.",
+    noCampaigns: "No campaigns are credited to you yet — ask your Fynrox contact.",
     linkCode: "Link code",
     campaign: "Campaign",
     attribution: "Your attribution (all-time)",
@@ -58,15 +58,15 @@ export const en = {
   },
 
   campaigns: {
-    empty: "No campaigns are credited to you yet — your FynroX contact will set one up and it'll appear here.",
+    empty: "No campaigns are credited to you yet — your Fynrox contact will set one up and it'll appear here.",
     totalsOnly:
-      "Campaign performance is reported as totals only. FynroX never shares who signed up, what they train, what they eat, or anything about their health.",
+      "Campaign performance is reported as totals only. Fynrox never shares who signed up, what they train, what they eat, or anything about their health.",
   },
 
   referralTools: {
-    empty: "No campaigns yet — your FynroX contact will set one up and your links will appear here.",
+    empty: "No campaigns yet — your Fynrox contact will set one up and your links will appear here.",
     notLive:
-      "This link isn't live right now, so anyone who follows it sees an unavailable page. Check with your FynroX contact before you post it.",
+      "This link isn't live right now, so anyone who follows it sees an unavailable page. Check with your Fynrox contact before you post it.",
     copyLink: "Copy link",
     downloadQr: "Download QR",
     // The code is interpolated rather than concatenated around a <span>:
@@ -81,7 +81,7 @@ export const en = {
     underReview: "Under review",
     payoutFailed: "A payout to you didn't go through",
     payoutFailedNote:
-      "The commission is still owed to you and will be included in the next payout run. If your bank or UPI details have changed, send them to your FynroX contact.",
+      "The commission is still owed to you and will be included in the next payout run. If your bank or UPI details have changed, send them to your Fynrox contact.",
     empty: "No commission yet. Once someone subscribes through one of your links, it'll appear here.",
   },
 
@@ -99,8 +99,8 @@ export const en = {
     // D13 is still open; this says so rather than showing a placeholder
     // document as though it were the real one.
     draftNote:
-      "The full creator agreement is still with our legal team and isn't published yet. Your FynroX contact has the current draft — nothing here replaces what you signed.",
-    signedNote: "Your signed creator agreement governs this partnership. Contact your FynroX contact for a copy.",
+      "The full creator agreement is still with our legal team and isn't published yet. Your Fynrox contact has the current draft — nothing here replaces what you signed.",
+    signedNote: "Your signed creator agreement governs this partnership. Contact your Fynrox contact for a copy.",
   },
 
   account: {
@@ -109,7 +109,7 @@ export const en = {
     // D5 has no payout provider, so the details are collected by a human
     // on purpose — stated rather than hidden behind a disabled form.
     payoutNote:
-      "We collect bank or UPI details directly with your FynroX contact rather than through this portal, so they never sit in a form. If a payout fails, that is who to talk to.",
+      "We collect bank or UPI details directly with your Fynrox contact rather than through this portal, so they never sit in a form. If a payout fails, that is who to talk to.",
     support: "Support",
     boundary:
       "We can't answer questions about individual members — who they are, what they train, or anything they log. That applies to everyone, including partners.",

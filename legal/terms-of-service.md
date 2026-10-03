@@ -1,4 +1,4 @@
-# Terms of Service — FynroX
+# Terms of Service — Fynrox
 
 **Draft — 25 Aug 2026. This is a starting point written for launch speed, not a finished legal document. Have a lawyer review it before real users see it — this app processes real payments and handles health data, both of which carry real liability considerations a proper review should address. Replace every `[bracketed]` placeholder before publishing.**
 
@@ -6,15 +6,15 @@ Effective date: [DATE] · Last updated: [DATE]
 
 ## 1. Agreement
 
-By creating an account or using FynroX (the "Service," operated by [COMPANY LEGAL NAME], "we"/"us"), you agree to these Terms. If you don't agree, don't use the Service.
+By creating an account or using Fynrox (the "Service," operated by [COMPANY LEGAL NAME], "we"/"us"), you agree to these Terms. If you don't agree, don't use the Service.
 
-## 2. Who can use FynroX
+## 2. Who can use Fynrox
 
 You must be at least [16 / your jurisdiction's minimum age — NEEDS LEGAL REVIEW] years old. You're responsible for keeping your login credentials secure and for all activity under your account.
 
 ## 3. Not medical advice
 
-FynroX provides fitness and nutrition tracking tools and, where you choose to work with a coach, guidance from that coach. **Nothing in the Service is medical advice.** Consult a physician before starting any exercise or nutrition program, especially if you have an existing health condition. We are not responsible for injury or harm resulting from your use of workout or nutrition content in the Service.
+Fynrox provides fitness and nutrition tracking tools and, where you choose to work with a coach, guidance from that coach. **Nothing in the Service is medical advice.** Consult a physician before starting any exercise or nutrition program, especially if you have an existing health condition. We are not responsible for injury or harm resulting from your use of workout or nutrition content in the Service.
 
 ## 4. Subscriptions and payments
 

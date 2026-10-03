@@ -7,7 +7,7 @@
  * versa. Nested rather than flat because a flat file of several hundred
  * dotted keys is unreadable by the translators who work in it.
  *
- * Deliberately NOT here: product names (FynroX, FynroX Coach), which
+ * Deliberately NOT here: product names (Fynrox, Fynrox Coach), which
  * stay identical in every language, and anything the API sends back — a
  * decline reason, a client's name, a service label. Those are the API's
  * to translate, not this client's.
@@ -47,7 +47,7 @@ export const en = {
     },
     signup: {
       title: "Create your coaching account",
-      subtitle: "Join as a Professional and connect with clients on FynroX.",
+      subtitle: "Join as a Professional and connect with clients on Fynrox.",
       fullName: "Full name",
       email: "Email",
       phone: "Phone (optional)",
@@ -108,9 +108,9 @@ export const en = {
     // which is correct here and silently wrong in most of the ten
     // languages this catalogue is built for.
     stuck_one:
-      "This client relationship didn't finish activating and won't show up under Clients yet. This has been flagged to FynroX support — no action is required from you, but reach out to support if you expected this to be resolved by now.",
+      "This client relationship didn't finish activating and won't show up under Clients yet. This has been flagged to Fynrox support — no action is required from you, but reach out to support if you expected this to be resolved by now.",
     stuck_other:
-      "These {{count}} client relationships didn't finish activating and won't show up under Clients yet. This has been flagged to FynroX support — no action is required from you, but reach out to support if you expected this to be resolved by now.",
+      "These {{count}} client relationships didn't finish activating and won't show up under Clients yet. This has been flagged to Fynrox support — no action is required from you, but reach out to support if you expected this to be resolved by now.",
     // Stated plainly rather than rendered as disabled buttons: a control
     // that does nothing is a worse lie than a sentence saying so.
     notBuiltWorkoutPlan: "Create Workout Plan — not built yet",
@@ -153,7 +153,7 @@ export const en = {
     pendingRequests: "Pending client requests",
     stuckActivating: "Needs attention — stuck activating",
     openClientsTab: 'Open the Clients tab\'s "Pending Requests" to accept or decline.',
-    alreadyFlagged: "Already flagged to FynroX support — no action required from you.",
+    alreadyFlagged: "Already flagged to Fynrox support — no action required from you.",
   },
 
   earnings: {
@@ -164,7 +164,7 @@ export const en = {
     thisMonth: "This month",
     emptyTitle: "No settlements yet",
     emptySubtitle: "Once a period is settled it'll appear here with its payout status.",
-    bankDetailsNote: "If your bank details have changed, send the new ones to FynroX support so the retry succeeds.",
+    bankDetailsNote: "If your bank details have changed, send the new ones to Fynrox support so the retry succeeds.",
   },
 
   availability: {
@@ -183,19 +183,19 @@ export const en = {
       emptyTitle: "No pending requests",
       emptySubtitle:
         "When a user requests you as their coach, their request will show up here for you to accept or decline.",
-      offers: "Offers from FynroX",
+      offers: "Offers from Fynrox",
       offersEmptyTitle: "No offers right now",
       offersEmptySubtitle:
-        "When FynroX proposes you as a coach for a specific client, it'll show up here for you to accept or decline.",
-      offerNote: "FynroX proposed you as this client's coach — accepting creates the relationship.",
-      notResponded: "You haven't responded to this yet — FynroX support can see this too.",
+        "When Fynrox proposes you as a coach for a specific client, it'll show up here for you to accept or decline.",
+      offerNote: "Fynrox proposed you as this client's coach — accepting creates the relationship.",
+      notResponded: "You haven't responded to this yet — Fynrox support can see this too.",
     },
     offers: {
       title: "Offers",
       reasonPlaceholder: "At capacity, outside my speciality, schedule clash…",
       confirmDecline: "Confirm decline",
-      intro: "Clients FynroX has proposed you for.",
-      returned: "This went back to FynroX to be offered to someone else.",
+      intro: "Clients Fynrox has proposed you for.",
+      returned: "This went back to Fynrox to be offered to someone else.",
       whyDeclining: "Why are you declining? (optional — it helps us match better next time)",
     },
     recommendations: {

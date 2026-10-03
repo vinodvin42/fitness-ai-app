@@ -181,8 +181,8 @@ export function DashboardScreen() {
             <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.commercialStatus")}</div>
             <p className="mt-2 text-sm text-text-secondary">
               {data.gym.commercialConfigured
-                ? "Your commercial terms are configured. Contact your FynroX account manager for details."
-                : "Commercial terms have not been configured yet — reach out to your FynroX account manager."}
+                ? "Your commercial terms are configured. Contact your Fynrox account manager for details."
+                : "Commercial terms have not been configured yet — reach out to your Fynrox account manager."}
             </p>
           </div>
         </div>

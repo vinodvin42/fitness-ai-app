@@ -395,7 +395,7 @@ export async function declineOffer(professionalId: string, offerId: string, reas
 type OfferWithUserRow = OfferRow & { user: { fullName: string } };
 
 /**
- * Coach-facing listing — backs the "Offers from FynroX" section of
+ * Coach-facing listing — backs the "Offers from Fynrox" section of
  * apps/coach-mobile's Pending Requests screen. Defaults to only the
  * actionable `offered` ones, same "only the requested ones" default as
  * coaching.service.ts's listPendingRelationships, oldest first.

@@ -38,7 +38,7 @@ describe("Checkout quote and purchase history (U-M1, U-M22, D3)", () => {
       data: {
         id: planId,
         tier: "pro",
-        name: "FynroX Premium",
+        name: "Fynrox Premium",
         priceCents: PRICE_CENTS,
         billingCycle: "monthly",
         isActive: true,
@@ -80,7 +80,7 @@ describe("Checkout quote and purchase history (U-M1, U-M22, D3)", () => {
     expect(res.status).toBe(200);
     expect(res.body.listPriceCents).toBe(PRICE_CENTS);
     expect(res.body.totalCents).toBe(PRICE_CENTS);
-    expect(res.body.itemName).toBe("FynroX Premium");
+    expect(res.body.itemName).toBe("Fynrox Premium");
     // Decision: "UPI / card / netbanking", listed by the server so a
     // gateway change is not an app release.
     expect(res.body.methods.map((m: { id: string }) => m.id)).toEqual(["upi", "card", "netbanking"]);

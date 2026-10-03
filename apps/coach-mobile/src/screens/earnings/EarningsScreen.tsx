@@ -68,7 +68,7 @@ export function EarningsScreen(_props: Props) {
   return (
     <ScreenContainer title={t("earnings.title")}>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.lg }}>
-        FynroX takes {data.commissionPct}% commission on what you earn.
+        Fynrox takes {data.commissionPct}% commission on what you earn.
       </Text>
       {data.payoutFailure ? (
         <Card style={{ borderColor: colors.danger, marginBottom: spacing.lg }}>

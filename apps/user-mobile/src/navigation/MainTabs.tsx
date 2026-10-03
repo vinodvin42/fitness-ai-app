@@ -15,7 +15,7 @@ import { colors, typography } from "../theme/tokens";
 
 // The persistent 5-tab bottom bar — docs/mobile/02-information-architecture.md §2.
 //
-// **FynroX R1 (28 Sep 2026):** Today | Train | Fuel | Recover | More, per
+// **Fynrox R1 (28 Sep 2026):** Today | Train | Fuel | Recover | More, per
 // the handoff's §2 decision #1 ("Progress lives in More, plus a Progress
 // card on Today").
 //
