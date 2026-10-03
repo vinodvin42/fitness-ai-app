@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { BRAND_MARK } from "@fitness-ai-app/config";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { GlobalSearch } from "./GlobalSearch";
+import { BrandLockup } from "./BrandLockup";
 
 /**
  * The shared shell (docs/admin/02-information-architecture.md §1) — fixed
@@ -208,15 +208,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-canvas text-text-primary">
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
-        <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            {BRAND_MARK}
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("appShell.superAdmin")}</div>
-          </div>
-        </div>
+        <BrandLockup subtitle={t("appShell.superAdmin")} />
 
         <nav className="flex-1 space-y-0.5 px-3 py-4">
           {NAV_ITEMS.map((item) => {

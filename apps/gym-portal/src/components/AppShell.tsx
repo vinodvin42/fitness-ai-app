@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { BrandLockup } from "./BrandLockup";
 
 /**
  * Copies apps/admin-web's AppShell.tsx shape (fixed sidebar + fluid content
@@ -29,14 +30,8 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
   return (
     <div className="flex min-h-screen bg-canvas text-text-primary">
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
-        <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            FX
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">FYNROX</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">{t("shell.portalName")}</div>
-          </div>
+        <div className="flex items-center border-b border-border-subtle px-5 py-5">
+          <BrandLockup subtitle={t("shell.portalName")} />
         </div>
 
         <nav className="flex-1 space-y-0.5 px-3 py-4">
