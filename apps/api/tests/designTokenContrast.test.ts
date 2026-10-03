@@ -47,9 +47,26 @@ function tsTokens(src: string): Record<string, string> {
 }
 
 /** `--name: #rrggbb;` — both the CSS custom properties and Tailwind's @theme. */
-function cssTokens(src: string, prefix: string): Record<string, string> {
+function cssTokens(src: string, prefix: string, block?: string): Record<string, string> {
+  // `block` limits the scan to one rule, which a file with more than one
+  // palette needs. apps/landing gained a second on 3 Oct 2026: .band-dark
+  // redefines --bg, --text-primary and the rest for the one charcoal
+  // section, so that components dropped into it invert without being
+  // special-cased. Scanning the whole file meant those values overwrote
+  // :root's, and the suite then measured the light theme's text against
+  // the dark theme's surfaces — seven failures describing a combination
+  // that appears nowhere on the site. Each palette is now read from its
+  // own rule, and both are checked.
+  let scope = src;
+  if (block) {
+    const start = src.indexOf(block);
+    if (start < 0) return {};
+    const open = src.indexOf("{", start);
+    const end = src.indexOf("}", open);
+    scope = src.slice(open, end);
+  }
   const out: Record<string, string> = {};
-  for (const m of src.matchAll(new RegExp(`--${prefix}([\\w-]+):\\s*(#[0-9a-fA-F]{6})`, "g"))) out[m[1]] = m[2];
+  for (const m of scope.matchAll(new RegExp(`--${prefix}([\\w-]+):\\s*(#[0-9a-fA-F]{6})`, "g"))) out[m[1]] = m[2];
   return out;
 }
 
@@ -73,9 +90,25 @@ const PALETTES: Palette[] = [
   },
   {
     name: "landing",
-    tokens: cssTokens(read("apps/landing/assets/css/styles.css"), "(?:)"),
+    tokens: cssTokens(read("apps/landing/assets/css/styles.css"), "(?:)", ":root"),
     backgrounds: ["bg", "surface", "surface-raised", "surface-high"],
-    text: ["text-primary", "text-secondary", "text-muted", "accent", "accent-alt", "success", "warning", "danger"],
+    // orange, pink, cyan and ai-accent joined this list on 3 Oct 2026,
+    // when the site went light. They were already used as `color` —
+    // `color: var(--orange)`, `var(--pink)`, `var(--cyan)` and
+    // `var(--ai-accent)` each appear once in styles.css — so leaving
+    // them out was an omission, not a scoping decision. On the dark
+    // palette they happened to pass; the light palette had to darken all
+    // four, and nothing would have caught it if they had not.
+    text: ["text-primary", "text-secondary", "text-muted", "accent", "accent-alt", "success", "warning", "danger", "orange", "pink", "cyan", "ai-accent"],
+  },
+  {
+    // The site's one charcoal section. Fewer tokens are redefined than
+    // :root carries, so the text list is the subset .band-dark actually
+    // sets; the rest are inherited and already measured above.
+    name: "landing dark band",
+    tokens: cssTokens(read("apps/landing/assets/css/styles.css"), "(?:)", ".band-dark"),
+    backgrounds: ["bg", "surface", "surface-raised", "surface-high"],
+    text: ["text-primary", "text-secondary", "text-muted", "accent", "accent-alt"],
   },
   ...["admin-web", "gym-portal", "creator-portal"].map((app) => ({
     name: app,

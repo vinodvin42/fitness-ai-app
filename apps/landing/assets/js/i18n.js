@@ -1,5 +1,5 @@
 /*
- * FynroX landing page — runtime translation.
+ * Fynrox landing page — runtime translation.
  *
  * The rest of the product translates with i18next. This site cannot:
  * it has no build step and no framework (see README.md), and adding
