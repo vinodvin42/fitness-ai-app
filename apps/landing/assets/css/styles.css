@@ -306,8 +306,9 @@ button {
 .section-title {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.02em;
-  font-size: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
+  letter-spacing: -0.012em;
+  text-transform: uppercase;
+  font-size: clamp(1.5rem, 1.25rem + 1.1vw, 2.25rem);
   color: var(--text-primary);
   max-width: 40rem;
 }
@@ -331,13 +332,23 @@ button {
   gap: 0.5em;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 0.9375rem;
-  line-height: 1;
-  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  /* Not nowrap. Uppercasing these and adding 0.08em of tracking made
+     "Creator Partner Portal login" wider than a 390px phone, and nowrap
+     turned that into 41px of horizontal page scroll rather than a second
+     line. Long labels are rare and a wrapped button is fine; a page that
+     scrolls sideways on a phone is not. */
+  text-wrap: balance;
+  max-width: 100%;
+  text-align: center;
   text-decoration: none;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  padding: 0.85em 1.4em;
+  border-radius: var(--radius-sm);
+  padding: 1.05em 1.6em;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease,
     border-color 0.15s ease;
@@ -557,9 +568,10 @@ button {
 .page-hero__title {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  text-transform: uppercase;
+  font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.75rem);
   color: var(--text-primary);
 }
 
@@ -943,7 +955,7 @@ button {
 .hero {
   position: relative;
   overflow: hidden;
-  padding-block: clamp(3rem, 5vw + 1rem, 5.5rem) clamp(3.5rem, 6vw + 1rem, 6.5rem);
+  padding-block: clamp(2rem, 2.5vw + 0.75rem, 3.25rem) clamp(2.5rem, 3vw + 1rem, 4rem);
 }
 
 .hero__bg {
@@ -1014,7 +1026,7 @@ button {
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.08;
-  font-size: clamp(2.25rem, 1.5rem + 3.1vw, 4.5rem);
+  font-size: clamp(2rem, 1.35rem + 2.1vw, 3.125rem);
   color: var(--text-primary);
 }
 
@@ -2328,10 +2340,15 @@ button {
   }
 
   /* The inset frame hangs off the inner edge, so it stays on screen. */
+  /* Sits ON the corner of the photograph rather than floating clear of
+     it. The band bleeds toward the outer edge, so the inset hangs off
+     the inner one, where there is page to hang over. */
   .photo-band .photo-band__inset {
     right: auto;
     left: auto;
-    inset-inline-end: -2.25rem;
+    inset-inline-end: -1.5rem;
+    bottom: -1.5rem;
+    width: 9.5rem;
   }
 
   /* Dark band: the coach photographs run off the left edge. */
