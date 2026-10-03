@@ -114,7 +114,7 @@
       // link that opens the store loses the code entirely, and a visitor
       // who has to retype it needs to be able to read it.
       var code = readCode();
-      continueEl.href = "download.html?code=" + encodeURIComponent(code);
+      continueEl.href = "/download.html?code=" + encodeURIComponent(code);
 
       if (!data.deferredDeepLinkSupported) {
         var note = document.createElement("p");

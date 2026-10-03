@@ -300,9 +300,15 @@ describe("landing site translation", () => {
     // it.
     const wrong = PAGES.filter((p) => {
       const src = fs.readFileSync(path.join(LANDING, p), "utf8");
-      const srcs = [...src.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
-      const i18n = srcs.indexOf("assets/js/i18n.js");
-      const main = srcs.indexOf("assets/js/main.js");
+      // Matched on the file name rather than the whole path: the site's
+      // URLs became root-absolute on 3 Oct 2026 ("/assets/js/i18n.js"),
+      // and a check pinned to the old relative spelling reported all 24
+      // pages as broken when nothing about their order had changed.
+      const srcs = [...src.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"/g)].map((m) =>
+        m[1].split("/").pop(),
+      );
+      const i18n = srcs.indexOf("i18n.js");
+      const main = srcs.indexOf("main.js");
       return i18n < 0 || main < 0 || i18n > main;
     });
     expect(wrong, "pages missing i18n.js, or loading it after main.js").toEqual([]);

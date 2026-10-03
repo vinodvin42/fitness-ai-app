@@ -11,11 +11,22 @@ npm run dev --workspace=apps/landing
 ```
 
 Serves this folder at `http://localhost:4173` (override with `PORT=xxxx`).
-`serve.js` is a ~40-line zero-dependency static file server using only
-Node's built-in `http`/`fs` — nothing to `npm install`. You can also just
-open `index.html` directly in a browser; the only thing that won't work
-without a server is deep-linking straight to a `#hash` on first load in some
-browsers, which doesn't matter for how this page is actually used.
+`serve.js` is a zero-dependency static file server using only Node's
+built-in `http`/`fs` — nothing to `npm install`.
+
+Use it rather than opening `index.html` from the file system. Every URL
+in these pages is root-absolute (`/assets/css/styles.css`, not
+`assets/css/styles.css`), which `file://` cannot resolve, so a page
+opened straight from disk loads with no CSS.
+
+That was a deliberate trade on 3 Oct 2026. Relative URLs do open from
+disk, and they break everywhere else: `staticwebapp.config.json` rewrites
+`/gym/*` and `/r/*` — the invite links partners actually send — to a page
+whose relative stylesheet then resolves to `/gym/assets/css/styles.css`.
+Azure answers that with `404.html`, and a browser will not apply
+`text/html` as a stylesheet, so every invite and referral landing
+rendered as unstyled serif HTML in production. Opening from disk is a
+convenience; those links are the product.
 
 ## Deploy
 
