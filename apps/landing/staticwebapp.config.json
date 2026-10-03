@@ -30,7 +30,10 @@
   },
   "mimeTypes": {
     ".svg": "image/svg+xml",
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".woff2": "font/woff2",
+    ".mp4": "video/mp4",
+    ".jpg": "image/jpeg"
   },
   "responseOverrides": {
     "404": {

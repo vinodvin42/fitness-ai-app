@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AiCoachMessage } from "@fitness-ai-app/types";
-// A product name, not copy — it stays "FynroX AI" in every language, and
+// A product name, not copy — it stays "Fynrox AI" in every language, and
 // lives in one constant so a rename is one change.
 import { BRAND_AI_NAME } from "@fitness-ai-app/config";
 import { Card } from "../../components/Card";
@@ -69,7 +69,7 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
 /**
  * AI Coach Chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
  * Phase 2 §H) — the screen half of gap §13, now that
- * apps/api/src/modules/aiCoach is real. Branded "FynroX AI" per the
+ * apps/api/src/modules/aiCoach is real. Branded "Fynrox AI" per the
  * design doc. **R1 Developer 1 U1 (14 Sep 2026):** relocated from its own
  * former Recover tab into MoreStack (see that file's own comment) — "AI
  * is global" per the R1 work package's own nav rule, so the real entry

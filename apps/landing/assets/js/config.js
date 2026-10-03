@@ -12,7 +12,7 @@
  * form on the site — Early Access, contact, and the gym, creator and
  * professional applications — and both invite landings were posting
  * into a 404. They failed honestly (the pages say "We couldn't reach
- * FynroX" rather than pretending to succeed), which is exactly why it
+ * Fynrox" rather than pretending to succeed), which is exactly why it
  * could survive a casual look at the deployed site.
  *
  * The value below is the local-development default, matching what the

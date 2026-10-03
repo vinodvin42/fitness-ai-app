@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
  * both invite landings were posting into a 404.
  *
  * It survived because it fails honestly: the pages say "We couldn't
- * reach FynroX" rather than pretending to succeed. A reviewer clicking
+ * reach Fynrox" rather than pretending to succeed. A reviewer clicking
  * around sees a site that looks finished.
  *
  * The fix has three parts and all three have to hold together, which is

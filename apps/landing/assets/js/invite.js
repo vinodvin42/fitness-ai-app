@@ -1,5 +1,5 @@
 /*
- * W-M2 — "'Continue to FynroX' on invite / referral pages has no defined
+ * W-M2 — "'Continue to Fynrox' on invite / referral pages has no defined
  * destination. Installed app -> deep link with attribution; not installed
  * -> store with deferred deep link; pre-launch -> Early Access with
  * source prefilled."
@@ -78,10 +78,10 @@
       ? t("invite.gymInactiveTitle", "This invite isn't active")
       : t("invite.creatorInactiveTitle", "This link isn't active");
     subtitleEl.textContent = isGym
-      ? t("invite.gymInactiveBody", "You can still join FynroX on your own.")
+      ? t("invite.gymInactiveBody", "You can still join Fynrox on your own.")
       : t(
           "invite.creatorInactiveBody",
-          "You can still join FynroX \u2014 it only affects how the creator is credited.",
+          "You can still join Fynrox \u2014 it only affects how the creator is credited.",
         );
     if (unavailableEl) unavailableEl.hidden = false;
   }
@@ -89,16 +89,16 @@
   function showValid(data) {
     if (isGym) {
       titleEl.textContent = data.gymName
-        ? fill(t("invite.gymTitle", "{gym} invited you to FynroX"), "{gym}", data.gymName)
-        : t("invite.gymTitleFallback", "You've been invited to FynroX");
+        ? fill(t("invite.gymTitle", "{gym} invited you to Fynrox"), "{gym}", data.gymName)
+        : t("invite.gymTitleFallback", "You've been invited to Fynrox");
       subtitleEl.textContent = t(
         "invite.gymSubtitle",
         "Create your account and your training plan will be built around the equipment they actually have.",
       );
     } else {
       titleEl.textContent = data.creatorName
-        ? fill(t("invite.creatorTitle", "{creator} sent you to FynroX"), "{creator}", data.creatorName)
-        : t("invite.creatorTitleFallback", "Welcome to FynroX");
+        ? fill(t("invite.creatorTitle", "{creator} sent you to Fynrox"), "{creator}", data.creatorName)
+        : t("invite.creatorTitleFallback", "Welcome to Fynrox");
       subtitleEl.textContent = t(
         "invite.creatorSubtitle",
         "Training, nutrition and recovery, with an AI coach grounded in your own data.",

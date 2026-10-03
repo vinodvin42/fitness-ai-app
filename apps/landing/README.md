@@ -1,6 +1,6 @@
-# FynroX — Landing Page
+# Fynrox — Landing Page
 
-Public marketing/landing page for FynroX. Plain static HTML/CSS/vanilla
+Public marketing/landing page for Fynrox. Plain static HTML/CSS/vanilla
 JS — no build step, no framework, no npm dependencies. Deploys to Azure
 Static Web Apps alongside `apps/admin-web` and `apps/user-mobile`.
 
@@ -103,7 +103,7 @@ URL compiled in by Vite; a folder of static HTML has no compile step to
 inject anything into. Without `config.js` these scripts fell back to a
 same-origin `/api`, which the Static Web App has no route for and no
 linked backend to serve — so every form here, and both invite landings,
-posted into a 404. They failed *honestly* ("We couldn't reach FynroX"),
+posted into a 404. They failed *honestly* ("We couldn't reach Fynrox"),
 which is precisely why the deployed site looked finished.
 
 `apps/api/tests/landingApiBase.test.ts` holds all three parts together:
@@ -196,7 +196,7 @@ Two rules worth keeping:
    rather than telling a gym its application was declined.
 
 What these replaced was a `mailto:` link, which has exactly one outcome
-and produces nothing anyone at FynroX can see or reply to.
+and produces nothing anyone at Fynrox can see or reply to.
 
 ## What this page deliberately does not say
 
@@ -207,7 +207,7 @@ video exercise demos, no live chat — none of these are built; see
 open.
 
 `pricing.html` shows three tiers because the app really does sell three
-today. R1 decision D3 collapses them to one FynroX Premium tier, and this
+today. R1 decision D3 collapses them to one Fynrox Premium tier, and this
 page should change when the plans do — not before. A marketing page that
 describes a tier structure the checkout doesn't have is worse than one
 that's behind.

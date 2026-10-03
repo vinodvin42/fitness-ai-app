@@ -1,7 +1,7 @@
 /**
  * R1 build-to defaults, as configuration.
  *
- * "FynroX R1 — Final Design QA & Build Handoff" §12 ("Open product
+ * "Fynrox R1 — Final Design QA & Build Handoff" §12 ("Open product
  * decisions") lists 14 decisions that are still open and instructs:
  *
  * > Each has a default developers can build to now; code it behind
@@ -78,7 +78,7 @@ export const r1Flags = {
   GAMIFICATION_ENABLED: envFlag("FYNROX_GAMIFICATION_ENABLED", false),
 
   /**
-   * Overview "Locked decisions" — the paid tier is FynroX Premium,
+   * Overview "Locked decisions" — the paid tier is Fynrox Premium,
    * singular. `true` collapses the basic/pro/elite ladder to one tier
    * for entitlement and display purposes.
    */

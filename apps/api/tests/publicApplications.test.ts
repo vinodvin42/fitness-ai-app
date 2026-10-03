@@ -207,7 +207,7 @@ describe("Public applications (§8 website forms)", () => {
     // The marketing site is a separate deploy and may sit on a different
     // origin than the API — driving the real form against a local API on
     // another port is exactly how this was found, with the browser
-    // blocking the POST and the page showing "we couldn't reach FynroX".
+    // blocking the POST and the page showing "we couldn't reach Fynrox".
     //
     // The dangerous part is the pairing: an open origin PLUS credentials
     // lets any site make authenticated requests with a visitor's

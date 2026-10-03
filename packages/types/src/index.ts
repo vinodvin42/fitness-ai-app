@@ -1709,7 +1709,7 @@ export interface AvailableProfessionalsResponse {
 /**
  * One row of GET /professionals/me/offers — the coach-facing counterpart to
  * `PendingRelationshipItem` above, backing apps/coach-mobile's "Offers from
- * FynroX" section. Deliberately a distinct type/shape from
+ * Fynrox" section. Deliberately a distinct type/shape from
  * PendingRelationshipItem: an offer is a separate row that only creates a
  * Relationship once accepted, not the same entity under a different name.
  */

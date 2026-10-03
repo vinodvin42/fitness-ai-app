@@ -35,7 +35,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "RequestGuidance">;
  * skip the screen.
  *
  * Deliberately shows no professional names, photos, ratings or prices
- * anywhere: the user is asking FynroX for help, not shopping. The only
+ * anywhere: the user is asking Fynrox for help, not shopping. The only
  * choice offered is fitness vs nutrition, which is the choice §10's
  * relationship limit is expressed in.
  */

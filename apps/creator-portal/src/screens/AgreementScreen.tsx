@@ -25,7 +25,7 @@ const STATUS_COPY: Record<string, string> = {
   draft: "Your application hasn't been submitted yet.",
   pending_review: "We're reviewing your application. We'll email you as soon as there's a decision.",
   more_info: "We need a bit more information before we can approve your partnership — check your email.",
-  rejected: "We weren't able to approve this application. Your FynroX contact can explain why.",
+  rejected: "We weren't able to approve this application. Your Fynrox contact can explain why.",
   suspended:
     "Your partnership is suspended, so your links won't attribute new signups. Commission already earned is unaffected.",
   ended:

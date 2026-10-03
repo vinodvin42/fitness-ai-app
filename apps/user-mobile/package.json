@@ -2,7 +2,7 @@
   "name": "@fitness-ai-app/user-mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "FynroX consumer mobile app — React Native + Expo (stack decided 18 Aug 2026, see ../../docs/platform/project-structure.md §2). Grew from Phase 1's Onboarding + Today/Train/Fuel core loop through Phase 4: workouts, nutrition, progress, AI Coach chat, real Razorpay payments, coach discovery/booking, referrals, reminders, and account/security settings are all real — see README.md for the full real-vs-not breakdown.",
+  "description": "Fynrox consumer mobile app — React Native + Expo (stack decided 18 Aug 2026, see ../../docs/platform/project-structure.md §2). Grew from Phase 1's Onboarding + Today/Train/Fuel core loop through Phase 4: workouts, nutrition, progress, AI Coach chat, real Razorpay payments, coach discovery/booking, referrals, reminders, and account/security settings are all real — see README.md for the full real-vs-not breakdown.",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

@@ -29,7 +29,7 @@ type MoreTarget =
  * feature-level notes on which rows are real vs. the one inert "Programs"
  * placeholder.
  *
- * **FynroX R1 (28 Sep 2026):** "Progress" is back in this list and
+ * **Fynrox R1 (28 Sep 2026):** "Progress" is back in this list and
  * "Recover" is out, reversing the 14 Sep swap — the handoff's §2 decision
  * #1 puts Recover in the tab bar and Progress in More, and explicitly
  * changes the BR-USR-001/002 rules that drove the 14 Sep version. See

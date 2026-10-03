@@ -8,7 +8,7 @@ export const deepLinksRouter = Router();
 
 
 /**
- * W-M2 — "'Continue to FynroX' on invite / referral pages has no defined
+ * W-M2 — "'Continue to Fynrox' on invite / referral pages has no defined
  * destination. Installed app -> deep link with attribution; not installed
  * -> store with deferred deep link; pre-launch -> Early Access with
  * source prefilled."

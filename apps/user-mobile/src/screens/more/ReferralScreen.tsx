@@ -54,7 +54,7 @@ export function ReferralScreen({ navigation: _navigation }: Props) {
   const onShare = async () => {
     if (!data) return;
     await Share.share({
-      message: `Join me on FynroX! Use my referral code ${data.code} when you sign up.`,
+      message: `Join me on Fynrox! Use my referral code ${data.code} when you sign up.`,
     });
   };
 

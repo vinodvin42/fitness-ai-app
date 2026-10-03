@@ -120,7 +120,7 @@ function navBlock(current) {
 function bottomBlock() {
   return [
     '    <div class="wrap footer__bottom">',
-    '      <p data-i18n-html="shell.copyright" class="footer__copy">\u00a9 <span id="year">2026</span> FynroX. Not a substitute for professional medical advice.</p>',
+    '      <p data-i18n-html="shell.copyright" class="footer__copy">\u00a9 <span id="year">2026</span> Fynrox. Not a substitute for professional medical advice.</p>',
     '      <div class="footer__lang-wrap" data-i18n-picker hidden></div>',
     "    </div>",
     "  </footer>",

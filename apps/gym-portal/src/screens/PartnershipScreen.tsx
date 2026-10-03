@@ -104,8 +104,8 @@ export function PartnershipScreen() {
         <h2 className="text-sm font-semibold text-text-primary">{t("partnership.commercialTerms")}</h2>
         <p className="mt-2 text-sm text-text-secondary">
           {p.commercialConfigured
-            ? "Your commercial terms are agreed and on file. Your FynroX account manager has the details."
-            : "Your commercial terms haven't been set up yet. Your FynroX account manager will be in touch."}
+            ? "Your commercial terms are agreed and on file. Your Fynrox account manager has the details."
+            : "Your commercial terms haven't been set up yet. Your Fynrox account manager will be in touch."}
         </p>
       </section>
     </AppShell>

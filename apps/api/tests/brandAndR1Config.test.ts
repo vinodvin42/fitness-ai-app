@@ -28,9 +28,9 @@ const app = createApp();
  */
 describe("Brand constants (handoff §2, QA Q1/Q4/Q5)", () => {
   it("names the product, the AI and the paid tier exactly as the handoff locks them", () => {
-    expect(BRAND_NAME).toBe("FynroX");
-    expect(BRAND_AI_NAME).toBe("FynroX AI");
-    expect(BRAND_PREMIUM_NAME).toBe("FynroX Premium");
+    expect(BRAND_NAME).toBe("Fynrox");
+    expect(BRAND_AI_NAME).toBe("Fynrox AI");
+    expect(BRAND_PREMIUM_NAME).toBe("Fynrox Premium");
   });
 
   it("uses fynrox.com for email and fynrox.app for links, lowercase (Q4/Q5)", () => {
@@ -39,7 +39,7 @@ describe("Brand constants (handoff §2, QA Q1/Q4/Q5)", () => {
     expect(creatorReferralUrl("aashish24")).toBe("https://fynrox.app/r/aashish24");
     // The defect was casing, so assert it directly rather than trusting
     // the constant's spelling above.
-    expect(gymInviteUrl("X")).not.toMatch(/FynroX\.app/);
+    expect(gymInviteUrl("X")).not.toMatch(/Fynrox\.app/);
   });
 });
 
@@ -101,7 +101,7 @@ describe("R1 build-to defaults (handoff §12)", () => {
     expect(r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED).toBe(false);
     // Decision #13: no streaks, badges or achievements in R1.
     expect(r1Flags.GAMIFICATION_ENABLED).toBe(false);
-    // One paid tier: FynroX Premium.
+    // One paid tier: Fynrox Premium.
     expect(r1Flags.SINGLE_PREMIUM_TIER).toBe(true);
   });
 

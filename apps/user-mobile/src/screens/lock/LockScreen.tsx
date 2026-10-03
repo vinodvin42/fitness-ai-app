@@ -42,7 +42,7 @@ export function LockScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.logo}>FynroX</Text>
+        <Text style={styles.logo}>Fynrox</Text>
         <Text style={styles.subtitle}>{t("lock.subtitle")}</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>

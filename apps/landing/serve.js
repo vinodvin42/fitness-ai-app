@@ -26,7 +26,16 @@ const MIME_TYPES = {
   ".ico": "image/x-icon",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
   ".webmanifest": "application/manifest+json",
+  // Added with the site's photography and self-hosted fonts. Without an
+  // entry here the fallback type made Chrome refuse the video outright
+  // and treat the woff2 files as something it would not use as a font,
+  // so a local preview silently lost both — the one thing this server
+  // exists to show faithfully.
+  ".mp4": "video/mp4",
+  ".woff2": "font/woff2",
 };
 
 /*
@@ -80,5 +89,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`FynroX landing page → http://localhost:${PORT}`);
+  console.log(`Fynrox landing page → http://localhost:${PORT}`);
 });

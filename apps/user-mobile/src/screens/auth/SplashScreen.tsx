@@ -35,7 +35,7 @@ export function SplashScreen({ navigation }: Props) {
         <View style={styles.mark}>
           <Icon name="zap" size={40} color={colors.textOnAccent} strokeWidth={2.5} />
         </View>
-        <Text style={styles.logo}>FynroX</Text>
+        <Text style={styles.logo}>Fynrox</Text>
         <Text style={styles.tagline}>{t("auth.splash.tagline")}</Text>
       </View>
 

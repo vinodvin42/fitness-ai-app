@@ -8,7 +8,7 @@
  *
  * What these forms replace is a `mailto:` link. A mailto has exactly one
  * outcome — "a mail client opened, maybe" — and produces nothing anyone
- * at FynroX can see, count or reply to. That is why none of the four
+ * at Fynrox can see, count or reply to. That is why none of the four
  * states could exist before.
  *
  * Progressive enhancement, like main.js and invite.js: with JavaScript
@@ -227,7 +227,7 @@
           showState(
             form,
             "error",
-            t("forms.networkErrorTitle", "We couldn't reach FynroX"),
+            t("forms.networkErrorTitle", "We couldn't reach Fynrox"),
             t(
               "forms.networkErrorBody",
               "Your connection dropped before we could save this. Nothing was submitted \u2014 please try again.",

@@ -2,7 +2,7 @@
   "name": "@fitness-ai-app/coach-mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "FynroX coach mobile app — React Native + Expo, mirrors apps/user-mobile's proven config (docs/platform/project-structure.md §2). Phase 5, added 20 Aug 2026: coach auth + onboarding (service selection, credential upload, KYC) + dashboard, plus a real Calendar tab (26 Aug 2026). Discovery/booking live in apps/user-mobile instead (25 Aug 2026); Clients/Messages/More tabs still not built — see README.md.",
+  "description": "Fynrox coach mobile app — React Native + Expo, mirrors apps/user-mobile's proven config (docs/platform/project-structure.md §2). Phase 5, added 20 Aug 2026: coach auth + onboarding (service selection, credential upload, KYC) + dashboard, plus a real Calendar tab (26 Aug 2026). Discovery/booking live in apps/user-mobile instead (25 Aug 2026); Clients/Messages/More tabs still not built — see README.md.",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

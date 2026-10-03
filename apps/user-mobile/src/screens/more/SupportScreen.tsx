@@ -159,7 +159,7 @@ export function SupportScreen({ navigation }: Props) {
       </Card>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.lg }}>
-        FynroX v{Constants.expoConfig?.version ?? "—"}
+        Fynrox v{Constants.expoConfig?.version ?? "—"}
       </Text>
     </ScreenContainer>
   );

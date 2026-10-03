@@ -9,26 +9,22 @@
        and silently left the invite stuck on "Checking your invite". -->
   <base href="/" />
   <meta charset="UTF-8" />
-  <title data-i18n="gymInvite.pageTitle">Join FynroX with your gym</title>
+  <title data-i18n="gymInvite.pageTitle">Join Fynrox with your gym</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta data-i18n-attr="content:gymInvite.metaDescription" name="description" content="Your gym has invited you to FynroX. Create your account and your plan will be built around the equipment they actually have." />
-  <meta name="theme-color" content="#0B0C10" />
-  <meta name="color-scheme" content="dark" />
+  <meta data-i18n-attr="content:gymInvite.metaDescription" name="description" content="Your gym has invited you to Fynrox. Create your account and your plan will be built around the equipment they actually have." />
+  <meta name="theme-color" content="#F6F4EB" />
+  <meta name="color-scheme" content="light" />
 
-  <meta data-i18n-attr="content:gymInvite.metaOgTitle" property="og:title" content="Join FynroX with your gym" />
-  <meta data-i18n-attr="content:gymInvite.metaOgDescription" property="og:description" content="Your gym has invited you to FynroX. Create your account and your plan will be built around the equipment they actually have." />
+  <meta data-i18n-attr="content:gymInvite.metaOgTitle" property="og:title" content="Join Fynrox with your gym" />
+  <meta data-i18n-attr="content:gymInvite.metaOgDescription" property="og:description" content="Your gym has invited you to Fynrox. Create your account and your plan will be built around the equipment they actually have." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <link rel="stylesheet" href="assets/css/fonts.css" />
   <link rel="stylesheet" href="assets/css/styles.css" />
+  <script>document.documentElement.className += " has-js";</script>
 </head>
 <body>
   <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
@@ -36,8 +32,8 @@
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
       <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">FX</span>
-        <span class="brand__word">FynroX</span>
+        <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+        <span class="brand__word">Fynrox</span>
       </a>
       <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
         <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -67,7 +63,7 @@
           One moment while we look up the gym that invited you.
         </p>
         <div class="page-hero__actions" id="inviteActions" hidden>
-          <a data-i18n="gymInvite.continueToFynrox" class="btn btn--primary btn--lg" id="inviteContinue" href="download.html">Continue to FynroX</a>
+          <a data-i18n="gymInvite.continueToFynrox" class="btn btn--primary btn--lg" id="inviteContinue" href="download.html">Continue to Fynrox</a>
         </div>
       </div>
     </section>
@@ -81,7 +77,7 @@
         <div class="note-box" id="inviteUnavailable" hidden>
           <strong data-i18n="gymInvite.thisInviteLinkIsnt">This invite link isn't active.</strong>
           <p data-i18n="gymInvite.itMayHaveExpired">
-            It may have expired, or the gym's partnership may have changed. You can still join FynroX on your own —
+            It may have expired, or the gym's partnership may have changed. You can still join Fynrox on your own —
             nothing about your account depends on the invite.
           </p>
           <p><a data-i18n="gymInvite.joinWithoutAGym" class="btn btn--ghost btn--sm" href="download.html">Join without a gym</a></p>
@@ -121,8 +117,8 @@
     <div class="wrap footer__inner">
       <div class="footer__brand">
         <span class="brand">
-          <span class="brand__mark" aria-hidden="true">FX</span>
-          <span class="brand__word">FynroX</span>
+          <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+          <span class="brand__word">Fynrox</span>
         </span>
         <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
           Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
@@ -167,7 +163,7 @@
       </nav>
     </div>
     <div class="wrap footer__bottom">
-      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> FynroX. Not a substitute for professional medical advice.</p>
+      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> Fynrox. Not a substitute for professional medical advice.</p>
       <div class="footer__lang-wrap" data-i18n-picker hidden></div>
     </div>
   </footer>

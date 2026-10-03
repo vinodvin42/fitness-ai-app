@@ -5,7 +5,7 @@ import { AiCoachScreen } from "../screens/recover/AiCoachScreen";
 import { RecoveryScreen } from "../screens/recover/RecoveryScreen";
 
 /**
- * The Recover tab — "FynroX R1 — Final Design QA & Build Handoff" §2,
+ * The Recover tab — "Fynrox R1 — Final Design QA & Build Handoff" §2,
  * decision #1: "Today / Train / Fuel / Recover / More. Progress lives in
  * More, plus a Progress card on Today."
  *

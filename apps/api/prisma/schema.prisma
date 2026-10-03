@@ -1483,7 +1483,7 @@ model SafetyEscalation {
 //
 // One flat, ordered message log per user, not a multi-conversation-
 // thread inbox — docs/mobile/01-product-requirements.md and
-// 03-screen-inventory.md §H both describe a single ongoing "FynroX AI"
+// 03-screen-inventory.md §H both describe a single ongoing "Fynrox AI"
 // chat (one FAB, one thread), not a list of separate conversations, so
 // modeling a `Conversation` parent would invent structure nothing in
 // the spec asks for. Stores both the user's turns and the assistant's
@@ -2017,7 +2017,7 @@ model Payment {
 }
 
 // ---- Admin console (Phase 6, added 20 Aug 2026) ---------------------------
-// A genuinely separate identity from `User` — an AdminUser is FynroX
+// A genuinely separate identity from `User` — an AdminUser is Fynrox
 // internal staff operating the Super Admin Console
 // (docs/admin/01-product-requirements.md), not a customer. Kept as its own
 // table (not a `role` flag on `User`) so a compromised/leaked consumer
@@ -2612,7 +2612,7 @@ model RelationshipChangeRequest {
 // for the user-initiated journey (see coaching.service.ts's own top
 // comment's changelog), and folding a second, differently-shaped proposal
 // flow into it would mean overloading `requested` with two different real
-// meanings ("a user asked for this coach" vs. "FynroX proposed this
+// meanings ("a user asked for this coach" vs. "Fynrox proposed this
 // coach"), which the two flows' own different semantics (a Relationship
 // request already exists as its own row the moment a user taps "Request";
 // an Offer is a separate row that only creates a Relationship once
@@ -3926,7 +3926,7 @@ enum GuidanceRequestStatus {
 /// Gym Partner Lite — "trainer help requests + request detail", which the
 /// handoff lists among the portal's complete-as-designed screens.
 ///
-/// A gym asking FynroX for help with a member's programme is an
+/// A gym asking Fynrox for help with a member's programme is an
 /// OPERATIONAL request, and BR-GYM-003 is the constraint that shapes this
 /// model: "Gyms see operational aggregates only ... never health,
 /// nutrition logs, photos or AI chats." So a request carries the gym's

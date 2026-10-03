@@ -134,7 +134,7 @@ export function TodayScreen({ navigation }: Props) {
     >
       <AIBanner
         title={t("today.aiCoachReady")}
-        body="Ask FynroX AI for training, nutrition, or recovery guidance grounded in your real progress."
+        body="Ask Fynrox AI for training, nutrition, or recovery guidance grounded in your real progress."
         ctaLabel="Open chat"
         onPress={() => navigation.navigate("Recover", { screen: "AiCoach" })}
       />

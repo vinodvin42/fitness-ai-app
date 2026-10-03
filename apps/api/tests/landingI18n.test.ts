@@ -44,7 +44,7 @@ const VOID = new Set([
 /** Contents that are not prose: script bodies, CSS, icon paths. */
 const OPAQUE = new Set(["script", "style", "svg"]);
 /** Brand tokens read the same in every language. */
-const BRAND = new Set(["FynroX", "FX", "FYNROX"]);
+const BRAND = new Set(["Fynrox", "FX", "FYNROX"]);
 
 interface Node {
   name: string;
@@ -290,10 +290,19 @@ describe("landing site translation", () => {
     // main.js rewrites the footer year and download.html writes a
     // referral code into translated markup. Both re-run on the
     // `fynrox:i18n` event, but only if i18n.js was there to dispatch it.
+    //
+    // Matched against the actual <script src> tags rather than against
+    // the raw text of the file. indexOf over the whole source also found
+    // the filename inside an HTML comment — index.html has one above the
+    // hero explaining that main.js attaches the video source — and
+    // reported the page as loading its scripts in the wrong order when
+    // the order was fine. A comment mentioning a file is not a load of
+    // it.
     const wrong = PAGES.filter((p) => {
       const src = fs.readFileSync(path.join(LANDING, p), "utf8");
-      const i18n = src.indexOf("assets/js/i18n.js");
-      const main = src.indexOf("assets/js/main.js");
+      const srcs = [...src.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+      const i18n = srcs.indexOf("assets/js/i18n.js");
+      const main = srcs.indexOf("assets/js/main.js");
       return i18n < 0 || main < 0 || i18n > main;
     });
     expect(wrong, "pages missing i18n.js, or loading it after main.js").toEqual([]);

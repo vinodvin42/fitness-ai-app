@@ -96,7 +96,7 @@ export const en = {
     },
     signup: {
       title: "Create your account",
-      subtitle: "Start your fitness journey with FynroX.",
+      subtitle: "Start your fitness journey with Fynrox.",
       fullName: "Full name",
       email: "Email",
       password: "Password (min. 8 characters)",
@@ -174,7 +174,7 @@ export const en = {
     switch: "Switch",
     choose: "Choose",
     // Plan TIER names (Basic / Pro / Elite) are deliberately absent: they
-    // are product names, like FynroX itself, and translating them would
+    // are product names, like Fynrox itself, and translating them would
     // make a user's plan unrecognisable against their receipt.
     features: {
       tracking: "Workout & nutrition tracking",
@@ -585,10 +585,10 @@ export const en = {
   },
 
   aiCoach: {
-    // FynroX AI is a product name and stays as-is in every language, for
+    // Fynrox AI is a product name and stays as-is in every language, for
     // the same reason the plan tiers do.
     unavailable: "AI Coach isn't available yet",
-    greeting: "Hey — I'm FynroX AI.",
+    greeting: "Hey — I'm Fynrox AI.",
     placeholder: "Ask your coach anything…",
     messageA11y: "Message to AI Coach",
     sendA11y: "Send message",
@@ -597,7 +597,7 @@ export const en = {
   recoverHub: {
     title: "Recover",
     subtitle: "Rest, recovery & AI guidance",
-    chat: "Chat with FynroX AI",
+    chat: "Chat with Fynrox AI",
     log: "Recovery Log",
     logSubtitle: "Resting HR, sleep, HRV, soreness & energy",
     open: "Open Recovery",
@@ -958,7 +958,7 @@ export const en = {
     allSet: "You're all set",
     received: "Payment received",
     wentWrong: "Something went wrong",
-    activeNow: "Your subscription is now active. Enjoy FynroX.",
+    activeNow: "Your subscription is now active. Enjoy Fynrox.",
     didNotGoThrough: "Your payment didn't go through.",
     notCharged: "You haven't been charged.",
     activationPending:

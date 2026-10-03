@@ -333,7 +333,7 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
             professionalId: coach.id,
             serviceType,
             certificationName: "Demo Certification",
-            certifyingBody: "FynroX Demo Data",
+            certifyingBody: "Fynrox Demo Data",
             yearObtained: 2020,
             status: "verified",
           },

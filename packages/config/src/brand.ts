@@ -12,13 +12,20 @@
  * support address. QA defect Q1 (FynroX / FynroX AI / FynroX),
  * Q4 (mixed link domains and casing) and Q5 (@FynroX.com in capitals)
  * all exist because the previous build had no such constant.
+ *
+ * CASING, 3 Oct 2026 — the quoted passage above is left verbatim
+ * because it is what the handoff document says. It is no longer what
+ * the product is called. The delivered logo wordmark reads "Fynrox",
+ * the owner confirmed that spelling, and the constants below follow the
+ * logo rather than the spec. Treat the quote as a record of the handoff,
+ * not as the current answer; "FynroX" should not appear on any surface.
  */
 
 /** Product name, everywhere. */
-export const BRAND_NAME = "FynroX";
+export const BRAND_NAME = "Fynrox";
 
-/** The AI assistant's name. Never "FynroX's AI" — it is a proper noun. */
-export const BRAND_AI_NAME = "FynroX AI";
+/** The AI assistant's name. Never "Fynrox's AI" — it is a proper noun. */
+export const BRAND_AI_NAME = "Fynrox AI";
 
 /**
  * The square logo mark — the brand's initials, not its name.
@@ -33,7 +40,7 @@ export const BRAND_AI_NAME = "FynroX AI";
 export const BRAND_MARK = "FX";
 
 /** The single R1 paid tier (see `r1Flags.SINGLE_PREMIUM_TIER`). */
-export const BRAND_PREMIUM_NAME = "FynroX Premium";
+export const BRAND_PREMIUM_NAME = "Fynrox Premium";
 
 /**
  * Link domain. Lowercase — Q4/Q5 are both casing defects, so the
@@ -62,7 +69,7 @@ export function gymInviteUrl(gymCode: string): string {
 
 /**
  * Creator referral link — `fynrox.app/r/{creatorCode}`. The Figma shows
- * both `FynroX.app/r/aashish24` and `app.example/r/aashish24`; neither
+ * both `Fynrox.app/r/aashish24` and `app.example/r/aashish24`; neither
  * is correct.
  */
 export function creatorReferralUrl(creatorCode: string): string {

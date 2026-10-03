@@ -1,5 +1,5 @@
 /*
- * FynroX — landing page styles
+ * Fynrox — landing page styles
  *
  * Design tokens below are ported 1:1 from apps/user-mobile/src/theme/tokens.ts
  * (Design System v2, 31 Aug 2026 — the OLED-first "instrument panel" look).
@@ -16,74 +16,89 @@
 /* ---------------------------------------------------------------------- */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Surfaces */
-  --bg: #0b0c10;
-  --surface: #14161c;
-  --surface-raised: #1b1e26;
-  --surface-high: #242833;
-  --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* Surfaces — cream canvas, white cards, a deeper cream for insets.
+   * surface-high is the DARKEST of the four, so it is the worst case for
+   * every text token below; that is the surface the contrast test
+   * measures against. */
+  --bg: #F6F4EB;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFDF7;
+  --surface-high: #EFEBDC;
+  --border: rgba(26, 26, 26, 0.12);
+  --border-strong: rgba(26, 26, 26, 0.24);
 
   /* Text */
-  --text-primary: #edf0f5;
-  --text-secondary: #98a2b3;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4D51;
   /*
-   * Lightened from #5e6675 on 29 Sep 2026. An axe-core pass over all 24
-   * pages at WCAG 2.1 AA returned 189 contrast failures and every single
-   * one was this token: 3.38:1 on the canvas, 2.88:1 on a raised
-   * surface, against a 4.5:1 requirement. It is used for exactly the
-   * text a low-vision reader most needs — footer column headings, dates,
-   * "not built yet" notes, field hints.
+   * Measured, not eyeballed — the same discipline the dark palette
+   * learned the hard way. Every value below clears 4.5:1 against all
+   * four surfaces, worst case on --surface-high:
    *
-   * #8b919c measures 4.65:1 on --surface-high, the lightest surface in
-   * this palette and therefore the worst case, and better on every other.
+   *   text-primary   14.58:1   accent        4.95:1
+   *   text-secondary  7.12:1   accent-alt    6.85:1
+   *   text-muted      5.21:1   success       5.43:1
+   *   orange          6.11:1   warning       6.03:1
+   *   pink            5.96:1   danger        6.33:1
+   *   cyan            5.11:1   ai-accent     5.41:1
    *
-   * The first attempt at this fix was #838b98, chosen because it cleared
-   * every combination axe-core actually flagged. The palette-level test
-   * (apps/api/tests/designTokenContrast.test.ts) then failed it at 4.28:1
-   * on --surface-high — a pairing no page happens to render today, so no
-   * DOM audit could have caught it, and the next card built on that
-   * surface would have shipped the failure back. Fixing the palette beats
-   * fixing the pages that use it.
-   *
-   * Same value as apps/user-mobile/src/theme/tokens.ts's `textMuted`,
-   * which this file is ported from and which had the identical defect.
+   * The brand's own slate (#8E9194) and gold (#DA9F3E) are 2.88:1 and
+   * 2.12:1 on cream. Neither can carry text, so --text-muted and
+   * --accent are darkened derivations of them rather than the brand
+   * values themselves. The gold is still the gold — it just does its
+   * job as a fill (--accent-fill), where charcoal on it is 7.47:1.
    */
-  --text-muted: #8b919c;
-  --text-on-accent: #04120e;
+  --text-muted: #5E6165;
+  /** Ink that sits ON --accent-fill. Charcoal on brand gold, 7.47:1. */
+  --text-on-accent: #1A1A1A;
 
-  /* Brand accent (mint-cyan) */
-  --accent: #35e6c5;
-  --accent-alt: #0fb89a;
-  --accent-soft: rgba(53, 230, 197, 0.16);
+  /* Brand gold.
+   *
+   * Two tokens on purpose, and the split is load-bearing. --accent is
+   * ink: links, dots, focus rings, meter bars — anything whose colour
+   * has to be legible against cream. --accent-fill is the brand gold
+   * itself, used only as a background with --text-on-accent on top.
+   *
+   * Using one token for both is what made the light theme fail: gold
+   * reads beautifully as a fill and is unreadable as text. There is a
+   * test (landingAccentFill in apps/api/tests/landingTheme.test.ts)
+   * asserting --accent-fill never appears in a `color:` declaration, so
+   * this is enforced rather than remembered. */
+  --accent: #8A5A0E;
+  --accent-alt: #6E4708;
+  --accent-fill: #DA9F3E;
+  --accent-fill-strong: #C68B2A;
+  --accent-soft: rgba(218, 159, 62, 0.18);
 
   /* AI accent — reserved for AI Coach touchpoints only, same rule the app follows */
-  --ai-accent: #9b87ff;
-  --ai-accent-soft: rgba(155, 135, 255, 0.16);
+  --ai-accent: #5B4BC4;
+  --ai-accent-soft: rgba(91, 75, 196, 0.14);
 
   /* Status */
-  --success: #3fe08a;
-  --success-soft: rgba(63, 224, 138, 0.16);
-  --warning: #ffb020;
-  --warning-soft: rgba(255, 176, 32, 0.16);
-  --danger: #ff5064;
-  --danger-soft: rgba(255, 80, 100, 0.16);
+  --success: #1C6B44;
+  --success-soft: rgba(28, 107, 68, 0.12);
+  --warning: #7A4E00;
+  --warning-soft: rgba(122, 78, 0, 0.12);
+  --danger: #A3201A;
+  --danger-soft: rgba(163, 32, 26, 0.10);
 
-  /* Secondary data hues (infrared / pink / cyan) */
-  --orange: #ff6552;
-  --orange-soft: rgba(255, 101, 82, 0.16);
-  --pink: #ec4899;
-  --pink-soft: rgba(236, 72, 153, 0.16);
-  --cyan: #22d3ee;
-  --cyan-soft: rgba(34, 211, 238, 0.16);
+  /* Secondary data hues, darkened for a light canvas */
+  --orange: #9A3418;
+  --orange-soft: rgba(154, 52, 24, 0.12);
+  --pink: #9B2D63;
+  --pink-soft: rgba(155, 45, 99, 0.12);
+  --cyan: #1E6B7A;
+  --cyan-soft: rgba(30, 107, 122, 0.12);
 
-  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(26, 26, 26, 0.55);
 
-  /* Type */
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  /* Type — Archivo Black for display, Inter for body, JetBrains Mono for
+   * data. Archivo Black ships one weight (400) and is already black, so
+   * never set font-weight on it; see .u-display. */
+  --font-display: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Spacing (4/8/16/24/32/48 from tokens.ts, extended upward for web sections) */
@@ -104,12 +119,23 @@
   --radius-lg: 24px;
   --radius-pill: 999px;
 
-  /* Elevation (mirrors tokens.ts's elevation.card / elevation.floating) */
-  --shadow-card: 0 8px 16px rgba(0, 0, 0, 0.35);
-  --shadow-floating: 0 10px 24px rgba(0, 0, 0, 0.45);
+  /* Elevation. A light theme cannot borrow the dark one's shadows: the
+   * same rgba(0,0,0,.35) that reads as depth on #0b0c10 reads as dirt
+   * on cream. These are much softer and tinted with the brand charcoal
+   * rather than pure black. */
+  --shadow-card: 0 2px 4px rgba(26, 26, 26, 0.04), 0 8px 24px rgba(26, 26, 26, 0.07);
+  --shadow-floating: 0 4px 10px rgba(26, 26, 26, 0.06), 0 18px 40px rgba(26, 26, 26, 0.12);
 
   --container-max: 1180px;
   --header-h: 72px;
+
+  /* Motion. One easing and three durations, so every transition on the
+   * site moves the same way. Honoured by the reduced-motion block at the
+   * end of this file. */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 0.18s;
+  --dur: 0.32s;
+  --dur-slow: 0.6s;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -191,7 +217,7 @@ button {
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   padding: 0.75rem 1.25rem;
   border-radius: 0 0 var(--radius-sm) 0;
@@ -239,7 +265,7 @@ button {
 
 .section-title {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.02em;
   font-size: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
   color: var(--text-primary);
@@ -284,14 +310,14 @@ button {
 }
 
 .btn--primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
-  box-shadow: 0 8px 20px rgba(53, 230, 197, 0.22);
+  box-shadow: 0 6px 16px rgba(218, 159, 62, 0.34);
 }
 
 .btn--primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(53, 230, 197, 0.3);
+  box-shadow: 0 10px 24px rgba(218, 159, 62, 0.42);
 }
 
 .btn--ghost {
@@ -301,7 +327,7 @@ button {
 }
 
 .btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(26, 26, 26, 0.04);
   transform: translateY(-1px);
 }
 
@@ -380,7 +406,7 @@ button {
   min-height: var(--header-h);
   display: flex;
   align-items: center;
-  background: rgba(11, 12, 16, 0.6);
+  background: rgba(246, 244, 235, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid transparent;
@@ -390,7 +416,7 @@ button {
 }
 
 .site-header.is-scrolled {
-  background: rgba(11, 12, 16, 0.92);
+  background: rgba(246, 244, 235, 0.94);
   border-bottom-color: var(--border);
 }
 
@@ -414,20 +440,28 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.125rem;
+  height: 1.5rem;
   flex: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.85rem;
+}
+
+/* Two gold chevrons and a charcoal one, as on the supplied logo sheet.
+ * `fill` on the <svg> rather than per <path> so the tail can override
+ * it, and so the mark inverts as one unit on the dark band below. */
+.brand__mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: var(--accent-fill);
+}
+
+.brand__mark-tail {
+  fill: var(--text-primary);
 }
 
 .brand__word {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.1rem;
   letter-spacing: -0.01em;
 }
@@ -482,7 +516,7 @@ button {
 
 .page-hero__title {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.1;
   font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
@@ -557,7 +591,7 @@ button {
 }
 
 .step-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -642,7 +676,7 @@ button {
   position: absolute;
   top: -0.75rem;
   left: var(--space-5);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   font-family: var(--font-body);
   font-weight: 700;
@@ -654,7 +688,7 @@ button {
 }
 
 .pricing-card__name {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--text-primary);
@@ -738,7 +772,7 @@ button {
 
 .legal h2 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.375rem;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -751,7 +785,7 @@ button {
 }
 
 .legal h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -834,7 +868,7 @@ button {
 
 .faq-item summary {
   cursor: pointer;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.9375rem;
   color: var(--text-primary);
@@ -879,24 +913,29 @@ button {
   pointer-events: none;
 }
 
+/* The dark theme's dot grid was white at 5% — invisible on cream. This
+ * is the same idea inverted: charcoal dots at 5%, masked to fade out,
+ * so the hero has texture without a second colour in it. */
 .hero__bg::before {
   content: "";
   position: absolute;
   inset: -15%;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(26, 26, 26, 0.055) 1px, transparent 1px);
   background-size: 26px 26px;
-  -webkit-mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 72%);
-  mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 72%);
-  opacity: 0.7;
+  -webkit-mask-image: radial-gradient(62% 58% at 32% 28%, #000 0%, transparent 74%);
+  mask-image: radial-gradient(62% 58% at 32% 28%, #000 0%, transparent 74%);
+  opacity: 0.85;
 }
 
+/* One warm gold wash, where the dark theme had three coloured glows
+ * (mint, violet, infrared). Three glows on a light canvas muddy it; the
+ * brand has one accent, so the hero gets one. */
 .hero__bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(42% 38% at 14% 10%, rgba(53, 230, 197, 0.22), transparent 60%),
-    radial-gradient(38% 34% at 88% 6%, rgba(155, 135, 255, 0.18), transparent 60%),
-    radial-gradient(46% 40% at 78% 92%, rgba(255, 101, 82, 0.1), transparent 62%);
+  background: radial-gradient(52% 46% at 88% 4%, rgba(218, 159, 62, 0.20), transparent 64%),
+    radial-gradient(44% 40% at 4% 92%, rgba(218, 159, 62, 0.10), transparent 62%);
 }
 
 .hero__inner {
@@ -932,7 +971,7 @@ button {
 
 .hero__title {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.08;
   font-size: clamp(2.25rem, 1.7rem + 2.6vw, 3.75rem);
@@ -968,6 +1007,9 @@ button {
 }
 
 .float-card {
+  /* relative so z-index applies while the cards are stacked in flow;
+     the 900px block below switches them to absolute. */
+  position: relative;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
@@ -985,7 +1027,7 @@ button {
 }
 
 .float-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.9375rem;
   color: var(--text-primary);
@@ -1200,7 +1242,7 @@ button {
 }
 
 .feature-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.125rem;
   letter-spacing: -0.01em;
@@ -1281,7 +1323,7 @@ button {
 }
 
 .platform-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--text-primary);
@@ -1326,7 +1368,7 @@ button {
 
 .cta-strip__title {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.02em;
   font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
   max-width: 30rem;
@@ -1483,9 +1525,9 @@ button {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: var(--surface, #14161c);
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  background: var(--surface, #ffffff);
+  border-top: 1px solid var(--border, rgba(26, 26, 26, 0.12));
+  box-shadow: 0 -4px 28px rgba(26, 26, 26, 0.12);
   padding: 14px 0;
 }
 
@@ -1502,7 +1544,7 @@ button {
   flex: 1 1 320px;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--text-secondary, #a8adba);
+  color: var(--text-secondary, #4a4d51);
 }
 
 .cookie-bar__actions {
@@ -1592,7 +1634,7 @@ button {
     background: var(--surface);
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 18px 40px rgba(26, 26, 26, 0.16);
   }
 
   .has-nav-toggle .nav.is-open {
@@ -1745,7 +1787,7 @@ button {
 }
 
 .form-state__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -1813,7 +1855,7 @@ button {
 
 .article-card__title {
   margin-top: var(--space-2);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -1847,4 +1889,343 @@ button {
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-size: 0.9375rem;
   color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Photography and motion — added 3 Oct 2026 with the light theme          */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The hero's media panel.
+ *
+ * The float cards used to hover over a blank gradient. They now sit over
+ * real footage, which is the whole point of the cards: app UI on top of
+ * the training it describes.
+ *
+ * The poster image is always in the markup and always loads. The video
+ * element carries no `src` — assets/js/main.js attaches one only on a
+ * wide viewport, on a connection that is not metered or saving data, and
+ * never when the visitor prefers reduced motion. So the 7.6 MB download
+ * is opt-in by capability rather than something every phone pays for,
+ * and a visitor with JavaScript off sees the still.
+ */
+.hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-high);
+  box-shadow: var(--shadow-floating);
+}
+
+.hero__media img,
+.hero__media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The video sits over the still and fades in once it can actually play,
+   so a slow start shows the poster rather than a black rectangle. */
+.hero__media video {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.hero__media video.is-playing {
+  opacity: 1;
+}
+
+/* Warms the footage toward the brand and keeps the white float cards
+   legible over whatever frame happens to be showing. */
+.hero__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(190deg, rgba(26, 26, 26, 0.12) 0%, rgba(26, 26, 26, 0.42) 100%);
+}
+
+.hero__visual {
+  position: relative;
+  min-height: 420px;
+  isolation: isolate;
+}
+
+/* z-index only. Setting `position` here would override the absolute
+   placement in the 900px block above, which is what the cards' desktop
+   composition is built from. */
+.hero__visual > .float-card {
+  z-index: 1;
+}
+
+/* ---- Editorial photo band ------------------------------------------- */
+
+/*
+ * A full-width photograph with a caption column beside it. Used between
+ * card sections to break the rhythm — the reference layout's "picture,
+ * then claim, then picture" cadence.
+ */
+.photo-band {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+/* The positioning parent for the overlapping inset. It must sit OUTSIDE
+   .photo-band__media, whose overflow:hidden rounds the main photograph
+   and was also clipping the frame that is supposed to hang off it. */
+.photo-band__frame {
+  position: relative;
+}
+
+.photo-band__media {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-high);
+  aspect-ratio: 4 / 3;
+  box-shadow: var(--shadow-card);
+}
+
+.photo-band__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* A small second frame, overlapped onto the first — the offset detail
+   shot from the reference layout. Hidden below the two-column
+   breakpoint, where there is no room to overlap anything. */
+.photo-band__inset {
+  display: none;
+}
+
+.photo-band__label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.photo-band__title {
+  margin-top: var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 3vw + 0.5rem, 2.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.photo-band__body {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ---- Dark guidance band --------------------------------------------- */
+
+/*
+ * The one charcoal section on the site. It carries the human-coach
+ * story, so it gets the two coach photographs and inverts the palette.
+ *
+ * Inverting by redefining the tokens inside the block, rather than
+ * writing new rules, means every component dropped in here — buttons,
+ * eyebrows, the brand mark — adapts without being special-cased. The
+ * values are the light palette's dark counterparts and are measured:
+ * cream on charcoal is 15.80:1, and the gold is the brand gold at
+ * 7.47:1, which is legible on charcoal in a way it never was on cream.
+ */
+.band-dark {
+  --bg: #1A1A1A;
+  --surface: #242424;
+  --surface-raised: #2A2A2A;
+  --surface-high: #333333;
+  --border: rgba(246, 244, 235, 0.16);
+  --border-strong: rgba(246, 244, 235, 0.3);
+  --text-primary: #F6F4EB;
+  --text-secondary: #CFCCC0;
+  --text-muted: #A8A59B;
+  --accent: #DA9F3E;
+  --accent-alt: #E8B45C;
+  --accent-fill: #DA9F3E;
+  --text-on-accent: #1A1A1A;
+  --accent-soft: rgba(218, 159, 62, 0.2);
+
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.band-dark .brand__mark-tail {
+  fill: var(--text-primary);
+}
+
+.band-dark .section-title,
+.band-dark .photo-band__title {
+  color: var(--text-primary);
+}
+
+/* The group shot, with the individual portrait overlapping its corner. */
+.coach-stack {
+  position: relative;
+}
+
+.coach-stack__main {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  background: var(--surface-high);
+}
+
+.coach-stack__main img,
+.coach-stack__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coach-stack__portrait {
+  display: none;
+}
+
+/* ---- Reveal on scroll ------------------------------------------------ */
+
+/*
+ * Gated on `.has-js`, which assets/js/main.js sets on <html> before
+ * first paint. Without that gate an `opacity: 0` start state would hide
+ * every section permanently for a visitor whose JavaScript fails to
+ * run — the classic way a scroll animation takes a site down.
+ */
+.has-js .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+
+.has-js .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Children stagger, so a row of cards arrives as a row rather than as
+   one block. Four steps is enough for every grid on the site. */
+.has-js .reveal--stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+
+.has-js .reveal--stagger.is-in > * {
+  opacity: 1;
+  transform: none;
+}
+
+.has-js .reveal--stagger.is-in > *:nth-child(2) { transition-delay: 0.08s; }
+.has-js .reveal--stagger.is-in > *:nth-child(3) { transition-delay: 0.16s; }
+.has-js .reveal--stagger.is-in > *:nth-child(4) { transition-delay: 0.24s; }
+
+/*
+ * The global reduced-motion block near the top of this file already
+ * collapses every duration to 0.001ms, which lands these elements on
+ * their final state instantly. The start state still has to be undone
+ * explicitly: a transition that never runs would otherwise leave
+ * opacity at 0 forever.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .has-js .reveal,
+  .has-js .reveal.is-in,
+  .has-js .reveal--stagger > *,
+  .has-js .reveal--stagger.is-in > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ---- Two-column and up ---------------------------------------------- */
+
+@media (min-width: 900px) {
+  .photo-band {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: var(--space-7);
+  }
+
+  .photo-band--flip .photo-band__media {
+    order: 2;
+  }
+
+  .photo-band__inset {
+    display: block;
+    position: absolute;
+    right: -2.25rem;
+    bottom: -2.25rem;
+    width: 11.5rem;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 6px solid var(--bg);
+    box-shadow: var(--shadow-floating);
+    background: var(--surface-high);
+  }
+
+  .photo-band__inset img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .coach-stack__portrait {
+    display: block;
+    position: absolute;
+    left: -2.5rem;
+    bottom: -2rem;
+    width: 10.5rem;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 6px solid var(--bg);
+    box-shadow: var(--shadow-floating);
+  }
+
+  .hero__visual {
+    min-height: 520px;
+  }
+}
+
+/* The dark band's two-column layout: photographs on one side, the
+   closing call to action on the other. Below 900px the stack collapses
+   and the portrait overlay is hidden by the rule above, so the group
+   shot simply sits over the text. */
+.band-dark .cta-strip__inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.band-dark .cta-strip__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .band-dark .cta-strip__inner {
+    grid-template-columns: 0.85fr 1fr;
+    gap: var(--space-8);
+  }
+
+  .band-dark .coach-stack {
+    margin-left: 2.5rem;
+  }
 }
