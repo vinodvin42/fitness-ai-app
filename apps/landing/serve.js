@@ -66,10 +66,26 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      // Anything unrecognized serves the real 404 page with a real 404
-      // status, mirroring staticwebapp.config.json. This used to fall
-      // back to index.html with a 200, which meant a mistyped URL looked
-      // like a working home page to both people and crawlers.
+      // A request that names a file gets a plain 404, never the HTML
+      // fallback — mirroring staticwebapp.config.json's
+      // `navigationFallback.exclude`, which keeps /assets/* out of the
+      // rewrite.
+      //
+      // This matters more than it looks. Until 3 Oct 2026 every page
+      // referenced its CSS as `assets/css/styles.css`, relative. At a
+      // nested URL — /gym/{code} and /r/{code} are real partner links,
+      // and any deep path hits the fallback — that resolves to
+      // /gym/assets/css/styles.css, which does not exist. Azure answered
+      // with 404.html, and a browser will not apply text/html as a
+      // stylesheet, so those pages rendered as naked serif HTML in
+      // production. This server answered the same request with 200 and
+      // the HTML fallback, so a local check looked fine and the bug
+      // shipped. Now the local server fails the same way Azure does.
+      if (path.extname(filePath) && path.extname(filePath) !== ".html") {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Not found");
+        return;
+      }
       fs.readFile(path.join(ROOT, "404.html"), (fallbackErr, fallbackData) => {
         if (fallbackErr) {
           res.writeHead(404, { "Content-Type": "text/plain" });

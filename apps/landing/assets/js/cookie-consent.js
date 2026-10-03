@@ -72,7 +72,7 @@
         "cookies.text",
         "We use essential cookies to make this site work. With your permission we’d also " +
           "use analytics and attribution cookies, which tell us how people found us. You can say no and everything still works. " +
-          '<a href="privacy.html">How we handle your data</a>.',
+          '<a href="/privacy.html">How we handle your data</a>.',
       ) +
       "</p>" +
       '<div class="cookie-bar__actions">' +

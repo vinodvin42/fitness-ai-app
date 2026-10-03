@@ -167,7 +167,7 @@
   function loadCatalogue(code, done) {
     if (window.FYNROX_I18N[code]) return done(window.FYNROX_I18N[code]);
     var s = document.createElement("script");
-    s.src = "assets/i18n/" + code + ".js";
+    s.src = "/assets/i18n/" + code + ".js";
     s.onload = function () { done(window.FYNROX_I18N[code] || null); };
     // A catalogue that will not load must leave the page in English,
     // not half-swapped and not blank.
