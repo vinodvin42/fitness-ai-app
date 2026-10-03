@@ -76,21 +76,33 @@
     <section class="download">
       <div class="wrap">
         <div class="download-grid">
-          <!-- Android APK updated 2 Oct 2026 — v0.4.0, versionCode 4,
-               built by the "Build Android APK (EAS)" workflow (run 3) from
-               commit fe1c3cb. Carries the full i18n retrofit, checkout with
-               server-side pricing, subscription states, refund status and
-               the Recover tab. The workflow downloaded the artifact and
-               confirmed it is a >10MB zip before reporting it.
+          <!-- Android APK updated 3 Oct 2026 — v0.4.0, versionCode 5,
+               88,495,403 bytes (~84MB), built by the "Build Android APK
+               (EAS)" workflow (run 4) from commit 0df0c20. The workflow
+               downloads the artifact and checks it starts with "PK" and
+               clears 10MB before reporting it, so the size above is
+               measured rather than copied forward.
 
-               ⚠ THIS LINK EXPIRES. EAS gives an internal-distribution
-               artifact a 14-day life: this one dies 16 Oct 2026, and the
-               22 Sep build it replaced expired 6 Oct. A public download
-               page pointing at an expiring URL goes dead without anyone
-               touching it. The durable fix is to host the APK ourselves
-               (Azure blob or this site's own assets) and link that; until
-               then this comment is the only reminder that the clock is
-               running.
+               This is the first build carrying the Fynrox spelling. The
+               app.json rename (display name, and the Face ID / camera /
+               photo-library permission strings) only reaches a device
+               through a build, so every earlier APK still says FynroX on
+               the home screen and in its permission prompts.
+
+               ⚠ THIS LINK EXPIRES 17 Oct 2026. EAS gives an
+               internal-distribution artifact a 14-day life; the build this
+               replaced died 16 Oct, and the one before it 6 Oct. A public
+               download page pointing at an expiring URL goes dead without
+               anyone touching it.
+
+               The durable fix is blocked on a decision, not on work: this
+               repository is private, so a GitHub Release asset needs
+               authentication and a visitor cannot fetch it, and no blob
+               storage is provisioned. The options are to serve the APK
+               from this site's own assets (the build workflow can reach
+               expo.dev, so it could publish it) or to provision storage.
+               Until one is chosen, this comment is the only thing tracking
+               the clock.
 
                To replace it: run that workflow, then update the href and
                this comment from its run summary — and regenerate
@@ -115,7 +127,7 @@
             </p>
             <a data-i18n="download.downloadApk"
               class="btn btn--primary btn--block"
-              href="https://expo.dev/artifacts/eas/81d7PFJffKvhq3AvyfyekgwJ3kRHNXbVp_cnI5dfTcA.apk"
+              href="https://expo.dev/artifacts/eas/IlP3UcPapn0k6Elapbpx1hueEJOfeZDK22TGwfGWHD4.apk"
             >
               Download APK
             </a>
