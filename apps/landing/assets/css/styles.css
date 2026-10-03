@@ -131,7 +131,7 @@
    * Wide enough to use the display, capped so a 2560px monitor does not
    * stretch body copy past a readable measure — long-form pages pull
    * this in again with .wrap--reading below. */
-  --container-max: 1560px;
+  --container-max: 1240px;
   --container-reading: 880px;
   --header-h: 72px;
 
@@ -175,7 +175,9 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* White page, cream panels — the artboard's arrangement. The site had
+     cream as the canvas, which left nothing for a panel to sit against. */
+  background: var(--surface);
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 16px;
@@ -361,20 +363,22 @@ button {
 }
 
 .btn--primary {
-  background: var(--accent-fill);
-  color: var(--text-on-accent);
-  box-shadow: 0 6px 16px rgba(218, 159, 62, 0.34);
+  background: var(--text-primary);
+  color: var(--bg);
+  box-shadow: 0 6px 16px rgba(26, 26, 26, 0.18);
 }
 
 .btn--primary:hover {
+  background: #000000;
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(218, 159, 62, 0.42);
+  box-shadow: 0 10px 24px rgba(26, 26, 26, 0.24);
 }
 
 .btn--ghost {
   background: transparent;
   color: var(--text-primary);
-  border-color: var(--border-strong);
+  border-width: 1.5px;
+  border-color: var(--text-primary);
 }
 
 .btn--ghost:hover {
@@ -955,6 +959,11 @@ button {
 .hero {
   position: relative;
   overflow: hidden;
+  /* An inset cream panel with a 22px radius, as on the artboard, rather
+     than a band running the full width of the window. */
+  background: var(--bg);
+  border-radius: 22px;
+  margin: 1.125rem 1.125rem 0;
   padding-block: clamp(2rem, 2.5vw + 0.75rem, 3.25rem) clamp(2.5rem, 3vw + 1rem, 4rem);
 }
 
@@ -2287,98 +2296,43 @@ button {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Full-bleed imagery — 3 Oct 2026                                         */
+/* Contained imagery                                                       */
 /* ---------------------------------------------------------------------- */
 
 /*
- * The photographs used to stop at the content column, so on a wide
- * screen the page was a band of cream, a picture, and more cream. The
- * reference layout runs its imagery to the edge of the glass; these
- * rules let one side of a two-column block do that while the text stays
- * in the column.
- *
- * --bleed is exactly how far the content edge is from the viewport edge:
- * half the leftover width once the container has taken its 1560px, plus
- * the container's own gutter. Computed rather than hard-coded, so it is
- * correct at every width with no media query — at 1920 it is 180 + 56,
- * and at 1200, where the container is already narrower than the
- * viewport, the first term collapses to 0 and only the gutter remains.
+ * The photographs used to run to the edge of the glass. The artboard
+ * keeps them inside the column, in rounded frames, and that is what was
+ * signed off — a bled photograph under a rounded panel also has nowhere
+ * to bleed to. The --bleed variable and the rules that used it are gone
+ * rather than left switched off.
  */
-:root {
-  --bleed: calc(max(0px, (100vw - var(--container-max)) / 2) + clamp(1.25rem, 4vw, 3.5rem));
+.band-dark {
+  overflow: hidden;
 }
 
 @media (min-width: 900px) {
-  /* Hero: text in the column, footage off the right edge.
-     The bleed goes on the media alone, not on .hero__visual — moving the
-     whole column took the float cards with it, and the one pinned to
-     `right: 0` was then clipped in half by .hero's overflow:hidden. */
-  .hero__media {
-    right: calc(-1 * var(--bleed));
+  .photo-band {
+    padding-bottom: 2.5rem;
   }
 
-  .hero__media {
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  }
-
-  /* Photo band: the picture runs off whichever edge it sits nearest. */
-  .photo-band .photo-band__frame {
-    margin-left: calc(-1 * var(--bleed));
-  }
-
-  .photo-band .photo-band__media {
-    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-  }
-
-  .photo-band--flip .photo-band__frame {
-    margin-left: 0;
-    margin-right: calc(-1 * var(--bleed));
-  }
-
-  .photo-band--flip .photo-band__media {
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  }
-
-  /* The inset frame hangs off the inner edge, so it stays on screen. */
-  /* Sits ON the corner of the photograph rather than floating clear of
-     it. The band bleeds toward the outer edge, so the inset hangs off
-     the inner one, where there is page to hang over. */
+  /* The detail frame overlaps the photograph's outer corner. */
   .photo-band .photo-band__inset {
-    right: auto;
+    right: -1.5rem;
     left: auto;
-    inset-inline-end: -1.5rem;
     bottom: -1.5rem;
     width: 9.5rem;
   }
 
-  /* Dark band: the coach photographs run off the left edge. */
-  .band-dark .coach-stack {
-    margin-left: calc(-1 * var(--bleed));
+  .photo-band--flip .photo-band__inset {
+    right: auto;
+    left: -1.5rem;
   }
 
-  .band-dark .coach-stack__main {
-    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-  }
-
-  .band-dark .coach-stack__portrait {
-    left: auto;
-    right: -2.5rem;
-    /* The base rule borders this in var(--bg). Inside .band-dark that is
-       #1A1A1A, and the photograph itself is a figure in black on a dark
-       ground, so the frame vanished into the band and the portrait read
-       as an empty rectangle. Cream makes it a print lying on the page. */
-    border-color: var(--text-primary);
+  .photo-band--flip .photo-band__frame {
+    order: 2;
   }
 }
 
-/* The bands reach past the container, so neither may leak a horizontal
-   scrollbar — but .photo-band must not clip either, because its inset
-   frame is supposed to hang off the bottom of the photograph. Room is
-   made for that overhang instead, and the no-overflow claim is checked
-   at 390/768/1280/1920/2560 rather than assumed. */
-.band-dark {
-  overflow: hidden;
-}
 
 @media (min-width: 900px) {
   .photo-band {
