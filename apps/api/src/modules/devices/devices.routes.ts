@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { pairDeviceSchema, syncDeviceSchema } from "./devices.schema";
+import { pairDeviceSchema, syncDeviceSchema, updateDeviceSchema } from "./devices.schema";
 import * as devicesService from "./devices.service";
 
 /**
@@ -21,6 +21,23 @@ devicesRouter.get("/devices", requireAuth, async (req: AuthedRequest, res, next)
 devicesRouter.get("/devices/sync-status", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await devicesService.getSyncStatus(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+devicesRouter.get("/devices/streams", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await devicesService.getDataStreams(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+devicesRouter.patch("/devices/:id", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = updateDeviceSchema.parse(req.body);
+    res.json(await devicesService.updateDevice(req.userId!, req.params.id, input));
   } catch (err) {
     next(err);
   }

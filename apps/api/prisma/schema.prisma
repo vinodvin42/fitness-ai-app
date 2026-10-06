@@ -3327,6 +3327,13 @@ model RecoveryLog {
   soreness         Int?
   energyLevel      Int?
   notes            String?
+  // Device-synced activity values (Recover 01/05). Null = never reported.
+  steps            Int?
+  activeCalories   Int?
+  activeMinutes    Int?
+  spo2             Int?
+  // Device-reported stress score 0-100 (higher = more stressed).
+  stressScore      Int?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -3694,6 +3701,8 @@ model ConnectedDevice {
   lastSyncAt  DateTime?
   lastError   String?
   batteryPct  Int?
+  // Data the device is allowed to supply: steps | heart_rate | sleep | spo2 | stress | workouts
+  permissions String[]        @default(["steps", "heart_rate", "sleep", "spo2", "stress", "workouts"])
   createdAt   DateTime        @default(now())
   syncRuns    DeviceSyncRun[]
 

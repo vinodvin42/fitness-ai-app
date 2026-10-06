@@ -3815,6 +3815,21 @@ export interface RecoveryLogItem {
   soreness: number | null;
   energyLevel: number | null;
   notes: string | null;
+  steps: number | null;
+  activeCalories: number | null;
+  activeMinutes: number | null;
+  spo2: number | null;
+  stressScore: number | null;
+}
+
+/** GET /recovery/summary - real values behind the Recovery dashboard; every field null when no data. */
+export interface RecoverySummary {
+  date: string | null;
+  activity: { steps: number | null; activeCalories: number | null; activeMinutes: number | null } | null;
+  stress: { score: number; level: "low" | "moderate" | "high" } | null;
+  /** Rule-based (7-day vs previous 7-day average); null when there is not enough data. */
+  insight: { kind: "sleep" | "hrv"; text: string; changePct: number } | null;
+  device: { id: string; name: string; provider: HealthProvider; status: ConnectedDeviceStatus; lastSyncAt: string | null } | null;
 }
 
 export interface RecoveryResponse {
@@ -4501,7 +4516,25 @@ export interface ConnectedDevice {
   lastSyncAt: string | null;
   lastError: string | null;
   batteryPct: number | null;
+  /** Data the device is allowed to supply. */
+  permissions: DevicePermission[];
   createdAt: string;
+}
+
+export type DevicePermission = "steps" | "heart_rate" | "sleep" | "spo2" | "stress" | "workouts";
+
+/** GET /devices/streams - latest real value per data stream. */
+export interface DataStreamItem {
+  key: "steps" | "heart_rate" | "sleep" | "calories" | "spo2" | "weight";
+  label: string;
+  value: number | null;
+  date: string | null;
+  source: "device" | "manual" | null;
+  deviceName: string | null;
+  stale: boolean;
+}
+export interface DataStreamsResponse {
+  items: DataStreamItem[];
 }
 
 /** GET /devices */
@@ -4515,6 +4548,7 @@ export interface PairDeviceInput {
   name: string;
   kind?: ConnectedDeviceKind;
   batteryPct?: number;
+  permissions?: DevicePermission[];
 }
 
 /** One day of samples read on-device and posted by the client. */
@@ -4524,6 +4558,10 @@ export interface DeviceSyncSample {
   sleepHours?: number;
   hrvMs?: number;
   steps?: number;
+  activeCalories?: number;
+  activeMinutes?: number;
+  spo2?: number;
+  stressScore?: number;
 }
 
 /** POST /devices/:id/sync — pass `error` instead of samples to report a failed sync. */

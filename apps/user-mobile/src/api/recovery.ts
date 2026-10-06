@@ -1,4 +1,4 @@
-import type { ReadinessResponse, RecoveryResponse, RecoveryLogItem, UpsertRecoveryInput } from "@fitness-ai-app/types";
+import type { RecoverySummary, ReadinessResponse, RecoveryResponse, RecoveryLogItem, UpsertRecoveryInput } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 /**
@@ -17,4 +17,9 @@ export function upsertRecovery(input: UpsertRecoveryInput) {
 /** Honest 0-100 readiness from the user's own RecoveryLog; `score` is null (+ `reason`) without enough real data. */
 export function fetchReadiness() {
   return apiClient.get<ReadinessResponse>("/recovery/readiness").then((r) => r.data);
+}
+
+/** Real activity / stress / rule-based insight / latest device for the Recovery dashboard. */
+export function fetchRecoverySummary() {
+  return apiClient.get<RecoverySummary>("/recovery/summary").then((r) => r.data);
 }

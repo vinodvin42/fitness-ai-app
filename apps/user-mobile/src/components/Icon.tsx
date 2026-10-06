@@ -73,6 +73,13 @@ import {
   WifiOff,
   Star,
   Flashlight,
+  Bluetooth,
+  Cloud,
+  ChevronDown,
+  Volume2,
+  SlidersHorizontal,
+  Compass,
+  Battery,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -156,6 +163,13 @@ export const ICONS = {
   scale: Scale,
   download: Download,
   "wifi-off": WifiOff,
+  bluetooth: Bluetooth,
+  cloud: Cloud,
+  "chevron-down": ChevronDown,
+  "volume-2": Volume2,
+  sliders: SlidersHorizontal,
+  compass: Compass,
+  battery: Battery,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

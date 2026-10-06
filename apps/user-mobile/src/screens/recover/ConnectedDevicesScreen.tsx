@@ -2,95 +2,151 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { ConnectedDevice, ConnectedDeviceStatus } from "@fitness-ai-app/types";
-import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
+import type { ConnectedDevice, ConnectedDeviceKind, ConnectedDeviceStatus, DevicePermission } from "@fitness-ai-app/types";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
-import { Icon } from "../../components/Icon";
-import { Pill } from "../../components/Pill";
+import { Icon, IconName } from "../../components/Icon";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchDevices } from "../../api/devices";
 import { PROVIDER_LABEL, timeAgo } from "../../lib/format";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import { CircleButton, RecoverShell, SectionLabel } from "./parts";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "ConnectedDevices">;
 
-const STATUS_PILL: Record<ConnectedDeviceStatus, { label: string; tone: "success" | "accent" | "danger" | "neutral" }> = {
-  paired: { label: "Paired", tone: "success" },
-  syncing: { label: "Syncing", tone: "accent" },
-  error: { label: "Sync error", tone: "danger" },
-  disconnected: { label: "Disconnected", tone: "neutral" },
+const STATUS: Record<ConnectedDeviceStatus, { label: string; color: string }> = {
+  paired: { label: "Connected", color: colors.success },
+  syncing: { label: "Syncing", color: colors.accent },
+  error: { label: "Sync error", color: colors.danger },
+  disconnected: { label: "Disconnected", color: colors.textMuted },
 };
 
-export function DeviceRow({ device, onPress }: { device: ConnectedDevice; onPress?: () => void }) {
-  const pill = STATUS_PILL[device.status];
-  const body = (
-    <Card style={{ gap: spacing.sm }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: radius.md,
-            backgroundColor: colors.surfaceRaised,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon name="watch" size={22} color={colors.accent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{device.name}</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-            {PROVIDER_LABEL[device.provider] ?? device.provider} · last sync {timeAgo(device.lastSyncAt)}
-          </Text>
-        </View>
-        <Pill label={pill.label} tone={pill.tone} />
-      </View>
+const KIND_ICON: Record<ConnectedDeviceKind, IconName> = {
+  watch: "watch",
+  band: "smartphone",
+  ring: "activity",
+  scale: "scale",
+  other: "cloud",
+};
+const KIND_LABEL: Record<ConnectedDeviceKind, string> = {
+  watch: "Smartwatch",
+  band: "Fitness band",
+  ring: "Smart ring",
+  scale: "Smart scale",
+  other: "Device",
+};
+
+/** One device card. Used by Connected Devices (and the sync status dots elsewhere). */
+export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync: () => void }) {
+  const st = STATUS[device.status];
+  return (
+    <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md - 2 }}>
       <View
         style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          backgroundColor: colors.background,
+          width: 44,
+          height: 52,
           borderRadius: radius.sm,
-          padding: spacing.sm + 4,
+          backgroundColor: colors.surfaceRaised,
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <Text style={{ color: colors.textSecondary, ...typography.label }}>Battery</Text>
-        <Text style={{ color: colors.textPrimary, ...typography.label }}>
-          {device.batteryPct == null ? "Not reported" : `${device.batteryPct}%`}
-        </Text>
+        <Icon name={KIND_ICON[device.kind]} size={22} color={colors.accent} />
       </View>
-      {device.lastError ? (
-        <Text style={{ color: colors.danger, ...typography.meta }}>Last error: {device.lastError}</Text>
-      ) : null}
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{device.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: st.color }} />
+            <Text style={{ color: st.color, ...typography.meta, fontSize: 11 }}>{st.label}</Text>
+          </View>
+        </View>
+        <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+          {KIND_LABEL[device.kind]} · {PROVIDER_LABEL[device.provider] ?? device.provider}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="battery" size={12} color={colors.textMuted} />
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+              {device.batteryPct == null ? "Not reported" : `${device.batteryPct}%`}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
+            <Icon name="refresh-cw" size={12} color={colors.textMuted} />
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+              {device.lastSyncAt ? `Synced ${timeAgo(device.lastSyncAt)}` : "Never synced"}
+            </Text>
+          </View>
+        </View>
+        {device.lastError ? (
+          <Text style={{ color: colors.danger, ...typography.meta, fontSize: 11 }}>Last error: {device.lastError}</Text>
+        ) : null}
+      </View>
+      <CircleButton icon="refresh-cw" onPress={onSync} label={`Sync ${device.name}`} tint={colors.accent} />
     </Card>
-  );
-  return onPress ? (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${device.name}, ${pill.label}`}>
-      {body}
-    </Pressable>
-  ) : (
-    body
   );
 }
 
-/** Recover 02 - Connected Devices Hub. */
+const PLATFORMS: Array<{ name: string; blurb: string; icon: IconName; tint: string }> = [
+  { name: "Apple Health", blurb: "Sync workouts & health metrics...", icon: "heart-pulse", tint: colors.warning },
+  { name: "Samsung Health", blurb: "Import sleep and body composition...", icon: "activity", tint: colors.warning },
+  { name: "Strava", blurb: "Automate run, ride, and swim routes...", icon: "compass", tint: colors.warning },
+];
+
+const SYNC_CHIPS: Array<{ label: string; perm: DevicePermission }> = [
+  { label: "Steps", perm: "steps" },
+  { label: "Heart Rate", perm: "heart_rate" },
+  { label: "Sleep", perm: "sleep" },
+  { label: "SpO2", perm: "spo2" },
+];
+
+/** Recover 02 - Connected Devices. */
 export function ConnectedDevicesScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["devices"], queryFn: fetchDevices });
+  const devices = data ?? [];
+  const allowed = new Set(devices.flatMap((d) => d.permissions));
+
+  const openHealthConnect = () => navigation.getParent()?.navigate("More", { screen: "HealthConnect" });
 
   return (
-    <ScreenContainer title="Connected devices" subtitle="Watches, bands, rings & scales">
-      <BackButton onPress={() => navigation.goBack()} />
+    <RecoverShell
+      centered
+      title="Connected Devices"
+      onBack={() => navigation.goBack()}
+      right={<CircleButton icon="plus" onPress={() => navigation.navigate("AddDevice")} label="Add device" tint={colors.accent} />}
+    >
+      <SectionLabel small>Data Sync Status</SectionLabel>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        {SYNC_CHIPS.map((c) => {
+          const on = allowed.has(c.perm);
+          return (
+            <View
+              key={c.label}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: colors.surfaceRaised,
+                borderRadius: radius.pill,
+                paddingHorizontal: spacing.md,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: on ? colors.textPrimary : colors.textMuted, ...typography.label }}>{c.label}</Text>
+              {on ? <Icon name="check" size={13} color={colors.success} strokeWidth={3} /> : null}
+            </View>
+          );
+        })}
+      </View>
+
+      <SectionLabel small>Active Devices</SectionLabel>
       {isLoading ? (
         <SkeletonCard lines={3} />
       ) : isError ? (
         <ErrorState message="Couldn't load your devices." onRetry={() => refetch()} />
-      ) : (data ?? []).length === 0 ? (
+      ) : devices.length === 0 ? (
         <EmptyState
           title="No devices yet"
           subtitle="Add a device to record its sync history here. Nothing is shown until you add one."
@@ -98,18 +154,56 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
           onAction={() => navigation.navigate("AddDevice")}
         />
       ) : (
-        <View style={{ gap: spacing.sm }}>
-          {(data ?? []).map((d) => (
-            <DeviceRow key={d.id} device={d} onPress={() => navigation.navigate("SyncDashboard")} />
-          ))}
-          <Button label="Add device" variant="secondary" onPress={() => navigation.navigate("AddDevice")} />
-          <Button label="Sync dashboard" onPress={() => navigation.navigate("SyncDashboard")} />
-        </View>
+        devices.map((d) => (
+          <Pressable key={d.id} onPress={() => navigation.navigate("DevicePairing", { provider: d.provider, kind: d.kind, name: d.name, deviceId: d.id })}
+            accessibilityRole="button"
+          >
+            <DeviceCard device={d} onSync={() => navigation.navigate("SyncDashboard", { importDeviceId: d.id })} />
+          </Pressable>
+        ))
       )}
+
+      <SectionLabel small>Available Platforms</SectionLabel>
+      {PLATFORMS.map((p) => (
+        <Card key={p.name} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md - 2 }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: radius.sm,
+              backgroundColor: colors.surfaceRaised,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name={p.icon} size={20} color={p.tint} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{p.name}</Text>
+            <Text style={{ color: colors.textMuted, ...typography.meta }} numberOfLines={1}>
+              {p.blurb}
+            </Text>
+          </View>
+          <Pressable
+            onPress={openHealthConnect}
+            accessibilityRole="button"
+            accessibilityLabel={`Connect ${p.name}`}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.accent,
+              borderRadius: radius.sm,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: colors.accent, ...typography.label }}>Connect</Text>
+          </Pressable>
+        </Card>
+      ))}
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
-        This build has no Bluetooth or HealthKit/Health Connect SDK, so devices can't sync on their own. You can add a
-        device record and import values by hand from the Sync dashboard.
+        Connect opens the consent screen. This build has no Bluetooth or HealthKit/Health Connect SDK, so values are
+        recorded when you import them from a device&apos;s sync button.
       </Text>
-    </ScreenContainer>
+    </RecoverShell>
   );
 }

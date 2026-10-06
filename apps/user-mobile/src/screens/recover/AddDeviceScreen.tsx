@@ -1,80 +1,110 @@
-import React, { useState } from "react";
-import { Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { ConnectedDeviceKind, HealthProvider } from "@fitness-ai-app/types";
-import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
-import { Card } from "../../components/Card";
-import { Chip } from "../../components/Chip";
-import { Button } from "../../components/Button";
-import { SelectCard } from "../../components/SelectCard";
-import { TextField } from "../../components/TextField";
-import { PROVIDER_LABEL } from "../../lib/format";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { SearchBar } from "../../components/SearchBar";
+import { Icon } from "../../components/Icon";
+import { DEVICE_CATEGORIES } from "../../content/recover";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import { RecoverShell } from "./parts";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "AddDevice">;
 
-const PROVIDERS: Array<{ value: HealthProvider; hint: string }> = [
-  { value: "apple_health", hint: "iPhone / Apple Watch" },
-  { value: "health_connect", hint: "Android / Wear OS" },
-  { value: "garmin", hint: "Garmin watches & bands" },
-  { value: "fitbit", hint: "Fitbit trackers" },
-  { value: "whoop", hint: "Whoop strap" },
-  { value: "oura", hint: "Oura ring" },
-];
-
-const KINDS: Array<{ value: ConnectedDeviceKind; label: string }> = [
-  { value: "watch", label: "Watch" },
-  { value: "band", label: "Band" },
-  { value: "ring", label: "Ring" },
-  { value: "scale", label: "Scale" },
-  { value: "other", label: "Other" },
-];
-
-/** Recover 03 - Add Device (provider + kind picker). */
+/** Recover 03 - Add Device: search, category chips and expandable category rows (static brand list). */
 export function AddDeviceScreen({ navigation }: Props) {
-  const [provider, setProvider] = useState<HealthProvider | null>(null);
-  const [kind, setKind] = useState<ConnectedDeviceKind>("watch");
-  const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<string>("all");
+  const [open, setOpen] = useState<string | null>(null);
 
-  const canContinue = provider != null && name.trim().length > 0;
+  const q = query.trim().toLowerCase();
+  const categories = useMemo(
+    () =>
+      DEVICE_CATEGORIES.filter((c) => filter === "all" || c.key === filter)
+        .map((c) => ({
+          ...c,
+          devices: q ? c.devices.filter((d) => `${d.name} ${d.brand}`.toLowerCase().includes(q)) : c.devices,
+        }))
+        .filter((c) => c.devices.length > 0),
+    [filter, q],
+  );
 
   return (
-    <ScreenContainer title="Add device">
-      <BackButton onPress={() => navigation.goBack()} />
-      <Text style={{ color: colors.textMuted, ...typography.label }}>PLATFORM / BRAND</Text>
+    <RecoverShell centered title="Add Device" onBack={() => navigation.goBack()}>
+      <SearchBar value={query} onChangeText={setQuery} placeholder="Search brands, devices…" />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+        {[{ key: "all", chip: "All" }, ...DEVICE_CATEGORIES].map((c) => {
+          const on = filter === c.key;
+          return (
+            <Pressable
+              key={c.key}
+              onPress={() => setFilter(c.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{
+                backgroundColor: on ? colors.accent : colors.surfaceRaised,
+                borderRadius: radius.pill,
+                paddingHorizontal: spacing.md,
+                paddingVertical: 7,
+              }}
+            >
+              <Text style={{ color: on ? colors.textOnAccent : colors.textSecondary, ...typography.label }}>{c.chip}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
       <View style={{ gap: spacing.sm }}>
-        {PROVIDERS.map((p) => (
-          <SelectCard
-            key={p.value}
-            title={PROVIDER_LABEL[p.value]}
-            subtitle={p.hint}
-            icon="watch"
-            selected={provider === p.value}
-            onPress={() => {
-              setProvider(p.value);
-              if (!name.trim()) setName(PROVIDER_LABEL[p.value]);
-            }}
-          />
-        ))}
+        {categories.map((c) => {
+          const expanded = open === c.key || q !== "";
+          return (
+            <View
+              key={c.key}
+              style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }}
+            >
+              <Pressable
+                onPress={() => setOpen(open === c.key ? null : c.key)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+                style={{ flexDirection: "row", alignItems: "center", padding: spacing.md, gap: spacing.sm }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{c.title}</Text>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                    {c.devices.length} device{c.devices.length === 1 ? "" : "s"} · {c.devices.map((d) => d.name).join(", ")}
+                  </Text>
+                </View>
+                <Icon name={expanded ? "chevron-down" : "chevron-right"} size={16} color={colors.textMuted} />
+              </Pressable>
+              {expanded ? (
+                <View style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+                  {c.devices.map((d) => (
+                    <Pressable
+                      key={d.name}
+                      onPress={() => navigation.navigate("DevicePairing", { provider: d.provider, kind: c.kind, name: d.name })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add ${d.name}`}
+                      style={{ flexDirection: "row", alignItems: "center", padding: spacing.md, gap: spacing.sm }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 14 }}>{d.name}</Text>
+                        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{d.brand}</Text>
+                      </View>
+                      <Icon name="plus" size={16} color={colors.accent} />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+        {categories.length === 0 ? (
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>No devices match your search.</Text>
+        ) : null}
       </View>
-
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={{ color: colors.textMuted, ...typography.label }}>DEVICE TYPE</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
-          {KINDS.map((k) => (
-            <Chip key={k.value} label={k.label} selected={kind === k.value} onPress={() => setKind(k.value)} />
-          ))}
-        </View>
-        <TextField label="Device name" value={name} onChangeText={setName} placeholder="e.g. My watch" maxLength={80} />
-      </Card>
-
-      <Button
-        label="Continue"
-        disabled={!canContinue}
-        onPress={() => provider && navigation.navigate("DevicePairing", { provider, kind, name: name.trim() })}
-      />
-    </ScreenContainer>
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>
+        Don&apos;t see yours? Any device that writes to Apple Health or Health Connect can be added from the nearest category.
+      </Text>
+    </RecoverShell>
   );
 }

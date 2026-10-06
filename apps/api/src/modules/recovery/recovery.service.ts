@@ -31,6 +31,11 @@ type RecoveryRow = {
   soreness: number | null;
   energyLevel: number | null;
   notes: string | null;
+  steps?: number | null;
+  activeCalories?: number | null;
+  activeMinutes?: number | null;
+  spo2?: number | null;
+  stressScore?: number | null;
 };
 
 function toItem(r: RecoveryRow) {
@@ -43,6 +48,11 @@ function toItem(r: RecoveryRow) {
     soreness: r.soreness,
     energyLevel: r.energyLevel,
     notes: r.notes,
+    steps: r.steps ?? null,
+    activeCalories: r.activeCalories ?? null,
+    activeMinutes: r.activeMinutes ?? null,
+    spo2: r.spo2 ?? null,
+    stressScore: r.stressScore ?? null,
   };
 }
 
@@ -78,13 +88,15 @@ export async function listRecovery(userId: string) {
 
 export async function upsertRecovery(userId: string, input: UpsertRecoveryInput) {
   const date = dateOnlyUtc(input.date);
+  // Only write the fields the caller sent, so saving soreness/energy never
+  // wipes device-synced sleep / HR / HRV / steps for the same day.
   const data = {
-    restingHeartRate: input.restingHeartRate ?? null,
-    sleepHours: input.sleepHours ?? null,
-    hrvMs: input.hrvMs ?? null,
-    soreness: input.soreness ?? null,
-    energyLevel: input.energyLevel ?? null,
-    notes: input.notes ?? null,
+    ...(input.restingHeartRate != null ? { restingHeartRate: input.restingHeartRate } : {}),
+    ...(input.sleepHours != null ? { sleepHours: input.sleepHours } : {}),
+    ...(input.hrvMs != null ? { hrvMs: input.hrvMs } : {}),
+    ...(input.soreness != null ? { soreness: input.soreness } : {}),
+    ...(input.energyLevel != null ? { energyLevel: input.energyLevel } : {}),
+    ...(input.notes != null ? { notes: input.notes } : {}),
   };
 
   const log = await prisma.recoveryLog.upsert({
@@ -139,6 +151,84 @@ export async function getReadiness(userId: string) {
           soreness: latest.soreness,
           energyLevel: latest.energyLevel,
         }
+      : null,
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function stressLevel(score: number): "low" | "moderate" | "high" {
+  return score < 34 ? "low" : score < 67 ? "moderate" : "high";
+}
+
+function mean(values: Array<number | null>): { avg: number; n: number } | null {
+  const nums = values.filter((v): v is number => v != null);
+  if (nums.length === 0) return null;
+  return { avg: nums.reduce((a, b) => a + b, 0) / nums.length, n: nums.length };
+}
+
+/**
+ * Rule-based insight from real trends: compares the average over the last 7
+ * days with the 7 days before (needs >= 3 logged values in each window and a
+ * >= 5% change). Sleep is preferred, then HRV. Returns null otherwise - no
+ * generic filler text.
+ */
+export function buildInsight(
+  logs: Array<{ date: Date; sleepHours: number | null; hrvMs: number | null }>,
+  now: number = Date.now(),
+): { kind: "sleep" | "hrv"; text: string; changePct: number } | null {
+  const inWindow = (from: number, to: number) => logs.filter((l) => l.date.getTime() > now - to * DAY_MS && l.date.getTime() <= now - from * DAY_MS);
+  const thisWeek = inWindow(0, 7);
+  const lastWeek = inWindow(7, 14);
+  for (const m of [
+    { kind: "sleep" as const, label: "sleep", pick: (l: { sleepHours: number | null }) => l.sleepHours },
+    { kind: "hrv" as const, label: "HRV", pick: (l: { hrvMs: number | null }) => l.hrvMs },
+  ]) {
+    const a = mean(thisWeek.map(m.pick));
+    const b = mean(lastWeek.map(m.pick));
+    if (!a || !b || a.n < 3 || b.n < 3 || b.avg <= 0) continue;
+    const pct = Math.round(((a.avg - b.avg) / b.avg) * 100);
+    if (Math.abs(pct) < 5) continue;
+    const dir = pct > 0 ? "up" : "down";
+    const text =
+      m.kind === "sleep"
+        ? `Your sleep averaged ${a.avg.toFixed(1)} h over the last 7 days, ${dir} ${Math.abs(pct)}% from the week before.${pct > 0 ? " Keep your bedtime routine steady." : " An earlier, consistent bedtime may help."}`
+        : `Your HRV averaged ${Math.round(a.avg)} ms over the last 7 days, ${dir} ${Math.abs(pct)}% from the week before.`;
+    return { kind: m.kind, text, changePct: pct };
+  }
+  return null;
+}
+
+/**
+ * GET /recovery/summary - the real values behind the Recovery dashboard:
+ * today's (or yesterday's) activity + stress, a rule-based insight, and the
+ * user's most recent synced device. Every field is null when no data exists.
+ */
+export async function getSummary(userId: string) {
+  const since = new Date(Date.now() - 15 * DAY_MS);
+  const logs = (await prisma.recoveryLog.findMany({
+    where: { userId, date: { gte: since } },
+    orderBy: { date: "desc" },
+  })) as RecoveryRow[];
+  const latest = logs[0] ?? null;
+  // Activity/stress only count when from today or yesterday (UTC), else stale.
+  const fresh = latest && Date.now() - latest.date.getTime() < 2 * DAY_MS ? latest : null;
+  const hasActivity =
+    fresh != null && (fresh.steps != null || fresh.activeCalories != null || fresh.activeMinutes != null);
+  const device = await prisma.connectedDevice.findFirst({
+    where: { userId, lastSyncAt: { not: null } },
+    orderBy: { lastSyncAt: "desc" },
+  });
+  return {
+    date: fresh?.date ?? null,
+    activity: hasActivity
+      ? { steps: fresh!.steps ?? null, activeCalories: fresh!.activeCalories ?? null, activeMinutes: fresh!.activeMinutes ?? null }
+      : null,
+    stress:
+      fresh?.stressScore != null ? { score: fresh.stressScore, level: stressLevel(fresh.stressScore) } : null,
+    insight: buildInsight(logs),
+    device: device
+      ? { id: device.id, name: device.name, provider: device.provider, status: device.status, lastSyncAt: device.lastSyncAt }
       : null,
   };
 }

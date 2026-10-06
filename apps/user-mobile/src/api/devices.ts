@@ -1,6 +1,8 @@
 import type {
   ConnectedDevice,
   ConnectedDevicesResponse,
+  DataStreamsResponse,
+  DevicePermission,
   DeviceSyncInput,
   DeviceSyncResult,
   DeviceSyncStatus,
@@ -26,4 +28,12 @@ export function removeDevice(id: string) {
 
 export function syncDevice(id: string, input: DeviceSyncInput) {
   return apiClient.post<DeviceSyncResult>(`/devices/${id}/sync`, input).then((r) => r.data);
+}
+
+export function fetchDataStreams() {
+  return apiClient.get<DataStreamsResponse>("/devices/streams").then((r) => r.data.items);
+}
+
+export function updateDevicePermissions(id: string, permissions: DevicePermission[]) {
+  return apiClient.patch<ConnectedDevice>(`/devices/${id}`, { permissions }).then((r) => r.data);
 }

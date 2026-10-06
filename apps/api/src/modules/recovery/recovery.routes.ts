@@ -26,6 +26,14 @@ recoveryRouter.get("/recovery/readiness", requireAuth, async (req: AuthedRequest
   }
 });
 
+recoveryRouter.get("/recovery/summary", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await recoveryService.getSummary(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
 recoveryRouter.put("/recovery", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     const input = upsertRecoverySchema.parse(req.body);

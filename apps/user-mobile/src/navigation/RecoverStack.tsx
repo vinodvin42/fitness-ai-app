@@ -24,12 +24,12 @@ export type RecoverStackParamList = {
   // Recover 02-05 (devices) and 06-11 (guided yoga / mobility / breathing).
   ConnectedDevices: undefined;
   AddDevice: undefined;
-  DevicePairing: { provider: HealthProvider; kind: ConnectedDeviceKind; name: string };
-  SyncDashboard: undefined;
+  DevicePairing: { provider: HealthProvider; kind: ConnectedDeviceKind; name: string; deviceId?: string };
+  SyncDashboard: { importDeviceId?: string } | undefined;
   YogaLibrary: undefined;
   RoutineDetail: { routineId: string };
   GuidedSession: { routineId: string };
-  GuidedBreathing: { patternId?: string } | undefined;
+  GuidedBreathing: { patternId?: string; autoStart?: boolean } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RecoverStackParamList>();
