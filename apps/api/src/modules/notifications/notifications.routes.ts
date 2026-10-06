@@ -37,6 +37,14 @@ notificationsRouter.post("/notifications/:id/read", requireAuth, async (req: Aut
   }
 });
 
+notificationsRouter.post("/notifications/:id/dismiss", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await notificationsService.dismiss(req.userId!, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
 notificationsRouter.post("/devices/push-token", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     const input = registerPushTokenSchema.parse(req.body);

@@ -1,5 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { UpsertRecoveryInput } from "./recovery.schema";
+import { computeReadiness } from "./readiness";
 
 /**
  * Recovery & Devices — manual-entry stopgap (docs/mobile Phase 2 §E), added
@@ -93,4 +94,51 @@ export async function upsertRecovery(userId: string, input: UpsertRecoveryInput)
   });
 
   return toItem(log as RecoveryRow);
+}
+
+/**
+ * GET /recovery/readiness - see ./readiness.ts for the documented formula.
+ * `source` says where the numbers came from: a connected device that synced
+ * on/after the log's day ("device"), otherwise the user's own entry
+ * ("manual"). RecoveryLog has no per-row source column, so a same-day device
+ * sync is the honest signal available.
+ */
+export async function getReadiness(userId: string) {
+  const since = new Date(Date.now() - RANGE_DAYS * 24 * 60 * 60 * 1000);
+  const logs = (await prisma.recoveryLog.findMany({
+    where: { userId, date: { gte: since } },
+    orderBy: { date: "desc" },
+    take: 40,
+  })) as Array<RecoveryRow & { updatedAt: Date }>;
+  const latest = logs[0] ?? null;
+  const result = computeReadiness(latest, logs.slice(1));
+
+  let source: { kind: "manual" | "device"; name: string | null; at: Date } | null = null;
+  if (latest) {
+    const device = await prisma.connectedDevice.findFirst({
+      where: { userId, lastSyncAt: { gte: latest.date } },
+      orderBy: { lastSyncAt: "desc" },
+    });
+    const deviceMetrics = latest.sleepHours != null || latest.hrvMs != null || latest.restingHeartRate != null;
+    source =
+      device && deviceMetrics && device.lastSyncAt
+        ? { kind: "device", name: device.name, at: device.lastSyncAt }
+        : { kind: "manual", name: null, at: latest.updatedAt };
+  }
+
+  return {
+    ...result,
+    basis: "Based on your logged data",
+    date: latest?.date ?? null,
+    source,
+    metrics: latest
+      ? {
+          sleepHours: latest.sleepHours,
+          hrvMs: latest.hrvMs,
+          restingHeartRate: latest.restingHeartRate,
+          soreness: latest.soreness,
+          energyLevel: latest.energyLevel,
+        }
+      : null,
+  };
 }

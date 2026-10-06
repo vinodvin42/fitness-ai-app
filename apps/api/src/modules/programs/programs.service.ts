@@ -89,3 +89,62 @@ export async function getRecipeDetail(recipeId: string) {
   }
   return recipe;
 }
+
+/**
+ * Search screen (Figma Today 03): "Trending Workouts" hero + real catalog
+ * counts for the Explore Categories rows. Trending = the published catalog
+ * workout with the most sessions STARTED (any user) in the last 30 days; if
+ * nobody has started one yet it falls back to the first workout of the
+ * newest published program (`basis: "featured"`) so the card is never a
+ * fabricated popularity claim. Returns `workout: null` on an empty catalog.
+ */
+export async function getTrendingWorkout() {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const catalogWhere = { program: { status: "published" as const, ownerUserId: null } };
+
+  const [workouts, recipes, grouped] = await Promise.all([
+    prisma.workout.count({ where: catalogWhere }),
+    prisma.recipe.count({ where: { status: "published" } }),
+    prisma.workoutSession.groupBy({
+      by: ["workoutId"],
+      where: { startedAt: { gte: since }, workout: catalogWhere },
+      _count: { _all: true },
+      orderBy: { _count: { workoutId: "desc" } },
+      take: 1,
+    }),
+  ]);
+
+  const include = { program: { select: { id: true, name: true, type: true, imageUrl: true } } };
+  let basis: "most_started_30d" | "featured" = "most_started_30d";
+  let startCount = grouped[0]?._count._all ?? 0;
+  let workout = grouped[0]
+    ? await prisma.workout.findUnique({ where: { id: grouped[0].workoutId }, include })
+    : null;
+  if (!workout) {
+    basis = "featured";
+    startCount = 0;
+    workout = await prisma.workout.findFirst({
+      where: catalogWhere,
+      orderBy: [{ program: { createdAt: "desc" } }, { order: "asc" }],
+      include,
+    });
+  }
+
+  return {
+    workout: workout
+      ? {
+          id: workout.id,
+          name: workout.name,
+          durationMinutes: workout.durationMinutes,
+          intensity: workout.intensity,
+          programId: workout.program.id,
+          programName: workout.program.name,
+          programType: workout.program.type,
+          imageUrl: workout.program.imageUrl,
+        }
+      : null,
+    basis,
+    startCount,
+    catalog: { workouts, recipes },
+  };
+}

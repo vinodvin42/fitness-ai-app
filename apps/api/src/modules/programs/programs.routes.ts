@@ -20,6 +20,15 @@ programsRouter.get("/programs/:id", requireAuth, async (req: AuthedRequest, res,
   }
 });
 
+// Registered before "/workouts/:id" so "trending" is never treated as an :id.
+programsRouter.get("/workouts/trending", requireAuth, async (_req, res, next) => {
+  try {
+    res.json(await programsService.getTrendingWorkout());
+  } catch (err) {
+    next(err);
+  }
+});
+
 programsRouter.get("/workouts/:id", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await programsService.getWorkoutDetail(req.params.id, req.userId!));

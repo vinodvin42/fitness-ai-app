@@ -35,6 +35,8 @@ export const onboardingProfileSchema = z.object({
   // Figma onboarding 04: when present the server derives age from it.
   dateOfBirth: dateOfBirthField.optional(),
   weightKg: z.number().positive().optional(),
+  // Optional goal weight (Today "Weight Goal" row).
+  targetWeightKg: z.number().min(20).max(400).optional(),
   heightCm: z.number().positive().optional(),
   goals: z.array(z.string()).default([]),
   trainingLevel: z.enum(["beginner", "intermediate", "advanced"]).optional(),
@@ -115,6 +117,8 @@ export const editOnboardingProfileSchema = z
     age: z.number().int().positive().max(120).optional(),
     dateOfBirth: dateOfBirthField.optional(),
     weightKg: z.number().positive().optional(),
+    // null clears the goal weight.
+    targetWeightKg: z.number().min(20).max(400).nullable().optional(),
     heightCm: z.number().positive().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });

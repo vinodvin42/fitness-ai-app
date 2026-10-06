@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -39,6 +39,7 @@ const GENDERS = ["male", "female", "other"] as const;
  */
 export function EditProfileScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +58,8 @@ export function EditProfileScreen({ navigation }: Props) {
   const [age, setAge] = useState<number | undefined>(undefined);
   const [weightKg, setWeightKg] = useState<number | undefined>(undefined);
   const [heightCm, setHeightCm] = useState<number | undefined>(undefined);
+  // Optional goal weight (Today's "Weight Goal" row). undefined = no target.
+  const [targetWeightKg, setTargetWeightKg] = useState<number | undefined>(undefined);
   const [aboutYouLoaded, setAboutYouLoaded] = useState(false);
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export function EditProfileScreen({ navigation }: Props) {
       setAge(onboardingProfile.age ?? undefined);
       setWeightKg(onboardingProfile.weightKg ?? undefined);
       setHeightCm(onboardingProfile.heightCm ?? undefined);
+      setTargetWeightKg(onboardingProfile.targetWeightKg ?? undefined);
       setAboutYouLoaded(true);
     }
   }, [onboardingProfile, aboutYouLoaded]);
@@ -80,7 +84,8 @@ export function EditProfileScreen({ navigation }: Props) {
       // GET here shouldn't block saving the name/phone fields above, which
       // don't depend on it.
       if (aboutYouLoaded) {
-        await editOnboardingProfile({ gender, age, weightKg, heightCm });
+        await editOnboardingProfile({ gender, age, weightKg, heightCm, targetWeightKg: targetWeightKg ?? null });
+        await queryClient.invalidateQueries({ queryKey: ["onboardingProfile"] });
       }
       navigation.goBack();
     } catch (err) {
@@ -147,6 +152,23 @@ export function EditProfileScreen({ navigation }: Props) {
               <Stepper label="Age" value={age} unit="yrs" step={1} min={13} max={100} onChange={setAge} />
               <Stepper label="Weight" value={weightKg} unit="kg" step={0.5} min={30} max={250} onChange={setWeightKg} />
               <Stepper label="Height" value={heightCm} unit="cm" step={1} min={100} max={230} onChange={setHeightCm} />
+              {targetWeightKg != null ? (
+                <>
+                  <Stepper label="Goal weight" value={targetWeightKg} unit="kg" step={0.5} min={30} max={250} onChange={setTargetWeightKg} />
+                  <Pressable onPress={() => setTargetWeightKg(undefined)} accessibilityRole="button" accessibilityLabel="Clear goal weight" hitSlop={8}>
+                    <Text style={{ color: colors.textSecondary, ...typography.label, marginTop: spacing.xs }}>Clear goal weight</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable
+                  onPress={() => setTargetWeightKg(weightKg ?? 70)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Set a goal weight"
+                  hitSlop={8}
+                >
+                  <Text style={{ color: colors.accent, ...typography.label, marginTop: spacing.sm }}>+ Set a goal weight (optional)</Text>
+                </Pressable>
+              )}
             </View>
           </>
         )}

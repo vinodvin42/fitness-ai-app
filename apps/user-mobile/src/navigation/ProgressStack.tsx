@@ -7,6 +7,7 @@ import { MeasurementHistoryScreen } from "../screens/more/MeasurementHistoryScre
 import { StreakTrackerScreen } from "../screens/more/StreakTrackerScreen";
 import { ProgressPhotosScreen } from "../screens/more/ProgressPhotosScreen";
 import { CheckInScreen } from "../screens/more/CheckInScreen";
+import { BodyCompositionScreen } from "../screens/progress/BodyCompositionScreen";
 import { ProgressReviewScreen } from "../screens/progress/ProgressReviewScreen";
 import { WhyThisChangedScreen } from "../screens/progress/WhyThisChangedScreen";
 
@@ -48,6 +49,8 @@ export type ProgressStackParamList = {
   // CheckInScreen's own doc comment.
   CheckIn: undefined;
   ProgressReview: undefined;
+  // More menu "Body Composition" (Figma Today 05) — weight / body-fat / waist / hips trends.
+  BodyComposition: undefined;
   WhyThisChanged: { recommendation?: Recommendation } | undefined;
 };
 
@@ -57,6 +60,7 @@ export function ProgressStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Progress" component={ProgressOverviewScreen} />
+      <Stack.Screen name="BodyComposition" component={BodyCompositionScreen} />
       <Stack.Screen name="LogMeasurement" component={LogMeasurementScreen} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} />
       <Stack.Screen name="StreakTracker" component={StreakTrackerScreen} />

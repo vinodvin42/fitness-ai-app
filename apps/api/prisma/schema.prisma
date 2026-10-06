@@ -445,6 +445,9 @@ model OnboardingProfile {
   // When present, age is derived from it (see lib/age.ts).
   dateOfBirth           DateTime?
   weightKg              Float?
+  // Optional goal weight (Figma Today 06 "Weight Goal" row). Null = no target
+  // set, in which case Today hides the row.
+  targetWeightKg        Float?
   heightCm              Float?
   goals                 String[]       @default([])
   trainingLevel         TrainingLevel?
@@ -3553,6 +3556,7 @@ model AdminActionItem {
 enum NotificationKind {
   reminder
   workout
+  nutrition
   coach
   billing
   system
@@ -3567,6 +3571,10 @@ model Notification {
   body      String
   deepLink  String?
   readAt    DateTime?
+  // Swipe-to-dismiss (Figma Today 02): set when the user dismisses the row.
+  // Dismissed rows are excluded from lists and the unread count; the row is
+  // kept (not deleted) so the audit trail of what was sent survives.
+  dismissedAt DateTime?
   createdAt DateTime         @default(now())
 
   @@index([userId, createdAt])

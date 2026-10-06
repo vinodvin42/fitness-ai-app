@@ -67,6 +67,10 @@ import {
   Users,
   ShieldOff,
   Leaf,
+  Mic,
+  Scale,
+  Download,
+  WifiOff,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -144,6 +148,10 @@ export const ICONS = {
   users: Users,
   "shield-off": ShieldOff,
   leaf: Leaf,
+  mic: Mic,
+  scale: Scale,
+  download: Download,
+  "wifi-off": WifiOff,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

@@ -7,10 +7,16 @@ interface SearchBarProps {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  /** Pill-shaped variant (Figma Today 03). */
+  pill?: boolean;
+  /** Trailing slot, e.g. the Today 03 mic icon. */
+  right?: React.ReactNode;
+  onSubmitEditing?: () => void;
+  autoFocus?: boolean;
 }
 
 /** Icon + input search field, used across list screens. Added 31 Aug 2026. */
-export function SearchBar({ value, onChangeText, placeholder = "Search" }: SearchBarProps) {
+export function SearchBar({ value, onChangeText, placeholder = "Search", pill, right, onSubmitEditing, autoFocus }: SearchBarProps) {
   return (
     <View
       style={{
@@ -18,7 +24,7 @@ export function SearchBar({ value, onChangeText, placeholder = "Search" }: Searc
         alignItems: "center",
         gap: spacing.sm,
         height: 50,
-        borderRadius: radius.md,
+        borderRadius: pill ? radius.pill : radius.md,
         borderWidth: 1,
         borderColor: colors.borderStrong,
         backgroundColor: colors.surfaceRaised,
@@ -35,7 +41,11 @@ export function SearchBar({ value, onChangeText, placeholder = "Search" }: Searc
         autoCapitalize="none"
         accessibilityLabel={placeholder}
         accessibilityRole="search"
+        returnKeyType="search"
+        onSubmitEditing={onSubmitEditing}
+        autoFocus={autoFocus}
       />
+      {right}
     </View>
   );
 }

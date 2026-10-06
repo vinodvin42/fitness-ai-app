@@ -13,12 +13,12 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { DAILY_TARGETS } from "../../lib/nutritionTargets";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "FuelDashboard">;
 
-// Placeholder daily targets — see gap §10 (no goal-setting field modeled yet).
-const DAILY_TARGETS = { calories: 2000, proteinG: 150, carbsG: 200, fatG: 65 };
+// Placeholder daily targets (shared with Today) — see gap §10 (no goal-setting field modeled yet).
 const WATER_GOAL_GLASSES = 8; // placeholder — see gap §25
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];

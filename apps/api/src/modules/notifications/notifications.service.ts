@@ -8,7 +8,7 @@ import { ListNotificationsQuery, RegisterPushTokenInput } from "./notifications.
  * create inbox rows via createNotification().
  */
 
-export type NotificationKindValue = "reminder" | "workout" | "coach" | "billing" | "system";
+export type NotificationKindValue = "reminder" | "workout" | "nutrition" | "coach" | "billing" | "system";
 
 type NotificationRow = {
   id: string;
@@ -56,7 +56,12 @@ export async function createNotification(
 }
 
 export async function listNotifications(userId: string, query: ListNotificationsQuery) {
-  const where = { userId, ...(query.filter === "unread" ? { readAt: null } : {}) };
+  const where = {
+    userId,
+    dismissedAt: null,
+    ...(query.filter === "unread" ? { readAt: null } : {}),
+    ...(query.category ? { kind: (query.category === "workouts" ? "workout" : "nutrition") as NotificationKindValue } : {}),
+  };
   const rows = (await prisma.notification.findMany({
     where,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -66,7 +71,7 @@ export async function listNotifications(userId: string, query: ListNotifications
 
   const hasMore = rows.length > query.limit;
   const page = hasMore ? rows.slice(0, query.limit) : rows;
-  const unreadCount = await prisma.notification.count({ where: { userId, readAt: null } });
+  const unreadCount = await prisma.notification.count({ where: { userId, readAt: null, dismissedAt: null } });
 
   return {
     items: page.map(toItem),
@@ -88,9 +93,24 @@ export async function markRead(userId: string, notificationId: string) {
   return toItem(updated as NotificationRow);
 }
 
+/** Swipe-to-dismiss: hides the row from every list/count; the row itself is kept. Idempotent. */
+export async function dismiss(userId: string, notificationId: string) {
+  const existing = await prisma.notification.findUnique({ where: { id: notificationId } });
+  if (!existing || existing.userId !== userId) {
+    throw new ApiHttpError(404, "notification_not_found", "Notification not found");
+  }
+  if (!existing.dismissedAt) {
+    await prisma.notification.update({
+      where: { id: notificationId },
+      data: { dismissedAt: new Date(), readAt: existing.readAt ?? new Date() },
+    });
+  }
+  return { id: notificationId, dismissed: true as const };
+}
+
 export async function markAllRead(userId: string) {
   const result = await prisma.notification.updateMany({
-    where: { userId, readAt: null },
+    where: { userId, readAt: null, dismissedAt: null },
     data: { readAt: new Date() },
   });
   return { updated: result.count };

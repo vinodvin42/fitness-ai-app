@@ -1,4 +1,4 @@
-import type { Exercise, ExerciseDetail, Program, ProgramDetail, Recipe, WorkoutDetail } from "@fitness-ai-app/types";
+import type { Exercise, ExerciseDetail, Program, ProgramDetail, Recipe, TrendingWorkoutResponse, WorkoutDetail } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 // Phase 0/1: read-only, backed by the seed data in apps/api/scripts/seed.ts
@@ -30,4 +30,9 @@ export function fetchRecipes() {
 
 export function fetchRecipeDetail(recipeId: string) {
   return apiClient.get<Recipe>(`/recipes/${recipeId}`).then((r) => r.data);
+}
+
+/** Search "Trending Workouts" hero + catalog counts for the Explore Categories rows. */
+export function fetchTrendingWorkout() {
+  return apiClient.get<TrendingWorkoutResponse>("/workouts/trending").then((r) => r.data);
 }

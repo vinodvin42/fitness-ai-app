@@ -168,6 +168,8 @@ export interface OnboardingProfile {
   /** ISO timestamp (UTC midnight) of the date of birth; null for legacy rows that only have `age`. */
   dateOfBirth?: string | null;
   weightKg: number | null;
+  /** Optional goal weight; null = none set (Today hides its Weight Goal row). */
+  targetWeightKg?: number | null;
   heightCm: number | null;
   goals: string[];
   trainingLevel: "beginner" | "intermediate" | "advanced" | null;
@@ -296,6 +298,7 @@ export interface OnboardingProfileInput {
   /** YYYY-MM-DD. When present the server derives `age` from it. */
   dateOfBirth?: string;
   weightKg?: number;
+  targetWeightKg?: number;
   heightCm?: number;
   goals: string[];
   trainingLevel?: "beginner" | "intermediate" | "advanced";
@@ -332,6 +335,8 @@ export interface EditOnboardingProfileInput {
   age?: number;
   dateOfBirth?: string;
   weightKg?: number;
+  /** null clears the goal weight. */
+  targetWeightKg?: number | null;
   heightCm?: number;
 }
 
@@ -3776,6 +3781,49 @@ export interface RecoveryResponse {
   source: "self_reported";
 }
 
+/**
+ * GET /recovery/readiness - honest 0-100 readiness computed from the user's
+ * own RecoveryLog (formula documented in apps/api's recovery/readiness.ts).
+ * `score` is null (with `reason`) when there isn't enough real data.
+ */
+export interface ReadinessResponse {
+  score: number | null;
+  band: "ready" | "moderate" | "rest" | null;
+  headline: string | null;
+  summary: string | null;
+  components: Array<{ key: "sleep" | "hrv" | "restingHr" | "energy" | "soreness"; score: number; weight: number }>;
+  reason: string | null;
+  /** Always "Based on your logged data". */
+  basis: string;
+  date: string | null;
+  source: { kind: "manual" | "device"; name: string | null; at: string } | null;
+  metrics: {
+    sleepHours: number | null;
+    hrvMs: number | null;
+    restingHeartRate: number | null;
+    soreness: number | null;
+    energyLevel: number | null;
+  } | null;
+}
+
+/** GET /workouts/trending */
+export interface TrendingWorkoutResponse {
+  workout: {
+    id: string;
+    name: string;
+    durationMinutes: number;
+    intensity: string;
+    programId: string;
+    programName: string;
+    programType: string;
+    imageUrl: string | null;
+  } | null;
+  /** "featured" = nobody started a workout in the last 30 days, so this is the first published program workout. */
+  basis: "most_started_30d" | "featured";
+  startCount: number;
+  catalog: { workouts: number; recipes: number };
+}
+
 export interface UpsertRecoveryInput {
   date: string;
   restingHeartRate?: number;
@@ -4307,7 +4355,16 @@ export interface AdminSearchResponse {
 // medications modules, plus the AI Coach daily quota. Dates are ISO strings
 // over the wire.
 
-export type NotificationKind = "reminder" | "workout" | "coach" | "billing" | "system";
+export type NotificationKind = "reminder" | "workout" | "nutrition" | "coach" | "billing" | "system";
+
+/** Notifications filter pills (Figma Today 02): Workouts -> kind workout, Nutrition -> kind nutrition. */
+export type NotificationCategory = "workouts" | "nutrition";
+
+/** POST /notifications/:id/dismiss */
+export interface DismissNotificationResponse {
+  id: string;
+  dismissed: true;
+}
 
 export interface Notification {
   id: string;

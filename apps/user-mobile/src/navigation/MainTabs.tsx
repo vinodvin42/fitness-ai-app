@@ -2,6 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { TodayStack } from "./TodayStack";
+import type { TodayStackParamList } from "./TodayStack";
 import { TrainStack } from "./TrainStack";
 import type { TrainStackParamList } from "./TrainStack";
 import { FuelStack } from "./FuelStack";
@@ -37,7 +38,8 @@ import { useTheme } from "../theme/ThemeProvider";
 // 2026), now that AiCoach/RecoverHub live under More instead of their
 // own tab. `Fuel` stays `undefined` since nothing needs one yet.
 export type MainTabsParamList = {
-  Today: undefined;
+  // Typed as nested params so More can deep-link into Today's Schedule (Figma Today 05).
+  Today: NavigatorScreenParams<TodayStackParamList> | undefined;
   Train: NavigatorScreenParams<TrainStackParamList> | undefined;
   Fuel: NavigatorScreenParams<FuelStackParamList> | undefined;
   Recover: NavigatorScreenParams<RecoverStackParamList> | undefined;
