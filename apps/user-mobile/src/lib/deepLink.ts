@@ -12,6 +12,7 @@ export function openNotificationDeepLink(
   deepLink: string | null | undefined,
 ): boolean {
   if (!deepLink) return false;
+  const query = new URLSearchParams(deepLink.includes("?") ? deepLink.replace(/#.*$/, "").slice(deepLink.indexOf("?") + 1) : "");
   const path = deepLink
     .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
     .replace(/[?#].*$/, "")
@@ -41,7 +42,16 @@ export function openNotificationDeepLink(
     case "medicine":
     case "medication":
     case "medications":
-      navigation.navigate("More", { screen: second === "due" ? "MedicineDue" : "MedicationList" });
+      {
+        // Params are case-sensitive ids/ISO strings, so read them from the original (not lower-cased) link.
+        const medicationId = query.get("medicationId");
+        const scheduledFor = query.get("scheduledFor");
+        if (second === "due" && medicationId && scheduledFor) {
+          navigation.navigate("More", { screen: "MedicineOccurrence", params: { medicationId, scheduledFor } });
+        } else {
+          navigation.navigate("More", { screen: second === "due" ? "MedicineDue" : "MedicationList" });
+        }
+      }
       return true;
     case "reminders":
       navigation.navigate("More", { screen: "Reminders" });

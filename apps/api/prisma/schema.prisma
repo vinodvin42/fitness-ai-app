@@ -908,7 +908,7 @@ model Recipe {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  mealLogs MealLog[]
+  mealLogs      MealLog[]
   // Meal-Plan Generation Engine (22 Sep 2026) — see MealPlan's own doc
   // comment.
   mealPlanItems MealPlanItem[]
@@ -2180,12 +2180,12 @@ model AdminUser {
   // an item is assigned to and the admin who resolved it can legitimately
   // be the same one, no self-guard needed (same reasoning as Escalation's
   // own comment).
-  actionItemsAssigned             AdminActionItem[] @relation("AdminActionItemAssignedTo")
-  actionItemsResolved             AdminActionItem[] @relation("AdminActionItemResolvedBy")
+  actionItemsAssigned             AdminActionItem[]            @relation("AdminActionItemAssignedTo")
+  actionItemsResolved             AdminActionItem[]            @relation("AdminActionItemResolvedBy")
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
   // own doc comment below. Nullable on that model (a future "system"
   // proposer needs no AdminUser), so this is a one-to-many, not required.
-  professionalOffersProposed       ProfessionalOffer[]
+  professionalOffersProposed      ProfessionalOffer[]
 
   @@map("admin_users")
 }
@@ -2303,20 +2303,20 @@ enum RelationshipStatus {
 }
 
 model Professional {
-  id                 String             @id @default(uuid())
-  email              String             @unique
+  id                 String                      @id @default(uuid())
+  email              String                      @unique
   passwordHash       String
   fullName           String
   phone              String?
   bio                String?
-  specializationTags String[]           @default([])
+  specializationTags String[]                    @default([])
   yearsExperience    Int?
-  status             ProfessionalStatus @default(active)
+  status             ProfessionalStatus          @default(active)
   // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
   // take on this coach's booking value, admin-editable (Module 03 Profile /
   // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
   // model's doc comment for how it's applied.
-  commissionPct      Int                @default(20)
+  commissionPct      Int                         @default(20)
   // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
   // service, unlike ProfessionalCredential below. Same base64-in-Postgres
   // storage precedent as ProgressPhoto.imageData (no object storage exists
@@ -2327,7 +2327,7 @@ model Professional {
   // before this should ever hold a real government ID — this build has
   // none of that, only the same storage mechanism as everything else here.
   kycDocumentData    String?
-  kycStatus          CredentialStatus   @default(not_verified)
+  kycStatus          CredentialStatus            @default(not_verified)
   // R2 Wave 1 (20 Sep 2026) — the professional's own account-level
   // application/approval journey (Developer 2's R1 work package §2,
   // APPLICATION -> VERIFICATION -> APPROVED -> AVAILABLE). Additive
@@ -2342,15 +2342,15 @@ model Professional {
   // service.ts's `updateMaxActiveClients`). Deliberately NOT a calendar-slot
   // capacity model; R1's own scope for this wave is just the integer gate.
   // Default 15 per the product decision made for this wave.
-  maxActiveClients  Int                @default(15)
+  maxActiveClients   Int                         @default(15)
   // Admin review notes for the KYC check (docs/admin/03-screen-inventory.md
   // 03.03's "admin review notes/log" field) — added 21 Aug 2026 for the
   // Credential Verification screen. A single current-notes field, not a
   // full threaded log; each verify/reject/suspend action is separately
   // captured in AuditLog (recordAudit()) for the actual audit trail.
   adminNotes         String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
 
   credentials      ProfessionalCredential[]
   refreshTokens    ProfessionalRefreshToken[]
@@ -2376,7 +2376,7 @@ model Professional {
   // `proposedByProfessionalId`: offers THIS professional proposed for a
   // replacement via a Handover action, distinct from `offersReceived`
   // above (offers proposed FOR this professional by someone else).
-  offersProposed   ProfessionalOffer[]            @relation("ProfessionalOfferProposedBy")
+  offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
 
   @@map("professionals")
 }
@@ -2567,21 +2567,21 @@ enum BookingStatus {
 // same "copy the value at write time" precedent MealLog uses for a
 // Recipe's macros.
 model Booking {
-  id              String                      @id @default(uuid())
-  userId          String
-  user            User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  professionalId  String
-  professional    Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  offeringId      String
-  offering        ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
-  scheduledAt     DateTime
-  durationMinutes Int
-  priceCents      Int
-  status          BookingStatus               @default(confirmed)
+  id                 String                      @id @default(uuid())
+  userId             String
+  user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId     String
+  professional       Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  offeringId         String
+  offering           ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  scheduledAt        DateTime
+  durationMinutes    Int
+  priceCents         Int
+  status             BookingStatus               @default(confirmed)
   // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
-  summaryText        String?                  @db.Text
+  summaryText        String?                     @db.Text
   summaryPublishedAt DateTime?
-  createdAt       DateTime                    @default(now())
+  createdAt          DateTime                    @default(now())
 
   @@index([userId])
   @@index([professionalId])
@@ -2690,17 +2690,17 @@ enum ProfessionalOfferStatus {
 }
 
 model ProfessionalOffer {
-  id                String                  @id @default(uuid())
-  professionalId    String
-  professional      Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceType       ProfessionalServiceType
-  status            ProfessionalOfferStatus @default(offered)
+  id                       String                  @id @default(uuid())
+  professionalId           String
+  professional             Professional            @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceType              ProfessionalServiceType
+  status                   ProfessionalOfferStatus @default(offered)
   // Nullable — see this model's own top comment on why "system" is a valid,
   // schema-modeled-but-not-yet-built proposer for a later wave.
-  proposedByAdminId String?
-  proposedByAdmin   AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
+  proposedByAdminId        String?
+  proposedByAdmin          AdminUser?              @relation(fields: [proposedByAdminId], references: [id], onDelete: SetNull)
   // Wave 3 (20 Sep 2026, R1 U6 handover) — the OTHER real proposer this
   // model's own top comment already anticipated a later wave would add
   // ("system"), but this is the genuine one that landed: the ENDING coach
@@ -2714,10 +2714,10 @@ model ProfessionalOffer {
   // above (the professional the offer is FOR) — this is a second, distinct
   // relation to the same model (the professional the offer is FROM).
   proposedByProfessionalId String?
-  proposedByProfessional   Professional?      @relation("ProfessionalOfferProposedBy", fields: [proposedByProfessionalId], references: [id], onDelete: SetNull)
-  expiresAt         DateTime?
-  createdAt         DateTime                @default(now())
-  respondedAt       DateTime?
+  proposedByProfessional   Professional?           @relation("ProfessionalOfferProposedBy", fields: [proposedByProfessionalId], references: [id], onDelete: SetNull)
+  expiresAt                DateTime?
+  createdAt                DateTime                @default(now())
+  respondedAt              DateTime?
 
   @@index([professionalId, status])
   @@index([userId])
@@ -3020,12 +3020,12 @@ model Influencer {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  payouts   InfluencerPayout[]
+  payouts         InfluencerPayout[]
   // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — a
   // Campaign MAY credit this influencer (BR-ACQ-002: "who gets paid" is
   // tracked here, separately from `channel`'s "how did they hear about
   // us"). See Campaign's own doc comment.
-  campaigns Campaign[]
+  campaigns       Campaign[]
   // Creator Portal sessions (R2 Wave 5) — see InfluencerRefreshToken's
   // own doc comment.
   refreshTokens   InfluencerRefreshToken[]
@@ -3592,20 +3592,20 @@ enum AdminActionItemStatus {
 }
 
 model AdminActionItem {
-  id                String                   @id @default(uuid())
+  id                String                  @id @default(uuid())
   type              AdminActionItemType
   entityType        String
   entityId          String
-  severity          AdminActionItemSeverity  @default(medium)
-  status            AdminActionItemStatus    @default(open)
+  severity          AdminActionItemSeverity @default(medium)
+  status            AdminActionItemStatus   @default(open)
   metadata          Json?
   assignedToAdminId String?
-  assignedToAdmin   AdminUser?               @relation("AdminActionItemAssignedTo", fields: [assignedToAdminId], references: [id], onDelete: SetNull)
+  assignedToAdmin   AdminUser?              @relation("AdminActionItemAssignedTo", fields: [assignedToAdminId], references: [id], onDelete: SetNull)
   resolvedAt        DateTime?
   resolvedByAdminId String?
-  resolvedByAdmin   AdminUser?               @relation("AdminActionItemResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  resolvedByAdmin   AdminUser?              @relation("AdminActionItemResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
   resolutionNote    String?
-  createdAt         DateTime                 @default(now())
+  createdAt         DateTime                @default(now())
 
   @@index([status, severity])
   @@index([type])
@@ -3629,19 +3629,19 @@ enum NotificationKind {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind      NotificationKind @default(system)
-  title     String
-  body      String
-  deepLink  String?
-  readAt    DateTime?
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        NotificationKind @default(system)
+  title       String
+  body        String
+  deepLink    String?
+  readAt      DateTime?
   // Swipe-to-dismiss (Figma Today 02): set when the user dismisses the row.
   // Dismissed rows are excluded from lists and the unread count; the row is
   // kept (not deleted) so the audit trail of what was sent survives.
   dismissedAt DateTime?
-  createdAt DateTime         @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
@@ -3766,21 +3766,31 @@ enum DoseStatus {
 }
 
 model Medication {
-  id            String              @id @default(uuid())
-  userId        String
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  dosage        String
-  form          String?
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  dosage           String
+  form             String?
   // "HH:MM" local times; daysOfWeek uses 0 = Sunday .. 6 = Saturday.
-  scheduleTimes String[]
-  daysOfWeek    Int[]               @default([0, 1, 2, 3, 4, 5, 6])
-  startDate     DateTime
-  endDate       DateTime?
-  notes         String?
-  isActive      Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  doseLogs      MedicationDoseLog[]
+  scheduleTimes    String[]
+  daysOfWeek       Int[]               @default([0, 1, 2, 3, 4, 5, 6])
+  startDate        DateTime
+  endDate          DateTime?
+  notes            String?
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  // "once" | "daily" | "selected" (UI intent; scheduling uses daysOfWeek +
+  // startDate/endDate — "once" is stored as startDate == endDate).
+  repeatMode       String              @default("daily")
+  // "before_food" | "after_food"
+  mealTiming       String?
+  pushEnabled      Boolean             @default(true)
+  soundEnabled     Boolean             @default(true)
+  vibrationEnabled Boolean             @default(false)
+  // false => lock-screen text is generic; true => it shows the reminder title.
+  detailedPreview  Boolean             @default(false)
+  doseLogs         MedicationDoseLog[]
 
   @@index([userId])
   @@map("medications")
@@ -3844,24 +3854,24 @@ enum WorkoutWeightUnit {
 }
 
 model WorkoutSettings {
-  id                 String            @id @default(uuid())
-  userId             String            @unique
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  restTimerSeconds   Int               @default(90)
-  autoStartRest      Boolean           @default(true)
-  weightUnit         WorkoutWeightUnit @default(kg)
-  countdownSound     Boolean           @default(true)
-  keepScreenAwake    Boolean           @default(true)
-  defaultRpeTracking Boolean           @default(false)
+  id                       String            @id @default(uuid())
+  userId                   String            @unique
+  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restTimerSeconds         Int               @default(90)
+  autoStartRest            Boolean           @default(true)
+  weightUnit               WorkoutWeightUnit @default(kg)
+  countdownSound           Boolean           @default(true)
+  keepScreenAwake          Boolean           @default(true)
+  defaultRpeTracking       Boolean           @default(false)
   // Train 16 "Preferences" extras. `equipment` / `trainingDays` stay empty
   // until the user edits them; reads then fall back to the onboarding profile
   // (equipmentContext / preferredTrainingDays) and edits write back to it.
-  preferredDurationMinutes Int         @default(45)
-  audioCoaching      Boolean           @default(true)
-  autoDeloadWeek     Boolean           @default(false)
-  equipment          String[]          @default([])
-  trainingDays       String[]          @default([])
-  updatedAt          DateTime          @updatedAt
+  preferredDurationMinutes Int               @default(45)
+  audioCoaching            Boolean           @default(true)
+  autoDeloadWeek           Boolean           @default(false)
+  equipment                String[]          @default([])
+  trainingDays             String[]          @default([])
+  updatedAt                DateTime          @updatedAt
 
   @@map("workout_settings")
 }
@@ -3905,16 +3915,16 @@ enum FormAnalysisStatus {
 
 // Capture only: status stays `queued` until a human coach reviews it.
 model FormAnalysisSubmission {
-  id         String             @id @default(uuid())
-  userId     String
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exerciseId String?
-  videoUrl   String?            @db.Text
-  status     FormAnalysisStatus @default(queued)
-  coachNote  String?
-  reviewedAt DateTime?
+  id                       String             @id @default(uuid())
+  userId                   String
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId               String?
+  videoUrl                 String?            @db.Text
+  status                   FormAnalysisStatus @default(queued)
+  coachNote                String?
+  reviewedAt               DateTime?
   reviewedByProfessionalId String?
-  createdAt  DateTime           @default(now())
+  createdAt                DateTime           @default(now())
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -3934,26 +3944,26 @@ enum QuoteRequestStatus {
 }
 
 model QuoteRequest {
-  id               String             @id @default(uuid())
-  userId           String
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  professionalId   String
-  professional     Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  serviceType      String
-  message          String             @db.Text
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId    String
+  professional      Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType       String
+  message           String             @db.Text
   // Optional preferred session time the user picked when requesting (informational).
-  preferredAt      DateTime?
-  status           QuoteRequestStatus @default(pending)
-  quotedPriceCents Int?
-  currency         String?
-  quoteNote        String?
-  quoteExpiresAt   DateTime?
-  respondedAt      DateTime?
+  preferredAt       DateTime?
+  status            QuoteRequestStatus @default(pending)
+  quotedPriceCents  Int?
+  currency          String?
+  quoteNote         String?
+  quoteExpiresAt    DateTime?
+  respondedAt       DateTime?
   // Set when the user accepts; accepted quotes must be paid within 48h of this.
-  acceptedAt       DateTime?
+  acceptedAt        DateTime?
   // Payment that consumed this quote (atomic claim in activatePayment).
   consumedPaymentId String?
-  createdAt        DateTime           @default(now())
+  createdAt         DateTime           @default(now())
 
   @@index([userId, createdAt])
   @@index([professionalId, status])

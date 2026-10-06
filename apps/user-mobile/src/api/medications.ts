@@ -37,6 +37,11 @@ export function logMedicationDose(medicationId: string, input: LogMedicationDose
   return apiClient.post<MedicationDose>(`/medications/${medicationId}/doses`, input).then((r) => r.data);
 }
 
+/** Clears a logged entry (mistaken Taken/Skipped, or Undo snooze) so the occurrence reverts to due. */
+export function clearMedicationDose(medicationId: string, scheduledFor: string) {
+  return apiClient.delete(`/medications/${medicationId}/doses`, { params: { scheduledFor } }).then(() => undefined);
+}
+
 export function fetchMedicationAdherence(medicationId: string) {
   return apiClient
     .get<MedicationAdherence>(`/medications/${medicationId}/adherence`, {

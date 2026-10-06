@@ -63,7 +63,7 @@ export async function syncScheduledNotifications(reminders: Reminder[]) {
   // data.kind === "medication", so they must survive a reminder resync.
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   for (const n of scheduled) {
-    if (n.content.data?.kind === "medication") continue;
+    if (String(n.content.data?.kind ?? "").startsWith("medication")) continue;
     await Notifications.cancelScheduledNotificationAsync(n.identifier);
   }
 

@@ -670,7 +670,12 @@ export function TodayScreen({ navigation }: Props) {
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 }}>
                   <Pressable
-                    onPress={() => navigation.navigate("More", { screen: "MedicineDue" })}
+                    onPress={() =>
+                      navigation.navigate("More", {
+                        screen: "MedicineOccurrence",
+                        params: { medicationId: nextMedication.medicationId, scheduledFor: nextMedication.scheduledFor },
+                      })
+                    }
                     accessibilityRole="button"
                     accessibilityLabel="View medicine reminder"
                     style={{ borderWidth: 1, borderColor: theme.accent, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 6 }}

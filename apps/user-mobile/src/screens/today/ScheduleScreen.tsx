@@ -123,7 +123,11 @@ export function ScheduleScreen({ navigation }: Props) {
           title: d.name,
           subtitle: d.status === "taken" ? "Taken" : d.status === "skipped" ? "Skipped" : "Medicine reminder",
           tag: "Medicine",
-          onPress: () => parent?.navigate("More", { screen: "MedicineDue" }),
+          onPress: () =>
+            parent?.navigate("More", {
+              screen: "MedicineOccurrence",
+              params: { medicationId: d.medicationId, scheduledFor: d.scheduledFor },
+            }),
         });
       }
       const w = next.data?.workout;

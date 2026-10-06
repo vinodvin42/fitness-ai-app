@@ -41,6 +41,7 @@ import { HealthConnectScreen } from "../screens/more/HealthConnectScreen";
 import { MedicationListScreen } from "../screens/more/MedicationListScreen";
 import { MedicationFormScreen } from "../screens/more/MedicationFormScreen";
 import { MedicineDueScreen } from "../screens/more/MedicineDueScreen";
+import { MedicineOccurrenceScreen } from "../screens/more/MedicineOccurrenceScreen";
 import { CoachSessionsScreen } from "../screens/coaching/CoachSessionsScreen";
 import { SessionSummaryScreen } from "../screens/coaching/SessionSummaryScreen";
 import { QuotesScreen } from "../screens/coaching/QuotesScreen";
@@ -143,6 +144,7 @@ export type MoreStackParamList = {
   MedicationList: undefined;
   MedicationForm: { medication?: Medication } | undefined;
   MedicineDue: undefined;
+  MedicineOccurrence: { medicationId: string; scheduledFor: string };
   // Wave B (Oct 2026): Human Coach 04-09.
   CoachSessions: undefined;
   SessionSummary: { bookingId: string };
@@ -194,6 +196,7 @@ export function MoreStack() {
       <Stack.Screen name="MedicationList" component={MedicationListScreen} />
       <Stack.Screen name="MedicationForm" component={MedicationFormScreen} />
       <Stack.Screen name="MedicineDue" component={MedicineDueScreen} />
+      <Stack.Screen name="MedicineOccurrence" component={MedicineOccurrenceScreen} />
       <Stack.Screen name="CoachSessions" component={CoachSessionsScreen} />
       <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} />
       <Stack.Screen name="Quotes" component={QuotesScreen} />

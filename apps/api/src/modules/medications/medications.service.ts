@@ -1,7 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { CreateMedicationInput, DayQuery, LogDoseInput, UpdateMedicationInput } from "./medications.schema";
+import { ClearDoseQuery, CreateMedicationInput, DayQuery, LogDoseInput, UpdateMedicationInput } from "./medications.schema";
 
 /**
  * Medicine tracking. A Medication carries a recurring schedule ("HH:MM"
@@ -29,6 +29,12 @@ type MedRow = {
   notes: string | null;
   isActive: boolean;
   createdAt: Date;
+  repeatMode: string;
+  mealTiming: string | null;
+  pushEnabled: boolean;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  detailedPreview: boolean;
 };
 
 type DoseRow = {
@@ -53,6 +59,12 @@ function toMedication(m: MedRow) {
     notes: m.notes,
     isActive: m.isActive,
     createdAt: m.createdAt,
+    repeatMode: m.repeatMode,
+    mealTiming: m.mealTiming,
+    pushEnabled: m.pushEnabled,
+    soundEnabled: m.soundEnabled,
+    vibrationEnabled: m.vibrationEnabled,
+    detailedPreview: m.detailedPreview,
   };
 }
 
@@ -119,6 +131,12 @@ export async function createMedication(userId: string, input: CreateMedicationIn
       endDate: input.endDate ? dateOnlyUtc(input.endDate) : null,
       notes: input.notes ?? null,
       isActive: input.isActive,
+      repeatMode: input.repeatMode,
+      mealTiming: input.mealTiming ?? null,
+      pushEnabled: input.pushEnabled,
+      soundEnabled: input.soundEnabled,
+      vibrationEnabled: input.vibrationEnabled,
+      detailedPreview: input.detailedPreview,
     },
   });
   await recordAudit({
@@ -135,8 +153,13 @@ export async function updateMedication(userId: string, medicationId: string, inp
   const existing = await getOwnedMedication(userId, medicationId);
   const { startDate, endDate, scheduleTimes, ...rest } = input;
 
+  const mode = rest.repeatMode ?? existing.repeatMode;
   const nextStart = startDate ? dateOnlyUtc(startDate) : existing.startDate;
-  const nextEnd = endDate === undefined ? existing.endDate : endDate ? dateOnlyUtc(endDate) : null;
+  let nextEnd = endDate === undefined ? existing.endDate : endDate ? dateOnlyUtc(endDate) : null;
+  // "once" pins the single date; "daily" means every weekday.
+  if (mode === "once") nextEnd = nextStart;
+  else if (rest.repeatMode && existing.repeatMode === "once" && endDate === undefined) nextEnd = null;
+  const forcedDays = mode === "once" || mode === "daily" ? [0, 1, 2, 3, 4, 5, 6] : undefined;
   if (nextEnd && nextEnd < nextStart) {
     throw new ApiHttpError(400, "validation_error", "endDate must not be before startDate");
   }
@@ -146,8 +169,9 @@ export async function updateMedication(userId: string, medicationId: string, inp
     data: {
       ...rest,
       ...(scheduleTimes ? { scheduleTimes: [...scheduleTimes].sort() } : {}),
+      ...(forcedDays && (rest.repeatMode || rest.daysOfWeek) ? { daysOfWeek: forcedDays } : {}),
       ...(startDate ? { startDate: nextStart } : {}),
-      ...(endDate !== undefined ? { endDate: nextEnd } : {}),
+      ...(endDate !== undefined || rest.repeatMode || (mode === "once" && startDate) ? { endDate: nextEnd } : {}),
     },
   });
   await recordAudit({
@@ -224,21 +248,71 @@ export async function getDueDoses(userId: string, query: DayQuery) {
   return { date: day.toISOString().slice(0, 10), items };
 }
 
+/** A logged Taken/Skipped entry can be corrected for 24h after its scheduled time. */
+const CORRECTION_WINDOW_MS = DAY_MS;
+
+function assertWithinCorrectionWindow(scheduledFor: Date, now: Date) {
+  if (now.getTime() > scheduledFor.getTime() + CORRECTION_WINDOW_MS) {
+    throw new ApiHttpError(409, "correction_window_closed", "This entry can no longer be changed.");
+  }
+}
+
 export async function logDose(userId: string, medicationId: string, input: LogDoseInput) {
   await getOwnedMedication(userId, medicationId);
   const scheduledFor = new Date(input.scheduledFor);
+  const now = new Date();
+  const existing = (await prisma.medicationDoseLog.findUnique({
+    where: { medicationId_scheduledFor: { medicationId, scheduledFor } },
+  })) as DoseRow | null;
+
+  // Identical repeat of a settled entry: idempotent no-op (keeps the original loggedAt).
+  if (existing && existing.status === input.status && input.status !== "snoozed") {
+    return toDose(existing);
+  }
+  // Correcting a logged Taken/Skipped entry (flip or re-log) is limited to 24h.
+  if (existing && (existing.status === "taken" || existing.status === "skipped")) {
+    assertWithinCorrectionWindow(scheduledFor, now);
+  }
+
   const data = {
     status: input.status,
     snoozedUntil: input.status === "snoozed" ? new Date(input.snoozedUntil!) : null,
-    loggedAt: new Date(),
+    loggedAt: now,
   };
-  // Idempotent per (medication, scheduledFor): re-logging updates the row.
   const row = await prisma.medicationDoseLog.upsert({
     where: { medicationId_scheduledFor: { medicationId, scheduledFor } },
     create: { medicationId, userId, scheduledFor, ...data },
     update: data,
   });
+  await recordAudit({
+    actorId: userId,
+    action: existing ? "medication.dose_corrected" : "medication.dose_logged",
+    entityType: "MedicationDoseLog",
+    entityId: row.id,
+    metadata: { status: input.status, previousStatus: existing?.status ?? null },
+  });
   return toDose(row as DoseRow);
+}
+
+/** Clears a logged entry (mistaken Taken/Skipped, or Undo snooze): the occurrence reverts to due/missed. */
+export async function clearDose(userId: string, medicationId: string, query: ClearDoseQuery) {
+  await getOwnedMedication(userId, medicationId);
+  const scheduledFor = new Date(query.scheduledFor);
+  const existing = (await prisma.medicationDoseLog.findUnique({
+    where: { medicationId_scheduledFor: { medicationId, scheduledFor } },
+  })) as DoseRow | null;
+  if (!existing) return; // idempotent
+  if (existing.status === "taken" || existing.status === "skipped") {
+    assertWithinCorrectionWindow(scheduledFor, new Date());
+  }
+  await prisma.medicationDoseLog.delete({ where: { id: existing.id } });
+  await recordAudit({
+    actorId: userId,
+    action: "medication.dose_cleared",
+    entityType: "MedicationDoseLog",
+    entityId: existing.id,
+    metadata: { previousStatus: existing.status },
+  });
 }
 
 export async function getAdherence(userId: string, medicationId: string, query: DayQuery) {

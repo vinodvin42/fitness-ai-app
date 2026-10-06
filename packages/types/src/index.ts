@@ -4804,7 +4804,18 @@ export interface Medication {
   notes: string | null;
   isActive: boolean;
   createdAt: string;
+  /** UI intent; "once" is stored as startDate == endDate. */
+  repeatMode: MedicationRepeatMode;
+  mealTiming: MedicationMealTiming | null;
+  pushEnabled: boolean;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  /** false => lock-screen text is generic; true => shows the reminder title. */
+  detailedPreview: boolean;
 }
+
+export type MedicationRepeatMode = "once" | "daily" | "selected";
+export type MedicationMealTiming = "before_food" | "after_food";
 
 /** GET /medications */
 export interface MedicationsResponse {
@@ -4814,7 +4825,8 @@ export interface MedicationsResponse {
 /** POST /medications (dates are YYYY-MM-DD) */
 export interface CreateMedicationInput {
   name: string;
-  dosage: string;
+  /** Optional; "" when the user didn't enter one. */
+  dosage?: string;
   form?: string | null;
   scheduleTimes: string[];
   daysOfWeek?: number[];
@@ -4822,6 +4834,12 @@ export interface CreateMedicationInput {
   endDate?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  repeatMode?: MedicationRepeatMode;
+  mealTiming?: MedicationMealTiming | null;
+  pushEnabled?: boolean;
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
+  detailedPreview?: boolean;
 }
 
 /** PATCH /medications/:id */
@@ -4831,7 +4849,12 @@ export type MedicationDoseStatus = "taken" | "skipped" | "snoozed";
 /** Computed statuses in GET /medications/due add pending and missed. */
 export type MedicationDueStatus = MedicationDoseStatus | "pending" | "missed";
 
-/** POST /medications/:id/doses (idempotent per medication + scheduledFor) */
+/**
+ * POST /medications/:id/doses (idempotent per medication + scheduledFor; an
+ * existing Taken/Skipped entry can be overwritten within 24h of scheduledFor,
+ * else 409 correction_window_closed). DELETE /medications/:id/doses?scheduledFor=
+ * clears the entry (204) so the occurrence reverts to due/missed.
+ */
 export interface LogMedicationDoseInput {
   scheduledFor: string; // ISO datetime
   status: MedicationDoseStatus;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { createMedicationSchema, dayQuerySchema, logDoseSchema, updateMedicationSchema } from "./medications.schema";
+import { clearDoseQuerySchema, createMedicationSchema, dayQuerySchema, logDoseSchema, updateMedicationSchema } from "./medications.schema";
 import * as medicationsService from "./medications.service";
 
 export const medicationsRouter = Router();
@@ -55,6 +55,16 @@ medicationsRouter.post("/medications/:id/doses", requireAuth, writeRateLimit, as
   try {
     const input = logDoseSchema.parse(req.body);
     res.status(200).json(await medicationsService.logDose(req.userId!, req.params.id, input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+medicationsRouter.delete("/medications/:id/doses", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const query = clearDoseQuerySchema.parse(req.query);
+    await medicationsService.clearDose(req.userId!, req.params.id, query);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
