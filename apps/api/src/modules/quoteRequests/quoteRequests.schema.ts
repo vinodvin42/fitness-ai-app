@@ -4,11 +4,13 @@ export const createQuoteRequestSchema = z.object({
   professionalId: z.string().min(1).max(191),
   serviceType: z.enum(["fitness", "nutrition", "combined"]),
   message: z.string().trim().min(1).max(2000),
+  // Optional preferred session time (ISO date-time, must be in the future). Informational for the coach.
+  preferredAt: z.string().datetime({ message: "preferredAt must be an ISO 8601 date-time" }).optional(),
 });
 export type CreateQuoteRequestInput = z.infer<typeof createQuoteRequestSchema>;
 
 export const listQuoteRequestsQuerySchema = z.object({
-  status: z.enum(["pending", "quoted", "declined", "accepted", "expired", "consumed"]).optional(),
+  status: z.enum(["pending", "quoted", "declined", "accepted", "expired", "consumed", "cancelled"]).optional(),
 });
 export type ListQuoteRequestsQuery = z.infer<typeof listQuoteRequestsQuerySchema>;
 

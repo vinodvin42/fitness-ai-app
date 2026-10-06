@@ -738,6 +738,7 @@ export async function listMyTeam(userId: string) {
         professionalFullName: r.professional.fullName,
         specializationTags: r.professional.specializationTags,
         serviceType: r.serviceType,
+        createdAt: r.createdAt,
         lastSessionAt: (lastSession as { scheduledAt: Date } | null)?.scheduledAt ?? null,
         nextSessionAt: (nextSession as { scheduledAt: Date } | null)?.scheduledAt ?? null,
       };

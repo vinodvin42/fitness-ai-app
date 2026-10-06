@@ -4,6 +4,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -14,7 +15,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { CoachMessageItem } from "@fitness-ai-app/types";
 import { ErrorState } from "../../components/ErrorState";
-import { Button } from "../../components/Button";
+import { Avatar } from "../../components/Avatar";
+import { Icon } from "../../components/Icon";
+import { fetchCoachProfile } from "../../api/coaching";
+import { professionalRoleLabel } from "../../lib/quoteFormat";
 import { fetchThread, sendMessage } from "../../api/coachMessages";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -56,13 +60,44 @@ export function MessageThreadScreen({ route, navigation }: Props) {
 
   const canSend = draft.trim().length > 0 && !mutation.isPending;
 
+  // Role line (e.g. "Fitness Professional") from the real profile; absent while loading.
+  const profile = useQuery({ queryKey: ["coaching", "professional", professionalId], queryFn: () => fetchCoachProfile(professionalId) });
+  const role = profile.data ? professionalRoleLabel(profile.data.verifiedServices) : null;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
-        <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontFamily: fonts.bodySemi }}>
-          ‹ Back
+      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xs }}>
+        <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }}>
+          Professional Messaging
         </Text>
-        <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>{fullName}</Text>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
+          marginHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Pressable
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={8}
+          style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+        >
+          <Icon name="chevron-left" size={18} color={colors.textPrimary} />
+        </Pressable>
+        <Avatar name={fullName} size={36} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{fullName}</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: fonts.body }}>
+            {role ? `${role} · ` : ""}Response time is not guaranteed
+          </Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -92,36 +127,45 @@ export function MessageThreadScreen({ route, navigation }: Props) {
             flexDirection: "row",
             gap: spacing.sm,
             padding: spacing.md,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            alignItems: "flex-end",
+            alignItems: "center",
           }}
         >
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Message…"
+            placeholder="Type a message…"
             placeholderTextColor={colors.textMuted}
             multiline
+            accessibilityLabel="Type a message"
             style={{
               flex: 1,
               color: colors.textPrimary,
-              backgroundColor: colors.surface,
-              borderRadius: radius.sm,
+              backgroundColor: colors.surfaceRaised,
+              borderRadius: radius.pill,
               borderWidth: 1,
               borderColor: colors.border,
-              paddingHorizontal: spacing.sm,
-              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 10,
               maxHeight: 120,
             }}
           />
-          <Button
-            label="Send"
+          <Pressable
             onPress={() => mutation.mutate()}
-            loading={mutation.isPending}
             disabled={!canSend}
-            style={{ height: 44, paddingHorizontal: spacing.md }}
-          />
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: canSend ? 1 : 0.45,
+            }}
+          >
+            {mutation.isPending ? <ActivityIndicator color="#fff" /> : <Icon name="arrow-up" size={20} color="#fff" strokeWidth={2.5} />}
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

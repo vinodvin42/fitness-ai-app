@@ -57,7 +57,10 @@ export function CoachSessionsScreen({ navigation }: Props) {
             <Card style={{ gap: spacing.xs }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3, flex: 1 }}>{b.professionalFullName}</Text>
-                <Pill label={b.status === "confirmed" ? "Confirmed" : "Cancelled"} tone={b.status === "confirmed" ? "success" : "neutral"} />
+                <Pill
+                  label={b.status === "cancelled" ? "Cancelled" : new Date(b.scheduledAt).getTime() > Date.now() ? "Upcoming" : "Completed"}
+                  tone={b.status === "cancelled" ? "neutral" : "success"}
+                />
               </View>
               <Text style={{ color: colors.textSecondary }}>
                 {b.offeringLabel} · {b.durationMinutes} min · {formatQuotePrice(b.priceCents, null)}

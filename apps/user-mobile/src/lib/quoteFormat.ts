@@ -7,6 +7,34 @@ export function quoteServiceLabel(t: QuoteServiceType): string {
   return "Combined coaching";
 }
 
+/** "Fitness Professional" / "Nutrition Professional" / "Fitness + Nutrition Professional". */
+export function professionalRoleLabel(services: string[]): string {
+  const f = services.includes("fitness");
+  const n = services.includes("nutrition");
+  if (f && n) return "Fitness + Nutrition Professional";
+  if (n) return "Nutrition Professional";
+  if (f) return "Fitness Professional";
+  return "Professional";
+}
+
+export function firstName(fullName: string | null | undefined, fallback = "your professional"): string {
+  const n = (fullName ?? "").trim().split(/\s+/)[0];
+  return n || fallback;
+}
+
+/** "24 Oct 2026". */
+export function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** "Sat 24 Oct 2026 · 5:00 PM". */
+export function formatDayTime(iso: string): string {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).replace(",", "");
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${day} · ${time}`;
+}
+
 export function formatQuotePrice(cents: number | null, currency: string | null): string {
   if (cents == null) return "-";
   const amount = (cents / 100).toFixed(2);
@@ -45,12 +73,13 @@ export function effectiveQuoteStatus(q: QuoteRequest, now: number): QuoteRequest
 }
 
 export const QUOTE_STATUS_LABEL: Record<QuoteRequestStatus, string> = {
-  pending: "Waiting for quote",
+  pending: "Request pending",
   quoted: "Quote received",
   declined: "Declined",
-  accepted: "Accepted",
-  expired: "Expired",
-  consumed: "Booked",
+  accepted: "Quote accepted",
+  expired: "Quote expired",
+  consumed: "Paid",
+  cancelled: "Cancelled",
 };
 
 export const QUOTE_STATUS_TONE: Record<QuoteRequestStatus, "warning" | "success" | "danger" | "neutral" | "accent"> = {
@@ -60,4 +89,5 @@ export const QUOTE_STATUS_TONE: Record<QuoteRequestStatus, "warning" | "success"
   accepted: "success",
   expired: "neutral",
   consumed: "neutral",
+  cancelled: "neutral",
 };

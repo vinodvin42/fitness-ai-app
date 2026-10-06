@@ -3929,6 +3929,8 @@ enum QuoteRequestStatus {
   expired
   // Accepted quote already paid for (a captured booking payment activated).
   consumed
+  // Withdrawn by the user while still pending (POST /coaching/quote-requests/:id/cancel).
+  cancelled
 }
 
 model QuoteRequest {
@@ -3939,6 +3941,8 @@ model QuoteRequest {
   professional     Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   serviceType      String
   message          String             @db.Text
+  // Optional preferred session time the user picked when requesting (informational).
+  preferredAt      DateTime?
   status           QuoteRequestStatus @default(pending)
   quotedPriceCents Int?
   currency         String?

@@ -28,6 +28,7 @@ type QuoteRow = {
   professionalId: string;
   serviceType: string;
   message: string;
+  preferredAt?: Date | null;
   status: string;
   quotedPriceCents: number | null;
   currency: string | null;
@@ -49,7 +50,8 @@ function toQuote(q: QuoteRow) {
     clientFullName: q.user?.fullName ?? null,
     serviceType: q.serviceType as "fitness" | "nutrition" | "combined",
     message: q.message,
-    status: q.status as "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed",
+    preferredAt: q.preferredAt ? q.preferredAt.toISOString() : null,
+    status: q.status as "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed" | "cancelled",
     quotedPriceCents: q.quotedPriceCents,
     currency: q.currency,
     quoteNote: q.quoteNote,
@@ -79,6 +81,9 @@ export async function createQuoteRequest(userId: string, input: CreateQuoteReque
   if (!pro || pro.status !== "active") {
     throw new ApiHttpError(404, "professional_not_found", "Coach not found");
   }
+  if (input.preferredAt && new Date(input.preferredAt).getTime() <= Date.now()) {
+    throw new ApiHttpError(400, "invalid_preferred_time", "Preferred time must be in the future");
+  }
   const existing = await prisma.quoteRequest.findFirst({
     where: { userId, professionalId: input.professionalId, serviceType: input.serviceType, status: { in: ["pending", "quoted"] } },
   });
@@ -87,7 +92,13 @@ export async function createQuoteRequest(userId: string, input: CreateQuoteReque
     throw new ApiHttpError(409, "quote_request_open", "You already have an open quote request with this coach for that service");
   }
   const row = await prisma.quoteRequest.create({
-    data: { userId, professionalId: input.professionalId, serviceType: input.serviceType, message: input.message },
+    data: {
+      userId,
+      professionalId: input.professionalId,
+      serviceType: input.serviceType,
+      message: input.message,
+      preferredAt: input.preferredAt ? new Date(input.preferredAt) : null,
+    },
     include: INCLUDE,
   });
   await recordAudit({
@@ -118,6 +129,34 @@ async function getOwnedForUser(userId: string, id: string) {
 }
 
 export async function getMyQuoteRequest(userId: string, id: string) {
+  return toQuote(await getOwnedForUser(userId, id));
+}
+
+/**
+ * The user withdraws a request: "Cancel request" while the coach hasn't answered (pending), or
+ * "Decline quote" once a quote arrived (quoted, not yet accepted). Both end as `cancelled`.
+ * An accepted quote can no longer be withdrawn here (it simply lapses after 48h unpaid).
+ */
+export async function cancelQuoteRequest(userId: string, id: string) {
+  const q = await getOwnedForUser(userId, id);
+  if (q.status === "cancelled") return toQuote(q); // idempotent
+  if (q.status !== "pending" && q.status !== "quoted") {
+    throw new ApiHttpError(409, "quote_not_cancellable", "Only a pending or quoted request can be cancelled");
+  }
+  const claimed = await prisma.quoteRequest.updateMany({
+    where: { id, userId, status: { in: ["pending", "quoted"] } },
+    data: { status: "cancelled" },
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "quote_not_cancellable", "This request has already been answered");
+  }
+  await recordAudit({
+    actorId: userId,
+    action: "quote_request.cancelled",
+    entityType: "QuoteRequest",
+    entityId: id,
+    metadata: { professionalId: q.professionalId, from: q.status },
+  });
   return toQuote(await getOwnedForUser(userId, id));
 }
 

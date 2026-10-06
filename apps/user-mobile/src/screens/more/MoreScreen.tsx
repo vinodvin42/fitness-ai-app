@@ -58,7 +58,7 @@ export function MoreScreen({ navigation }: Props) {
       onPress: () => navigation.navigate("ProgressSection", { screen: "BodyComposition" }),
     },
     { label: "Your Lifetime", icon: "trophy", tint: colors.accent, badge: "New", onPress: () => navigation.navigate("TimelineOverview") },
-    { label: "Professional Guidance", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
+    { label: "Professional Guidance", icon: "message", tint: colors.success, onPress: () => navigation.navigate("CoachDiscovery", undefined) },
     { label: "Add Reminder", icon: "bell", tint: colors.aiAccent, onPress: () => navigation.navigate("ReminderForm", {}) },
     { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace" }) },
   ];

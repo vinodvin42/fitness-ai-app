@@ -52,6 +52,19 @@ quoteRequestsRouter.post(
   },
 );
 
+quoteRequestsRouter.post(
+  "/coaching/quote-requests/:id/cancel",
+  requireAuth,
+  writeRateLimit,
+  async (req: AuthedRequest, res, next) => {
+    try {
+      res.json(await quoteRequestsService.cancelQuoteRequest(req.userId!, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 quoteRequestsRouter.get(
   "/professionals/me/quote-requests",
   requireProfessionalAuth,

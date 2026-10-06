@@ -40,7 +40,7 @@ export function QuotesScreen({ navigation }: Props) {
   );
 
   return (
-    <ScreenContainer title="Quotes" subtitle="Custom pricing from coaches">
+    <ScreenContainer title="Guidance requests" subtitle="Requests, quotes and their status">
       <BackButton onPress={() => navigation.goBack()} />
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
@@ -51,9 +51,9 @@ export function QuotesScreen({ navigation }: Props) {
         </View>
       ) : (data ?? []).length === 0 ? (
         <EmptyState
-          title="No quote requests yet"
-          subtitle="Open a coach's profile and tap Request a quote to ask for custom pricing."
-          actionLabel="Find a coach"
+          title="No guidance requests yet"
+          subtitle="Open a professional's profile and tap Request guidance. Nothing is charged when you send a request."
+          actionLabel="Find a professional"
           onAction={() => navigation.navigate("CoachDiscovery", undefined)}
         />
       ) : (
@@ -64,11 +64,11 @@ export function QuotesScreen({ navigation }: Props) {
               key={q.id}
               onPress={() => navigation.navigate("QuoteDetail", { quoteId: q.id })}
               accessibilityRole="button"
-              accessibilityLabel={`Quote request to ${q.professionalFullName ?? "coach"}, ${QUOTE_STATUS_LABEL[status]}`}
+              accessibilityLabel={`Guidance request to ${q.professionalFullName ?? "professional"}, ${QUOTE_STATUS_LABEL[status]}`}
             >
               <Card style={{ gap: spacing.xs }}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
-                  <Text style={{ color: colors.textPrimary, ...typography.h3, flex: 1 }}>{q.professionalFullName ?? "Coach"}</Text>
+                  <Text style={{ color: colors.textPrimary, ...typography.h3, flex: 1 }}>{q.professionalFullName ?? "Professional"}</Text>
                   <Pill label={QUOTE_STATUS_LABEL[status]} tone={QUOTE_STATUS_TONE[status]} />
                 </View>
                 <Text style={{ color: colors.textSecondary }}>{quoteServiceLabel(q.serviceType)}</Text>

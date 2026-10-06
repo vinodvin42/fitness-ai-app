@@ -32,6 +32,11 @@ export function createQuoteRequest(input: CreateQuoteRequestInput) {
   return apiClient.post<QuoteRequest>("/coaching/quote-requests", input).then((r) => r.data);
 }
 
+/** Withdraw a pending request ("Cancel request") or a received quote ("Decline quote"). */
+export function cancelQuoteRequest(id: string) {
+  return apiClient.post<QuoteRequest>(`/coaching/quote-requests/${id}/cancel`).then((r) => r.data);
+}
+
 export function acceptQuoteRequest(id: string) {
   return apiClient.post<AcceptQuoteResponse>(`/coaching/quote-requests/${id}/accept`).then((r) => r.data);
 }

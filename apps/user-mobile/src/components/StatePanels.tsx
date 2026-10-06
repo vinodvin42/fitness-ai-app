@@ -55,7 +55,7 @@ interface StateLayoutProps {
   /** Small coloured line above the title, e.g. "Permissions / Notifications". */
   flowLabel: string;
   flowIcon: IconName;
-  flowTone?: "accent" | "ai";
+  flowTone?: "accent" | "ai" | "warning" | "neutral";
   title: string;
   description: string;
   children?: React.ReactNode;
@@ -74,7 +74,8 @@ interface StateLayoutProps {
  */
 export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, description, children, footnote, actions, onBack, showBrand }: StateLayoutProps) {
   const { colors: theme } = useTheme();
-  const tint = flowTone === "ai" ? colors.aiAccent : theme.accent;
+  const tint =
+    flowTone === "ai" ? colors.aiAccent : flowTone === "warning" ? colors.warning : flowTone === "neutral" ? colors.textSecondary : theme.accent;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
       <ScrollView

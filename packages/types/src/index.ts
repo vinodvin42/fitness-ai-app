@@ -1956,6 +1956,8 @@ export interface CoachTeamMember {
   professionalFullName: string;
   specializationTags: string[];
   serviceType: ProfessionalServiceType;
+  /** When the relationship was first requested (ISO). */
+  createdAt: string;
   lastSessionAt: string | null;
   nextSessionAt: string | null;
 }
@@ -5190,7 +5192,7 @@ export interface PublishBookingSummaryInput {
 }
 
 /** Quote flow: /coaching/quote-requests*, /professionals/me/quote-requests* */
-export type QuoteRequestStatus = "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed";
+export type QuoteRequestStatus = "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed" | "cancelled";
 export type QuoteServiceType = "fitness" | "nutrition" | "combined";
 export interface QuoteRequest {
   id: string;
@@ -5199,6 +5201,8 @@ export interface QuoteRequest {
   clientFullName: string | null;
   serviceType: QuoteServiceType;
   message: string;
+  /** Preferred session time the user picked when requesting (ISO), or null. */
+  preferredAt: string | null;
   status: QuoteRequestStatus;
   quotedPriceCents: number | null;
   currency: string | null;
@@ -5214,6 +5218,7 @@ export interface CreateQuoteRequestInput {
   professionalId: string;
   serviceType: QuoteServiceType;
   message: string;
+  preferredAt?: string;
 }
 /** POST /professionals/me/quote-requests/:id/quote */
 export interface SendQuoteInput {
