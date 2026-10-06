@@ -22,6 +22,7 @@ import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
 import { guardianReviewRouter } from "./modules/guardianReview/guardianReview.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
+import { savedMealsRouter } from "./modules/savedMeals/savedMeals.routes";
 import { mealPlansRouter } from "./modules/mealPlans/mealPlans.routes";
 import { analyticsEventsRouter } from "./modules/analyticsEvents/analyticsEvents.routes";
 import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
@@ -142,6 +143,7 @@ export function createApp() {
   app.use("/", programsRouter);
   app.use("/", workoutSessionsRouter);
   app.use("/", nutritionRouter);
+  app.use("/", savedMealsRouter);
   app.use("/", progressRouter);
   // Recovery & Devices — manual-entry stopgap (31 Aug 2026). See recovery.service.ts.
   app.use("/", recoveryRouter);

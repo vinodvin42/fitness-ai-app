@@ -71,6 +71,8 @@ import {
   Scale,
   Download,
   WifiOff,
+  Star,
+  Flashlight,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -84,6 +86,8 @@ export const ICONS = {
   activity: Activity,
   "alert-triangle": AlertTriangle,
   apple: Apple,
+  star: Star,
+  flashlight: Flashlight,
   "arrow-left": ArrowLeft,
   bell: Bell,
   "bell-off": BellOff,

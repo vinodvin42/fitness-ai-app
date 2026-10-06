@@ -48,6 +48,9 @@ export interface SeedRecipe {
   prepTimeMinutes: number;
   tags: string[];
   imageUrl: string;
+  /** Optional authored content - see recipeDetails.ts. */
+  ingredients?: Array<{ name: string; quantity: string }>;
+  instructions?: string[];
 }
 
 /**

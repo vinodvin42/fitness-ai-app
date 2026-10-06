@@ -71,7 +71,7 @@ export function CameraPermissionDenied({ variant, onRequestPermission, onManual,
         title={isBarcode ? "Use the package label instead" : "Manual logging works as usual"}
         body={
           isBarcode
-            ? "Enter the food and nutrition values manually. Check the serving size and your portion against the label before you save."
+            ? "Search by product name or enter the food and nutrition values manually. Check the serving size and your portion against the label before you save."
             : "Choose a portion and review its nutrition before saving. Your meal tracking does not depend on photo access."
         }
       />

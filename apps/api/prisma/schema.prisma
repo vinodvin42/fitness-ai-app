@@ -343,6 +343,7 @@ model User {
   auditLogEntries             AuditLog[]
   workoutSessions             WorkoutSession[]
   mealLogs                    MealLog[]
+  savedMeals                  SavedMeal[]
   waterLogs                   WaterLog[]
   // Food input data-quality flow (U4, 15 Sep 2026) — see FoodEstimate's own
   // doc comment.
@@ -892,6 +893,12 @@ model Recipe {
   // inventory.md §D), finally modeled. Same plain-URL shape and same
   // nullable/fallback reasoning as Program.imageUrl above.
   imageUrl         String?
+  // Fuel 05 (Oct 2026) — Recipe Detail's ingredient checklist and numbered
+  // steps. `ingredients` is a JSON array of { name, quantity } (both strings).
+  // Both are empty for recipes whose content hasn't been authored yet; the
+  // app then simply omits those sections (never invents them).
+  ingredients      Json?
+  instructions     String[]      @default([])
   // 22 Aug 2026 — see Program's own doc comment above for why
   // ContentStatus is draft/published only and why the default is
   // `published`, not `draft`.
@@ -1092,6 +1099,26 @@ model MealLog {
 
   @@index([userId, loggedAt])
   @@map("meal_logs")
+}
+
+// Fuel 02 (Oct 2026) — "My Saved Meals": a user's own reusable meal
+// (name + macros), created from a meal they just logged/confirmed. Tapping
+// one logs a fresh MealLog with these numbers. `items` optionally keeps the
+// component breakdown when the source had one (e.g. an AI estimate's items).
+model SavedMeal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  calories  Int
+  proteinG  Int      @default(0)
+  carbsG    Int      @default(0)
+  fatG      Int      @default(0)
+  items     Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("saved_meals")
 }
 
 // ---- Nutrition: Food input data-quality flow (Estimate -> Confirm/Edit) --

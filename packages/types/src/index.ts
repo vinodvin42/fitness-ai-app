@@ -598,10 +598,52 @@ export interface Recipe {
   tags: string[];
   /** Hero image URL, added 4 Sep 2026 — Recipe Detail specified one from the start and never had it. Null falls back to the icon tile. */
   imageUrl: string | null;
+  /** Fuel 05 — ingredient checklist for Recipe Detail. Null when not authored yet (the section is then omitted). */
+  ingredients?: RecipeIngredient[] | null;
+  /** Fuel 05 — numbered method steps. Empty when not authored yet. */
+  instructions?: string[];
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   createdByAdminId: string | null;
   updatedAt: string;
+}
+
+export interface RecipeIngredient {
+  name: string;
+  quantity: string;
+}
+
+/** Fuel 02 "My Saved Meals" — see apps/api's SavedMeal model. */
+export interface SavedMeal {
+  id: string;
+  userId: string;
+  name: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  items: Array<{ name: string; quantity?: string; calories?: number }> | null;
+  createdAt: string;
+}
+
+export interface CreateSavedMealInput {
+  name: string;
+  calories: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  items?: Array<{ name: string; quantity?: string; calories?: number }>;
+}
+
+/** Fuel 02 "Recent Foods" — GET /meal-logs/recent-foods (distinct foods from the user's own meal logs). */
+export interface RecentFood {
+  name: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  mealType: MealType;
+  loggedAt: string;
 }
 
 // ---- Nutrition: Recipe -> logged MealLog ----------------------------------

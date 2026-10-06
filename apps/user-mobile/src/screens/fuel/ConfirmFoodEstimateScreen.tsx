@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { confirmFoodEstimate } from "../../api/nutrition";
+import { Icon } from "../../components/Icon";
+import { confirmFoodEstimate, createSavedMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
@@ -33,6 +34,7 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
   const [carbs, setCarbs] = useState(String(estimate.carbsG ?? 0));
   const [fat, setFat] = useState(String(estimate.fatG ?? 0));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveForLater, setSaveForLater] = useState(false);
 
   const canSubmit = name.trim().length > 0 && calories.trim().length > 0;
 
@@ -40,13 +42,20 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
     if (!canSubmit) return;
     setIsSubmitting(true);
     try {
-      await confirmFoodEstimate(estimate.id, {
+      const final = {
         name: name.trim(),
         calories: parseInt(calories, 10) || 0,
         proteinG: parseInt(protein, 10) || 0,
         carbsG: parseInt(carbs, 10) || 0,
         fatG: parseInt(fat, 10) || 0,
-      });
+      };
+      await confirmFoodEstimate(estimate.id, final);
+      if (saveForLater) {
+        // The reviewed numbers (not the raw AI guess) become the saved meal. Best effort: the meal is already logged.
+        await createSavedMeal(final).catch(() => undefined);
+        queryClient.invalidateQueries({ queryKey: ["savedMeals"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["recentFoods"] });
       await queryClient.invalidateQueries({ queryKey: ["mealLogs", "today"] });
       navigation.navigate("FuelDashboard");
     } catch (err) {
@@ -95,7 +104,31 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
         </View>
       </Card>
 
-      <Button label="Log it" onPress={onLogIt} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
+      <Pressable
+        onPress={() => setSaveForLater((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: saveForLater }}
+        accessibilityLabel="Save to My Saved Meals"
+        style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            borderWidth: 1.5,
+            borderColor: saveForLater ? colors.accent : colors.borderStrong,
+            backgroundColor: saveForLater ? colors.accent : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {saveForLater ? <Icon name="check" size={13} color={colors.textOnAccent} strokeWidth={3} /> : null}
+        </View>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>Save to My Saved Meals</Text>
+      </Pressable>
+
+      <Button label="Log it" onPress={onLogIt} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.md }} />
       <Button
         label="Cancel"
         variant="secondary"

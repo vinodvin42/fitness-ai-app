@@ -27,8 +27,9 @@
  */
 import { unsplash } from "./images";
 import type { SeedRecipe } from "./types";
+import { seedRecipeDetails } from "./recipeDetails";
 
-export const seedRecipes: SeedRecipe[] = [
+const baseRecipes: SeedRecipe[] = [
   // ---- Breakfast ---------------------------------------------------------
   { id: "rec-oats", name: "Overnight Oats", mealType: "breakfast", calories: 350, proteinG: 14, carbsG: 52, fatG: 9, prepTimeMinutes: 5, tags: ["vegetarian", "high-fiber", "meal-prep"], imageUrl: unsplash("photo-1552842016-443bcee0667b") },
   { id: "rec-avocado-toast", name: "Avocado & Egg Toast", mealType: "breakfast", calories: 410, proteinG: 18, carbsG: 32, fatG: 24, prepTimeMinutes: 10, tags: ["vegetarian", "high-protein", "quick"], imageUrl: unsplash("photo-1772717737730-85eff61606c8") },
@@ -117,3 +118,6 @@ export const seedRecipes: SeedRecipe[] = [
   { id: "rec-granola-bar", name: "Oat Granola Bar", mealType: "snack", calories: 240, proteinG: 6, carbsG: 34, fatG: 9, prepTimeMinutes: 5, tags: ["vegetarian", "high-fiber", "quick"], imageUrl: unsplash("photo-1763080348919-0a4969e31afc") },
   { id: "rec-guacamole", name: "Guacamole & Chips", mealType: "snack", calories: 290, proteinG: 5, carbsG: 28, fatG: 19, prepTimeMinutes: 10, tags: ["vegan", "vegetarian", "gluten-free", "quick"], imageUrl: unsplash("photo-1680992071073-cb1696ba8d3e") },
 ];
+
+// Merge the authored ingredient/step content (a handful of recipes only - see recipeDetails.ts).
+export const seedRecipes: SeedRecipe[] = baseRecipes.map((r) => ({ ...r, ...seedRecipeDetails[r.id] }));

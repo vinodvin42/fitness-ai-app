@@ -1,6 +1,7 @@
 import type {
   BarcodeLookupResult,
   ConfirmFoodEstimateInput,
+  CreateSavedMealInput,
   CreateFoodEstimateInput,
   DeleteResult,
   FoodEstimate,
@@ -9,6 +10,8 @@ import type {
   MealLog,
   NutritionCalendarMonth,
   NutritionDaySummary,
+  RecentFood,
+  SavedMeal,
   UpdateMealLogInput,
   WaterLog,
 } from "@fitness-ai-app/types";
@@ -79,4 +82,22 @@ export function fetchNutritionSummary(date: string) {
 /** Per-day calories/meal counts for a month (YYYY-MM). */
 export function fetchNutritionCalendar(month: string) {
   return apiClient.get<NutritionCalendarMonth>("/nutrition/calendar", { params: { month } }).then((r) => r.data);
+}
+
+/** Fuel 02 "My Saved Meals" — the user's own reusable meals. */
+export function fetchSavedMeals() {
+  return apiClient.get<{ items: SavedMeal[] }>("/saved-meals").then((r) => r.data.items);
+}
+
+export function createSavedMeal(input: CreateSavedMealInput) {
+  return apiClient.post<SavedMeal>("/saved-meals", input).then((r) => r.data);
+}
+
+export function deleteSavedMeal(id: string) {
+  return apiClient.delete<DeleteResult>(`/saved-meals/${id}`).then((r) => r.data);
+}
+
+/** Fuel 02 "Recent Foods" — distinct foods from the user's own recent meal logs. */
+export function fetchRecentFoods(limit = 6) {
+  return apiClient.get<{ items: RecentFood[] }>("/meal-logs/recent-foods", { params: { limit } }).then((r) => r.data.items);
 }
