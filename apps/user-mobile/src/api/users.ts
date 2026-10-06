@@ -5,6 +5,8 @@ import type {
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
   EnableTwoFactorResponse,
+  GuardianReview,
+  GuardianReviewInput,
   OnboardingProfile,
   OnboardingProfileInput,
   Session,
@@ -73,4 +75,14 @@ export function enableTwoFactor(input: EnableTwoFactorInput) {
 
 export function disableTwoFactor(input: DisableTwoFactorInput) {
   return apiClient.post("/users/me/2fa/disable", input).then(() => undefined);
+}
+
+// Under-18 guardian review (onboarding/11) — apps/api POST/GET /users/me/guardian-review.
+export function submitGuardianReview(input: GuardianReviewInput) {
+  return apiClient.post<{ guardianReview: GuardianReview }>("/users/me/guardian-review", input).then((r) => r.data.guardianReview);
+}
+
+/** Null when no review was ever submitted. */
+export function fetchGuardianReview() {
+  return apiClient.get<{ guardianReview: GuardianReview | null }>("/users/me/guardian-review").then((r) => r.data.guardianReview);
 }

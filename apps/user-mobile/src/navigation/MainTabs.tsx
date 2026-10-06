@@ -1,16 +1,18 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { NavigatorScreenParams } from "@react-navigation/native";
-import { TodayScreen } from "../screens/today/TodayScreen";
+import { TodayStack } from "./TodayStack";
 import { TrainStack } from "./TrainStack";
 import type { TrainStackParamList } from "./TrainStack";
 import { FuelStack } from "./FuelStack";
-import { ProgressStack } from "./ProgressStack";
-import type { ProgressStackParamList } from "./ProgressStack";
+import type { FuelStackParamList } from "./FuelStack";
+import { RecoverStack } from "./RecoverStack";
+import type { RecoverStackParamList } from "./RecoverStack";
 import { MoreStack } from "./MoreStack";
 import type { MoreStackParamList } from "./MoreStack";
 import { Icon, IconName } from "../components/Icon";
 import { colors, typography } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeProvider";
 
 // The persistent 5-tab bottom bar — docs/mobile/02-information-architecture.md §2.
 // **R1 Developer 1 U1 (14 Sep 2026):** this tab set used to be
@@ -37,8 +39,8 @@ import { colors, typography } from "../theme/tokens";
 export type MainTabsParamList = {
   Today: undefined;
   Train: NavigatorScreenParams<TrainStackParamList> | undefined;
-  Fuel: undefined;
-  Progress: NavigatorScreenParams<ProgressStackParamList> | undefined;
+  Fuel: NavigatorScreenParams<FuelStackParamList> | undefined;
+  Recover: NavigatorScreenParams<RecoverStackParamList> | undefined;
   More: NavigatorScreenParams<MoreStackParamList> | undefined;
 };
 
@@ -48,16 +50,17 @@ const TAB_ICONS: Record<keyof MainTabsParamList, IconName> = {
   Today: "home",
   Train: "dumbbell",
   Fuel: "utensils",
-  Progress: "trending-up",
+  Recover: "heart-pulse",
   More: "menu",
 };
 
 export function MainTabs() {
+  const { colors: theme } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { ...typography.caption, marginTop: -2 },
         tabBarItemStyle: { paddingTop: 8 },
@@ -73,10 +76,10 @@ export function MainTabs() {
         ),
       })}
     >
-      <Tab.Screen name="Today" component={TodayScreen} />
+      <Tab.Screen name="Today" component={TodayStack} />
       <Tab.Screen name="Train" component={TrainStack} />
       <Tab.Screen name="Fuel" component={FuelStack} />
-      <Tab.Screen name="Progress" component={ProgressStack} />
+      <Tab.Screen name="Recover" component={RecoverStack} />
       <Tab.Screen name="More" component={MoreStack} />
     </Tab.Navigator>
   );

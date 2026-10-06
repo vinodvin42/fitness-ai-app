@@ -56,6 +56,32 @@ describe("Food input data-quality flow (Estimate -> Confirm/Edit)", () => {
     expect(generateCompletion).not.toHaveBeenCalled();
   });
 
+  it("estimates from a photo: forwards the image to the AI client, returns the same FoodEstimate shape, never stores the image", async () => {
+    generateCompletion.mockResolvedValueOnce("STATUS: OK\nNAME: Dal and rice\nCALORIES: 480\nPROTEIN_G: 16\nCARBS_G: 80\nFAT_G: 9");
+    const res = await request(app)
+      .post("/food-estimates")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ mealType: "lunch", imageDataUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRg==" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe("estimated");
+    expect(res.body.calories).toBe(480);
+    expect(res.body.description).toBe("Meal photo");
+    expect(res.body.imageDataUrl).toBeUndefined();
+    expect(generateCompletion).toHaveBeenCalledTimes(1);
+    expect(generateCompletion.mock.calls[0][1]).toEqual({ image: { mediaType: "image/jpeg", base64: "/9j/4AAQSkZJRg==" } });
+  });
+
+  it("rejects non-JPEG/PNG, malformed, oversized images, and requests with neither description nor image", async () => {
+    const send = (body: object) =>
+      request(app).post("/food-estimates").set("Authorization", `Bearer ${accessToken}`).send({ mealType: "lunch", ...body });
+    expect((await send({ imageDataUrl: "data:image/gif;base64,R0lGODlh" })).status).toBe(400);
+    expect((await send({ imageDataUrl: "not-a-data-url" })).status).toBe(400);
+    expect((await send({ imageDataUrl: "data:image/png;base64," + "A".repeat(1_600_000) })).status).toBe(400);
+    expect((await send({})).status).toBe(400);
+    expect(generateCompletion).not.toHaveBeenCalled();
+  });
+
   it("creates a real, unconfirmed FoodEstimate from a parseable AI response — never writes a MealLog yet (BR-DAT-003)", async () => {
     generateCompletion.mockResolvedValueOnce(
       "STATUS: OK\nNAME: Eggs and toast\nCALORIES: 350\nPROTEIN_G: 20\nCARBS_G: 30\nFAT_G: 15",

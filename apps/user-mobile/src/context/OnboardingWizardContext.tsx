@@ -178,6 +178,7 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
         bodyFatPercent: state.bodyFatPercent,
         waistCm: state.waistCm,
         hipsCm: state.hipsCm,
+        healthDataSkipped: state.healthDataSkipped,
       });
       await clearDraft();
     } finally {

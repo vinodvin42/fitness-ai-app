@@ -1,14 +1,14 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import type { BookingConfirmation, ProfessionalServiceType, Reminder, TimelineEvent } from "@fitness-ai-app/types";
+import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { BookingConfirmation, ConsentType, Medication, ProfessionalServiceType, QuoteServiceType, Reminder, TimelineEvent } from "@fitness-ai-app/types";
 import { MoreScreen } from "../screens/more/MoreScreen";
 import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
 import { CountrySelectionScreen } from "../screens/more/CountrySelectionScreen";
 import { PreferencesScreen } from "../screens/more/PreferencesScreen";
-import { RecoverScreen } from "../screens/recover/RecoverScreen";
-import { AiCoachScreen } from "../screens/recover/AiCoachScreen";
-import { RecoveryScreen } from "../screens/recover/RecoveryScreen";
+import { ProgressStack } from "./ProgressStack";
+import type { ProgressStackParamList } from "./ProgressStack";
 import { SubscriptionScreen } from "../screens/more/SubscriptionScreen";
 import { SubscriptionHistoryScreen } from "../screens/more/SubscriptionHistoryScreen";
 import { PaymentResultScreen } from "../screens/more/PaymentResultScreen";
@@ -23,6 +23,7 @@ import { LanguageSelectionScreen } from "../screens/more/LanguageSelectionScreen
 import { NotificationSettingsScreen } from "../screens/more/NotificationSettingsScreen";
 import { SecurityScreen } from "../screens/more/SecurityScreen";
 import { PrivacySettingsScreen } from "../screens/more/PrivacySettingsScreen";
+import { ConsentWithdrawnScreen } from "../screens/more/ConsentWithdrawnScreen";
 import { SupportScreen } from "../screens/more/SupportScreen";
 import { SupportTicketFormScreen } from "../screens/more/SupportTicketFormScreen";
 import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailScreen";
@@ -36,6 +37,15 @@ import { MyProfessionalTeamScreen } from "../screens/coaching/MyProfessionalTeam
 import { ChangeProfessionalScreen } from "../screens/coaching/ChangeProfessionalScreen";
 import { ConversationsScreen } from "../screens/coaching/ConversationsScreen";
 import { MessageThreadScreen } from "../screens/coaching/MessageThreadScreen";
+import { HealthConnectScreen } from "../screens/more/HealthConnectScreen";
+import { MedicationListScreen } from "../screens/more/MedicationListScreen";
+import { MedicationFormScreen } from "../screens/more/MedicationFormScreen";
+import { MedicineDueScreen } from "../screens/more/MedicineDueScreen";
+import { CoachSessionsScreen } from "../screens/coaching/CoachSessionsScreen";
+import { SessionSummaryScreen } from "../screens/coaching/SessionSummaryScreen";
+import { QuotesScreen } from "../screens/coaching/QuotesScreen";
+import { QuoteDetailScreen } from "../screens/coaching/QuoteDetailScreen";
+import { RequestQuoteScreen } from "../screens/coaching/RequestQuoteScreen";
 
 // docs/mobile/03-screen-inventory.md §N: More Menu -> Profile -> View/Edit
 // Profile, and Preferences. **R1 Developer 1 U1 (14 Sep 2026):** §F's
@@ -92,9 +102,8 @@ export type MoreStackParamList = {
   Preferences: undefined;
   // R1 Developer 1 U1 (14 Sep 2026) — relocated from the former RecoverStack;
   // see this file's top comment.
-  RecoverHub: undefined;
-  AiCoach: undefined;
-  Recovery: undefined;
+  // Progress is no longer a tab (Figma bar has Recover instead); its stack nests here.
+  ProgressSection: NavigatorScreenParams<ProgressStackParamList> | undefined;
   Subscription: undefined;
   SubscriptionHistory: undefined;
   // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — "activation_failed"
@@ -116,6 +125,7 @@ export type MoreStackParamList = {
   // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
   // PrivacySettingsScreen.tsx's own doc comment.
   PrivacySettings: undefined;
+  ConsentWithdrawn: { type: ConsentType };
   Support: undefined;
   SupportTicketForm: undefined;
   SupportTicketDetail: { ticketId: string };
@@ -123,12 +133,22 @@ export type MoreStackParamList = {
   ProfessionalRelationship: undefined;
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
-  BookingServiceSelection: { professionalId: string };
+  BookingServiceSelection: { professionalId: string; quoteRequestId?: string };
   BookingConfirmation: { booking: BookingConfirmation };
   MyProfessionalTeam: undefined;
   ChangeProfessional: { relationshipId: string; professionalFullName: string; serviceType: ProfessionalServiceType };
   Conversations: undefined;
   MessageThread: { professionalId: string; fullName: string };
+  HealthConnect: undefined;
+  MedicationList: undefined;
+  MedicationForm: { medication?: Medication } | undefined;
+  MedicineDue: undefined;
+  // Wave B (Oct 2026): Human Coach 04-09.
+  CoachSessions: undefined;
+  SessionSummary: { bookingId: string };
+  Quotes: undefined;
+  QuoteDetail: { quoteId: string };
+  RequestQuote: { professionalId: string; professionalName?: string; serviceType?: QuoteServiceType; message?: string };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -141,9 +161,7 @@ export function MoreStack() {
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
-      <Stack.Screen name="RecoverHub" component={RecoverScreen} />
-      <Stack.Screen name="AiCoach" component={AiCoachScreen} />
-      <Stack.Screen name="Recovery" component={RecoveryScreen} />
+      <Stack.Screen name="ProgressSection" component={ProgressStack} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} />
       <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
@@ -158,6 +176,7 @@ export function MoreStack() {
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
+      <Stack.Screen name="ConsentWithdrawn" component={ConsentWithdrawnScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="SupportTicketForm" component={SupportTicketFormScreen} />
       <Stack.Screen name="SupportTicketDetail" component={SupportTicketDetailScreen} />
@@ -171,6 +190,15 @@ export function MoreStack() {
       <Stack.Screen name="ChangeProfessional" component={ChangeProfessionalScreen} />
       <Stack.Screen name="Conversations" component={ConversationsScreen} />
       <Stack.Screen name="MessageThread" component={MessageThreadScreen} />
+      <Stack.Screen name="HealthConnect" component={HealthConnectScreen} />
+      <Stack.Screen name="MedicationList" component={MedicationListScreen} />
+      <Stack.Screen name="MedicationForm" component={MedicationFormScreen} />
+      <Stack.Screen name="MedicineDue" component={MedicineDueScreen} />
+      <Stack.Screen name="CoachSessions" component={CoachSessionsScreen} />
+      <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} />
+      <Stack.Screen name="Quotes" component={QuotesScreen} />
+      <Stack.Screen name="QuoteDetail" component={QuoteDetailScreen} />
+      <Stack.Screen name="RequestQuote" component={RequestQuoteScreen} />
     </Stack.Navigator>
   );
 }

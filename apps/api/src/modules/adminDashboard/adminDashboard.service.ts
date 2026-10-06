@@ -94,7 +94,7 @@ export async function getExecutiveDashboardStats() {
     prisma.subscription
       .findMany({ where: { status: "trialing" }, distinct: ["userId"], select: { userId: true } })
       .then((rows: unknown[]) => rows.length),
-    prisma.program.count(),
+    prisma.program.count({ where: { ownerUserId: null } }),
     prisma.programPurchase.count(),
     prisma.supportTicket.count({ where: { status: "open" } }),
     prisma.supportTicket.count({ where: { status: "in_progress" } }),

@@ -4,7 +4,13 @@ import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { lookupBarcode, BarcodeLookupResult } from "../../lib/openFoodFactsClient";
-import { ConfirmFoodEstimateInput, CreateFoodEstimateInput, LogMealInput, LogWaterInput } from "./nutrition.schema";
+import {
+  ConfirmFoodEstimateInput,
+  CreateFoodEstimateInput,
+  LogMealInput,
+  LogWaterInput,
+  parseFoodImageDataUrl,
+} from "./nutrition.schema";
 
 /**
  * The Fuel/Nutrition daily loop (docs/mobile/03-screen-inventory.md §D):
@@ -148,11 +154,16 @@ export async function logWater(userId: string, input: LogWaterInput) {
  * description is real grounds for INSUFFICIENT_CONTEXT, not a fabricated
  * calorie count.
  */
-function buildFoodEstimatePrompt(mealType: string, description: string): string {
+function buildFoodEstimatePrompt(mealType: string, description: string, hasImage = false): string {
   return [
-    "You are estimating the nutrition (calories and macros) of a food description a user typed into a fitness app's meal log. This is a rough ESTIMATE the user will review and can edit before it's treated as real logged data — not a final, authoritative answer.",
-    `Meal type: ${mealType}. Food description: "${description}"`,
-    "If the description doesn't name any identifiable food (empty, gibberish, or something with no specifics like just 'food' or 'meal'), say so honestly rather than guessing numbers.",
+    hasImage
+      ? "You are estimating the nutrition (calories and macros) of the meal shown in the attached photo a user took in a fitness app. Estimate portion size from what is visible."
+      : "You are estimating the nutrition (calories and macros) of a food description a user typed into a fitness app's meal log.",
+    "This is a rough ESTIMATE the user will review and can edit before it's treated as real logged data — not a final, authoritative answer.",
+    `Meal type: ${mealType}. ${hasImage ? "Optional user note" : "Food description"}: "${description}"`,
+    hasImage
+      ? "If the photo doesn't clearly show identifiable food, say so honestly rather than guessing numbers."
+      : "If the description doesn't name any identifiable food (empty, gibberish, or something with no specifics like just 'food' or 'meal'), say so honestly rather than guessing numbers.",
     "Respond in EXACTLY this format, nothing else:",
     "STATUS: <either OK or INSUFFICIENT_CONTEXT>",
     "NAME: <a short 2-6 word name for this food/meal — only if STATUS is OK>",
@@ -217,15 +228,24 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
     );
   }
 
+  // Photo path: the image goes to the vision model only and is never stored.
+  // description stays a required column, so a photo-only estimate records a
+  // short placeholder instead.
+  const image = input.imageDataUrl ? parseFoodImageDataUrl(input.imageDataUrl) : undefined;
+  const description = input.description?.trim() || "Meal photo";
+
   let raw: string;
   try {
-    raw = await generateCompletion(buildFoodEstimatePrompt(input.mealType, input.description));
+    raw = await generateCompletion(
+      buildFoodEstimatePrompt(input.mealType, description, Boolean(image)),
+      image ? { image } : undefined,
+    );
   } catch {
     const estimate = await prisma.foodEstimate.create({
       data: {
         userId,
         mealType: input.mealType,
-        description: input.description,
+        description,
         status: "insufficient_context",
         failureReason: "The estimate service didn't respond — try again, or use manual entry instead",
       },
@@ -249,7 +269,7 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
         ? {
             userId,
             mealType: input.mealType,
-            description: input.description,
+            description,
             status: "estimated",
             name: parsed.name,
             calories: parsed.calories,
@@ -260,7 +280,7 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
         : {
             userId,
             mealType: input.mealType,
-            description: input.description,
+            description,
             status: "insufficient_context",
             failureReason: "Not enough detail to estimate this — try describing it differently, or use manual entry",
           },

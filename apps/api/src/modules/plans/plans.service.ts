@@ -115,7 +115,7 @@ function toPlanDTO(p: PlanRow, programName: string | null): PlanDTO {
 
 async function eligiblePrograms(excludeProgramId?: string): Promise<EligibleProgram[]> {
   return prisma.program.findMany({
-    where: { status: "published", ...(excludeProgramId ? { id: { not: excludeProgramId } } : {}) },
+    where: { status: "published", ownerUserId: null, ...(excludeProgramId ? { id: { not: excludeProgramId } } : {}) },
     select: { id: true, name: true, type: true, durationWeeks: true, description: true },
     orderBy: { createdAt: "asc" },
   });
@@ -150,6 +150,8 @@ function buildSelectionPrompt(profile: {
   medicalConditions: string[];
   injuries: string[];
   equipmentContext: string | null;
+  healthDataSkipped?: boolean;
+  age?: number | null;
 }, programs: EligibleProgram[]): string {
   const goals = profile.goals.length ? profile.goals.join(", ") : "not specified";
   const level = profile.trainingLevel ?? "not specified";
@@ -159,7 +161,23 @@ function buildSelectionPrompt(profile: {
     ? (EQUIPMENT_CONTEXT_TEXT[profile.equipmentContext] ?? profile.equipmentContext)
     : "not specified — no equipment self-report on file, so don't assume either way";
 
+  // Conservative paths: (a) the user skipped health data ("Continue without
+  // health data") — safety context is UNKNOWN, not "none"; (b) a minor.
+  // Prompt-level caution only; NOT a clinical screen and not a hard filter.
+  const cautionNotes: string[] = [];
+  if (profile.healthDataSkipped) {
+    cautionNotes.push(
+      "IMPORTANT: this user chose NOT to share medical/injury information, so their safety context is UNKNOWN (not 'none'). Prefer a lower-intensity, beginner-friendly, generally-safe program and avoid anything high-impact or maximal-effort.",
+    );
+  }
+  if (profile.age != null && profile.age < 18) {
+    cautionNotes.push(
+      "IMPORTANT: this user is under 18. Choose an age-appropriate, moderate-intensity program; avoid aggressive weight-loss, extreme calorie deficit, maximal-load or very-high-intensity programs.",
+    );
+  }
+
   return [
+    ...cautionNotes,
     "You are selecting ONE real training/nutrition program for a fitness app user from a fixed catalog — you are not designing a new workout.",
     `User's stated goals: ${goals}. Training level: ${level}. Reported medical conditions/injuries: ${safetyText}. Equipment access: this user ${equipmentText}.`,
     "Available programs (choose exactly one id from this list — never invent an id):",
@@ -260,6 +278,8 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
     medicalConditions: profile.medicalConditions,
     injuries: profile.injuries,
     equipmentContext: profile.equipmentContext,
+    healthDataSkipped: profile.healthDataSkippedAt != null,
+    age: profile.age,
   });
 }
 
@@ -295,6 +315,8 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     medicalConditions: profile.medicalConditions,
     injuries: profile.injuries,
     equipmentContext: profile.equipmentContext,
+    healthDataSkipped: profile.healthDataSkippedAt != null,
+    age: profile.age,
   });
 }
 
@@ -306,6 +328,8 @@ async function runSelectionAndPersist(
     medicalConditions: string[];
     injuries: string[];
     equipmentContext: string | null;
+    healthDataSkipped?: boolean;
+    age?: number | null;
   },
 ): Promise<PlanDTO> {
   const programs = await eligiblePrograms();

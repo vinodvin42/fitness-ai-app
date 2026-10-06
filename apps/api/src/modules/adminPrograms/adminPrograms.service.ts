@@ -187,6 +187,7 @@ function toProgramListItem(p: ProgramRow) {
 export async function listPrograms(query: ListProgramsQuery) {
   const createdAtRange = dateRangeWhere(query.startDate, query.endDate);
   const where = {
+    ownerUserId: null,
     ...(query.search
       ? {
           OR: [
@@ -218,8 +219,8 @@ export async function listPrograms(query: ListProgramsQuery) {
 }
 
 async function getProgramOrThrow(id: string): Promise<ProgramRow> {
-  const program = await prisma.program.findUnique({
-    where: { id },
+  const program = await prisma.program.findFirst({
+    where: { id, ownerUserId: null },
     include: {
       createdByAdmin: { select: { fullName: true } },
       workouts: { include: { exercises: { select: { exerciseId: true } } } },

@@ -2,19 +2,18 @@ import React, { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts, Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
 import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
 import { JetBrainsMono_600SemiBold, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
 import { AuthProvider } from "./src/context/AuthContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { OfflineBanner } from "./src/components/OfflineBanner";
+import { ToastProvider } from "./src/components/Toast";
+import { ThemeProvider } from "./src/theme/ThemeProvider";
+import { queryClient, persistOptions } from "./src/lib/queryClient";
 import { captureAcquisitionContext } from "./src/lib/acquisitionContext";
 import { captureResetPasswordToken } from "./src/lib/resetPasswordLink";
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
-});
 
 export default function App() {
   // Design System v2 typefaces (31 Aug 2026): Sora (display/headers),
@@ -66,13 +65,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <AuthProvider>
-          <StatusBar style="light" />
-          <RootNavigator />
-          <OfflineBanner />
+          <ThemeProvider>
+            <ToastProvider>
+              <StatusBar style="light" />
+              <RootNavigator />
+              <OfflineBanner />
+            </ToastProvider>
+          </ThemeProvider>
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </SafeAreaProvider>
   );
 }

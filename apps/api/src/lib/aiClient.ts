@@ -51,7 +51,22 @@ export function getAiProviderStatus() {
   };
 }
 
-async function generateWithAnthropic(prompt: string): Promise<string> {
+/** Optional image input for vision-capable calls (JPEG/PNG, base64 without the data-URL prefix). */
+export interface CompletionImage {
+  mediaType: "image/jpeg" | "image/png";
+  base64: string;
+}
+
+/** OpenAI/Azure chat-completions content: plain string when text-only (unchanged), content parts when an image is attached. */
+function openAiContent(prompt: string, image?: CompletionImage) {
+  if (!image) return prompt;
+  return [
+    { type: "text", text: prompt },
+    { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.base64}` } },
+  ];
+}
+
+async function generateWithAnthropic(prompt: string, image?: CompletionImage): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -62,7 +77,17 @@ async function generateWithAnthropic(prompt: string): Promise<string> {
     body: JSON.stringify({
       model: env.AI_MODEL ?? DEFAULT_MODEL.anthropic,
       max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "user",
+          content: image
+            ? [
+                { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
+                { type: "text", text: prompt },
+              ]
+            : prompt,
+        },
+      ],
     }),
   });
   if (!res.ok) {
@@ -72,7 +97,7 @@ async function generateWithAnthropic(prompt: string): Promise<string> {
   return data.content?.[0]?.text ?? "";
 }
 
-async function generateWithOpenAi(prompt: string): Promise<string> {
+async function generateWithOpenAi(prompt: string, image?: CompletionImage): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -81,7 +106,7 @@ async function generateWithOpenAi(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: env.AI_MODEL ?? DEFAULT_MODEL.openai,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: openAiContent(prompt, image) }],
     }),
   });
   if (!res.ok) {
@@ -91,7 +116,7 @@ async function generateWithOpenAi(prompt: string): Promise<string> {
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function generateWithAzureOpenAi(prompt: string): Promise<string> {
+async function generateWithAzureOpenAi(prompt: string, image?: CompletionImage): Promise<string> {
   // Azure OpenAI's Chat Completions payload/response shape is identical to
   // OpenAI's own (both are versions of the same API) — only the URL and
   // auth header differ, so the response is parsed the same way
@@ -111,7 +136,7 @@ async function generateWithAzureOpenAi(prompt: string): Promise<string> {
       "api-key": env.AZURE_OPENAI_API_KEY!,
     },
     body: JSON.stringify({
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: openAiContent(prompt, image) }],
     }),
   });
   if (!res.ok) {
@@ -122,13 +147,13 @@ async function generateWithAzureOpenAi(prompt: string): Promise<string> {
 }
 
 /** Provider-agnostic single-turn text generation. Throws if unconfigured — callers should check `isAiConfigured()` first if they want to degrade gracefully instead. */
-export async function generateCompletion(prompt: string): Promise<string> {
+export async function generateCompletion(prompt: string, options?: { image?: CompletionImage }): Promise<string> {
   if (!isAiConfigured()) {
     throw new Error(
       "AI provider not configured — set ANTHROPIC_API_KEY, OPENAI_API_KEY, or the AZURE_OPENAI_* trio (see .env.example)",
     );
   }
-  if (env.AI_PROVIDER === "anthropic") return generateWithAnthropic(prompt);
-  if (env.AI_PROVIDER === "azure-openai") return generateWithAzureOpenAi(prompt);
-  return generateWithOpenAi(prompt);
+  if (env.AI_PROVIDER === "anthropic") return generateWithAnthropic(prompt, options?.image);
+  if (env.AI_PROVIDER === "azure-openai") return generateWithAzureOpenAi(prompt, options?.image);
+  return generateWithOpenAi(prompt, options?.image);
 }

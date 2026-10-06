@@ -22,11 +22,21 @@
       "package": "com.primefit.usermobile",
       "permissions": [
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "plugins": [
       "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "23PrimeFit uses your location while the app is open to track the distance and route of your runs and rides.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
       [
         "expo-local-authentication",
         {

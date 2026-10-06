@@ -7,6 +7,7 @@ import {
   disableTwoFactorSchema,
   editOnboardingProfileSchema,
   enableTwoFactorSchema,
+  guardianReviewSchema,
   onboardingProfileSchema,
   updateConsentSchema,
   updateProfileSchema,
@@ -153,6 +154,24 @@ usersRouter.patch("/me/consents", requireAuth, async (req: AuthedRequest, res, n
     const input = updateConsentSchema.parse(req.body);
     const consent = await usersService.updateConsent(req.userId!, input);
     res.json({ consent });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Under-18 guardian review (onboarding/11) — see users.service.ts.
+usersRouter.post("/me/guardian-review", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = guardianReviewSchema.parse(req.body);
+    res.status(201).json({ guardianReview: await usersService.submitGuardianReview(req.userId!, input) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.get("/me/guardian-review", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ guardianReview: await usersService.getGuardianReview(req.userId!) });
   } catch (err) {
     next(err);
   }

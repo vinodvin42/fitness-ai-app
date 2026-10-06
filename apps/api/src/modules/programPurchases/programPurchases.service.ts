@@ -27,7 +27,7 @@ export async function purchaseProgram(
   programId: string,
   opts: { verifiedPayment?: boolean } = {},
 ) {
-  const program = await prisma.program.findUnique({ where: { id: programId } });
+  const program = await prisma.program.findFirst({ where: { id: programId, ownerUserId: null } });
   if (!program) {
     throw new ApiHttpError(404, "program_not_found", "Program not found");
   }
@@ -117,7 +117,7 @@ export async function listMyPrograms(userId: string): Promise<MyProgramRow[]> {
   if (relevantProgramIds.size === 0) return [];
 
   const programs = await prisma.program.findMany({
-    where: { id: { in: Array.from(relevantProgramIds) } },
+    where: { id: { in: Array.from(relevantProgramIds) }, ownerUserId: null },
     include: { workouts: { select: { id: true } } },
   });
 
@@ -172,8 +172,8 @@ const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  * decision, also gap §13).
  */
 export async function getProgramProgress(userId: string, programId: string): Promise<ProgramProgressRow> {
-  const program = await prisma.program.findUnique({
-    where: { id: programId },
+  const program = await prisma.program.findFirst({
+    where: { id: programId, ownerUserId: null },
     include: { workouts: { select: { id: true } } },
   });
   if (!program) {

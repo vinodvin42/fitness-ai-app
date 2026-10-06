@@ -1,5 +1,6 @@
 import type {
   AiCoachMessagesResponse,
+  AiCoachUsage,
   AiProviderStatus,
   SendAiCoachMessageResponse,
 } from "@fitness-ai-app/types";
@@ -15,4 +16,8 @@ export function fetchAiCoachMessages() {
 
 export function sendAiCoachMessage(content: string) {
   return apiClient.post<SendAiCoachMessageResponse>("/ai-coach/messages", { content }).then((r) => r.data);
+}
+
+export function fetchAiCoachUsage() {
+  return apiClient.get<AiCoachUsage>("/ai-coach/usage").then((r) => r.data);
 }

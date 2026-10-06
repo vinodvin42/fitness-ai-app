@@ -10,6 +10,8 @@ import { Pill } from "../../components/Pill";
 import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
+import { Icon } from "../../components/Icon";
+import { BackButton } from "../../components/BackButton";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -109,6 +111,43 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
     );
   }
 
+  // Train 17 - the user has never started a workout at all (distinct from "filters matched nothing").
+  if (!isLoading && (history ?? []).length === 0) {
+    return (
+      <ScreenContainer title="Workout History" subtitle="Your completed sessions, all in one place">
+        <BackButton onPress={() => navigation.goBack()} />
+        <View style={{ alignItems: "center", gap: spacing.md, paddingVertical: spacing.xl, paddingHorizontal: spacing.md }}>
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: radius.lg,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="dumbbell" size={36} color={colors.textOnAccent} />
+          </View>
+          <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22, textAlign: "center" }}>
+            Your first workout starts here
+          </Text>
+          <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14, lineHeight: 21, textAlign: "center" }}>
+            You haven't logged a workout yet. After your first session, you'll see its exercises, duration and sets here.
+          </Text>
+          <Button
+            label="Find your first workout"
+            onPress={() => navigation.navigate("ProgramsMarketplace")}
+            style={{ alignSelf: "stretch" }}
+          />
+        </View>
+        <Text style={{ color: colors.textSecondary, ...typography.meta, textAlign: "center" }}>
+          Start at your own pace. Every session can be adjusted.
+        </Text>
+      </ScreenContainer>
+    );
+  }
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekday = new Date(year, month, 1).getDay();
   const cells: Array<number | null> = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
@@ -132,6 +171,15 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer title="Workout History">
+      <Pressable
+        onPress={() => navigation.navigate("TrainingAnalytics")}
+        accessibilityRole="button"
+        accessibilityLabel="Open training analytics"
+        hitSlop={8}
+        style={{ alignSelf: "flex-start", marginBottom: spacing.sm }}
+      >
+        <Text style={{ color: colors.accent, ...typography.label }}>View training analytics</Text>
+      </Pressable>
       <SearchBar value={query} onChangeText={setQuery} placeholder="Search workouts" />
 
       {statuses.length > 2 ? (
@@ -198,7 +246,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
                     backgroundColor: day === selectedDay ? colors.accent : "transparent",
                   }}
                 >
-                  <Text style={{ color: day === selectedDay ? "#0B0B0F" : colors.textPrimary }}>{day}</Text>
+                  <Text style={{ color: day === selectedDay ? colors.textOnAccent : colors.textPrimary }}>{day}</Text>
                   {dayHasSession.has(day) ? (
                     <View
                       style={{
@@ -206,7 +254,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
                         height: 5,
                         borderRadius: 2.5,
                         marginTop: 2,
-                        backgroundColor: day === selectedDay ? "#0B0B0F" : colors.accent,
+                        backgroundColor: day === selectedDay ? colors.textOnAccent : colors.accent,
                       }}
                     />
                   ) : null}
@@ -284,6 +332,19 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
                   tone={entry.status === "completed" ? "success" : entry.status === "in_progress" ? "warning" : "neutral"}
                 />
               </View>
+              {!compareMode && entry.totalSets > 0 ? (
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate("SessionSets", { sessionId: entry.id, workoutId: entry.workoutId, workoutName: entry.workoutName })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Review and edit sets for ${entry.workoutName}`}
+                  hitSlop={8}
+                  style={{ alignSelf: "flex-start", marginTop: spacing.sm }}
+                >
+                  <Text style={{ color: colors.accent, ...typography.label }}>Review sets</Text>
+                </Pressable>
+              ) : null}
             </Card>
           </Pressable>
         ))}

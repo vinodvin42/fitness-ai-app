@@ -97,6 +97,12 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
         )}
       </ScrollView>
       <View style={styles.footer}>
+        <Button
+          label="Review sets"
+          variant="secondary"
+          onPress={() => navigation.navigate("SessionSets", { sessionId, workoutName })}
+          style={{ marginBottom: spacing.sm }}
+        />
         <Button label="Back to Train" onPress={() => navigation.popToTop()} />
       </View>
     </SafeAreaView>

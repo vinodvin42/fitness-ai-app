@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeProvider";
 
 interface ChipProps {
   label: string;
@@ -17,15 +18,16 @@ interface ChipProps {
 
 /** Single/multi-select pill — docs/mobile/04-design-system.md §5 "Chip selector". */
 export function Chip({ label, selected, onPress, accessibilityLabel }: ChipProps) {
+  const { colors: theme } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ selected }}
-      style={[styles.chip, selected && styles.chipSelected]}
+      style={[styles.chip, selected && { borderColor: theme.accent, backgroundColor: theme.accent }]}
     >
-      <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
+      <Text style={[styles.label, selected && [styles.labelSelected, { color: theme.textOnAccent }]]}>{label}</Text>
     </Pressable>
   );
 }
@@ -39,17 +41,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  chipSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
   label: {
     color: colors.textSecondary,
     fontSize: 14,
     fontFamily: fonts.bodyMedium,
   },
   labelSelected: {
-    color: "#0B0B0F",
     fontFamily: fonts.bodySemi,
   },
 });

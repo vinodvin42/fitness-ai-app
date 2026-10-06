@@ -1,6 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
 import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeProvider";
 
 interface ButtonProps {
   label: string;
@@ -32,6 +33,7 @@ export function Button({
   accessibilityHint,
 }: ButtonProps) {
   const isPrimary = variant === "primary";
+  const { colors: theme } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -42,15 +44,15 @@ export function Button({
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
       style={[
         styles.base,
-        isPrimary ? styles.primary : styles.secondary,
+        isPrimary ? [styles.primary, { backgroundColor: theme.accent }] : styles.secondary,
         (disabled || loading) && styles.disabled,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.background : colors.accent} />
+        <ActivityIndicator color={isPrimary ? theme.textOnAccent : theme.accent} />
       ) : (
-        <Text style={[styles.label, isPrimary ? styles.labelPrimary : styles.labelSecondary]}>{label}</Text>
+        <Text style={[styles.label, isPrimary ? [styles.labelPrimary, { color: theme.textOnAccent }] : styles.labelSecondary]}>{label}</Text>
       )}
     </Pressable>
   );

@@ -7,6 +7,7 @@ import { RecipeDetailScreen } from "../screens/fuel/RecipeDetailScreen";
 import { LogMealScreen } from "../screens/fuel/LogMealScreen";
 import { ConfirmFoodEstimateScreen } from "../screens/fuel/ConfirmFoodEstimateScreen";
 import { NutritionCalendarScreen } from "../screens/fuel/NutritionCalendarScreen";
+import { SnapMealScreen } from "../screens/fuel/SnapMealScreen";
 import { BarcodeScannerScreen } from "../screens/fuel/BarcodeScannerScreen";
 import { MealPlanScreen } from "../screens/fuel/MealPlanScreen";
 
@@ -48,6 +49,7 @@ export type FuelStackParamList = {
   ConfirmFoodEstimate: { estimate: FoodEstimate };
   NutritionCalendar: undefined;
   BarcodeScanner: { mealType: MealType };
+  SnapMeal: { mealType: MealType };
   // Meal Plan (22 Sep 2026) — the real AI-generated multi-day meal plan,
   // wired to apps/api's new Meal-Plan Generation Engine. See
   // MealPlanScreen's own doc comment.
@@ -66,6 +68,7 @@ export function FuelStack() {
       <Stack.Screen name="ConfirmFoodEstimate" component={ConfirmFoodEstimateScreen} />
       <Stack.Screen name="NutritionCalendar" component={NutritionCalendarScreen} />
       <Stack.Screen name="BarcodeScanner" component={BarcodeScannerScreen} options={{ presentation: "fullScreenModal" }} />
+      <Stack.Screen name="SnapMeal" component={SnapMealScreen} options={{ presentation: "fullScreenModal" }} />
       <Stack.Screen name="MealPlan" component={MealPlanScreen} />
     </Stack.Navigator>
   );

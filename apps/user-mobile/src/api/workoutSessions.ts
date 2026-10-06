@@ -1,4 +1,12 @@
-import type { LogSetInput, WorkoutCompletionSummary, WorkoutHistoryEntry, WorkoutSession } from "@fitness-ai-app/types";
+import type {
+  DeleteResult,
+  ExerciseSetLog,
+  LogSetInput,
+  UpdateSetInput,
+  WorkoutCompletionSummary,
+  WorkoutHistoryEntry,
+  WorkoutSession,
+} from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 export function startWorkoutSession(workoutId: string) {
@@ -38,4 +46,13 @@ export function abandonWorkoutSession(sessionId: string) {
 /** Real totals, new-PR detection, and the current training streak — backs Workout Complete (trn-10). */
 export function fetchSessionSummary(sessionId: string) {
   return apiClient.get<WorkoutCompletionSummary>(`/workout-sessions/${sessionId}/summary`).then((r) => r.data);
+}
+
+/** Wave B - edit one logged set (send only what changed; null clears weight/rpe/note). */
+export function updateWorkoutSet(sessionId: string, setId: string, input: UpdateSetInput) {
+  return apiClient.patch<ExerciseSetLog>(`/workout-sessions/${sessionId}/sets/${setId}`, input).then((r) => r.data);
+}
+
+export function deleteWorkoutSet(sessionId: string, setId: string) {
+  return apiClient.delete<DeleteResult>(`/workout-sessions/${sessionId}/sets/${setId}`).then((r) => r.data);
 }

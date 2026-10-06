@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
+import { useWorkoutSettings } from "../api/workoutSettings";
 import { colors, fonts, spacing, typography } from "../theme/tokens";
 
 interface RestTimerProps {
   /** Called when the user taps the bottom action button (Skip / Continue). */
   onDismiss?: () => void;
-  /** Seconds the timer starts at when it first mounts. Default 60. */
+  /** Seconds the timer starts at when it first mounts. Defaults to the user's workout setting, else 60. */
   defaultSeconds?: number;
 }
 
@@ -32,7 +33,9 @@ function formatTime(totalSeconds: number): string {
  * client-side: no rest duration is ever sent to the API or persisted
  * anywhere — see gap §24.
  */
-export function RestTimer({ onDismiss, defaultSeconds = 60 }: RestTimerProps) {
+export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp }: RestTimerProps) {
+  const { data: settings } = useWorkoutSettings();
+  const defaultSeconds = defaultSecondsProp ?? settings?.restTimerSeconds ?? 60;
   const [totalSeconds, setTotalSeconds] = useState(defaultSeconds);
   const [remainingSeconds, setRemainingSeconds] = useState(defaultSeconds);
   const [isRunning, setIsRunning] = useState(true);

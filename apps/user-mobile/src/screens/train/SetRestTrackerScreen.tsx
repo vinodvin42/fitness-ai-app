@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ExerciseSetLog } from "@fitness-ai-app/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card } from "../../components/Card";
@@ -8,10 +9,13 @@ import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
+import { SetEditSheet } from "../../components/SetEditSheet";
+import { displayToKg, kgToDisplay, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchWorkoutSession, logWorkoutSet } from "../../api/workoutSessions";
 import { extractErrorMessage } from "../../lib/apiError";
 import { sortExercisesByPhase } from "../../lib/workoutExercises";
+import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -41,6 +45,9 @@ const RPE_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export function SetRestTrackerScreen({ route, navigation }: Props) {
   const { workoutId, sessionId, exerciseIndex } = route.params;
   const queryClient = useQueryClient();
+  const { data: workoutSettings } = useWorkoutSettings();
+  const weightUnit = workoutSettings?.weightUnit ?? "kg";
+  const [editingSet, setEditingSet] = useState<ExerciseSetLog | null>(null);
 
   const {
     data: workout,
@@ -62,10 +69,11 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
     queryFn: () => fetchWorkoutSession(sessionId),
   });
 
+  const swaps = useSwaps(workoutId);
   const currentExercise = useMemo(() => {
     if (!workout) return undefined;
-    return sortExercisesByPhase(workout.exercises)[exerciseIndex];
-  }, [workout, exerciseIndex]);
+    return sortExercisesByPhase(applySwaps(workout.exercises, swaps))[exerciseIndex];
+  }, [workout, exerciseIndex, swaps]);
 
   const exerciseSetLogs = useMemo(() => {
     if (!session || !currentExercise) return [];
@@ -107,7 +115,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         exerciseId: currentExercise.exercise.id,
         setNumber: exerciseSetLogs.length + 1,
         reps: parseInt(reps, 10),
-        weightKg: weight ? parseFloat(weight) : undefined,
+        weightKg: weight ? displayToKg(parseFloat(weight), weightUnit) : undefined,
         rpe,
         isWarmup,
         isDropSet,
@@ -141,7 +149,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         <Card>
           <View style={{ flexDirection: "row", gap: spacing.md }}>
             <View style={{ flex: 1, alignItems: "center" }}>
-              <Text style={{ color: colors.textMuted, ...typography.meta }}>WEIGHT (KG)</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta }}>WEIGHT ({weightUnit.toUpperCase()})</Text>
               <TextInput
                 style={{ color: colors.textPrimary, fontSize: 40, fontFamily: fonts.mono, textAlign: "center", marginTop: spacing.xs }}
                 placeholder="—"
@@ -207,7 +215,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         </Card>
 
         <Card>
-          <RestTimer key={timerKey} defaultSeconds={60} />
+          <RestTimer key={`${timerKey}-${workoutSettings?.restTimerSeconds ?? 0}`} />
         </Card>
 
         <Card>
@@ -229,7 +237,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary }}>
-                    Set {s.setNumber} — {s.reps} reps{s.weightKg ? ` @ ${s.weightKg}kg` : ""}
+                    Set {s.setNumber} — {s.reps} reps{s.weightKg ? ` @ ${kgToDisplay(s.weightKg, weightUnit)}${weightUnit}` : ""}
                     {s.rpe ? ` · RPE ${s.rpe}` : ""}
                   </Text>
                   {s.isWarmup || s.isDropSet ? (
@@ -239,11 +247,20 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                   ) : null}
                   {s.note ? <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>“{s.note}”</Text> : null}
                 </View>
+                <Pressable
+                  onPress={() => setEditingSet(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit set ${s.setNumber}`}
+                  hitSlop={8}
+                >
+                  <Text style={{ color: colors.accent, ...typography.meta }}>Edit</Text>
+                </Pressable>
               </View>
             ))
           )}
         </Card>
       </ScrollView>
+      <SetEditSheet sessionId={sessionId} set={editingSet} onClose={() => setEditingSet(null)} />
     </SafeAreaView>
   );
 }

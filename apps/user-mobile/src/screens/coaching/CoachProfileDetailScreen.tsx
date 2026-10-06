@@ -140,6 +140,11 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("BookingServiceSelection", { professionalId })}
         disabled={data.offerings.length === 0}
       />
+      <Button
+        label="Request a quote"
+        variant="secondary"
+        onPress={() => navigation.navigate("RequestQuote", { professionalId, professionalName: data.fullName })}
+      />
     </ScreenContainer>
   );
 }

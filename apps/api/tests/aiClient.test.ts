@@ -158,3 +158,47 @@ describe("aiClient — provider selection stays correct for the pre-existing pro
     expect(await generateCompletion("hi")).toBe("ok");
   });
 });
+
+describe("aiClient — image input", () => {
+  const image = { mediaType: "image/png" as const, base64: "iVBORw0KGgo=" };
+
+  it("OpenAI sends text + image_url data URL parts", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      expect(body.messages[0].content).toEqual([
+        { type: "text", text: "what is this" },
+        { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } },
+      ]);
+      return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { generateCompletion } = await loadAiClient({ AI_PROVIDER: "openai", OPENAI_API_KEY: "k" });
+    expect(await generateCompletion("what is this", { image })).toBe("ok");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("Anthropic sends a base64 image block before the text", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      expect(body.messages[0].content).toEqual([
+        { type: "image", source: { type: "base64", media_type: "image/png", data: "iVBORw0KGgo=" } },
+        { type: "text", text: "what is this" },
+      ]);
+      return new Response(JSON.stringify({ content: [{ text: "ok" }] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { generateCompletion } = await loadAiClient({ AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "k" });
+    expect(await generateCompletion("what is this", { image })).toBe("ok");
+  });
+
+  it("text-only calls keep a plain string content", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(init.body as string).messages[0].content).toBe("hi");
+      return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { generateCompletion } = await loadAiClient({ AI_PROVIDER: "openai", OPENAI_API_KEY: "k" });
+    await generateCompletion("hi");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

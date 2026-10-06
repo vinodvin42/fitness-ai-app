@@ -46,9 +46,10 @@ import { LogSetInput } from "./workoutSessions.schema";
 export async function startSession(userId: string, workoutId: string) {
   const workout = await prisma.workout.findUnique({
     where: { id: workoutId },
-    include: { program: { select: { id: true, priceCents: true } } },
+    include: { program: { select: { id: true, priceCents: true, ownerUserId: true } } },
   });
-  if (!workout) {
+  // Personal-program workouts (materialized routines) are owner-only; 404 so existence is not revealed.
+  if (!workout || (workout.program.ownerUserId && workout.program.ownerUserId !== userId)) {
     throw new ApiHttpError(404, "workout_not_found", "Workout not found");
   }
 

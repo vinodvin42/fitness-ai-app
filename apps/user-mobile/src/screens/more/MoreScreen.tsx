@@ -13,10 +13,11 @@ type Props = NativeStackScreenProps<MoreStackParamList, "MoreHub">;
 
 type MoreTarget =
   | "Profile"
-  | "RecoverHub"
+  | "ProgressSection"
   | "Subscription"
   | "TimelineOverview"
   | "Reminders"
+  | "MedicationList"
   | "SettingsHub"
   | "Referral"
   | "ProfessionalRelationship";
@@ -32,11 +33,12 @@ type MoreTarget =
  * former tab (BR-USR-002: Recovery is contextual, not a primary tab).
  */
 const ROWS: Array<{ label: string; subtitle: string; icon: IconName; tint: string; tintSoft: string; target: MoreTarget }> = [
-  { label: "Recover", subtitle: "AI Coach & recovery log", icon: "heart-pulse", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "RecoverHub" },
+  { label: "Progress", subtitle: "Measurements, photos & streaks", icon: "trending-up", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProgressSection" },
   { label: "Timeline", subtitle: "Milestones & PRs", icon: "calendar", tint: colors.accent, tintSoft: colors.accentSoft, target: "TimelineOverview" },
   { label: "Coaching", subtitle: "Request, status & your team", icon: "message", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft, target: "ProfessionalRelationship" },
   { label: "Subscription", subtitle: "Plan & payments", icon: "trophy", tint: colors.warning, tintSoft: colors.warningSoft, target: "Subscription" },
   { label: "Reminders", subtitle: "Workout, meal & water nudges", icon: "bell", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)", target: "Reminders" },
+  { label: "Medicine", subtitle: "Medication reminders & adherence", icon: "pill", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "MedicationList" },
   { label: "Refer & Invite", subtitle: "Earn free months", icon: "sparkles", tint: colors.pink, tintSoft: "rgba(236,72,153,0.16)", target: "Referral" },
   { label: "Settings", subtitle: "Account, security, language", icon: "settings", tint: colors.textSecondary, tintSoft: colors.surfaceHigh, target: "SettingsHub" },
 ];

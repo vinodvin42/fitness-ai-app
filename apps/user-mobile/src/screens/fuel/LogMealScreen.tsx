@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Text, TextInput, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MealType } from "@fitness-ai-app/types";
@@ -7,6 +8,7 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
+import { Icon } from "../../components/Icon";
 import { createFoodEstimate, logMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -15,6 +17,17 @@ import type { FuelStackParamList } from "../../navigation/FuelStack";
 type Props = NativeStackScreenProps<FuelStackParamList, "LogMeal">;
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+const DRAFT_KEY = "logMeal.draft.v1";
+
+interface MealDraft {
+  mealType: MealType;
+  name: string;
+  calories: string;
+  protein: string;
+  carbs: string;
+  fat: string;
+}
+
 const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
 
 /**
@@ -56,6 +69,26 @@ export function LogMealScreen({ route, navigation }: Props) {
   const [fat, setFat] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scannedLabel, setScannedLabel] = useState<string | null>(null);
+  // Fuel 08 — set when POST /meal-logs fails; the form below IS the draft, so nothing is cleared.
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  // Restore a draft that survived a failed save (kept on-device in AsyncStorage).
+  useEffect(() => {
+    if (route.params?.barcodePrefill) return;
+    AsyncStorage.getItem(DRAFT_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const d = JSON.parse(raw) as MealDraft;
+        setMealType(d.mealType);
+        setName(d.name);
+        setCalories(d.calories);
+        setProtein(d.protein);
+        setCarbs(d.carbs);
+        setFat(d.fat);
+        setSaveFailed(true);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const barcodePrefill = route.params?.barcodePrefill;
   useEffect(() => {
@@ -102,6 +135,7 @@ export function LogMealScreen({ route, navigation }: Props) {
   const onSubmit = async () => {
     if (!canSubmit) return;
     setIsSubmitting(true);
+    setSaveFailed(false);
     try {
       await logMeal({
         mealType,
@@ -112,9 +146,13 @@ export function LogMealScreen({ route, navigation }: Props) {
         fatG: fat ? parseInt(fat, 10) : undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ["mealLogs", "today"] });
+      AsyncStorage.removeItem(DRAFT_KEY).catch(() => undefined);
       navigation.navigate("FuelDashboard");
-    } catch (err) {
-      Alert.alert("Couldn't log this meal", extractErrorMessage(err, "Check your connection and try again."));
+    } catch {
+      // Keep every field as typed and persist it on-device so leaving the screen doesn't lose it.
+      setSaveFailed(true);
+      const draft: MealDraft = { mealType, name, calories, protein, carbs, fat };
+      AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft)).catch(() => undefined);
     } finally {
       setIsSubmitting(false);
     }
@@ -122,6 +160,33 @@ export function LogMealScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer title="Log Meal">
+      {saveFailed ? (
+        <View
+          accessibilityRole="alert"
+          style={{ borderWidth: 1, borderColor: colors.danger, borderRadius: radius.card, padding: spacing.md, gap: 10 }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Icon name="circle-alert" size={20} color={colors.danger} />
+            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 16 }}>Meal wasn't saved</Text>
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
+            We couldn't confirm the save. This meal hasn't been added to your diary or daily totals.
+          </Text>
+          <Text style={{ color: colors.textPrimary, ...typography.label }}>Your draft is safe on this device.</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+            Check your connection, then try again. You can leave this screen — your draft stays here.
+          </Text>
+          <Button
+            label="Retry saving meal"
+            onPress={onSubmit}
+            loading={isSubmitting}
+            disabled={!canSubmit}
+            style={{ marginTop: spacing.xs }}
+          />
+          <Button label="Edit draft" variant="secondary" onPress={() => setSaveFailed(false)} />
+        </View>
+      ) : null}
+
       <Card>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Meal</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
@@ -156,12 +221,20 @@ export function LogMealScreen({ route, navigation }: Props) {
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
           <Text style={{ color: colors.textSecondary }}>Manual entry</Text>
-          <Button
-            label="Scan Barcode"
-            variant="secondary"
-            onPress={() => navigation.navigate("BarcodeScanner", { mealType })}
-            style={{ height: 36, paddingHorizontal: spacing.md }}
-          />
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Button
+              label="Snap a meal"
+              variant="secondary"
+              onPress={() => navigation.navigate("SnapMeal", { mealType })}
+              style={{ height: 36, paddingHorizontal: spacing.md }}
+            />
+            <Button
+              label="Scan Barcode"
+              variant="secondary"
+              onPress={() => navigation.navigate("BarcodeScanner", { mealType })}
+              style={{ height: 36, paddingHorizontal: spacing.md }}
+            />
+          </View>
         </View>
         {scannedLabel ? (
           <Text style={{ color: colors.accent, ...typography.caption, marginBottom: spacing.sm }}>{scannedLabel}</Text>

@@ -1,14 +1,21 @@
-import React, { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, Text, View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { MealLog } from "@fitness-ai-app/types";
+import type { MealType, NutritionDaySummary, UpdateMealLogInput } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
-import { fetchMealHistory } from "../../api/nutrition";
+import { Skeleton } from "../../components/Skeleton";
+import { BottomSheet } from "../../components/BottomSheet";
+import { TextField } from "../../components/TextField";
+import { Chip } from "../../components/Chip";
+import { Button } from "../../components/Button";
+import { useToast } from "../../components/Toast";
+import { deleteMealLog, fetchNutritionCalendar, fetchNutritionSummary, updateMealLog } from "../../api/nutrition";
+import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -21,17 +28,13 @@ const MONTH_NAMES = [
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 // Same placeholder daily-calorie target as FuelScreen's DAILY_TARGETS.calories
-// (no real per-user goal exists yet — gap §10) — kept as its own local
-// constant here rather than a shared import, matching how WATER_GOAL_GLASSES
-// is independently duplicated across FuelScreen/TodayScreen. Must be kept in
-// sync with FuelScreen.tsx's DAILY_TARGETS.calories by hand until a real
-// per-user goal system exists.
+// (no real per-user goal exists yet — gap §10). Keep in sync by hand until a
+// real per-user goal system exists.
 const DAILY_CALORIE_TARGET = 2000;
 
 // "Compliance" isn't numerically defined anywhere in the design (see gap
-// §28) — this pass's own reasonable reading: a day within ±20% of the
-// placeholder target counts as "on track", meaningfully under or over
-// otherwise, so the calendar has something real to badge each day with.
+// §28) — this pass's own reading: a day within ±20% of the placeholder target
+// counts as "on track", meaningfully under or over otherwise.
 const ON_TRACK_MIN = 0.8;
 const ON_TRACK_MAX = 1.2;
 
@@ -74,104 +77,77 @@ function fmtDay(year: number, month: number, day: number): string {
   });
 }
 
-/**
- * Nutrition Calendar (docs/mobile/03-screen-inventory.md §D): "a full month
- * grid (day cells colored/badged by compliance), selected-day detail stats,
- * a compliance card, and monthly summary stats." Shipped 19 Aug 2026, backed
- * by a new `GET /meal-logs` (every meal this user has ever logged, all-time
- * — `apps/api/src/modules/nutrition`'s `listMealHistory`) — the calendar
- * grid, per-day totals, and monthly stats are all computed here client-side
- * from that one list, same "fetch everything, group client-side" pattern as
- * Workout History and Timeline Month. "Compliance" itself has no numeric
- * definition anywhere in the design; see gap §28 for the ±20%-of-placeholder-
- * target reading used here, and for why this calendar doesn't factor in
- * hydration (Nutrition Dashboard's water tracker is a separate, already-
- * shipped feature with its own goal).
- */
-// No navigation is used from Props — this screen is a leaf (no further
-// drill-down beyond the day-detail card rendered inline) — but the standard
-// NativeStackScreenProps<...> shape is kept for consistency with every
-// other screen in this stack.
-export function NutritionCalendarScreen(_props: Props) {
-  const { data: history, isLoading, isError, refetch } = useQuery({
-    queryKey: ["mealLogs", "history"],
-    queryFn: fetchMealHistory,
-  });
+type DayMeal = NutritionDaySummary["meals"][number];
 
+const MEAL_TYPES: Array<{ value: MealType; label: string }> = [
+  { value: "breakfast", label: "Breakfast" },
+  { value: "lunch", label: "Lunch" },
+  { value: "dinner", label: "Dinner" },
+  { value: "snack", label: "Snack" },
+];
+
+/**
+ * Nutrition Calendar (docs/mobile/03-screen-inventory.md §D): a month grid
+ * (day cells badged by compliance), selected-day stats, a compliance card and
+ * monthly summary stats. Wave B (Oct 2026): backed by the server-side
+ * `GET /nutrition/calendar?month=` (per-day calories) and
+ * `GET /nutrition/summary?date=` (totals + meals for the selected day) instead
+ * of downloading the whole meal history, and meals can now be edited or
+ * deleted from a bottom sheet (PATCH/DELETE /meal-logs/:id). Days are UTC
+ * days, as the API defines them.
+ */
+export function NutritionCalendarScreen(_props: Props) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [editing, setEditing] = useState<DayMeal | null>(null);
 
-  const inSelectedMonth = useMemo(
-    () =>
-      (history ?? []).filter((log) => {
-        const d = new Date(log.loggedAt);
-        return d.getFullYear() === year && d.getMonth() === month;
-      }),
-    [history, year, month],
-  );
+  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const dateKey = selectedDay !== null ? `${monthKey}-${String(selectedDay).padStart(2, "0")}` : null;
 
-  const byDay = useMemo(() => {
-    const map = new Map<number, MealLog[]>();
-    for (const log of inSelectedMonth) {
-      const day = new Date(log.loggedAt).getDate();
-      const existing = map.get(day) ?? [];
-      existing.push(log);
-      map.set(day, existing);
+  const calendarQuery = useQuery({
+    queryKey: ["nutrition", "calendar", monthKey],
+    queryFn: () => fetchNutritionCalendar(monthKey),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ["nutrition", "summary", dateKey],
+    queryFn: () => fetchNutritionSummary(dateKey as string),
+    enabled: dateKey !== null,
+  });
+
+  const caloriesByDay = useMemo(() => {
+    const map = new Map<number, { calories: number; mealCount: number }>();
+    for (const d of calendarQuery.data?.days ?? []) {
+      if (d.mealCount > 0) map.set(Number(d.date.slice(8, 10)), { calories: d.calories, mealCount: d.mealCount });
     }
     return map;
-  }, [inSelectedMonth]);
+  }, [calendarQuery.data]);
 
   const complianceByDay = useMemo(() => {
     const map = new Map<number, Compliance>();
-    for (const [day, logs] of byDay.entries()) {
-      const totalCalories = logs.reduce((sum, l) => sum + l.calories, 0);
-      map.set(day, complianceFor(totalCalories));
-    }
+    for (const [day, v] of caloriesByDay.entries()) map.set(day, complianceFor(v.calories));
     return map;
-  }, [byDay]);
+  }, [caloriesByDay]);
 
   const monthlyStats = useMemo(() => {
-    const daysWithLogs = byDay.size;
-    const onTrackDays = Array.from(complianceByDay.values()).filter((c) => c === "onTrack").length;
-    const underDays = Array.from(complianceByDay.values()).filter((c) => c === "under").length;
-    const overDays = Array.from(complianceByDay.values()).filter((c) => c === "over").length;
-    const totalCalories = inSelectedMonth.reduce((sum, l) => sum + l.calories, 0);
-    const avgCalories = daysWithLogs > 0 ? Math.round(totalCalories / daysWithLogs) : 0;
+    const values = Array.from(complianceByDay.values());
+    const totalCalories = Array.from(caloriesByDay.values()).reduce((sum, v) => sum + v.calories, 0);
+    const mealsLogged = Array.from(caloriesByDay.values()).reduce((sum, v) => sum + v.mealCount, 0);
     return {
-      daysWithLogs,
-      onTrackDays,
-      underDays,
-      overDays,
-      mealsLogged: inSelectedMonth.length,
-      avgCalories,
+      daysWithLogs: caloriesByDay.size,
+      onTrackDays: values.filter((c) => c === "onTrack").length,
+      underDays: values.filter((c) => c === "under").length,
+      overDays: values.filter((c) => c === "over").length,
+      mealsLogged,
+      avgCalories: caloriesByDay.size > 0 ? Math.round(totalCalories / caloriesByDay.size) : 0,
     };
-  }, [byDay, complianceByDay, inSelectedMonth]);
+  }, [caloriesByDay, complianceByDay]);
 
-  const selectedDayLogs = selectedDay !== null ? byDay.get(selectedDay) ?? [] : [];
-  const selectedDayTotals = selectedDayLogs.reduce(
-    (acc, l) => ({
-      calories: acc.calories + l.calories,
-      proteinG: acc.proteinG + l.proteinG,
-      carbsG: acc.carbsG + l.carbsG,
-      fatG: acc.fatG + l.fatG,
-    }),
-    { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-  );
-
-  if (isError) {
+  if (calendarQuery.isError) {
     return (
       <ScreenContainer title="Nutrition Calendar">
-        <ErrorState onRetry={() => refetch()} />
-      </ScreenContainer>
-    );
-  }
-
-  if (!isLoading && (history ?? []).length === 0) {
-    return (
-      <ScreenContainer title="Nutrition Calendar">
-        <EmptyState title="No meals logged yet" subtitle="Log a meal from the Nutrition Dashboard to see it here." />
+        <ErrorState onRetry={() => calendarQuery.refetch()} />
       </ScreenContainer>
     );
   }
@@ -187,8 +163,17 @@ export function NutritionCalendarScreen(_props: Props) {
     setSelectedDay(null);
   };
 
+  const dayTotals = summaryQuery.data?.totals;
+  const dayMeals = summaryQuery.data?.meals ?? [];
+  const selectedCompliance = selectedDay !== null ? complianceByDay.get(selectedDay) ?? "none" : "none";
+
   return (
     <ScreenContainer title="Nutrition Calendar">
+      {calendarQuery.isLoading ? <Skeleton height={90} /> : null}
+      {!calendarQuery.isLoading && monthlyStats.daysWithLogs === 0 ? (
+        <EmptyState title="No meals logged this month" subtitle="Log a meal from the Nutrition Dashboard, or browse another month." />
+      ) : null}
+
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Compliance</Text>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
@@ -212,13 +197,13 @@ export function NutritionCalendarScreen(_props: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
-          <Pressable onPress={() => goToMonth(-1)}>
+          <Pressable onPress={() => goToMonth(-1)} accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={10}>
             <Text style={{ color: colors.accent, ...typography.h2 }}>{"‹"}</Text>
           </Pressable>
           <Text style={{ color: colors.textSecondary }}>
             {MONTH_NAMES[month]} {year}
           </Text>
-          <Pressable onPress={() => goToMonth(1)}>
+          <Pressable onPress={() => goToMonth(1)} accessibilityRole="button" accessibilityLabel="Next month" hitSlop={10}>
             <Text style={{ color: colors.accent, ...typography.h2 }}>{"›"}</Text>
           </Pressable>
         </View>
@@ -274,30 +259,142 @@ export function NutritionCalendarScreen(_props: Props) {
         <Card style={{ marginTop: spacing.md }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
             <Text style={{ color: colors.textPrimary, ...typography.h2, flex: 1 }}>{fmtDay(year, month, selectedDay)}</Text>
-            <Pill
-              label={complianceLabel(complianceByDay.get(selectedDay) ?? "none")}
-              tone={complianceTone(complianceByDay.get(selectedDay) ?? "none")}
-            />
+            <Pill label={complianceLabel(selectedCompliance)} tone={complianceTone(selectedCompliance)} />
           </View>
-          {selectedDayLogs.length === 0 ? (
+          {summaryQuery.isError ? (
+            <ErrorState onRetry={() => summaryQuery.refetch()} />
+          ) : summaryQuery.isLoading || !dayTotals ? (
+            <Skeleton height={60} />
+          ) : dayMeals.length === 0 ? (
             <Text style={{ color: colors.textSecondary }}>No meals logged this day.</Text>
           ) : (
             <>
               <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-                {selectedDayTotals.calories} kcal · {selectedDayTotals.proteinG}g protein · {selectedDayTotals.carbsG}g carbs ·{" "}
-                {selectedDayTotals.fatG}g fat
+                {dayTotals.calories} kcal · {dayTotals.proteinG}g protein · {dayTotals.carbsG}g carbs · {dayTotals.fatG}g fat
               </Text>
-              {selectedDayLogs.map((log) => (
-                <View key={log.id} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xs }}>
-                  <Text style={{ color: colors.textPrimary }}>{log.name}</Text>
-                  <Text style={{ color: colors.textMuted, ...typography.meta }}>{log.calories} kcal</Text>
-                </View>
+              {dayMeals.map((log) => (
+                <Pressable
+                  key={log.id}
+                  onPress={() => setEditing(log)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${log.name}, ${log.calories} kilocalories. Edit or delete`}
+                  style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs + 2 }}
+                >
+                  <Text style={{ color: colors.textPrimary, flex: 1 }}>{log.name}</Text>
+                  <Text style={{ color: colors.textMuted, ...typography.meta }}>{log.calories} kcal · Edit</Text>
+                </Pressable>
               ))}
             </>
           )}
         </Card>
       ) : null}
+
+      <MealEditSheet meal={editing} onClose={() => setEditing(null)} />
     </ScreenContainer>
+  );
+}
+
+/** Edit or delete one logged meal (PATCH/DELETE /meal-logs/:id); sends only changed fields. */
+function MealEditSheet({ meal, onClose }: { meal: DayMeal | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [name, setName] = useState("");
+  const [mealType, setMealType] = useState<MealType>("snack");
+  const [calories, setCalories] = useState("");
+  const [protein, setProtein] = useState("");
+  const [carbs, setCarbs] = useState("");
+  const [fat, setFat] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (meal) {
+      setName(meal.name);
+      setMealType(meal.mealType);
+      setCalories(String(meal.calories));
+      setProtein(String(meal.proteinG));
+      setCarbs(String(meal.carbsG));
+      setFat(String(meal.fatG));
+      setError(null);
+    }
+  }, [meal]);
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["nutrition"] });
+    queryClient.invalidateQueries({ queryKey: ["mealLogs"] });
+  };
+
+  const save = useMutation({
+    mutationFn: (input: UpdateMealLogInput) => updateMealLog((meal as DayMeal).id, input),
+    onSuccess: () => {
+      refresh();
+      toast.show("Meal updated", "success");
+      onClose();
+    },
+    onError: (err) => toast.show(extractErrorMessage(err, "Couldn't update that meal."), "error"),
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteMealLog((meal as DayMeal).id),
+    onSuccess: () => {
+      refresh();
+      toast.show("Meal deleted", "success");
+      onClose();
+    },
+    onError: (err) => toast.show(extractErrorMessage(err, "Couldn't delete that meal."), "error"),
+  });
+
+  const onSave = () => {
+    if (!meal) return;
+    const num = (v: string) => Number(v.replace(",", "."));
+    const cal = num(calories);
+    const p = num(protein);
+    const c = num(carbs);
+    const f = num(fat);
+    if (!name.trim()) {
+      setError("Give the meal a name.");
+      return;
+    }
+    if ([cal, p, c, f].some((n) => !Number.isFinite(n) || n < 0)) {
+      setError("Calories and macros must be zero or more.");
+      return;
+    }
+    const input: UpdateMealLogInput = {};
+    if (name.trim() !== meal.name) input.name = name.trim();
+    if (mealType !== meal.mealType) input.mealType = mealType;
+    if (Math.round(cal) !== meal.calories) input.calories = Math.round(cal);
+    if (p !== meal.proteinG) input.proteinG = p;
+    if (c !== meal.carbsG) input.carbsG = c;
+    if (f !== meal.fatG) input.fatG = f;
+    if (Object.keys(input).length === 0) {
+      onClose();
+      return;
+    }
+    setError(null);
+    save.mutate(input);
+  };
+
+  const confirmDelete = () =>
+    Alert.alert("Delete this meal?", "It will be removed from your log and daily totals.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => remove.mutate() },
+    ]);
+
+  return (
+    <BottomSheet visible={meal !== null} onClose={onClose} title="Edit meal">
+      <TextField label="Name" value={name} onChangeText={setName} maxLength={120} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
+        {MEAL_TYPES.map((t) => (
+          <Chip key={t.value} label={t.label} selected={mealType === t.value} onPress={() => setMealType(t.value)} />
+        ))}
+      </View>
+      <TextField label="Calories (kcal)" value={calories} onChangeText={setCalories} keyboardType="number-pad" />
+      <TextField label="Protein (g)" value={protein} onChangeText={setProtein} keyboardType="decimal-pad" />
+      <TextField label="Carbs (g)" value={carbs} onChangeText={setCarbs} keyboardType="decimal-pad" />
+      <TextField label="Fat (g)" value={fat} onChangeText={setFat} keyboardType="decimal-pad" error={error} />
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Button label="Delete" variant="secondary" onPress={confirmDelete} loading={remove.isPending} style={{ flex: 1 }} />
+        <Button label="Save" onPress={onSave} loading={save.isPending} style={{ flex: 1 }} />
+      </View>
+    </BottomSheet>
   );
 }
 

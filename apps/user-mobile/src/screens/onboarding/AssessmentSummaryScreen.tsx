@@ -113,6 +113,10 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
               reported, but always check with a doctor or physical therapist before starting a new program.
             </Text>
           </>
+        ) : state.healthDataSkipped ? (
+          <Text style={{ color: colors.textSecondary, ...typography.body }}>
+            Health data skipped — your plan will treat your health as unknown and stay cautious.
+          </Text>
         ) : (
           <Text style={{ color: colors.textSecondary, ...typography.body }}>None reported.</Text>
         )}

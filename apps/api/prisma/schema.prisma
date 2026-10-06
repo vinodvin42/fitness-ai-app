@@ -397,9 +397,18 @@ model User {
   couponRedemptions           CouponRedemption[]
   referralRewardsEarned       ReferralReward[]             @relation("ReferralRewardsEarned")
   recoveryLogs                RecoveryLog[]
+  notifications               Notification[]
+  pushTokens                  PushToken[]
+  notificationPreference      NotificationPreference?
+  healthConnections           HealthConnection[]
+  connectedDevices            ConnectedDevice[]
+  deviceSyncRuns              DeviceSyncRun[]
+  medications                 Medication[]
+  medicationDoseLogs          MedicationDoseLog[]
   // Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — see
   // PasswordResetToken's own doc comment below.
   passwordResetTokens         PasswordResetToken[]
+  guardianReview              GuardianReview?
   // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — see
   // Touchpoint's own doc comment for why this is a distinct sibling model
   // to AnalyticsEvent/AuditLog, not a repurposing of either. Nullable on
@@ -418,6 +427,11 @@ model User {
   // relation unless explicitly selected) — this codebase's user-authed
   // endpoints never select it. See that model's own doc comment.
   coachNotes                  CoachNote[]
+  routines                    Routine[]
+  workoutSettings             WorkoutSettings?
+  activityLogs                ActivityLog[]
+  formAnalysisSubmissions     FormAnalysisSubmission[]
+  quoteRequests               QuoteRequest[]
 
   @@map("users")
 }
@@ -464,6 +478,12 @@ model OnboardingProfile {
   // plans.service.ts#buildSelectionPrompt (unlike the schedule fields
   // above) — see that function's own comment.
   equipmentContext      String?
+  // "Continue without health data" (onboarding/09) — set when the user
+  // explicitly chose to skip the Safety step's medical/injury questions.
+  // Distinct from "answered: none" (empty arrays + null here). When set,
+  // medicalConditions/injuries are stored empty and plan generation treats
+  // the safety context as UNKNOWN (cautious), not as "no conditions".
+  healthDataSkippedAt   DateTime?
   completedAt           DateTime?
 
   @@map("onboarding_profiles")
@@ -558,6 +578,11 @@ model Program {
   status           ContentStatus @default(published)
   createdByAdminId String?
   createdByAdmin   AdminUser?    @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  // Personal container program ("My Routines") that holds the Workouts
+  // materialized from a user's Routines so they can start live sessions.
+  // NULL for every catalog program. Non-null programs are private to that
+  // user and MUST be excluded from every catalog/admin/plan/purchase query.
+  ownerUserId      String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -572,6 +597,7 @@ model Program {
   recommendedIn Recommendation[]  @relation("RecommendationSuggestedProgram")
 
   @@index([createdByAdminId])
+  @@index([ownerUserId])
   @@map("programs")
 }
 
@@ -597,6 +623,7 @@ model Exercise {
 
   workoutExercises WorkoutExercise[]
   setLogs          ExerciseSetLog[]
+  routineExercises RoutineExercise[]
 
   @@index([createdByAdminId])
   @@map("exercises")
@@ -1959,6 +1986,9 @@ model Payment {
   activatedAt             DateTime?
   activationFailedAt      DateTime?
   activationFailureReason String?
+  // Accepted QuoteRequest this booking payment was priced from (amountCents is
+  // the quoted price). Plain id, no FK; set only for purpose "booking".
+  quoteRequestId          String?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
 
@@ -1972,6 +2002,7 @@ model Payment {
   refunds Refund[]
 
   @@index([userId])
+  @@index([quoteRequestId])
   @@map("payments")
 }
 
@@ -2275,6 +2306,7 @@ model Professional {
   // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — see the CoachNote
   // model's own doc comment below.
   coachNotes       CoachNote[]
+  quoteRequests    QuoteRequest[]
   // Wave 3 (20 Sep 2026) — the reverse side of ProfessionalOffer's own new
   // `proposedByProfessionalId`: offers THIS professional proposed for a
   // replacement via a Handover action, distinct from `offersReceived`
@@ -2481,6 +2513,9 @@ model Booking {
   durationMinutes Int
   priceCents      Int
   status          BookingStatus               @default(confirmed)
+  // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
+  summaryText        String?                  @db.Text
+  summaryPublishedAt DateTime?
   createdAt       DateTime                    @default(now())
 
   @@index([userId])
@@ -3505,4 +3540,355 @@ model AdminActionItem {
   @@index([entityType, entityId])
   @@index([assignedToAdminId])
   @@map("admin_action_items")
+}
+
+// ---- Wave A: notifications, health connections, devices, medicine -------
+// In-app notification inbox + device push-token storage (no push sending
+// yet), per-user notification preferences, health-data provider
+// connections, paired devices + sync runs, and medication tracking.
+
+enum NotificationKind {
+  reminder
+  workout
+  coach
+  billing
+  system
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind @default(system)
+  title     String
+  body      String
+  deepLink  String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// Storage only — nothing sends pushes yet. One row per device token.
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+model NotificationPreference {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutReminders Boolean  @default(true)
+  mealReminders    Boolean  @default(true)
+  coachMessages    Boolean  @default(true)
+  billing          Boolean  @default(true)
+  marketing        Boolean  @default(false)
+  // "HH:MM" local time strings; both null = quiet hours off.
+  quietHoursStart  String?
+  quietHoursEnd    String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+enum HealthProvider {
+  apple_health
+  health_connect
+  garmin
+  fitbit
+  whoop
+  oura
+}
+
+enum HealthConnectionStatus {
+  connected
+  revoked
+}
+
+model HealthConnection {
+  id          String                 @id @default(uuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    HealthProvider
+  status      HealthConnectionStatus @default(connected)
+  scopes      String[]
+  connectedAt DateTime               @default(now())
+  revokedAt   DateTime?
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("health_connections")
+}
+
+enum DeviceKind {
+  watch
+  band
+  ring
+  scale
+  other
+}
+
+enum DeviceStatus {
+  paired
+  syncing
+  error
+  disconnected
+}
+
+model ConnectedDevice {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    HealthProvider
+  name        String
+  kind        DeviceKind      @default(other)
+  status      DeviceStatus    @default(paired)
+  lastSyncAt  DateTime?
+  lastError   String?
+  batteryPct  Int?
+  createdAt   DateTime        @default(now())
+  syncRuns    DeviceSyncRun[]
+
+  @@index([userId])
+  @@map("connected_devices")
+}
+
+model DeviceSyncRun {
+  id              String          @id @default(uuid())
+  deviceId        String
+  device          ConnectedDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt       DateTime        @default(now())
+  finishedAt      DateTime?
+  recordsIngested Int             @default(0)
+  // "success" | "error"
+  status          String          @default("success")
+
+  @@index([deviceId, startedAt])
+  @@index([userId])
+  @@map("device_sync_runs")
+}
+
+enum DoseStatus {
+  taken
+  skipped
+  snoozed
+}
+
+model Medication {
+  id            String              @id @default(uuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  dosage        String
+  form          String?
+  // "HH:MM" local times; daysOfWeek uses 0 = Sunday .. 6 = Saturday.
+  scheduleTimes String[]
+  daysOfWeek    Int[]               @default([0, 1, 2, 3, 4, 5, 6])
+  startDate     DateTime
+  endDate       DateTime?
+  notes         String?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  doseLogs      MedicationDoseLog[]
+
+  @@index([userId])
+  @@map("medications")
+}
+
+model MedicationDoseLog {
+  id           String     @id @default(uuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledFor DateTime
+  status       DoseStatus
+  snoozedUntil DateTime?
+  loggedAt     DateTime   @default(now())
+
+  @@unique([medicationId, scheduledFor])
+  @@index([userId, scheduledFor])
+  @@map("medication_dose_logs")
+}
+
+// ---- Wave B (Oct 2026): routines, workout settings, endurance, form ------
+// analysis capture, coach quote requests. See each modules/<name>/ service.
+
+model Routine {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  notes     String?
+  // Materialized Workout (inside the user's personal Program) used to start
+  // live sessions. Plain id, no FK: deleting a routine must never touch the
+  // Workout row (past sessions reference it).
+  workoutId String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  exercises RoutineExercise[]
+
+  @@index([userId])
+  @@map("routines")
+}
+
+model RoutineExercise {
+  id          String   @id @default(uuid())
+  routineId   String
+  routine     Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+  order       Int      @default(0)
+  targetSets  Int      @default(3)
+  targetReps  Int      @default(10)
+  restSeconds Int?
+
+  @@index([routineId])
+  @@map("routine_exercises")
+}
+
+enum WorkoutWeightUnit {
+  kg
+  lb
+}
+
+model WorkoutSettings {
+  id                 String            @id @default(uuid())
+  userId             String            @unique
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restTimerSeconds   Int               @default(90)
+  autoStartRest      Boolean           @default(true)
+  weightUnit         WorkoutWeightUnit @default(kg)
+  countdownSound     Boolean           @default(true)
+  keepScreenAwake    Boolean           @default(true)
+  defaultRpeTracking Boolean           @default(false)
+  updatedAt          DateTime          @updatedAt
+
+  @@map("workout_settings")
+}
+
+enum ActivityKind {
+  run
+  ride
+}
+
+enum ActivitySource {
+  manual
+  tracked
+}
+
+model ActivityLog {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind            ActivityKind
+  startedAt       DateTime
+  durationSeconds Int
+  distanceMeters  Int
+  avgPaceSecPerKm Int?
+  avgSpeedKmh     Float?
+  elevationGainM  Int?
+  calories        Int?
+  // Encoded polyline of the tracked route; null for manual entries.
+  routePolyline   String?        @db.Text
+  source          ActivitySource @default(manual)
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  @@index([userId, startedAt])
+  @@map("activity_logs")
+}
+
+enum FormAnalysisStatus {
+  queued
+  reviewed
+}
+
+// Capture only: status stays `queued` until a human coach reviews it.
+model FormAnalysisSubmission {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId String?
+  videoUrl   String?            @db.Text
+  status     FormAnalysisStatus @default(queued)
+  coachNote  String?
+  reviewedAt DateTime?
+  reviewedByProfessionalId String?
+  createdAt  DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("form_analysis_submissions")
+}
+
+enum QuoteRequestStatus {
+  pending
+  quoted
+  declined
+  accepted
+  expired
+  // Accepted quote already paid for (a captured booking payment activated).
+  consumed
+}
+
+model QuoteRequest {
+  id               String             @id @default(uuid())
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId   String
+  professional     Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceType      String
+  message          String             @db.Text
+  status           QuoteRequestStatus @default(pending)
+  quotedPriceCents Int?
+  currency         String?
+  quoteNote        String?
+  quoteExpiresAt   DateTime?
+  respondedAt      DateTime?
+  // Set when the user accepts; accepted quotes must be paid within 48h of this.
+  acceptedAt       DateTime?
+  // Payment that consumed this quote (atomic claim in activatePayment).
+  consumedPaymentId String?
+  createdAt        DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@index([professionalId, status])
+  @@map("quote_requests")
+}
+
+enum GuardianReviewStatus {
+  pending
+  approved
+}
+
+// Under-18 guardian review (onboarding/11). One row per user. NOT
+// implemented: guardian identity verification and any approval flow —
+// `approved` is a reserved status that nothing sets yet (no tokenised
+// approval link exists), so a review stays `pending` until a human/admin
+// process is built. While pending, the plan generator uses its
+// conservative (minor) path.
+model GuardianReview {
+  userId        String               @id
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guardianName  String
+  guardianEmail String
+  relationship  String
+  status        GuardianReviewStatus @default(pending)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("guardian_reviews")
 }

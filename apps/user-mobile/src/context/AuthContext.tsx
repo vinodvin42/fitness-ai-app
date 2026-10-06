@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import type { DeleteAccountInput, LoginInput, SignupInput, UpdateProfileInput, User } from "@fitness-ai-app/types";
+import { clearPersistedCache } from "../lib/queryClient";
+import { registerForPushNotifications, unregisterPushNotifications } from "../lib/pushRegistration";
 import { clearTokens, getStoredTokens, storeTokens } from "../api/client";
 import { fetchMe, loginRequest, logoutRequest, signupRequest, verifyTwoFactorLoginRequest } from "../api/auth";
 import { deleteAccount as deleteAccountRequest, updateProfile as updateProfileRequest } from "../api/users";
@@ -128,6 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // Register this device for push once a fully-onboarded user is signed in.
+  // Never throws and never blocks anything — see lib/pushRegistration.ts.
+  const signedInUserId = user?.id;
+  useEffect(() => {
+    if (!signedInUserId || !onboardingCompleted) return;
+    registerForPushNotifications().catch(() => undefined);
+  }, [signedInUserId, onboardingCompleted]);
+
   useEffect(() => {
     isBiometricLockEnabledRef.current = isBiometricLockEnabled;
   }, [isBiometricLockEnabled]);
@@ -197,6 +207,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // Best-effort, and BEFORE tokens are cleared (the DELETE is authenticated).
+    await unregisterPushNotifications().catch(() => undefined);
     const { refreshToken } = await getStoredTokens();
     if (refreshToken) {
       await logoutRequest(refreshToken).catch(() => {
@@ -204,6 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
     await clearTokens();
+    await clearPersistedCache().catch(() => undefined);
     setUser(null);
     setOnboardingCompleted(false);
   };
@@ -223,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOutLocally = async () => {
     await clearTokens();
+    await clearPersistedCache().catch(() => undefined);
     setUser(null);
     setOnboardingCompleted(false);
   };

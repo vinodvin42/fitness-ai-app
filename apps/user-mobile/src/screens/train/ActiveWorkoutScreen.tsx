@@ -10,6 +10,7 @@ import { Chip } from "../../components/Chip";
 import { StepProgressBar } from "../../components/StepProgressBar";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
+import { useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchWorkoutDetail } from "../../api/programs";
 import {
   abandonWorkoutSession,
@@ -21,6 +22,7 @@ import {
 import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
 import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
+import { applySwaps, clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -140,6 +142,7 @@ function PhasePill({ phase }: { phase: WorkoutPhase }) {
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
   const queryClient = useQueryClient();
+  useWorkoutSettings(); // warm the cache so the rest timer starts at the user's configured length
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
@@ -150,10 +153,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     queryFn: () => fetchWorkoutSession(sessionId),
   });
 
+  // Train 09: client-side exercise swaps (no backend endpoint) layered over the fetched workout.
+  const swaps = useSwaps(workoutId);
   const orderedExercises = useMemo(() => {
     if (!workout) return [];
-    return sortExercisesByPhase(workout.exercises);
-  }, [workout]);
+    return sortExercisesByPhase(applySwaps(workout.exercises, swaps));
+  }, [workout, swaps]);
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [loggedSets, setLoggedSets] = useState<LoggedSet[]>([]);
@@ -267,6 +272,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       setIsFinishing(true);
       try {
         await completeWorkoutSession(sessionId);
+        clearSwaps(workoutId);
         navigation.replace("WorkoutComplete", { sessionId, workoutName: workout.name });
       } catch (err) {
         Alert.alert("Couldn't finish workout", extractErrorMessage(err, "Check your connection and try again."));
@@ -307,6 +313,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             setIsAbandoning(true);
             try {
               await abandonWorkoutSession(sessionId);
+              clearSwaps(workoutId);
               await queryClient.invalidateQueries({ queryKey: ["workoutHistory"] });
               navigation.popToTop();
             } catch (err) {
@@ -328,7 +335,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       <Modal visible={showRestTimer} transparent animationType="fade" onRequestClose={() => setShowRestTimer(false)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", padding: spacing.lg }}>
           <Card style={{ width: "100%", maxWidth: 360 }}>
-            <RestTimer defaultSeconds={60} onDismiss={() => setShowRestTimer(false)} />
+            <RestTimer onDismiss={() => setShowRestTimer(false)} />
           </Card>
         </View>
       </Modal>
@@ -372,6 +379,20 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
             Target: {currentExercise?.targetSets} sets × {currentExercise?.targetReps} reps
           </Text>
+          {currentExercise && loggedSets.length === 0 ? (
+            <Button
+              label="Swap Exercise"
+              variant="secondary"
+              onPress={() =>
+                navigation.navigate("ExerciseSwap", {
+                  workoutId,
+                  workoutExerciseId: currentExercise.id,
+                  exerciseId: currentExercise.exercise.id,
+                })
+              }
+              style={{ marginTop: spacing.sm, height: 40 }}
+            />
+          ) : null}
           <Button
             label="Open Set & Rest Tracker"
             variant="secondary"

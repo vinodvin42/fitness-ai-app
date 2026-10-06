@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { isAiCoachEnabledByAdmin } from "../adminAiOps/adminAiOps.service";
+import { getCurrentSubscription } from "../subscriptions/subscriptions.service";
 
 /**
  * AI Coach chat (docs/mobile/03-screen-inventory.md §H, docs/platform/roadmap.md
@@ -64,6 +65,31 @@ const MAX_HISTORY_MESSAGES = 20;
 // not silent pagination and not an unbounded query against a table that
 // only ever grows.
 const MAX_RETURNED_MESSAGES = 200;
+
+// Per-tier daily AI Coach message quota (user messages per UTC day). The
+// single place to tune limits; users with no active subscription get basic.
+export const AI_COACH_DAILY_LIMITS = {
+  basic: 5,
+  pro: 50,
+  elite: 200,
+} as const;
+export type AiCoachTier = keyof typeof AI_COACH_DAILY_LIMITS;
+
+function nextUtcMidnight(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+}
+
+export async function getUsage(userId: string) {
+  const now = new Date();
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const [subscription, used] = await Promise.all([
+    getCurrentSubscription(userId),
+    prisma.aiCoachMessage.count({ where: { userId, role: "user", createdAt: { gte: dayStart } } }),
+  ]);
+  const rawTier = subscription?.plan.tier;
+  const tier: AiCoachTier = rawTier === "pro" || rawTier === "elite" ? rawTier : "basic";
+  return { used, limit: AI_COACH_DAILY_LIMITS[tier], resetsAt: nextUtcMidnight(now), tier };
+}
 
 export interface AiCoachMessageDTO {
   id: string;
@@ -160,6 +186,15 @@ export async function sendMessage(
     );
   }
 
+  // Per-tier daily quota (distinct from the 15-minute burst rate limit).
+  const usage = await getUsage(userId);
+  if (usage.used >= usage.limit) {
+    throw new ApiHttpError(429, "ai_limit_reached", "You've reached today's AI Coach message limit", {
+      limit: usage.limit,
+      resetsAt: usage.resetsAt.toISOString(),
+    });
+  }
+
   // Persisted before the AI call, not after — a slow or failed upstream
   // call should never silently drop what the user actually typed, same
   // "the write is real even if a downstream step fails" precedent as the
@@ -189,9 +224,10 @@ export async function sendMessage(
   } catch {
     // The user's message stays saved (see above) — only the reply failed.
     // A retry re-sends the same conversation, no data lost either way.
+    // 503 ai_unavailable: the clients' "temporarily unavailable" state.
     throw new ApiHttpError(
-      502,
-      "ai_coach_upstream_error",
+      503,
+      "ai_unavailable",
       "The AI Coach couldn't respond right now — try again in a moment",
     );
   }

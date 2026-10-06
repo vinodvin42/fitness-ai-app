@@ -29,6 +29,11 @@ export function MoreScreen() {
           subtitle="Your lifecycle status and how many clients you can take on"
           onPress={() => navigation.navigate("AvailabilityCapacity")}
         />
+        <MenuRow
+          label="Form reviews"
+          subtitle="Review exercise clips submitted by your clients"
+          onPress={() => navigation.navigate("FormReviews")}
+        />
       </Card>
     </ScreenContainer>
   );

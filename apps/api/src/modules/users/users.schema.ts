@@ -41,6 +41,9 @@ export const onboardingProfileSchema = z.object({
   bodyFatPercent: z.number().positive().max(70).optional(),
   waistCm: z.number().positive().max(300).optional(),
   hipsCm: z.number().positive().max(300).optional(),
+  // "Continue without health data" (onboarding/09). When true the server
+  // ignores any medicalConditions/injuries sent and stores them empty.
+  healthDataSkipped: z.boolean().optional(),
 });
 
 export type OnboardingProfileInput = z.infer<typeof onboardingProfileSchema>;
@@ -150,3 +153,12 @@ export const updateConsentSchema = z.object({
   granted: z.boolean(),
 });
 export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;
+
+// Under-18 guardian review (onboarding/11). Not verified/approved by
+// anything yet — see schema.prisma's GuardianReview comment.
+export const guardianReviewSchema = z.object({
+  guardianName: z.string().trim().min(1).max(120),
+  guardianEmail: z.string().trim().toLowerCase().email().max(254),
+  relationship: z.enum(["parent", "legal_guardian", "other"]),
+});
+export type GuardianReviewInput = z.infer<typeof guardianReviewSchema>;

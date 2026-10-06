@@ -19,7 +19,7 @@ import { hasAccess } from "../programPurchases/programPurchases.service";
 // controlling first discovery of it.
 
 export function listPrograms() {
-  return prisma.program.findMany({ where: { status: "published" }, orderBy: { createdAt: "desc" } });
+  return prisma.program.findMany({ where: { status: "published", ownerUserId: null }, orderBy: { createdAt: "desc" } });
 }
 
 // `purchased` (Phase 3, §I Programs Commerce) tells the client whether this
@@ -31,7 +31,7 @@ export async function getProgramDetail(programId: string, userId: string) {
     where: { id: programId },
     include: { workouts: { orderBy: { order: "asc" } } },
   });
-  if (!program) {
+  if (!program || (program.ownerUserId && program.ownerUserId !== userId)) {
     throw new ApiHttpError(404, "program_not_found", "Program not found");
   }
   return { ...program, purchased: await hasAccess(userId, program.id, program.priceCents) };
@@ -45,14 +45,15 @@ export async function getWorkoutDetail(workoutId: string, userId: string) {
         orderBy: [{ phase: "asc" }, { order: "asc" }],
         include: { exercise: true },
       },
-      program: { select: { id: true, name: true, priceCents: true } },
+      program: { select: { id: true, name: true, priceCents: true, ownerUserId: true } },
     },
   });
-  if (!workout) {
+  if (!workout || (workout.program.ownerUserId && workout.program.ownerUserId !== userId)) {
     throw new ApiHttpError(404, "workout_not_found", "Workout not found");
   }
   const purchased = await hasAccess(userId, workout.program.id, workout.program.priceCents);
-  return { ...workout, program: { ...workout.program, purchased } };
+  const { ownerUserId: _owner, ...programOut } = workout.program;
+  return { ...workout, program: { ...programOut, purchased } };
 }
 
 export function listExercises() {

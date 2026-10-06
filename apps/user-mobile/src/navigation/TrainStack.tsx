@@ -1,4 +1,5 @@
 import React from "react";
+import type { ActivityKind } from "@fitness-ai-app/types";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TrainScreen } from "../screens/train/TrainScreen";
 import { ProgramDetailScreen } from "../screens/train/ProgramDetailScreen";
@@ -13,6 +14,15 @@ import { ProgramCompletionScreen } from "../screens/train/ProgramCompletionScree
 import { ExerciseLibraryScreen } from "../screens/train/ExerciseLibraryScreen";
 import { ExerciseDetailScreen } from "../screens/train/ExerciseDetailScreen";
 import { WorkoutHistoryScreen } from "../screens/train/WorkoutHistoryScreen";
+import { ExerciseSwapScreen } from "../screens/train/ExerciseSwapScreen";
+import { TrainingAnalyticsScreen } from "../screens/train/TrainingAnalyticsScreen";
+import { RoutinesScreen } from "../screens/train/RoutinesScreen";
+import { RoutineEditorScreen } from "../screens/train/RoutineEditorScreen";
+import { WorkoutSettingsScreen } from "../screens/train/WorkoutSettingsScreen";
+import { ActivityTrackerScreen } from "../screens/train/ActivityTrackerScreen";
+import { ActivityDetailScreen } from "../screens/train/ActivityDetailScreen";
+import { FormAnalysisScreen } from "../screens/train/FormAnalysisScreen";
+import { SessionSetsScreen } from "../screens/train/SessionSetsScreen";
 
 // docs/mobile/03-screen-inventory.md §C: Train Dashboard -> Training
 // Programs -> Program Detail -> Workout Detail -> Active Workout ->
@@ -47,6 +57,17 @@ export type TrainStackParamList = {
   ExerciseLibrary: undefined;
   ExerciseDetail: { exerciseId: string };
   WorkoutHistory: undefined;
+  // Train 09 - client-side swap of one WorkoutExercise (see lib/exerciseSwaps.ts).
+  ExerciseSwap: { workoutId: string; workoutExerciseId: string; exerciseId: string };
+  // Wave B (Oct 2026): Train 12-16, 18 + set edit/delete.
+  TrainingAnalytics: undefined;
+  Routines: undefined;
+  RoutineEditor: { routineId?: string };
+  WorkoutSettings: undefined;
+  ActivityTracker: { kind: ActivityKind };
+  ActivityDetail: { activityId: string };
+  FormAnalysis: undefined;
+  SessionSets: { sessionId: string; workoutName: string; workoutId?: string };
 };
 
 const Stack = createNativeStackNavigator<TrainStackParamList>();
@@ -67,6 +88,15 @@ export function TrainStack() {
       <Stack.Screen name="ExerciseLibrary" component={ExerciseLibraryScreen} />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
       <Stack.Screen name="WorkoutHistory" component={WorkoutHistoryScreen} />
+      <Stack.Screen name="ExerciseSwap" component={ExerciseSwapScreen} />
+      <Stack.Screen name="TrainingAnalytics" component={TrainingAnalyticsScreen} />
+      <Stack.Screen name="Routines" component={RoutinesScreen} />
+      <Stack.Screen name="RoutineEditor" component={RoutineEditorScreen} />
+      <Stack.Screen name="WorkoutSettings" component={WorkoutSettingsScreen} />
+      <Stack.Screen name="ActivityTracker" component={ActivityTrackerScreen} />
+      <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
+      <Stack.Screen name="FormAnalysis" component={FormAnalysisScreen} />
+      <Stack.Screen name="SessionSets" component={SessionSetsScreen} />
     </Stack.Navigator>
   );
 }

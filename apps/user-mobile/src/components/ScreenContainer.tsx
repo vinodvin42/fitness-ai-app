@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControlProps, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, layout, spacing, typography } from "../theme/tokens";
 
@@ -11,10 +11,12 @@ interface ScreenContainerProps {
   right?: React.ReactNode;
   children?: React.ReactNode;
   scroll?: boolean;
+  /** Optional pull-to-refresh control for scrolling screens. */
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
 /** Shared per-screen header + safe-area shell — every tab screen uses this. */
-export function ScreenContainer({ title, subtitle, right, children, scroll = true }: ScreenContainerProps) {
+export function ScreenContainer({ title, subtitle, right, children, scroll = true, refreshControl }: ScreenContainerProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.header}>
@@ -26,7 +28,11 @@ export function ScreenContainer({ title, subtitle, right, children, scroll = tru
       </View>
       {scroll ? (
         // contentContainerStyle carries the max-width/centered column + padding.
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
+        >
           {children}
         </ScrollView>
       ) : (

@@ -2,10 +2,14 @@ import type {
   BarcodeLookupResult,
   ConfirmFoodEstimateInput,
   CreateFoodEstimateInput,
+  DeleteResult,
   FoodEstimate,
   LogMealInput,
   LogWaterInput,
   MealLog,
+  NutritionCalendarMonth,
+  NutritionDaySummary,
+  UpdateMealLogInput,
   WaterLog,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
@@ -56,4 +60,23 @@ export function confirmFoodEstimate(estimateId: string, input: ConfirmFoodEstima
  */
 export function lookupBarcode(code: string) {
   return apiClient.get<BarcodeLookupResult>(`/nutrition/barcode/${encodeURIComponent(code)}`).then((r) => r.data);
+}
+
+/** Wave B - edit a logged meal (send only what changed). */
+export function updateMealLog(id: string, input: UpdateMealLogInput) {
+  return apiClient.patch<MealLog>(`/meal-logs/${id}`, input).then((r) => r.data);
+}
+
+export function deleteMealLog(id: string) {
+  return apiClient.delete<DeleteResult>(`/meal-logs/${id}`).then((r) => r.data);
+}
+
+/** Totals + meals for one UTC day (YYYY-MM-DD). */
+export function fetchNutritionSummary(date: string) {
+  return apiClient.get<NutritionDaySummary>("/nutrition/summary", { params: { date } }).then((r) => r.data);
+}
+
+/** Per-day calories/meal counts for a month (YYYY-MM). */
+export function fetchNutritionCalendar(month: string) {
+  return apiClient.get<NutritionCalendarMonth>("/nutrition/calendar", { params: { month } }).then((r) => r.data);
 }

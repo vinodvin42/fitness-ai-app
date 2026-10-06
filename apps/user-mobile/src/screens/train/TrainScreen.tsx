@@ -35,7 +35,7 @@ export function TrainScreen({ navigation }: Props) {
   const programsQuery = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
 
   return (
-    <ScreenContainer title="Train" scroll={false}>
+    <ScreenContainer title="Train">
       <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
         <ListRow
           icon="search"
@@ -67,6 +67,52 @@ export function TrainScreen({ navigation }: Props) {
           tintSoft={colors.aiAccentSoft}
           onPress={() => navigation.navigate("WorkoutHistory")}
         />
+        <ListRow
+          icon="trending-up"
+          title="Training Analytics"
+          subtitle="Volume, load balance & records"
+          tint={colors.orange}
+          tintSoft={colors.warningSoft}
+          onPress={() => navigation.navigate("TrainingAnalytics")}
+        />
+        <ListRow
+          icon="target"
+          title="My Routines"
+          subtitle="Save your own exercise lists"
+          onPress={() => navigation.navigate("Routines")}
+        />
+        <ListRow
+          icon="footprints"
+          title="Running"
+          subtitle="Timer-based run log"
+          tint={colors.success}
+          tintSoft={colors.successSoft}
+          onPress={() => navigation.navigate("ActivityTracker", { kind: "run" })}
+        />
+        <ListRow
+          icon="activity"
+          title="Cycling"
+          subtitle="Timer-based ride log"
+          tint={colors.cyan}
+          tintSoft={colors.accentSoft}
+          onPress={() => navigation.navigate("ActivityTracker", { kind: "ride" })}
+        />
+        <ListRow
+          icon="sparkles"
+          title="Form Analysis"
+          subtitle="Send a clip for coach review"
+          tint={colors.aiAccent}
+          tintSoft={colors.aiAccentSoft}
+          onPress={() => navigation.navigate("FormAnalysis")}
+        />
+        <ListRow
+          icon="settings"
+          title="Workout Settings"
+          subtitle="Rest timer & weight unit"
+          tint={colors.textSecondary}
+          tintSoft={colors.surfaceHigh}
+          onPress={() => navigation.navigate("WorkoutSettings")}
+        />
       </View>
 
       <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Programs</Text>
@@ -78,6 +124,7 @@ export function TrainScreen({ navigation }: Props) {
         <FlatList
           data={programsQuery.data ?? []}
           keyExtractor={(item: Program) => item.id}
+          scrollEnabled={false}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.xl }}
           renderItem={({ item }) => (

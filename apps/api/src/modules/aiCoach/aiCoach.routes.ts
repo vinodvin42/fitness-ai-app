@@ -26,3 +26,12 @@ aiCoachRouter.post("/ai-coach/messages", requireAuth, aiCoachRateLimit, async (r
     next(err);
   }
 });
+
+aiCoachRouter.get("/ai-coach/usage", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const usage = await aiCoachService.getUsage(req.userId!);
+    res.json({ ...usage, resetsAt: usage.resetsAt.toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});

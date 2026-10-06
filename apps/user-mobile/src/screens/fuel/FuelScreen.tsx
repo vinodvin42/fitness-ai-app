@@ -29,6 +29,11 @@ const MEAL_LABELS: Record<MealType, string> = {
   snack: "Snack",
 };
 
+function defaultMealType(): MealType {
+  const h = new Date().getHours();
+  return h < 11 ? "breakfast" : h < 16 ? "lunch" : h < 21 ? "dinner" : "snack";
+}
+
 /**
  * Nutrition Dashboard (fuel-01) — docs/mobile/03-screen-inventory.md §D. 31
  * Aug 2026 design polish: a real calorie ProgressRing, color-coded macro
@@ -189,6 +194,14 @@ export function FuelScreen({ navigation }: Props) {
           tint={colors.pink}
           tintSoft={"rgba(236,72,153,0.16)"}
           onPress={() => navigation.navigate("Recipes")}
+        />
+        <ListRow
+          icon="camera"
+          title="Snap a meal"
+          subtitle="Photo estimate (approximate)"
+          tint={colors.accent}
+          tintSoft={colors.accentSoft}
+          onPress={() => navigation.navigate("SnapMeal", { mealType: defaultMealType() })}
         />
         <ListRow
           icon="calendar"

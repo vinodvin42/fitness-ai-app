@@ -2,6 +2,7 @@ import React from "react";
 import { ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
+import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -32,10 +33,11 @@ const INJURIES = ["Knee", "Shoulder", "Lower back", "Ankle", "Wrist", "Neck"];
  * "safety outcome separate" — see that screen's own comment).
  */
 export function SafetyScreen({ navigation }: Props) {
-  const { state, toggleListValue, markScreenReached } = useOnboardingWizard();
+  const { state, update, toggleListValue, markScreenReached } = useOnboardingWizard();
 
   const onNext = () => {
     markScreenReached("Safety");
+    update({ healthDataSkipped: false });
     navigation.navigate("AssessmentSummary");
   };
 
@@ -79,6 +81,13 @@ export function SafetyScreen({ navigation }: Props) {
           />
         ))}
       </View>
+
+      <Button
+        label="Continue without health data"
+        variant="secondary"
+        onPress={() => navigation.navigate("HealthDataSkip")}
+        style={{ marginTop: spacing.lg }}
+      />
     </WizardLayout>
   );
 }

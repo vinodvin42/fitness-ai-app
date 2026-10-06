@@ -1,3 +1,4 @@
+import { createNotification } from "../notifications/notifications.service";
 import crypto from "node:crypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
@@ -88,7 +89,50 @@ function timingSafeEqualHex(a: string, b: string): boolean {
   return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
 }
 
+/** Accepted quotes must be paid within this window after acceptance. */
+export const QUOTE_PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Validates a coach quote for use as a booking price. Rules: the quote must
+ * belong to the user, be `accepted` (a `consumed` one has already been paid),
+ * be paid within 48h of `acceptedAt` (acceptance itself already required the
+ * quote to be unexpired), match the offering's professional + serviceType
+ * (combined quote <-> offering with serviceType null), use the server's
+ * currency, and not already have a captured payment against it.
+ */
+async function resolveQuote(
+  userId: string,
+  quoteRequestId: string,
+  offering: { professionalId: string; serviceType: string | null },
+): Promise<{ priceCents: number }> {
+  const quote = await prisma.quoteRequest.findFirst({ where: { id: quoteRequestId, userId } });
+  if (!quote) throw new ApiHttpError(404, "quote_request_not_found", "Quote request not found");
+  if (quote.status === "consumed") {
+    throw new ApiHttpError(409, "quote_already_used", "This quote has already been paid for");
+  }
+  if (quote.status !== "accepted") {
+    throw new ApiHttpError(409, "quote_not_accepted", "Accept the quote before paying for it");
+  }
+  if (!quote.acceptedAt || quote.acceptedAt.getTime() + QUOTE_PAYMENT_WINDOW_MS <= Date.now()) {
+    throw new ApiHttpError(409, "quote_payment_window_expired", "This quote can no longer be paid — ask the coach for a new one");
+  }
+  const offeringType = offering.serviceType ?? "combined";
+  if (quote.professionalId !== offering.professionalId || quote.serviceType !== offeringType) {
+    throw new ApiHttpError(422, "quote_offering_mismatch", "This quote is not for the selected coach service");
+  }
+  if (!quote.quotedPriceCents || quote.quotedPriceCents <= 0 || quote.currency !== env.RAZORPAY_CURRENCY) {
+    throw new ApiHttpError(422, "quote_price_invalid", "This quote's price can't be charged");
+  }
+  const paid = await prisma.payment.findFirst({
+    where: { quoteRequestId, status: "paid" },
+    select: { id: true },
+  });
+  if (paid) throw new ApiHttpError(409, "quote_already_used", "This quote has already been paid for");
+  return { priceCents: quote.quotedPriceCents };
+}
+
 async function resolveAmountCents(
+  userId: string,
   input: CreateOrderInput,
 ): Promise<{
   amountCents: number;
@@ -98,6 +142,8 @@ async function resolveAmountCents(
   // after this resolves, without a second DB round trip to re-fetch the
   // offering it just validated.
   booking?: { professionalId: string; serviceType: "fitness" | "nutrition" | null };
+  // Set only when a coach quote's price was applied (see resolveQuote).
+  quoteRequestId?: string;
 }> {
   if (input.purpose === "subscription") {
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.referenceId } });
@@ -117,7 +163,10 @@ async function resolveAmountCents(
     if (!offering || !offering.isActive) {
       throw new ApiHttpError(404, "offering_not_found", "This coaching service could not be found");
     }
-    if (offering.priceCents === 0) {
+    const quote = input.quoteRequestId
+      ? await resolveQuote(userId, input.quoteRequestId, offering)
+      : null;
+    if (!quote && offering.priceCents === 0) {
       throw new ApiHttpError(400, "offering_is_free", "This session is free — book directly, no payment needed");
     }
     const professional = await prisma.professional.findUnique({
@@ -143,13 +192,14 @@ async function resolveAmountCents(
       throw new ApiHttpError(409, "slot_unavailable", "This time is no longer available — pick another slot");
     }
     return {
-      amountCents: offering.priceCents,
-      description: `${offering.label} with ${professional.fullName}`,
+      amountCents: quote ? quote.priceCents : offering.priceCents,
+      description: `${offering.label} with ${professional.fullName}${quote ? " (quoted price)" : ""}`,
       booking: { professionalId: offering.professionalId, serviceType: offering.serviceType as "fitness" | "nutrition" | null },
+      quoteRequestId: quote ? input.quoteRequestId : undefined,
     };
   }
 
-  const program = await prisma.program.findUnique({ where: { id: input.referenceId } });
+  const program = await prisma.program.findFirst({ where: { id: input.referenceId, ownerUserId: null } });
   if (!program) throw new ApiHttpError(404, "program_not_found", "Program not found");
   if (program.priceCents === 0) {
     throw new ApiHttpError(400, "program_is_free", "This program is free — no payment needed");
@@ -166,7 +216,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     );
   }
 
-  const { amountCents: listAmountCents, description, booking } = await resolveAmountCents(input);
+  const { amountCents: listAmountCents, description, booking, quoteRequestId } = await resolveAmountCents(userId, input);
 
   // 16 Sep 2026 (gap §56) — claim the real Relationship row(s) up front and
   // refuse to go any further if the coach hasn't accepted the request yet.
@@ -235,6 +285,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       // PAY-01 — null for subscription/program_purchase, the specific slot
       // for booking (already validated in resolveAmountCents above).
       scheduledAt: input.purpose === "booking" ? new Date(input.scheduledAt!) : null,
+      quoteRequestId: quoteRequestId ?? null,
     },
   });
 
@@ -263,7 +314,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     action: "payment.order_created",
     entityType: "Payment",
     entityId: payment.id,
-    metadata: { purpose: input.purpose, referenceId: input.referenceId, amountCents, razorpayOrderId: order.id },
+    metadata: { purpose: input.purpose, referenceId: input.referenceId, amountCents, razorpayOrderId: order.id, quoteRequestId: quoteRequestId ?? null },
   });
 
   // §8 "premium.checkout_started" — the real moment Razorpay Checkout is
@@ -294,6 +345,7 @@ interface PaymentRecord {
   // PAY-01 — only set (and only read) when purpose is "booking". See its
   // own comment on the Payment model in schema.prisma.
   scheduledAt: Date | null;
+  quoteRequestId?: string | null;
   // U6 Premium entitlement — see the Payment model's own doc comment in
   // schema.prisma for the full "paid" vs. "actually activated" story.
   activationFailedAt: Date | null;
@@ -386,6 +438,53 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         // that file's own precedent.
         throw new ApiHttpError(500, "offering_missing", "The coaching service for this payment no longer exists");
       }
+      // Atomically claim the quote BEFORE creating the booking so two paid
+      // orders on one quote can never yield two bookings. Re-running the SAME
+      // payment passes (consumedPaymentId matches); a DIFFERENT payment is
+      // parked for admin refund instead of creating a second booking.
+      let claimedQuoteId: string | null = null;
+      if (payment.quoteRequestId) {
+        const claim = await prisma.quoteRequest.updateMany({
+          where: { id: payment.quoteRequestId, status: "accepted" },
+          data: { status: "consumed", consumedPaymentId: payment.id },
+        });
+        if (claim.count === 1) {
+          claimedQuoteId = payment.quoteRequestId;
+        } else {
+          const q = await prisma.quoteRequest.findUnique({
+            where: { id: payment.quoteRequestId },
+            select: { consumedPaymentId: true },
+          });
+          if (q?.consumedPaymentId !== payment.id) {
+            await recordAudit({
+              actorId: payment.userId,
+              action: "booking.payment_captured_but_unfulfilled",
+              entityType: "Payment",
+              entityId: payment.id,
+              metadata: { offeringId: offering.id, reason: "quote_already_consumed", quoteRequestId: payment.quoteRequestId },
+            });
+            const open = await prisma.adminActionItem.findFirst({
+              where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id, status: "open" },
+              select: { id: true },
+            });
+            if (!open) {
+              await createActionItem({
+                type: "entitlement_activation_failed",
+                entityType: "Payment",
+                entityId: payment.id,
+                severity: "high",
+                metadata: { userId: payment.userId, purpose: "booking", reason: "quote_already_consumed", quoteRequestId: payment.quoteRequestId, action: "refund" },
+              });
+            }
+            throw new ApiHttpError(
+              409,
+              "quote_already_used",
+              "This quote was already paid for with another payment. Your charge is parked for a refund — contact support with your payment ID.",
+              { paymentId: payment.id },
+            );
+          }
+        }
+      }
       try {
         booking = await createBooking(
           payment.userId,
@@ -393,6 +492,13 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
           { verifiedPayment: true },
         );
       } catch (err) {
+        // Release our own quote claim so the quote isn't burned by a failed booking.
+        if (claimedQuoteId) {
+          await prisma.quoteRequest.updateMany({
+            where: { id: claimedQuoteId, consumedPaymentId: payment.id },
+            data: { status: "accepted", consumedPaymentId: null },
+          });
+        }
         // Money has already been captured by Razorpay by this point (status
         // just flipped to "paid" above) — this only throws if the slot
         // became unavailable in the narrow window between order-creation
@@ -426,6 +532,13 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
       entityType: "Payment",
       entityId: payment.id,
       metadata: { purpose: payment.purpose, referenceId: payment.referenceId },
+    });
+
+    await createNotification(payment.userId, {
+      kind: "billing",
+      title: "Payment received",
+      body: "Thanks! Your payment was successful.",
+      deepLink: "payments",
     });
 
     // Module 06.05 Coupons (31 Aug 2026) — record the coupon redemption now

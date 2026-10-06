@@ -1,3 +1,4 @@
+import { createNotification } from "../notifications/notifications.service";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -103,6 +104,16 @@ export async function sendMessage(
     entityId: message.id,
     metadata: { userId, professionalId, sender },
   });
+
+  // Inbox entry for the client when their coach writes (best-effort).
+  if (sender === "professional") {
+    await createNotification(userId, {
+      kind: "coach",
+      title: "New message from your coach",
+      body: input.content.slice(0, 140),
+      deepLink: "coach-messages",
+    });
+  }
 
   return toMessageItem(message as MessageRow);
 }

@@ -40,10 +40,33 @@ export type LogWaterInput = z.infer<typeof logWaterSchema>;
 // design. description is free text describing what was eaten — the raw
 // input the AI estimate is grounded in, kept short (300 chars) since this
 // is a quick "what did you eat" prompt, not a paragraph.
-export const createFoodEstimateSchema = z.object({
-  mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
-  description: z.string().trim().min(1).max(300),
-});
+// "Snap a meal": an optional `imageDataUrl` (base64 JPEG/PNG data URL, ~1.5MB
+// cap — the client downsizes first) lets a vision-capable model estimate from
+// a photo. description is then optional (an extra hint). The image is only
+// forwarded to the AI provider; it is never persisted.
+export const MAX_FOOD_IMAGE_BASE64_CHARS = 1_500_000;
+const FOOD_IMAGE_RE = /^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/]+={0,2})$/;
+
+export const createFoodEstimateSchema = z
+  .object({
+    mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+    description: z.string().trim().max(300).optional(),
+    imageDataUrl: z
+      .string()
+      .max(MAX_FOOD_IMAGE_BASE64_CHARS + 64, "Image is too large")
+      .regex(FOOD_IMAGE_RE, "Image must be a base64 JPEG or PNG data URL")
+      .optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.imageDataUrl && !v.description) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["description"], message: "Describe the meal or attach a photo" });
+    }
+  });
+
+export function parseFoodImageDataUrl(dataUrl: string): { mediaType: "image/jpeg" | "image/png"; base64: string } {
+  const m = FOOD_IMAGE_RE.exec(dataUrl)!;
+  return { mediaType: m[1] as "image/jpeg" | "image/png", base64: m[2] };
+}
 
 export type CreateFoodEstimateInput = z.infer<typeof createFoodEstimateSchema>;
 

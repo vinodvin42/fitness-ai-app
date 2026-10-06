@@ -64,6 +64,20 @@ import { coachingRouter } from "./modules/coaching/coaching.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
 import { adminSearchRouter } from "./modules/adminSearch/adminSearch.routes";
+import { notificationsRouter } from "./modules/notifications/notifications.routes";
+import { notificationPreferencesRouter } from "./modules/notificationPreferences/notificationPreferences.routes";
+import { healthConnectionsRouter } from "./modules/healthConnections/healthConnections.routes";
+import { devicesRouter } from "./modules/devices/devices.routes";
+import { medicationsRouter } from "./modules/medications/medications.routes";
+import { trainingAnalyticsRouter } from "./modules/trainingAnalytics/trainingAnalytics.routes";
+import { workoutSetsRouter } from "./modules/workoutSets/workoutSets.routes";
+import { routinesRouter } from "./modules/routines/routines.routes";
+import { workoutSettingsRouter } from "./modules/workoutSettings/workoutSettings.routes";
+import { activitiesRouter } from "./modules/activities/activities.routes";
+import { formAnalysisRouter } from "./modules/formAnalysis/formAnalysis.routes";
+import { nutritionDaysRouter } from "./modules/nutritionDays/nutritionDays.routes";
+import { coachSummariesRouter } from "./modules/coachSummaries/coachSummaries.routes";
+import { quoteRequestsRouter } from "./modules/quoteRequests/quoteRequests.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -334,6 +348,29 @@ export function createApp() {
   // Global cross-entity admin search (R1 Wave 6, 22 Sep 2026) — see
   // adminSearch.service.ts's own doc comment for the full scope.
   app.use("/", adminSearchRouter);
+
+  // Wave A — notifications inbox/push tokens/preferences, health connections,
+  // connected devices & sync, medicine. notificationsRouter must precede
+  // devicesRouter: DELETE /devices/push-token would otherwise match
+  // DELETE /devices/:id.
+  app.use("/", notificationsRouter);
+  app.use("/", notificationPreferencesRouter);
+  app.use("/", healthConnectionsRouter);
+  app.use("/", devicesRouter);
+  app.use("/", medicationsRouter);
+
+  // Wave B (Oct 2026) — training analytics, set edit/delete, routines,
+  // workout settings, endurance activities, form-analysis capture, meal-log
+  // edit + nutrition summary/calendar, coach session summaries, coach quotes.
+  app.use("/", trainingAnalyticsRouter);
+  app.use("/", workoutSetsRouter);
+  app.use("/", routinesRouter);
+  app.use("/", workoutSettingsRouter);
+  app.use("/", activitiesRouter);
+  app.use("/", formAnalysisRouter);
+  app.use("/", nutritionDaysRouter);
+  app.use("/", coachSummariesRouter);
+  app.use("/", quoteRequestsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

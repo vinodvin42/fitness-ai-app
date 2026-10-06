@@ -179,6 +179,8 @@ export interface OnboardingProfile {
   sessionLengthMinutes: number | null;
   /** Wired into Plan-Generation's selection prompt — see apps/api's plans.service.ts. */
   equipmentContext: EquipmentContext | null;
+  /** ISO timestamp when the user chose "Continue without health data"; null if they answered. */
+  healthDataSkippedAt?: string | null;
 }
 
 /**
@@ -304,6 +306,8 @@ export interface OnboardingProfileInput {
   bodyFatPercent?: number;
   waistCm?: number;
   hipsCm?: number;
+  /** "Continue without health data" — server discards medical/injury lists and stamps healthDataSkippedAt. */
+  healthDataSkipped?: boolean;
 }
 
 /**
@@ -657,7 +661,10 @@ export interface FoodEstimate {
 /** Body for POST /food-estimates — matches apps/api's createFoodEstimateSchema (Zod). */
 export interface CreateFoodEstimateInput {
   mealType: MealType;
-  description: string;
+  /** Required unless imageDataUrl is sent (then an optional hint). */
+  description?: string;
+  /** "Snap a meal": base64 JPEG/PNG data URL (≤ ~1.5MB). Sent to the AI provider only, never stored. */
+  imageDataUrl?: string;
 }
 
 /**
@@ -971,6 +978,8 @@ export interface CreateRazorpayOrderInput {
   couponCode?: string;
   /** PAY-01 (5 Sep 2026) — required when purpose is "booking": the specific session time being paid for. Ignored otherwise. */
   scheduledAt?: string;
+  /** Booking only: an accepted coach quote whose quoted price is charged instead of the offering's list price (server-validated; never a client amount). */
+  quoteRequestId?: string;
 }
 
 /** What POST /payments/razorpay/orders returns — everything RazorpayCheckoutModal.tsx needs to open a real Razorpay Checkout. */
@@ -4283,4 +4292,602 @@ export interface AdminSearchResultItem {
 export interface AdminSearchResponse {
   query: string;
   results: AdminSearchResultItem[];
+}
+
+// ---- Wave A: notifications, health, devices, medicine, AI limits --------
+// Request/response shapes for the endpoints added in apps/api's
+// notifications, notificationPreferences, healthConnections, devices and
+// medications modules, plus the AI Coach daily quota. Dates are ISO strings
+// over the wire.
+
+export type NotificationKind = "reminder" | "workout" | "coach" | "billing" | "system";
+
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  deepLink: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** GET /notifications?cursor=&limit=&filter=unread */
+export interface NotificationsResponse {
+  items: Notification[];
+  nextCursor: string | null;
+  unreadCount: number;
+}
+
+/** POST /notifications/read-all */
+export interface MarkAllNotificationsReadResponse {
+  updated: number;
+}
+
+/** POST /devices/push-token (and DELETE with just `token`) */
+export interface RegisterPushTokenInput {
+  token: string;
+  platform: "ios" | "android" | "web";
+}
+
+export interface PushTokenRegistration {
+  id: string;
+  platform: string;
+  createdAt: string;
+}
+
+/** GET/PATCH /users/me/notification-preferences (quiet hours are "HH:MM" or null) */
+export interface NotificationPreferences {
+  workoutReminders: boolean;
+  mealReminders: boolean;
+  coachMessages: boolean;
+  billing: boolean;
+  marketing: boolean;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  updatedAt: string;
+}
+
+export type UpdateNotificationPreferencesInput = Partial<
+  Omit<NotificationPreferences, "updatedAt">
+>;
+
+export type HealthProvider = "apple_health" | "health_connect" | "garmin" | "fitbit" | "whoop" | "oura";
+export type HealthConnectionStatus = "connected" | "revoked";
+
+export interface HealthConnection {
+  id: string;
+  provider: HealthProvider;
+  status: HealthConnectionStatus;
+  scopes: string[];
+  connectedAt: string;
+  revokedAt: string | null;
+}
+
+/** GET /health-connections */
+export interface HealthConnectionsResponse {
+  items: HealthConnection[];
+}
+
+/** POST /health-connections (upsert; DELETE /health-connections/:id revokes and returns the row) */
+export interface ConnectHealthInput {
+  provider: HealthProvider;
+  scopes?: string[];
+}
+
+export type ConnectedDeviceKind = "watch" | "band" | "ring" | "scale" | "other";
+export type ConnectedDeviceStatus = "paired" | "syncing" | "error" | "disconnected";
+
+export interface ConnectedDevice {
+  id: string;
+  provider: HealthProvider;
+  name: string;
+  kind: ConnectedDeviceKind;
+  status: ConnectedDeviceStatus;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  batteryPct: number | null;
+  createdAt: string;
+}
+
+/** GET /devices */
+export interface ConnectedDevicesResponse {
+  items: ConnectedDevice[];
+}
+
+/** POST /devices */
+export interface PairDeviceInput {
+  provider: HealthProvider;
+  name: string;
+  kind?: ConnectedDeviceKind;
+  batteryPct?: number;
+}
+
+/** One day of samples read on-device and posted by the client. */
+export interface DeviceSyncSample {
+  date: string; // YYYY-MM-DD
+  restingHr?: number;
+  sleepHours?: number;
+  hrvMs?: number;
+  steps?: number;
+}
+
+/** POST /devices/:id/sync — pass `error` instead of samples to report a failed sync. */
+export interface DeviceSyncInput {
+  samples: DeviceSyncSample[];
+  batteryPct?: number;
+  error?: string;
+}
+
+export interface DeviceSyncRun {
+  id: string;
+  deviceId: string;
+  startedAt: string;
+  finishedAt: string | null;
+  recordsIngested: number;
+  status: "success" | "error";
+}
+
+/** POST /devices/:id/sync response */
+export interface DeviceSyncResult {
+  device: ConnectedDevice;
+  run: DeviceSyncRun;
+}
+
+/** GET /devices/sync-status */
+export interface DeviceSyncStatus {
+  items: Array<{ device: ConnectedDevice; latestRun: DeviceSyncRun | null }>;
+}
+
+export interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+  form: string | null;
+  scheduleTimes: string[]; // "HH:MM" local
+  daysOfWeek: number[]; // 0 = Sunday .. 6 = Saturday
+  startDate: string;
+  endDate: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** GET /medications */
+export interface MedicationsResponse {
+  items: Medication[];
+}
+
+/** POST /medications (dates are YYYY-MM-DD) */
+export interface CreateMedicationInput {
+  name: string;
+  dosage: string;
+  form?: string | null;
+  scheduleTimes: string[];
+  daysOfWeek?: number[];
+  startDate: string;
+  endDate?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+/** PATCH /medications/:id */
+export type UpdateMedicationInput = Partial<CreateMedicationInput>;
+
+export type MedicationDoseStatus = "taken" | "skipped" | "snoozed";
+/** Computed statuses in GET /medications/due add pending and missed. */
+export type MedicationDueStatus = MedicationDoseStatus | "pending" | "missed";
+
+/** POST /medications/:id/doses (idempotent per medication + scheduledFor) */
+export interface LogMedicationDoseInput {
+  scheduledFor: string; // ISO datetime
+  status: MedicationDoseStatus;
+  snoozedUntil?: string; // required when status is "snoozed"
+}
+
+export interface MedicationDose {
+  id: string;
+  medicationId: string;
+  scheduledFor: string;
+  status: MedicationDoseStatus;
+  snoozedUntil: string | null;
+  loggedAt: string;
+}
+
+export interface MedicationDueDose {
+  medicationId: string;
+  name: string;
+  dosage: string;
+  form: string | null;
+  scheduledFor: string;
+  status: MedicationDueStatus;
+  snoozedUntil: string | null;
+  loggedAt: string | null;
+}
+
+/** GET /medications/due?date=YYYY-MM-DD&tzOffsetMinutes= (offset per JS getTimezoneOffset) */
+export interface MedicationDueResponse {
+  date: string;
+  items: MedicationDueDose[];
+}
+
+/** GET /medications/:id/adherence?tzOffsetMinutes= — last 30 days */
+export interface MedicationAdherence {
+  medicationId: string;
+  days: number;
+  taken: number;
+  skipped: number;
+  missed: number;
+  adherencePct: number | null;
+}
+
+export type AiCoachTier = "basic" | "pro" | "elite";
+
+/** GET /ai-coach/usage */
+export interface AiCoachUsage {
+  used: number;
+  limit: number;
+  resetsAt: string;
+  tier: AiCoachTier;
+}
+
+/**
+ * Error codes POST /ai-coach/messages can return in `error.code`:
+ * 429 ai_limit_reached (error.details = { limit, resetsAt }) and
+ * 503 ai_unavailable (provider call failed; also ai_coach_not_configured /
+ * ai_coach_disabled for 503s where the coach is off).
+ */
+export type AiCoachErrorCode =
+  | "ai_limit_reached"
+  | "ai_unavailable"
+  | "ai_coach_not_configured"
+  | "ai_coach_disabled";
+
+// ---- Wave B (Oct 2026): Train analytics/routines/settings/endurance/form ---
+// analysis, Fuel gaps, coach session summaries and quotes. Dates are ISO strings.
+
+/** GET /training/analytics?range= */
+export type AnalyticsRange = "4w" | "12w" | "26w";
+export type AcwrStatus = "low" | "optimal" | "high";
+
+export interface TrainingWeekBucket {
+  /** UTC Monday, YYYY-MM-DD */
+  weekStart: string;
+  volumeKg: number;
+  sets: number;
+  sessions: number;
+}
+
+export interface TrainingAcwr {
+  acuteLoad: number;
+  chronicLoad: number;
+  ratio: number;
+  status: AcwrStatus;
+}
+
+export interface MuscleGroupShare {
+  muscleGroup: string;
+  sets: number;
+  volumeKg: number;
+  percent: number;
+}
+
+export interface TrainingPersonalRecord {
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroup: string;
+  weightKg: number;
+  reps: number;
+  achievedAt: string;
+}
+
+export interface TrainingAnalytics {
+  range: AnalyticsRange;
+  totalSessions: number;
+  totalSets: number;
+  totalVolumeKg: number;
+  weeks: TrainingWeekBucket[];
+  /** null when there is not enough history (~2 weeks) to be meaningful. */
+  acwr: TrainingAcwr | null;
+  muscleDistribution: MuscleGroupShare[];
+  personalRecords: TrainingPersonalRecord[];
+}
+
+/** PATCH /workout-sessions/:id/sets/:setId - send only what changed; null clears. */
+export interface UpdateSetInput {
+  weightKg?: number | null;
+  reps?: number;
+  rpe?: number | null;
+  isWarmup?: boolean;
+  isDropSet?: boolean;
+  note?: string | null;
+}
+/** DELETE /workout-sessions/:id/sets/:setId */
+export interface DeleteResult {
+  deleted: true;
+  id: string;
+}
+
+/** GET/POST /routines, GET/PATCH/DELETE /routines/:id */
+export interface RoutineExercise {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroup: string;
+  equipment: string;
+  order: number;
+  targetSets: number;
+  targetReps: number;
+  restSeconds: number | null;
+}
+export interface Routine {
+  id: string;
+  name: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  exercises: RoutineExercise[];
+}
+export interface RoutineExerciseInput {
+  exerciseId: string;
+  targetSets?: number;
+  targetReps?: number;
+  restSeconds?: number | null;
+}
+export interface CreateRoutineInput {
+  name: string;
+  notes?: string;
+  exercises?: RoutineExerciseInput[];
+}
+/** `exercises`, when present, replaces the whole list. */
+export interface UpdateRoutineInput {
+  name?: string;
+  notes?: string | null;
+  exercises?: RoutineExerciseInput[];
+}
+/** POST /routines/:id/start: begins a live session from a saved routine. */
+export interface StartRoutineResponse {
+  session: { id: string; workoutId: string; status: string; startedAt: string };
+  workoutId: string;
+  sessionId: string;
+}
+export interface RoutineListResponse {
+  items: Routine[];
+}
+
+/** GET/PATCH /users/me/workout-settings */
+export type WorkoutWeightUnit = "kg" | "lb";
+export interface WorkoutSettings {
+  restTimerSeconds: number;
+  autoStartRest: boolean;
+  weightUnit: WorkoutWeightUnit;
+  countdownSound: boolean;
+  keepScreenAwake: boolean;
+  defaultRpeTracking: boolean;
+}
+export type UpdateWorkoutSettingsInput = Partial<WorkoutSettings>;
+
+/** Endurance tracker: /activities */
+export type ActivityKind = "run" | "ride";
+export type ActivitySource = "manual" | "tracked";
+export interface ActivityLog {
+  id: string;
+  kind: ActivityKind;
+  startedAt: string;
+  durationSeconds: number;
+  distanceMeters: number;
+  avgPaceSecPerKm: number | null;
+  avgSpeedKmh: number | null;
+  elevationGainM: number | null;
+  calories: number | null;
+  /** Encoded polyline; only populated on POST/GET :id (null in lists, see hasRoute). */
+  routePolyline: string | null;
+  hasRoute: boolean;
+  source: ActivitySource;
+  notes: string | null;
+  createdAt: string;
+}
+/** POST /activities - pace (run) / speed (ride) are derived when omitted. */
+export interface CreateActivityInput {
+  kind: ActivityKind;
+  startedAt: string;
+  durationSeconds: number;
+  distanceMeters: number;
+  avgPaceSecPerKm?: number;
+  avgSpeedKmh?: number;
+  elevationGainM?: number;
+  calories?: number;
+  routePolyline?: string;
+  source?: ActivitySource;
+  notes?: string;
+}
+export interface ActivityListResponse {
+  items: ActivityLog[];
+}
+/** GET /activities/summary?kind=&range= */
+export type ActivitySummaryRange = "4w" | "12w" | "26w" | "52w";
+export interface ActivityWeekBucket {
+  weekStart: string;
+  count: number;
+  distanceMeters: number;
+  durationSeconds: number;
+}
+export interface ActivitySummary {
+  kind: ActivityKind | null;
+  range: ActivitySummaryRange;
+  count: number;
+  distanceMeters: number;
+  durationSeconds: number;
+  elevationGainM: number;
+  calories: number;
+  avgPaceSecPerKm: number | null;
+  avgSpeedKmh: number | null;
+  longestActivity: ActivityLog | null;
+  fastestPaceActivity: ActivityLog | null;
+  weeks: ActivityWeekBucket[];
+}
+
+/** Form analysis capture: /form-analysis. Stays `queued` until a human coach reviews. */
+export type FormAnalysisStatus = "queued" | "reviewed";
+export interface FormAnalysisSubmission {
+  id: string;
+  exerciseId: string | null;
+  exerciseName: string | null;
+  /** http(s) URL or data:video/* ref; null in list responses (see hasVideo). */
+  videoUrl: string | null;
+  hasVideo: boolean;
+  status: FormAnalysisStatus;
+  coachNote: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+export interface CreateFormAnalysisInput {
+  exerciseId?: string;
+  videoUrl: string;
+}
+/** Coach-side form review (/professionals/me/form-analysis). */
+export interface CoachFormReview extends FormAnalysisSubmission {
+  userFirstName: string;
+}
+export interface CoachFormReviewListResponse {
+  items: CoachFormReview[];
+}
+export interface ReviewFormAnalysisInput {
+  coachNote: string;
+}
+export interface FormAnalysisListResponse {
+  items: FormAnalysisSubmission[];
+}
+
+/** Fuel gaps: PATCH /meal-logs/:id (send only what changed), GET /nutrition/summary, /nutrition/calendar */
+export interface UpdateMealLogInput {
+  mealType?: MealType;
+  name?: string;
+  calories?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+}
+export interface NutritionTotals {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+/** GET /nutrition/summary?date=YYYY-MM-DD (UTC day) */
+export interface NutritionDaySummary {
+  date: string;
+  totals: NutritionTotals;
+  mealCount: number;
+  meals: Array<Omit<MealLog, "userId" | "recipeId">>;
+}
+/** GET /nutrition/calendar?month=YYYY-MM - one entry per day of the month */
+export interface NutritionCalendarDay {
+  date: string;
+  calories: number;
+  mealCount: number;
+}
+export interface NutritionCalendarMonth {
+  month: string;
+  days: NutritionCalendarDay[];
+}
+
+/** Coach bookings + session summaries: GET /coaching/bookings, GET /coaching/bookings/:id/summary */
+export interface CoachBookingListItem {
+  id: string;
+  professionalId: string;
+  professionalFullName: string;
+  offeringLabel: string;
+  serviceType: "fitness" | "nutrition" | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  priceCents: number;
+  status: "confirmed" | "cancelled";
+  hasSummary: boolean;
+}
+export interface CoachBookingListResponse {
+  items: CoachBookingListItem[];
+}
+export interface BookingSummary extends CoachBookingListItem {
+  summaryText: string | null;
+  summaryPublishedAt: string | null;
+}
+/** POST /professionals/me/bookings/:id/summary (returns BookingSummary) */
+export interface PublishBookingSummaryInput {
+  summaryText: string;
+}
+
+/** Quote flow: /coaching/quote-requests*, /professionals/me/quote-requests* */
+export type QuoteRequestStatus = "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed";
+export type QuoteServiceType = "fitness" | "nutrition" | "combined";
+export interface QuoteRequest {
+  id: string;
+  professionalId: string;
+  professionalFullName: string | null;
+  clientFullName: string | null;
+  serviceType: QuoteServiceType;
+  message: string;
+  status: QuoteRequestStatus;
+  quotedPriceCents: number | null;
+  currency: string | null;
+  quoteNote: string | null;
+  quoteExpiresAt: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+}
+export interface QuoteRequestListResponse {
+  items: QuoteRequest[];
+}
+export interface CreateQuoteRequestInput {
+  professionalId: string;
+  serviceType: QuoteServiceType;
+  message: string;
+}
+/** POST /professionals/me/quote-requests/:id/quote */
+export interface SendQuoteInput {
+  priceCents: number;
+  currency?: string;
+  note?: string;
+  expiresAt: string;
+}
+export interface DeclineQuoteInput {
+  reason?: string;
+}
+/**
+ * POST /coaching/quote-requests/:id/accept. Pass handoff.quoteRequestId to
+ * POST /payments/razorpay/orders (purpose "booking") and the order charges
+ * the quoted price (server-side; within 48h of acceptance).
+ */
+export interface AcceptQuoteResponse {
+  quoteRequest: QuoteRequest;
+  handoff: {
+    quoteRequestId: string;
+    professionalId: string;
+    serviceType: QuoteServiceType;
+    quotedPriceCents: number | null;
+    currency: string | null;
+    bookingPurpose: "booking";
+    offerings: Array<{
+      id: string;
+      label: string;
+      serviceType: "fitness" | "nutrition" | null;
+      durationMinutes: number;
+      priceCents: number;
+    }>;
+    quotedPriceApplied: boolean;
+  };
+}
+
+// Under-18 guardian review (onboarding/11) — matches apps/api's
+// guardianReviewSchema and GuardianReview model. `approved` is reserved;
+// nothing sets it yet.
+export type GuardianRelationship = "parent" | "legal_guardian" | "other";
+export interface GuardianReviewInput {
+  guardianName: string;
+  guardianEmail: string;
+  relationship: GuardianRelationship;
+}
+export interface GuardianReview extends GuardianReviewInput {
+  status: "pending" | "approved";
+  createdAt: string;
 }

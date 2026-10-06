@@ -4,6 +4,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { isEmailConfigured, sendEmail } from "../../lib/mailer";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import {
   buildOtpauthUrl,
@@ -21,6 +22,7 @@ import {
   DisableTwoFactorInput,
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
+  GuardianReviewInput,
   OnboardingProfileInput,
   UpdateConsentInput,
   UpdateProfileInput,
@@ -95,7 +97,15 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
  * not a second, competing measurements table bolted onto OnboardingProfile.
  */
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
-  const { bodyFatPercent, waistCm, hipsCm, ...profileFields } = input;
+  const { bodyFatPercent, waistCm, hipsCm, healthDataSkipped, ...rest } = input;
+  // Skipped health data: store nothing for medical/injuries (never trust
+  // lists sent alongside the skip flag) and record WHEN it was skipped so
+  // "skipped" stays distinguishable from "answered: none".
+  const profileFields = {
+    ...rest,
+    ...(healthDataSkipped ? { medicalConditions: [], injuries: [] } : {}),
+    healthDataSkippedAt: healthDataSkipped ? new Date() : null,
+  };
 
   // BR-SAF-004 (R1 Developer 1, 18 Sep 2026) needs to know, BEFORE the
   // upsert below, whether this call is a genuinely NEW completion or a
@@ -153,9 +163,9 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // editOnboardingProfileSchema's own comment), so it's structurally
   // incapable of reaching this branch. A real escalation only fires once,
   // at the one real moment this data is first reported.
-  if (isNewCompletion && (input.medicalConditions.length > 0 || input.injuries.length > 0)) {
+  if (isNewCompletion && (profileFields.medicalConditions.length > 0 || profileFields.injuries.length > 0)) {
     const escalation = await prisma.safetyEscalation.create({
-      data: { userId, medicalConditions: input.medicalConditions, injuries: input.injuries },
+      data: { userId, medicalConditions: profileFields.medicalConditions, injuries: profileFields.injuries },
     });
 
     // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — `high`
@@ -588,4 +598,64 @@ export async function updateConsent(userId: string, input: UpdateConsentInput) {
   await trackEvent(userId, "consent.changed", { consentId: consent.id }, { metadata: { consentType: input.type, granted: input.granted } });
 
   return { type: consent.type, granted: consent.granted, updatedAt: consent.updatedAt };
+}
+
+
+/**
+ * Under-18 guardian review (onboarding/11). Records the guardian's contact
+ * details and sends a plain-text notice (no links, no tokens) if SMTP is
+ * configured. NOT implemented: guardian identity verification, an approval
+ * link/endpoint, or any feature gating beyond the conservative plan prompt
+ * and the Today notice — status stays `pending` until such a flow exists.
+ * Re-submitting updates the same row (and resets it to pending).
+ */
+export async function submitGuardianReview(userId: string, input: GuardianReviewInput) {
+  const user = await getUserById(userId);
+  const review = await prisma.guardianReview.upsert({
+    where: { userId },
+    create: { userId, ...input },
+    update: { ...input, status: "pending" },
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: "user.guardian_review_submitted",
+    entityType: "GuardianReview",
+    entityId: userId,
+    metadata: { relationship: input.relationship },
+  });
+
+  if (isEmailConfigured()) {
+    try {
+      await sendEmail({
+        to: input.guardianEmail,
+        subject: "A young person has asked you to review their 23PrimeFit account",
+        text: `Hello ${input.guardianName},
+
+${user.fullName} listed you as their ${input.relationship.replace("_", " ")} while setting up a 23PrimeFit fitness account. Because they are under 18, their account is running with a more conservative training plan while this review is pending.
+
+No action is needed from this email; if you have concerns, reply to this message or contact our support.`,
+      });
+    } catch {
+      // Best-effort notice — never fail the submission over SMTP.
+    }
+  }
+
+  return toGuardianReviewDTO(review);
+}
+
+/** Returns null when no review was ever submitted. */
+export async function getGuardianReview(userId: string) {
+  const review = await prisma.guardianReview.findUnique({ where: { userId } });
+  return review ? toGuardianReviewDTO(review) : null;
+}
+
+function toGuardianReviewDTO(r: { guardianName: string; guardianEmail: string; relationship: string; status: string; createdAt: Date }) {
+  return {
+    guardianName: r.guardianName,
+    guardianEmail: r.guardianEmail,
+    relationship: r.relationship,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+  };
 }

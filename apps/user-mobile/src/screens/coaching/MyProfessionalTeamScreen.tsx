@@ -56,6 +56,10 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer title="My Professional Team">
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Button label="Sessions" variant="secondary" onPress={() => navigation.navigate("CoachSessions")} style={{ height: 40, flex: 1 }} />
+        <Button label="Quotes" variant="secondary" onPress={() => navigation.navigate("Quotes")} style={{ height: 40, flex: 1 }} />
+      </View>
       {data.team.length === 0 ? (
         <EmptyState
           title="No coaches yet"

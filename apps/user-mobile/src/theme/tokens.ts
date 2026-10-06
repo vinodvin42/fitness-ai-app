@@ -16,37 +16,43 @@ export const colors = {
   // zinc base (not pure black), hairline translucent borders, and a mint-cyan
   // signature accent. See the published design-system spec. Neutrals carry a
   // faint cool bias toward the mint accent.
-  background: "#0B0C10", // deep zinc, OLED-friendly
-  surface: "#14161C",
-  surfaceRaised: "#1B1E26",
-  surfaceHigh: "#242833",
-  border: "rgba(255,255,255,0.09)", // hairline
+  background: "#09090b", // Figma background/canvas
+  surface: "#121215", // Figma surface/card
+  surfaceRaised: "#1B1B20",
+  surfaceHigh: "#27272a", // Figma surface/muted
+  border: "#27272a", // Figma border/subtle
   borderStrong: "rgba(255,255,255,0.16)",
 
-  textPrimary: "#EDF0F5",
-  textSecondary: "#98A2B3",
+  textPrimary: "#f4f4f5", // Figma text/primary
+  textSecondary: "#b0b8c6", // Figma text/secondary
   textMuted: "#5E6675",
-  textOnAccent: "#04120E", // near-black green, for text on the mint accent
+  textOnAccent: "#FFFFFF", // Figma text/on-accent
 
-  accent: "#35E6C5", // signature mint-cyan (recovery/energy) — v2 headline
-  accentAlt: "#0FB89A",
-  accentSoft: "rgba(53,230,197,0.16)", // tinted well/chip background
+  accent: "#2563eb", // Figma action/primary (default "blue" accent)
+  accentAlt: "#1D4ED8",
+  accentSoft: "rgba(37,99,235,0.12)", // Figma action/primary/subtle
 
-  aiAccent: "#9B87FF", // refined violet for AI touchpoints
-  aiAccentSoft: "rgba(155,135,255,0.16)",
+  aiAccent: "#a78bfa", // Figma ai/accent
+  aiAccentSoft: "rgba(167,139,250,0.14)",
 
-  success: "#3FE08A",
-  successSoft: "rgba(63,224,138,0.16)",
-  warning: "#FFB020",
-  warningSoft: "rgba(255,176,32,0.16)",
-  danger: "#FF5064",
-  dangerSoft: "rgba(255,80,100,0.16)",
+  success: "#34d399", // Figma status/success
+  successSoft: "rgba(52,211,153,0.16)",
+  warning: "#fbbf24", // Figma status/warning
+  warningSoft: "rgba(251,191,36,0.12)",
+  danger: "#fb7185", // Figma status/error
+  dangerSoft: "rgba(251,113,133,0.12)",
 
   // Secondary/data hues — infrared (strain/streak/calories), pink (fat macro),
   // cyan (hydration/cardio).
   orange: "#FF6552", // "infrared" in the spec
   pink: "#EC4899",
   cyan: "#22D3EE",
+
+  // Figma "observed" tints used by informational/permission detail cards.
+  infoSurface: "#101c30",
+  infoBorder: "#24436e",
+  aiSurface: "#1c152e",
+  aiBorder: "#3f2d65",
 
   overlay: "rgba(0,0,0,0.6)",
 } as const;
@@ -128,4 +134,16 @@ export const elevation = {
     shadowOffset: { width: 0, height: 10 },
     elevation: 12,
   },
+} as const;
+
+/**
+ * Per-preference accent palette (AccentColor in packages/types). `blue` is the
+ * Figma default; ThemeProvider swaps `accent`/`accentSoft`/`textOnAccent` live
+ * from the user's saved preference.
+ */
+export const accentPalettes = {
+  blue: { accent: "#2563eb", accentSoft: "rgba(37,99,235,0.12)", textOnAccent: "#FFFFFF" },
+  green: { accent: "#34d399", accentSoft: "rgba(52,211,153,0.16)", textOnAccent: "#04120E" },
+  yellow: { accent: "#FFB020", accentSoft: "rgba(255,176,32,0.16)", textOnAccent: "#1A1200" },
+  red: { accent: "#FF5064", accentSoft: "rgba(255,80,100,0.16)", textOnAccent: "#FFFFFF" },
 } as const;

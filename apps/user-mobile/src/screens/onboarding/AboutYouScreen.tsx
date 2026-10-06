@@ -32,6 +32,13 @@ export function AboutYouScreen({ navigation }: Props) {
       title="Tell us about yourself"
       subtitle="This helps us personalize your training and nutrition plans."
       onNext={() => {
+        // Under-18: guardian review first (onboarding/11). Stepper min is 13,
+        // so this covers 13-17. Resume target stays AboutYou until the
+        // guardian details are actually submitted.
+        if (state.age != null && state.age < 18) {
+          navigation.navigate("GuardianReview");
+          return;
+        }
         markScreenReached("Schedule");
         navigation.navigate("Schedule");
       }}

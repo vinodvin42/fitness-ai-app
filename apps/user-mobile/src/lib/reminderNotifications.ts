@@ -58,7 +58,14 @@ export async function requestNotificationPermissions() {
  * install picks up whatever's already on the server.
  */
 export async function syncScheduledNotifications(reminders: Reminder[]) {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Cancel only what this file owns — medication notifications (see
+  // medicationNotifications.ts) share the same OS scheduler and are tagged
+  // data.kind === "medication", so they must survive a reminder resync.
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if (n.content.data?.kind === "medication") continue;
+    await Notifications.cancelScheduledNotificationAsync(n.identifier);
+  }
 
   for (const reminder of reminders) {
     if (!reminder.isEnabled) continue;

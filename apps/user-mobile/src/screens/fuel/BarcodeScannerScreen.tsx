@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Button } from "../../components/Button";
+import { CameraPermissionDenied } from "../../components/CameraPermissionDenied";
 import { lookupBarcode } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -91,24 +92,14 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
   }
 
   if (!permission.granted) {
+    // Fuel 10 — camera not granted. Only offer the in-app prompt while the OS will still show it.
     return (
-      <View style={styles.center}>
-        <Text style={styles.permissionTitle}>Camera access needed</Text>
-        <Text style={styles.permissionBody}>
-          {permission.canAskAgain
-            ? "Allow camera access to scan a product's barcode."
-            : "Enable camera access for this app in your device Settings to scan a barcode."}
-        </Text>
-        {permission.canAskAgain ? (
-          <Button label="Allow Camera" onPress={requestPermission} style={{ marginTop: spacing.lg }} />
-        ) : null}
-        <Button
-          label="Log manually instead"
-          variant="secondary"
-          onPress={() => navigation.navigate("LogMeal", { mealType })}
-          style={{ marginTop: spacing.sm }}
-        />
-      </View>
+      <CameraPermissionDenied
+        variant="barcode"
+        onRequestPermission={permission.canAskAgain ? requestPermission : undefined}
+        onManual={() => navigation.navigate("LogMeal", { mealType })}
+        onBack={() => navigation.goBack()}
+      />
     );
   }
 
@@ -142,13 +133,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.background,
     padding: spacing.lg,
-  },
-  permissionTitle: { ...typography.h2, color: colors.textPrimary, textAlign: "center" },
-  permissionBody: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: "center",
-    marginTop: spacing.sm,
   },
   overlay: {
     position: "absolute",

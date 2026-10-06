@@ -1,7 +1,6 @@
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -12,18 +11,23 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { NavigationProp } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AiCoachMessage } from "@fitness-ai-app/types";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { Chip } from "../../components/Chip";
-import { fetchAiCoachMessages, fetchAiProviderStatus, sendAiCoachMessage } from "../../api/aiCoach";
-import { extractErrorMessage } from "../../lib/apiError";
+import { AiUnavailableBanner } from "../../components/AiUnavailableBanner";
+import { AiLimitReached } from "../../components/AiLimitReached";
+import { Pill } from "../../components/Pill";
+import { fetchAiCoachMessages, fetchAiCoachUsage, fetchAiProviderStatus, sendAiCoachMessage } from "../../api/aiCoach";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import type { MainTabsParamList } from "../../navigation/MainTabs";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "AiCoach">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "AiCoach">;
 
 // docs/mobile/03-screen-inventory.md §H: "guidance-topic chips ... quick-
 // reply suggestion chips below the thread". This build ships one set as
@@ -91,14 +95,23 @@ function MessageBubble({ message }: { message: AiCoachMessage }) {
  * design's fuller spec (no file/voice upload path exists anywhere in
  * this build for either).
  */
-export function AiCoachScreen({ navigation: _navigation }: Props) {
+export function AiCoachScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const listRef = useRef<FlatList<AiCoachMessage>>(null);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // Set when a send fails; the failed text is put back in `draft` so nothing is lost.
+  const [sendFailure, setSendFailure] = useState<null | "unavailable" | "quota">(null);
 
   const statusQuery = useQuery({ queryKey: ["ai-coach", "status"], queryFn: fetchAiProviderStatus });
   const isConfigured = statusQuery.data?.configured === true;
+
+  // Real daily quota (GET /ai-coach/usage): drives the header chip and the AI 03 limit state.
+  const usageQuery = useQuery({ queryKey: ["ai-coach", "usage"], queryFn: fetchAiCoachUsage, enabled: isConfigured });
+  const usage = usageQuery.data;
+  const [limitDismissed, setLimitDismissed] = useState(false);
+  const limitReached = sendFailure === "quota" || (usage != null && usage.used >= usage.limit);
+  const remaining = usage ? Math.max(0, usage.limit - usage.used) : null;
 
   const messagesQuery = useQuery({
     queryKey: ["ai-coach", "messages"],
@@ -115,18 +128,24 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
     const trimmed = text.trim();
     if (!trimmed || isSending) return;
     setDraft("");
+    setSendFailure(null);
     setIsSending(true);
     try {
       await sendAiCoachMessage(trimmed);
       await queryClient.invalidateQueries({ queryKey: ["ai-coach", "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["ai-coach", "usage"] });
       scrollToEnd();
     } catch (err) {
-      // The user's own message is persisted server-side even when the
-      // reply half fails (see aiCoach.service.ts) — refetch so it shows
-      // up in the thread for real, then explain that only the reply
-      // failed, not the send.
-      await queryClient.invalidateQueries({ queryKey: ["ai-coach", "messages"] });
-      Alert.alert("Coach couldn't respond", extractErrorMessage(err, "Try sending your message again in a moment."));
+      // AI 02 — keep the draft and show an inline banner with Retry. HTTP 429
+      // (ai_limit_reached) is the quota state and opens the AI 03 screen;
+      // everything else (network/503/...) is "temporarily unavailable".
+      setDraft(trimmed);
+      const isQuota = axios.isAxiosError(err) && err.response?.status === 429;
+      if (isQuota) {
+        setLimitDismissed(false);
+        queryClient.invalidateQueries({ queryKey: ["ai-coach", "usage"] });
+      }
+      setSendFailure(isQuota ? "quota" : "unavailable");
     } finally {
       setIsSending(false);
       scrollToEnd();
@@ -172,14 +191,30 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
     );
   }
 
+  if (limitReached && !limitDismissed) {
+    return (
+      <AiLimitReached
+        usage={usage}
+        onBack={() => navigation.goBack()}
+        onKeepTracking={() => setLimitDismissed(true)}
+        onUpgrade={() => navigation.getParent<NavigationProp<MainTabsParamList>>()?.navigate("More", { screen: "Subscription" })}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+      <View style={[styles.header, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+        <View>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.onlineDot} />
+            <Text style={styles.headerTitle}>23Prime AI</Text>
+          </View>
+          <Text style={styles.headerSubtitle}>Online</Text>
         </View>
-        <Text style={styles.headerSubtitle}>Online</Text>
+        {remaining != null ? (
+          <Pill label={remaining === 0 ? "Limit reached" : `${remaining} left today`} tone={remaining === 0 ? "danger" : "ai"} />
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
@@ -240,6 +275,21 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
           </View>
         )}
 
+        {sendFailure === "unavailable" ? (
+          <AiUnavailableBanner onRetry={() => send(draft)} retrying={isSending} />
+        ) : limitReached ? (
+          <Pressable
+            onPress={() => setLimitDismissed(false)}
+            accessibilityRole="button"
+            accessibilityLabel="AI limit reached. See options"
+            style={styles.limitNotice}
+          >
+            <Text style={{ color: colors.aiAccent, ...typography.label }}>
+              AI limit reached for now. Your draft is kept. Tap for options.
+            </Text>
+          </Pressable>
+        ) : null}
+
         <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
 
         <View style={styles.composerRow}>
@@ -251,7 +301,7 @@ export function AiCoachScreen({ navigation: _navigation }: Props) {
             onChangeText={setDraft}
             multiline
             maxLength={2000}
-            editable={!isSending}
+            editable={!isSending && !limitReached}
             accessibilityLabel="Message to AI Coach"
           />
           <Pressable
@@ -295,7 +345,7 @@ const styles = StyleSheet.create({
   bubble: { borderRadius: radius.card, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   bubbleUser: { backgroundColor: colors.accent },
   bubbleAssistant: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  bubbleTextUser: { color: "#0B0B0F", fontSize: 15, lineHeight: 21 },
+  bubbleTextUser: { color: colors.textOnAccent, fontSize: 15, lineHeight: 21 },
   bubbleTextAssistant: { color: colors.textPrimary, fontSize: 15, lineHeight: 21 },
   timeLabel: { ...typography.meta, color: colors.textMuted, marginTop: 2 },
   timeLabelUser: { marginRight: spacing.xs },
@@ -343,5 +393,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sendButtonDisabled: { opacity: 0.5 },
+  limitNotice: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.aiSurface,
+    borderColor: colors.aiBorder,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
   sendButtonLabel: { color: "#0B0B0F", fontFamily: fonts.bodySemi, fontSize: 15 },
 });

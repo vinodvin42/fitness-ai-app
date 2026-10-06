@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Switch, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { Consent, ConsentType } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
+import { BottomSheet } from "../../components/BottomSheet";
+import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchConsents, updateConsent } from "../../api/consents";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -44,8 +46,9 @@ const CONSENT_COPY: Record<ConsentType, { title: string; description: string }> 
  * explicitly turned something off. See users.service.ts's `listConsents`
  * doc comment.
  */
-export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
+export function PrivacySettingsScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
+  const [pendingWithdrawal, setPendingWithdrawal] = useState<ConsentType | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["users", "consents"],
@@ -61,8 +64,22 @@ export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
     },
   });
 
+  // Withdrawing health/analytics consent goes through a confirm sheet, then
+  // the "Withdrawal confirmed" screen (onboarding/10). Marketing emails and
+  // re-granting stay a plain toggle.
   const onToggle = (type: ConsentType, granted: boolean) => {
+    if (!granted && type !== "marketing_emails") {
+      setPendingWithdrawal(type);
+      return;
+    }
     mutation.mutate({ type, granted });
+  };
+
+  const confirmWithdrawal = () => {
+    const type = pendingWithdrawal;
+    if (!type) return;
+    setPendingWithdrawal(null);
+    mutation.mutate({ type, granted: false }, { onSuccess: () => navigation.navigate("ConsentWithdrawn", { type }) });
   };
 
   return (
@@ -102,6 +119,15 @@ export function PrivacySettingsScreen({ navigation: _navigation }: Props) {
           })}
         </View>
       )}
+
+      <BottomSheet visible={pendingWithdrawal !== null} onClose={() => setPendingWithdrawal(null)} title="Withdraw consent?">
+        <Text style={{ color: colors.textSecondary, ...typography.body }}>
+          {pendingWithdrawal ? CONSENT_COPY[pendingWithdrawal].title : ""} will stop being used from now on. Some features
+          may become less personalised. You can turn it back on any time.
+        </Text>
+        <Button label="Withdraw consent" onPress={confirmWithdrawal} />
+        <Button label="Keep it on" variant="secondary" onPress={() => setPendingWithdrawal(null)} />
+      </BottomSheet>
 
       {mutation.isError ? (
         <Text style={{ color: colors.danger, marginTop: spacing.md }}>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -13,6 +13,7 @@ import { fetchWorkoutDetail } from "../../api/programs";
 import { startWorkoutSession } from "../../api/workoutSessions";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
+import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -47,6 +48,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
   });
+  const swaps = useSwaps(workoutId);
 
   const { order, purchase, isPurchasing, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
     onVerified: () =>
@@ -101,7 +103,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
       </Card>
 
       {phases.map((phase) => {
-        const exercisesInPhase = workout.exercises.filter((we) => we.phase === phase);
+        const exercisesInPhase = applySwaps(workout.exercises, swaps).filter((we) => we.phase === phase);
         if (exercisesInPhase.length === 0) return null;
         const meta = PHASE_META[phase];
         return (
@@ -124,6 +126,21 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                   }}
                 >
                   <Text style={{ color: colors.textPrimary, ...typography.body, flex: 1 }}>{we.exercise.name}</Text>
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate("ExerciseSwap", {
+                        workoutId,
+                        workoutExerciseId: we.id,
+                        exerciseId: we.exercise.id,
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Swap ${we.exercise.name}`}
+                    hitSlop={6}
+                    style={{ marginRight: spacing.sm }}
+                  >
+                    <Text style={{ color: colors.accent, ...typography.label }}>Swap</Text>
+                  </Pressable>
                   <View
                     style={{
                       paddingHorizontal: spacing.sm,

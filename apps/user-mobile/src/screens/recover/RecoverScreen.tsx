@@ -6,10 +6,11 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { AIBanner } from "../../components/AIBanner";
+import { ListRow } from "../../components/ListRow";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
-import type { MoreStackParamList } from "../../navigation/MoreStack";
+import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "RecoverHub">;
+type Props = NativeStackScreenProps<RecoverStackParamList, "RecoverHub">;
 
 /**
  * Recover — docs/mobile/03-screen-inventory.md §E (5 screens) + §H (AI
@@ -63,8 +64,8 @@ export function RecoverScreen({ navigation }: Props) {
           </View>
         </View>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.md }}>
-          Self-reported, with 30-day averages and history. Automatic wearable sync (HealthKit/Google Fit) needs a
-          native integration this build can't do yet.
+          Self-reported, with 30-day averages and history. Automatic wearable sync (HealthKit/Health Connect) needs a
+          native integration this build can't do yet; devices can be added and their values imported by hand below.
         </Text>
         <Button
           label="Open Recovery"
@@ -73,6 +74,31 @@ export function RecoverScreen({ navigation }: Props) {
           style={{ marginTop: spacing.md }}
         />
       </Card>
+
+      <ListRow
+        icon="watch"
+        title="Connected devices"
+        subtitle="Devices, sync status & manual import"
+        tint={colors.accent}
+        tintSoft={colors.accentSoft}
+        onPress={() => navigation.navigate("ConnectedDevices")}
+      />
+      <ListRow
+        icon="flower"
+        title="Yoga & mobility"
+        subtitle="Guided routines and mindful practice"
+        tint={colors.aiAccent}
+        tintSoft={colors.aiAccentSoft}
+        onPress={() => navigation.navigate("YogaLibrary")}
+      />
+      <ListRow
+        icon="wind"
+        title="Guided breathing"
+        subtitle="Box, 4-7-8 and coherent breathing"
+        tint={colors.cyan}
+        tintSoft="rgba(34,211,238,0.16)"
+        onPress={() => navigation.navigate("GuidedBreathing")}
+      />
     </ScreenContainer>
   );
 }

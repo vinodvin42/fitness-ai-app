@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MealPlan, MealPlanItem, MealType } from "@fitness-ai-app/types";
@@ -10,6 +10,7 @@ import { ListRow } from "../../components/ListRow";
 import { Pill } from "../../components/Pill";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
+import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { fetchCurrentMealPlan, generateMealPlan } from "../../api/mealPlans";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -44,6 +45,7 @@ const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
  */
 export function MealPlanScreen(_props: Props) {
   const queryClient = useQueryClient();
+  const [showWhy, setShowWhy] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
@@ -118,6 +120,17 @@ export function MealPlanScreen(_props: Props) {
 
   return (
     <ScreenContainer title="Meal Plan" subtitle={mealPlan ? `${mealPlan.durationDays}-day plan` : undefined}>
+      {mealPlan?.rationale ? (
+        <ReasoningSheet
+          visible={showWhy}
+          onClose={() => setShowWhy(false)}
+          title="Why this meal plan?"
+          rationale={mealPlan.rationale}
+          rows={[{ label: "Based on", value: "Your diet type, allergens and goals" }]}
+          generatedAt={mealPlan.createdAt}
+          caveat="Portions, food labels and incomplete logs can change nutrition estimates. General wellness advice only."
+        />
+      ) : null}
       {generationError ? (
         <Card style={{ marginBottom: spacing.sm }}>
           <Text style={{ color: colors.danger, ...typography.body }}>{generationError}</Text>
@@ -126,7 +139,17 @@ export function MealPlanScreen(_props: Props) {
 
       {mealPlan?.rationale ? (
         <Card style={{ marginBottom: spacing.sm }}>
-          <Text style={{ color: colors.textSecondary, ...typography.body }}>{mealPlan.rationale}</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.body }} numberOfLines={3}>
+            {mealPlan.rationale}
+          </Text>
+          <Pressable
+            onPress={() => setShowWhy(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Why this meal plan?"
+            style={{ marginTop: spacing.sm }}
+          >
+            <Text style={{ color: colors.aiAccent, ...typography.label }}>✦ Why this?</Text>
+          </Pressable>
         </Card>
       ) : null}
 
