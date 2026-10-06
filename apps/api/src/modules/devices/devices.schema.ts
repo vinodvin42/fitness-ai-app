@@ -30,6 +30,9 @@ export const syncSampleSchema = z.object({
   activeMinutes: z.number().int().min(0).max(1440).optional(),
   spo2: z.number().int().min(50).max(100).optional(),
   stressScore: z.number().int().min(0).max(100).optional(),
+  // Smart-scale readings. Only ingested for devices paired with kind "scale".
+  weightKg: z.number().positive().max(500).optional(),
+  bodyFatPercent: z.number().positive().max(70).optional(),
 });
 
 export const syncDeviceSchema = z.object({

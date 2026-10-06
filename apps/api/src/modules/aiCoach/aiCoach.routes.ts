@@ -21,7 +21,7 @@ aiCoachRouter.get("/ai-coach/messages", requireAuth, async (req: AuthedRequest, 
 aiCoachRouter.post("/ai-coach/messages", requireAuth, requireGuardianCleared, aiCoachRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     const input = sendAiCoachMessageSchema.parse(req.body);
-    const result = await aiCoachService.sendMessage(req.userId!, input.content);
+    const result = await aiCoachService.sendMessage(req.userId!, input.content, input.clientId);
     res.status(201).json(result);
   } catch (err) {
     next(err);
@@ -32,6 +32,15 @@ aiCoachRouter.get("/ai-coach/usage", requireAuth, async (req: AuthedRequest, res
   try {
     const usage = await aiCoachService.getUsage(req.userId!);
     res.json({ ...usage, resetsAt: usage.resetsAt.toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Clears the caller's own conversation only (scoped by userId in the service).
+aiCoachRouter.delete("/ai-coach/messages", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await aiCoachService.clearConversation(req.userId!));
   } catch (err) {
     next(err);
   }

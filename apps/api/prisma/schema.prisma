@@ -1260,6 +1260,26 @@ model BodyMeasurement {
   // baseline step creates a real row here rather than a second, competing
   // measurements table on OnboardingProfile.
   bodyFatPercent Float?
+  // Full tape-measure set (Figma Progress 03/04, Oct 2026). All nullable;
+  // `armsCm`/`thighsCm` above stay for legacy rows and the onboarding
+  // baseline - clients show arms/thighs as the mean of the L/R values when
+  // those are present. Everything is stored in cm/kg; inches/lb is a
+  // display-only toggle on the client.
+  neckCm         Float?
+  shouldersCm    Float?
+  bicepLeftCm    Float?
+  bicepRightCm   Float?
+  forearmLeftCm  Float?
+  forearmRightCm Float?
+  thighLeftCm    Float?
+  thighRightCm   Float?
+  calfLeftCm     Float?
+  calfRightCm    Float?
+  // "manual" = typed by the user, "device" = ingested from a connected
+  // smart scale via POST /devices/:id/sync. Drives the Measured/Smart-scale
+  // labelling; `deviceName` is the scale that supplied the row.
+  source         String   @default("manual")
+  deviceName     String?
   loggedAt       DateTime @default(now())
 
   @@index([userId, loggedAt])
@@ -1519,7 +1539,19 @@ model AiCoachMessage {
   role      AiCoachMessageRole
   content   String             @db.Text
   createdAt DateTime           @default(now())
+  // Oct 2026 (Figma AI 02/04): client-generated idempotency key for a USER
+  // message, so a retry after a failed AI reply reuses the stored message
+  // instead of duplicating it. Null for assistant rows / older clients.
+  clientId  String?
+  // Set on a user message whose AI reply failed; hidden from the thread,
+  // history and the daily quota until a retry succeeds (then reset to false).
+  failed    Boolean            @default(false)
+  // Assistant rows only: the real context items that were injected into the
+  // prompt for this reply ([{kind,label,value}]) — what the "Why this?" sheet
+  // shows. Null for replies generated before this column existed.
+  sources   Json?
 
+  @@unique([userId, clientId])
   @@index([userId, createdAt])
   @@map("ai_coach_messages")
 }

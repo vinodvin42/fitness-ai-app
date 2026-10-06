@@ -3,6 +3,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { goalProgress } from "./progressMetrics";
 import {
   CreateProgressPhotoInput,
   LogMeasurementInput,
@@ -239,28 +240,49 @@ export async function logMindfulness(userId: string, input: LogMindfulnessInput)
 }
 
 export async function getProgressOverview(userId: string) {
-  const [recentMeasurements, personalRecords] = await Promise.all([
+  const [latestRow, weightRows, firstWeight, personalRecords, profile] = await Promise.all([
+    prisma.bodyMeasurement.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
     prisma.bodyMeasurement.findMany({
-      where: { userId },
+      where: { userId, weightKg: { not: null } },
       orderBy: { loggedAt: "desc" },
-      take: 10,
+      take: 60,
+    }),
+    prisma.bodyMeasurement.findFirst({
+      where: { userId, weightKg: { not: null } },
+      orderBy: { loggedAt: "asc" },
     }),
     getPersonalRecords(userId),
+    prisma.onboardingProfile.findUnique({
+      where: { userId },
+      select: { weightKg: true, targetWeightKg: true, completedAt: true },
+    }),
   ]);
 
+  // oldest-first, so a client can plot it left-to-right as a trend.
+  // NOTE: callback params are explicitly typed rather than inferred —
+  // apps/api's stub @prisma/client (see README's "Note on this scaffold")
+  // types findMany()'s result as `any` until `prisma generate` runs, which
+  // would otherwise make these implicit-any under this project's strict
+  // tsconfig. A real generated client infers this correctly on its own.
+  const weightHistory = weightRows
+    .map((m: { weightKg: number | null; loggedAt: Date }) => ({ weightKg: m.weightKg as number, loggedAt: m.loggedAt }))
+    .reverse();
+
+  // Start = first weight ever logged (the onboarding baseline writes one),
+  // else the onboarding weight; current = the latest weight log.
+  const start = firstWeight
+    ? { weightKg: firstWeight.weightKg as number, at: firstWeight.loggedAt as Date }
+    : profile?.weightKg != null
+      ? { weightKg: profile.weightKg as number, at: (profile.completedAt as Date | null) ?? new Date() }
+      : null;
+  const current = weightHistory.length ? weightHistory[weightHistory.length - 1].weightKg : (start?.weightKg ?? null);
+
   return {
-    latestMeasurement: recentMeasurements[0] ?? null,
-    // oldest-first, so a client can plot it left-to-right as a trend.
-    // NOTE: callback params are explicitly typed rather than inferred —
-    // apps/api's stub @prisma/client (see README's "Note on this scaffold")
-    // types findMany()'s result as `any` until `prisma generate` runs, which
-    // would otherwise make these implicit-any under this project's strict
-    // tsconfig. A real generated client infers this correctly on its own.
-    weightHistory: recentMeasurements
-      .filter((m: { weightKg: number | null }) => m.weightKg != null)
-      .map((m: { weightKg: number | null; loggedAt: Date }) => ({ weightKg: m.weightKg as number, loggedAt: m.loggedAt }))
-      .reverse(),
+    latestMeasurement: latestRow ?? null,
+    weightHistory,
     personalRecords,
+    /** Null only when the user has no weight on file at all. `percent`/ring fields are null without a goal weight. */
+    goal: goalProgress(start, current, (profile?.targetWeightKg as number | null | undefined) ?? null),
   };
 }
 

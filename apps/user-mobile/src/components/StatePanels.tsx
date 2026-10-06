@@ -78,6 +78,7 @@ export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, d
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{
           width: "100%",
           maxWidth: layout.maxContentWidth,

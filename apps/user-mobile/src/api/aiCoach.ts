@@ -14,8 +14,13 @@ export function fetchAiCoachMessages() {
   return apiClient.get<AiCoachMessagesResponse>("/ai-coach/messages").then((r) => r.data);
 }
 
-export function sendAiCoachMessage(content: string) {
-  return apiClient.post<SendAiCoachMessageResponse>("/ai-coach/messages", { content }).then((r) => r.data);
+/** `clientId` is an idempotency key: resend the same one to retry a failed send without duplicating the message. */
+export function sendAiCoachMessage(content: string, clientId?: string) {
+  return apiClient.post<SendAiCoachMessageResponse>("/ai-coach/messages", { content, clientId }).then((r) => r.data);
+}
+
+export function clearAiCoachConversation() {
+  return apiClient.delete<{ deleted: number }>("/ai-coach/messages").then((r) => r.data);
 }
 
 export function fetchAiCoachUsage() {

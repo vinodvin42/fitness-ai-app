@@ -1,4 +1,5 @@
 import type {
+  BodyComposition,
   BodyMeasurement,
   CheckIn,
   CheckInStatus,
@@ -6,6 +7,7 @@ import type {
   LogMeasurementInput,
   LogMindfulnessInput,
   MindfulnessLog,
+  ProgressInsights,
   ProgressOverview,
   ProgressPhoto,
   StreakSummary,
@@ -63,4 +65,14 @@ export function fetchTodayMindfulnessLogs() {
 
 export function logMindfulness(input: LogMindfulnessInput) {
   return apiClient.post<MindfulnessLog>("/mindfulness-logs", input).then((r) => r.data);
+}
+
+/** Body Composition (Figma Progress 02): latest body-fat / derived lean mass / BMI / waist-hip, 6-month trend, optional smart-scale card. */
+export function fetchBodyComposition() {
+  return apiClient.get<BodyComposition>("/progress/composition").then((r) => r.data);
+}
+
+/** Rule-based insight cards (Figma Progress 07) - only cards computable from real data are returned. */
+export function fetchProgressInsights() {
+  return apiClient.get<ProgressInsights>("/progress/insights").then((r) => r.data);
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Icon } from "./Icon";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 interface BottomSheetProps {
@@ -8,10 +9,12 @@ interface BottomSheetProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** Show a close "x" icon (Figma AI 04) instead of the "Close" text link. */
+  closeIcon?: boolean;
 }
 
 /** Modal bottom sheet with a tap-to-dismiss backdrop (no drag gesture). */
-export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, title, children, closeIcon }: BottomSheetProps) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: colors.overlay }}>
@@ -36,7 +39,11 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
               {title}
             </Text>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
-              <Text style={{ color: colors.textSecondary, ...typography.label }}>Close</Text>
+              {closeIcon ? (
+                <Icon name="x" size={22} color={colors.textSecondary} />
+              ) : (
+                <Text style={{ color: colors.textSecondary, ...typography.label }}>Close</Text>
+              )}
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.lg, gap: spacing.sm }}>

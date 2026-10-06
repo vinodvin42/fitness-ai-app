@@ -115,7 +115,7 @@ export type MoreStackParamList = {
   TimelineOverview: undefined;
   TimelineMonth: { year?: number; month?: number };
   TimelineEvent: { event: TimelineEvent };
-  TimelineReport: { year: number };
+  TimelineReport: undefined;
   Reminders: undefined;
   ReminderForm: { reminder?: Reminder };
   SettingsHub: undefined;

@@ -10,6 +10,7 @@ import { CheckInScreen } from "../screens/more/CheckInScreen";
 import { BodyCompositionScreen } from "../screens/progress/BodyCompositionScreen";
 import { ProgressReviewScreen } from "../screens/progress/ProgressReviewScreen";
 import { WhyThisChangedScreen } from "../screens/progress/WhyThisChangedScreen";
+import { ProgressInsightsScreen } from "../screens/progress/ProgressInsightsScreen";
 
 // R1 Developer 1 work package, U1 (14 Sep 2026) — the primary nav BR-USR-001
 // requires is Today | Train | Fuel | Progress | More, with Recovery
@@ -52,6 +53,8 @@ export type ProgressStackParamList = {
   // More menu "Body Composition" (Figma Today 05) — weight / body-fat / waist / hips trends.
   BodyComposition: undefined;
   WhyThisChanged: { recommendation?: Recommendation } | undefined;
+  // Figma Progress 07 - rule-based insight cards.
+  ProgressInsights: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -68,6 +71,7 @@ export function ProgressStack() {
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="ProgressReview" component={ProgressReviewScreen} />
       <Stack.Screen name="WhyThisChanged" component={WhyThisChangedScreen} />
+      <Stack.Screen name="ProgressInsights" component={ProgressInsightsScreen} />
     </Stack.Navigator>
   );
 }

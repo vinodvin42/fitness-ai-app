@@ -19,6 +19,8 @@ import { env } from "../config/env";
  */
 
 export function isAiConfigured(): boolean {
+  // Local-dev stub only — env.ts refuses to boot with AI_PROVIDER=mock in production.
+  if (env.AI_PROVIDER === "mock") return env.NODE_ENV !== "production";
   if (env.AI_PROVIDER === "anthropic") return Boolean(env.ANTHROPIC_API_KEY);
   if (env.AI_PROVIDER === "azure-openai") {
     // All three required together — env.ts's own boot-time check already
@@ -38,6 +40,7 @@ const DEFAULT_MODEL: Record<typeof env.AI_PROVIDER, string> = {
   // direct-API providers. getAiProviderStatus() below reports the actual
   // deployment name instead of this placeholder.
   "azure-openai": "(set via AZURE_OPENAI_DEPLOYMENT)",
+  mock: "mock",
 };
 
 export function getAiProviderStatus() {
@@ -152,6 +155,10 @@ export async function generateCompletion(prompt: string, options?: { image?: Com
     throw new Error(
       "AI provider not configured — set ANTHROPIC_API_KEY, OPENAI_API_KEY, or the AZURE_OPENAI_* trio (see .env.example)",
     );
+  }
+  if (env.AI_PROVIDER === "mock") {
+    // Canned reply for local UI work without a provider key. Not AI; never enabled in production (see above).
+    return "This is a mock reply from the local development stub. Set a real AI provider to get actual coaching.";
   }
   if (env.AI_PROVIDER === "anthropic") return generateWithAnthropic(prompt, options?.image);
   if (env.AI_PROVIDER === "azure-openai") return generateWithAzureOpenAi(prompt, options?.image);

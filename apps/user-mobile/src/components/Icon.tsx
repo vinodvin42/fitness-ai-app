@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Apple,
   ArrowLeft,
+  ArrowUp,
   Bell,
   BellOff,
   Camera,
@@ -80,6 +81,11 @@ import {
   SlidersHorizontal,
   Compass,
   Battery,
+  Share2,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  Ruler,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -96,6 +102,7 @@ export const ICONS = {
   star: Star,
   flashlight: Flashlight,
   "arrow-left": ArrowLeft,
+  "arrow-up": ArrowUp,
   bell: Bell,
   "bell-off": BellOff,
   camera: Camera,
@@ -170,6 +177,11 @@ export const ICONS = {
   sliders: SlidersHorizontal,
   compass: Compass,
   battery: Battery,
+  share: Share2,
+  upload: Upload,
+  image: ImageIcon,
+  "file-text": FileText,
+  ruler: Ruler,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

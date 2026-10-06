@@ -7,12 +7,31 @@ import {
   submitCheckInSchema,
 } from "./progress.schema";
 import * as progressService from "./progress.service";
+import * as progressAnalytics from "./progressAnalytics.service";
 
 export const progressRouter = Router();
 
 progressRouter.get("/progress/overview", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await progressService.getProgressOverview(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Body Composition (Figma Progress 02) and rule-based Insights (Progress 07) -
+// see progressAnalytics.service.ts for the data rules.
+progressRouter.get("/progress/composition", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await progressAnalytics.getBodyComposition(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+progressRouter.get("/progress/insights", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await progressAnalytics.getInsights(req.userId!));
   } catch (err) {
     next(err);
   }

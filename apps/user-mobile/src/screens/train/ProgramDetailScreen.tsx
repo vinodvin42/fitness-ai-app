@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from "react-native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import type { NavigationProp } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -8,10 +8,9 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
-import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchProgramDetail } from "../../api/programs";
 import { fetchNextWorkout } from "../../api/plans";
-import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
+import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -47,9 +46,9 @@ function Section({ title, right, children }: { title: string; right?: string; ch
 /**
  * Program Detail (Figma Train 03): hero, title + meta chips, curriculum
  * preview, sample workouts, program note, pricing, coaching, "what you
- * receive" and the Buy / Start CTA. Purchasing still goes through the
- * existing Razorpay order + checkout hooks (the server 402s without a
- * verified payment, and a coupon field is kept). Everything shown is derived
+ * receive" and the Buy / Start CTA. Buy opens the Program Checkout screen
+ * (Figma Programs 01), which owns the coupon field and the Razorpay order +
+ * checkout flow (the server 402s without a verified payment). Everything shown is derived
  * from the real program and its workouts; the Program Note only appears when
  * this is the program the user's active plan is built on (plan rationale).
  * The Coaching card links to the real coach discovery / quote-request flow
@@ -58,8 +57,6 @@ function Section({ title, right, children }: { title: string; right?: string; ch
 export function ProgramDetailScreen({ route, navigation }: Props) {
   const { programId } = route.params;
   const { colors: theme } = useTheme();
-  const queryClient = useQueryClient();
-  const [couponCode, setCouponCode] = useState("");
   const [showAll, setShowAll] = useState(false);
   const { data: program, isLoading, isError, refetch } = useQuery({
     queryKey: ["program", programId],
@@ -67,17 +64,6 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
   });
   const nextWorkout = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout });
 
-  const { order, purchase, isPurchasing, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
-    onVerified: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["program", programId] }),
-        queryClient.invalidateQueries({ queryKey: ["programs", "mine"] }),
-      ]),
-  });
-
-  // useRazorpayPurchase's purchase() handles its own errors internally
-  // (shows its own Alert on failure), so there's no try/catch needed here.
-  const onPurchase = () => purchase("program_purchase", programId, couponCode.trim() || undefined);
   const { configured: paymentsConfigured } = usePaymentsConfigured();
 
   if (isError) {
@@ -245,30 +231,12 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
 
       {needsPurchase ? (
         <>
-          {paymentsConfigured ? (
-            <TextInput
-              value={couponCode}
-              onChangeText={(v) => setCouponCode(v.toUpperCase())}
-              placeholder="Have a coupon? Enter code"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="characters"
-              style={{
-                color: colors.textPrimary,
-                backgroundColor: colors.surface,
-                borderRadius: radius.sm,
-                borderWidth: 1,
-                borderColor: colors.border,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-              }}
-            />
-          ) : (
+          {!paymentsConfigured ? (
             <Text style={{ color: colors.textMuted, ...typography.meta }}>Purchases aren't open yet during this pilot — check back soon.</Text>
-          )}
+          ) : null}
           <Button
             label={paymentsConfigured ? `Buy program · ${priceLabel}` : "Coming soon"}
-            onPress={onPurchase}
-            loading={isPurchasing}
+            onPress={() => navigation.navigate("ProgramCheckout", { programId })}
             disabled={!paymentsConfigured}
           />
         </>
@@ -280,7 +248,6 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
       ) : null}
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Coaching is a separate request</Text>
 
-      <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
     </ScreenContainer>
   );
 }

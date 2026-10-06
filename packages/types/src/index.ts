@@ -465,6 +465,25 @@ export interface MyProgram {
   completedWorkouts: number;
   status: "active" | "completed";
   purchasedAt: string | null;
+  /** Figma Programs 04 - first session start / last completed session / 1-based program week (null until started). */
+  startedAt?: string | null;
+  lastCompletedAt?: string | null;
+  weekNumber?: number | null;
+}
+
+export interface ProgramScheduleItem {
+  workoutId: string;
+  name: string;
+  /** Preferred training day this slot is assigned to; null if the user has no preferred days set. */
+  day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun" | null;
+  done: boolean;
+}
+
+export interface NextProgramRecommendation {
+  id: string;
+  name: string;
+  durationWeeks: number;
+  source: "plan" | "catalog";
 }
 
 /**
@@ -483,6 +502,16 @@ export interface ProgramProgressDetail {
   lastCompletedAt: string | null;
   completedThisWeek: number;
   totalSetsLogged: number;
+  /** Figma Programs 02/03 - all derived server-side, see programProgress.logic.ts. */
+  weekNumber?: number | null;
+  plannedPerWeek?: number;
+  completedSessionsThisWeek?: number;
+  schedule?: ProgramScheduleItem[];
+  nutritionLoggedDays?: { logged: number; elapsed: number } | null;
+  adherencePercent?: number | null;
+  weight?: { startKg: number; currentKg: number } | null;
+  bodyFat?: { startPercent: number; currentPercent: number } | null;
+  nextProgram?: NextProgramRecommendation | null;
 }
 
 // ---- Timeline ---------------------------------------------------------
@@ -496,14 +525,94 @@ export interface ProgramProgressDetail {
 // client passes the whole event through navigation rather than re-fetching
 // a single event by id.
 
-export type TimelineEventType = "pr" | "milestone" | "program_complete";
+export type TimelineEventType =
+  | "pr"
+  | "milestone"
+  | "program_complete"
+  | "weight"
+  | "measurement"
+  | "cardio"
+  | "recovery"
+  | "health"
+  | "start";
+
+export type TimelineCategory = "strength" | "cardio" | "body" | "health" | "recovery" | "life";
+
+export interface TimelineProgressionPoint {
+  value: number;
+  reps: number | null;
+  at: string;
+}
+
+export interface TimelineProgression {
+  unit: "kg" | "km";
+  first: TimelineProgressionPoint;
+  previous: TimelineProgressionPoint | null;
+  current: TimelineProgressionPoint;
+  percentChange: number | null;
+  /** Rule-based next target (+5% load) - strength PRs only, latest PR per lift only. */
+  nextTarget: number | null;
+}
 
 export interface TimelineEvent {
   id: string;
   type: TimelineEventType;
+  category: TimelineCategory;
+  /** "measured" = user-entered or device-synced; "estimated" = derived. */
+  evidence: Evidence;
   title: string;
   detail: string;
   occurredAt: string;
+  /** e.g. "Workout log", "Weight log", "Smart scale (Name)". */
+  source: string;
+  context: string | null;
+  progression: TimelineProgression | null;
+}
+
+/** GET /timeline/summary */
+export interface TimelineSummary {
+  memberSince: string;
+  activeDays: number;
+  activeMonths: number;
+  milestones: number;
+  insight: string | null;
+  insightHasMeasured: boolean;
+  insightHasEstimated: boolean;
+}
+
+/** GET /timeline/months/:year/:month (month 0-11) */
+export interface TimelineMonthDetail {
+  year: number;
+  month: number;
+  workouts: number;
+  avgSleepHours: number | null;
+  sleepNights: number;
+  activeDates: string[];
+  insight: string | null;
+  events: TimelineEvent[];
+}
+
+export interface JourneyReportLine {
+  text: string;
+  evidence: Evidence;
+}
+
+export interface JourneyReportSection {
+  id: "body" | "strength" | "cardio" | "health" | "consistency";
+  title: string;
+  lines: JourneyReportLine[];
+  emptyNote: string;
+}
+
+/** GET /timeline/report */
+export interface JourneyReport {
+  generatedAt: string;
+  periodStart: string;
+  periodEnd: string;
+  memberName: string;
+  summaryTitle: string;
+  sections: JourneyReportSection[];
+  disclaimer: string;
 }
 
 export type WorkoutSessionStatus = "in_progress" | "completed" | "abandoned";
@@ -827,6 +936,20 @@ export interface BodyMeasurement {
   thighsCm: number | null;
   /** Broader Baseline/measurements (18 Sep 2026) — clearly optional, most users won't have a precise reading. See schema.prisma's BodyMeasurement.bodyFatPercent comment. */
   bodyFatPercent: number | null;
+  /** Full tape set (Figma Progress 03/04) - all nullable, stored in cm. Arms/thighs show as the mean of L/R when present. */
+  neckCm: number | null;
+  shouldersCm: number | null;
+  bicepLeftCm: number | null;
+  bicepRightCm: number | null;
+  forearmLeftCm: number | null;
+  forearmRightCm: number | null;
+  thighLeftCm: number | null;
+  thighRightCm: number | null;
+  calfLeftCm: number | null;
+  calfRightCm: number | null;
+  /** "manual" = typed by the user, "device" = synced from a connected smart scale. */
+  source: "manual" | "device";
+  deviceName: string | null;
   loggedAt: string;
 }
 
@@ -839,6 +962,16 @@ export interface LogMeasurementInput {
   armsCm?: number;
   thighsCm?: number;
   bodyFatPercent?: number;
+  neckCm?: number;
+  shouldersCm?: number;
+  bicepLeftCm?: number;
+  bicepRightCm?: number;
+  forearmLeftCm?: number;
+  forearmRightCm?: number;
+  thighLeftCm?: number;
+  thighRightCm?: number;
+  calfLeftCm?: number;
+  calfRightCm?: number;
 }
 
 /**
@@ -876,6 +1009,58 @@ export interface ProgressOverview {
   /** Oldest-first, ready to plot left-to-right as a trend. */
   weightHistory: Array<{ weightKg: number; loggedAt: string }>;
   personalRecords: PersonalRecord[];
+  /** Null only when the user has no weight on file. `percent`/`remainingKg` are null until a goal weight is set. */
+  goal: GoalProgress | null;
+}
+
+/** Overall Progress = (start - current) / (start - target), clamped 0-100. See apps/api progressMetrics.goalProgress. */
+export interface GoalProgress {
+  startWeightKg: number;
+  currentWeightKg: number;
+  targetWeightKg: number | null;
+  percent: number | null;
+  remainingKg: number | null;
+  direction: "loss" | "gain" | null;
+  startedAt: string;
+}
+
+export type Evidence = "measured" | "estimated";
+
+/** GET /progress/composition (Figma Progress 02). Lean mass / BMI / waist-hip are derived => "estimated". */
+export interface BodyComposition {
+  heightCm: number | null;
+  latest: {
+    weightKg: { value: number; at: string; evidence: "measured" } | null;
+    bodyFatPercent: { value: number; at: string; evidence: "measured"; source: string } | null;
+    leanMassKg: { value: number; at: string; evidence: "estimated" } | null;
+    bmi: { value: number; band: string; at: string; evidence: "estimated" } | null;
+    waistToHip: { value: number; band: string | null; at: string; evidence: "estimated" } | null;
+  };
+  /** Body-fat readings from the last 6 months with the derived lean mass (null when no weight is known). */
+  trend: Array<{ at: string; bodyFatPercent: number; leanMassKg: number | null }>;
+  /** Present only when a scale-kind device is connected and has synced weight/body-fat. */
+  scale: {
+    deviceName: string;
+    lastSyncAt: string;
+    latestWeightKg: number | null;
+    latestBodyFatPercent: number | null;
+    measuredAt: string;
+  } | null;
+}
+
+export interface InsightCard {
+  id: string;
+  kind: "goal" | "plateau" | "strength" | "recovery_tip" | "sleep";
+  tone: "info" | "warning" | "positive";
+  title: string;
+  body: string;
+  footnote?: string;
+}
+
+/** GET /progress/insights - rule-based, real data only; cards that cannot be computed are omitted. */
+export interface ProgressInsights {
+  cards: InsightCard[];
+  disclaimer: string;
 }
 
 // ---- Streak Tracker --------------------------------------------------
@@ -3261,11 +3446,20 @@ export interface AdminIntegrationDirectoryResponse {
 
 export type AiCoachMessageRole = "user" | "assistant";
 
+/** A real context item injected into the prompt for an assistant reply — what "Why this?" shows. */
+export interface AiCoachSource {
+  kind: "goals" | "training_level" | "recent_workouts" | "latest_weight" | "protein_today";
+  label: string;
+  value: string;
+}
+
 export interface AiCoachMessage {
   id: string;
   role: AiCoachMessageRole;
   content: string;
   createdAt: string;
+  /** Assistant replies only; absent for replies generated before sources were recorded. */
+  sources?: AiCoachSource[];
 }
 
 /** GET /ai-coach/messages. `truncated` mirrors AdminAuditLog's own "cap it, report the cap honestly" precedent. */
@@ -3277,6 +3471,8 @@ export interface AiCoachMessagesResponse {
 /** Matches apps/api's sendAiCoachMessageSchema (Zod). */
 export interface SendAiCoachMessageInput {
   content: string;
+  /** Idempotency key: resend the same value to retry a failed send without duplicating the message. */
+  clientId?: string;
 }
 
 /** POST /ai-coach/messages. */
@@ -4562,6 +4758,9 @@ export interface DeviceSyncSample {
   activeMinutes?: number;
   spo2?: number;
   stressScore?: number;
+  /** Smart-scale readings - only ingested for devices paired as kind "scale". */
+  weightKg?: number;
+  bodyFatPercent?: number;
 }
 
 /** POST /devices/:id/sync — pass `error` instead of samples to report a failed sync. */

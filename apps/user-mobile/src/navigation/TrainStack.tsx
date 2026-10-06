@@ -7,6 +7,7 @@ import { WorkoutDetailScreen } from "../screens/train/WorkoutDetailScreen";
 import { ActiveWorkoutScreen } from "../screens/train/ActiveWorkoutScreen";
 import { SetRestTrackerScreen } from "../screens/train/SetRestTrackerScreen";
 import { WorkoutCompleteScreen } from "../screens/train/WorkoutCompleteScreen";
+import { ProgramCheckoutScreen } from "../screens/train/ProgramCheckoutScreen";
 import { MyProgramsScreen } from "../screens/train/MyProgramsScreen";
 import { ProgramProgressScreen } from "../screens/train/ProgramProgressScreen";
 import { ProgramCompletionScreen } from "../screens/train/ProgramCompletionScreen";
@@ -47,6 +48,8 @@ export type TrainStackParamList = {
   TrainDashboard: undefined;
   ProgramsMarketplace: undefined;
   ProgramDetail: { programId: string };
+  // Figma Programs 01 - checkout summary reached from Program Detail's Buy button.
+  ProgramCheckout: { programId: string };
   WorkoutDetail: { workoutId: string };
   ActiveWorkout: { workoutId: string; sessionId: string };
   SetRestTracker: { workoutId: string; sessionId: string; exerciseIndex: number };
@@ -80,6 +83,7 @@ export function TrainStack() {
       <Stack.Screen name="TrainDashboard" component={TrainScreen} />
       <Stack.Screen name="ProgramsMarketplace" component={ProgramsMarketplaceScreen} />
       <Stack.Screen name="ProgramDetail" component={ProgramDetailScreen} />
+      <Stack.Screen name="ProgramCheckout" component={ProgramCheckoutScreen} />
       <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
       <Stack.Screen name="ActiveWorkout" component={ActiveWorkoutScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="SetRestTracker" component={SetRestTrackerScreen} options={{ presentation: "modal" }} />

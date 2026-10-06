@@ -1,4 +1,5 @@
 import type {
+  CouponValidatePreview,
   CreateRazorpayOrderInput,
   PaymentStatusDetail,
   RazorpayOrder,
@@ -39,4 +40,9 @@ export function fetchPaymentStatus(paymentId: string) {
 
 export function retryPaymentActivation(paymentId: string) {
   return apiClient.post<RetryActivationResult>(`/payments/${paymentId}/retry-activation`).then((r) => r.data);
+}
+
+/** Pre-checkout coupon preview (POST /coupons/validate) - the server computes the discount; the order itself recomputes it again. */
+export function validateCoupon(code: string, amountCents: number) {
+  return apiClient.post<CouponValidatePreview>("/coupons/validate", { code, amountCents }).then((r) => r.data);
 }

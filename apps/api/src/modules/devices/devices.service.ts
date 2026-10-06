@@ -148,8 +148,20 @@ export async function syncDevice(userId: string, deviceId: string, input: SyncDe
       ...(allowed.has("spo2") && s.spo2 != null ? { spo2: s.spo2 } : {}),
       ...(allowed.has("stress") && s.stressScore != null ? { stressScore: s.stressScore } : {}),
     };
-    if (Object.keys(kept).length === 0) continue;
     const date = dateOnlyUtc(s.date);
+    // Smart-scale body readings become a BodyMeasurement (source "device"), one per device per day.
+    if (device.kind === "scale" && (s.weightKg != null || s.bodyFatPercent != null)) {
+      const loggedAt = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+      const existing = await prisma.bodyMeasurement.findFirst({ where: { userId, source: "device", deviceName: device.name, loggedAt } });
+      const reading = {
+        ...(s.weightKg != null ? { weightKg: s.weightKg } : {}),
+        ...(s.bodyFatPercent != null ? { bodyFatPercent: s.bodyFatPercent } : {}),
+      };
+      if (existing) await prisma.bodyMeasurement.update({ where: { id: existing.id }, data: reading });
+      else await prisma.bodyMeasurement.create({ data: { userId, source: "device", deviceName: device.name, loggedAt, ...reading } });
+      ingested += 1;
+    }
+    if (Object.keys(kept).length === 0) continue;
     // Only the fields the device reported, so manual soreness/energy/notes survive.
     await prisma.recoveryLog.upsert({
       where: { userId_date: { userId, date } },
@@ -230,7 +242,7 @@ export async function getDataStreams(userId: string) {
     prisma.bodyMeasurement.findFirst({
       where: { userId, weightKg: { not: null } },
       orderBy: { loggedAt: "desc" },
-    }) as Promise<{ weightKg: number | null; loggedAt: Date } | null>,
+    }) as Promise<{ weightKg: number | null; loggedAt: Date; source: string; deviceName: string | null } | null>,
   ]);
   const defs: Array<{ key: string; label: string; perm: string; pick: (l: StreamLog) => number | null }> = [
     { key: "steps", label: "Steps", perm: "steps", pick: (l) => l.steps },
@@ -267,8 +279,8 @@ export async function getDataStreams(userId: string) {
     label: "Weight",
     value: weight?.weightKg ?? null,
     date: weight?.loggedAt ?? null,
-    source: weight ? "manual" : null,
-    deviceName: null,
+    source: weight ? (weight.source === "device" ? "device" : "manual") : null,
+    deviceName: weight?.source === "device" ? weight.deviceName : null,
     stale: weight ? Date.now() - weight.loggedAt.getTime() > 14 * DAY : false,
   });
   return { items };

@@ -7,6 +7,8 @@ interface ScreenContainerProps {
   title: string;
   /** Optional muted line under the title (e.g. a date or greeting subtitle). */
   subtitle?: string;
+  /** Optional small accent label above the title (Figma brand eyebrow). */
+  eyebrow?: string;
   /** Optional right-aligned header slot (e.g. an avatar or action icon). */
   right?: React.ReactNode;
   children?: React.ReactNode;
@@ -16,11 +18,12 @@ interface ScreenContainerProps {
 }
 
 /** Shared per-screen header + safe-area shell — every tab screen uses this. */
-export function ScreenContainer({ title, subtitle, right, children, scroll = true, refreshControl }: ScreenContainerProps) {
+export function ScreenContainer({ title, subtitle, eyebrow, right, children, scroll = true, refreshControl }: ScreenContainerProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
+          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
@@ -64,6 +67,11 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h1,
     color: colors.textPrimary,
+  },
+  eyebrow: {
+    ...typography.caption,
+    color: colors.accent,
+    marginBottom: 2,
   },
   subtitle: {
     ...typography.meta,

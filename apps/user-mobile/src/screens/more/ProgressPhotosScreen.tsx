@@ -1,60 +1,62 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-native";
+import { Alert, Image, Pressable, Text, View, useWindowDimensions } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { ProgressPhoto } from "@fitness-ai-app/types";
+import type { BodyMeasurement, ProgressPhoto } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
+import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
-import { EmptyState } from "../../components/EmptyState";
-import { createProgressPhoto, deleteProgressPhoto, fetchProgressPhotos } from "../../api/progress";
+import { SkeletonCard } from "../../components/Skeleton";
+import { BeforeAfterSlider } from "../../components/BeforeAfterSlider";
+import { createProgressPhoto, deleteProgressPhoto, fetchMeasurements, fetchProgressPhotos } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { BRAND_NAME } from "../../lib/brand";
+import { useMeasureUnits } from "../../lib/measureUnits";
+import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "ProgressPhotos">;
 
-const THUMB_SIZE = 104;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
+/** Weight logged closest to the photo's date, only if within a week of it - never an invented value. */
+function weightNear(photo: ProgressPhoto, rows: BodyMeasurement[]): number | null {
+  const t = new Date(photo.takenAt).getTime();
+  let best: { kg: number; gap: number } | null = null;
+  for (const r of rows) {
+    if (r.weightKg == null) continue;
+    const gap = Math.abs(new Date(r.loggedAt).getTime() - t);
+    if (gap <= WEEK_MS && (!best || gap < best.gap)) best = { kg: r.weightKg, gap };
+  }
+  return best?.kg ?? null;
 }
 
+const monthYearUpper = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { month: "short", year: "numeric" }).toUpperCase();
+const dayMonth = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
 /**
- * Progress Photos (docs/mobile/03-screen-inventory.md §F), added 19 Aug
- * 2026 — real photo capture/upload via `expo-image-picker`, a real photo
- * grid, and a real "before/after" comparison, backed by a new
- * `ProgressPhoto` model/`GET`/`POST`/`DELETE /progress-photos`
- * (`apps/api/src/modules/progress`). Photos are compressed client-side
- * (JPEG quality 0.5) and stored as a base64 data URI directly in
- * Postgres — there's no object-storage backend (S3 or similar) anywhere
- * in this build, so this is the smallest real, working implementation
- * rather than a fake gallery with nothing actually persisted. See the
- * `ProgressPhoto` model's own doc comment in `schema.prisma` and gap §34
- * for the full tradeoff (no thumbnails, no CDN, a real per-photo size
- * ceiling).
- *
- * "Before/after slider comparison" is built the same way Workout
- * History's "Compare" already works (gap §27, added earlier the same
- * day) — select exactly two photos, see them side by side with their
- * dates — not a literal draggable overlay slider, since no slider/gesture
- * library is installed anywhere in this app. Tapping a photo outside
- * compare mode opens an inline detail view (full-size image + date +
- * a real, confirmed Delete action), rather than a separate screen.
+ * Gallery (Figma Progress 06). Real photos only (base64 in Postgres, see the
+ * ProgressPhoto model): the Transformation Slider compares your FIRST and
+ * LATEST photo with a draggable divider, the Timeline Grid lists every photo
+ * with its date and the weight you logged within a week of it (omitted when
+ * none). With fewer than two photos the slider is replaced by an honest prompt.
  */
-export function ProgressPhotosScreen(_props: Props) {
+export function ProgressPhotosScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
-  const { data: photos, isLoading, isError, refetch } = useQuery({
-    queryKey: ["progressPhotos"],
-    queryFn: fetchProgressPhotos,
-  });
+  const units = useMeasureUnits();
+  const { width } = useWindowDimensions();
+  const inner = Math.min(width, layout.maxContentWidth) - layout.screenPadding * 2 - spacing.md * 2;
+  const thumb = (inner - spacing.sm * 2) / 3;
+  const { data: photos, isLoading, isError, refetch } = useQuery({ queryKey: ["progressPhotos"], queryFn: fetchProgressPhotos });
+  const { data: measurements } = useQuery({ queryKey: ["progress", "measurements"], queryFn: fetchMeasurements });
 
   const [isSaving, setIsSaving] = useState(false);
   const [viewingPhotoId, setViewingPhotoId] = useState<string | null>(null);
-  const [compareMode, setCompareMode] = useState(false);
-  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["progressPhotos"] });
 
@@ -111,116 +113,130 @@ export function ProgressPhotosScreen(_props: Props) {
     ]);
   };
 
-  const toggleCompareSelection = (id: string) => {
-    setSelectedForCompare((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 2) return [prev[1], id];
-      return [...prev, id];
-    });
+  const items = photos ?? [];
+  const rows = measurements ?? [];
+  const viewing = items.find((p) => p.id === viewingPhotoId) ?? null;
+  const wtLabel = (p: ProgressPhoto) => {
+    const kg = weightNear(p, rows);
+    return kg == null ? null : `${units.wt(kg).toFixed(1)} ${units.wtUnit}`;
   };
 
-  const items = photos ?? [];
-  const viewingPhoto = items.find((p) => p.id === viewingPhotoId) ?? null;
-  const compareEntries = items.filter((p) => selectedForCompare.includes(p.id));
+  const header = { title: "Gallery", eyebrow: BRAND_NAME, subtitle: "Transformation Progress" };
 
   if (isError) {
     return (
-      <ScreenContainer title="Progress Photos">
+      <ScreenContainer {...header}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
-
   if (isLoading) {
     return (
-      <ScreenContainer title="Progress Photos">
-        <ActivityIndicator color={colors.accent} />
+      <ScreenContainer {...header}>
+        <SkeletonCard lines={4} />
       </ScreenContainer>
     );
   }
 
+  const earliest = items[items.length - 1];
+  const latest = items[0];
+
   return (
-    <ScreenContainer title="Progress Photos">
+    <ScreenContainer {...header}>
+      <BackButton onPress={() => navigation.goBack()} />
+
+      <Card style={{ gap: spacing.sm }}>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Transformation Slider</Text>
+        {items.length >= 2 ? (
+          <>
+            <BeforeAfterSlider
+              before={{ uri: earliest.imageData, label: monthYearUpper(earliest.takenAt), caption: wtLabel(earliest) }}
+              after={{ uri: latest.imageData, label: monthYearUpper(latest.takenAt), caption: wtLabel(latest) }}
+            />
+            <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+              {"<- Drag to compare transformation progress ->"}
+            </Text>
+          </>
+        ) : (
+          <Text style={{ color: colors.textSecondary, lineHeight: 20 }}>
+            {items.length === 0
+              ? "Add two or more progress photos and you can drag to compare your first and latest."
+              : "You have one photo so far. Add another later and you can drag to compare your first and latest."}
+          </Text>
+        )}
+      </Card>
+
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
-        <Button label="Take Photo" onPress={onTakePhoto} loading={isSaving} style={{ flex: 1 }} />
-        <Button label="Upload Photo" variant="secondary" onPress={onUploadPhoto} loading={isSaving} style={{ flex: 1 }} />
+        <Pressable
+          onPress={onTakePhoto}
+          disabled={isSaving}
+          accessibilityRole="button"
+          accessibilityLabel="Take Photo"
+          style={{ flex: 1, height: 46, borderRadius: radius.md, backgroundColor: colors.accent, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", opacity: isSaving ? 0.6 : 1 }}
+        >
+          <Icon name="camera" size={18} color={colors.textOnAccent} />
+          <Text style={{ color: colors.textOnAccent, ...typography.label }}>Take Photo</Text>
+        </Pressable>
+        <Pressable
+          onPress={onUploadPhoto}
+          disabled={isSaving}
+          accessibilityRole="button"
+          accessibilityLabel="Upload photo"
+          style={{ flex: 1, height: 46, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", opacity: isSaving ? 0.6 : 1 }}
+        >
+          <Icon name="upload" size={18} color={colors.textPrimary} />
+          <Text style={{ color: colors.textPrimary, ...typography.label }}>Upload</Text>
+        </Pressable>
       </View>
 
-      {items.length === 0 ? (
-        <EmptyState
-          title="No progress photos yet"
-          subtitle="Take or upload one to start tracking your transformation."
-          style={{ marginTop: spacing.lg }}
-        />
-      ) : (
-        <>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.lg }}>
-            <Text style={{ color: colors.textSecondary }}>Photos</Text>
-            <Button
-              label={compareMode ? "Cancel Compare" : "Compare"}
-              variant="secondary"
-              onPress={() => {
-                setCompareMode((v) => !v);
-                setSelectedForCompare([]);
-                setViewingPhotoId(null);
-              }}
-              style={{ height: 36, paddingHorizontal: spacing.md }}
-            />
-          </View>
-
-          {compareMode && compareEntries.length === 2 ? (
-            <Card style={{ marginTop: spacing.sm }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Before / After</Text>
-              <View style={{ flexDirection: "row", gap: spacing.md }}>
-                {[...compareEntries].sort((a, b) => new Date(a.takenAt).getTime() - new Date(b.takenAt).getTime()).map((p, i) => (
-                  <View key={p.id} style={{ flex: 1, alignItems: "center" }}>
-                    <Image source={{ uri: p.imageData }} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }} />
-                    <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-                      {i === 0 ? "Before" : "After"} · {fmtDate(p.takenAt)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
-          ) : null}
-
-          {!compareMode && viewingPhoto ? (
-            <Card style={{ marginTop: spacing.sm }}>
-              <Image source={{ uri: viewingPhoto.imageData }} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }} />
-              <Text style={{ color: colors.textSecondary, marginTop: spacing.sm }}>{fmtDate(viewingPhoto.takenAt)}</Text>
-              <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-                <Button label="Close" variant="secondary" onPress={() => setViewingPhotoId(null)} style={{ flex: 1 }} />
-                <Button label="Delete" variant="secondary" onPress={() => onDelete(viewingPhoto)} style={{ flex: 1 }} />
-              </View>
-            </Card>
-          ) : null}
-
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.sm }}>
+      <Card style={{ gap: spacing.sm }}>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Timeline Grid</Text>
+        {items.length === 0 ? (
+          <Text style={{ color: colors.textMuted }}>No progress photos yet. Take or upload one to start your timeline.</Text>
+        ) : (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {items.map((photo) => {
-              const selected = compareMode && selectedForCompare.includes(photo.id);
+              const w = wtLabel(photo);
               return (
                 <Pressable
                   key={photo.id}
-                  onPress={() =>
-                    compareMode ? toggleCompareSelection(photo.id) : setViewingPhotoId(photo.id === viewingPhotoId ? null : photo.id)
-                  }
+                  onPress={() => setViewingPhotoId(photo.id === viewingPhotoId ? null : photo.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Photo from ${new Date(photo.takenAt).toLocaleDateString()}${w ? `, ${w}` : ""}`}
+                  style={{ width: thumb }}
                 >
                   <Image
                     source={{ uri: photo.imageData }}
                     style={{
-                      width: THUMB_SIZE,
-                      height: THUMB_SIZE,
+                      width: thumb,
+                      height: thumb * 1.15,
                       borderRadius: radius.sm,
-                      borderWidth: selected ? 2 : 0,
+                      borderWidth: photo.id === viewingPhotoId ? 2 : 0,
                       borderColor: colors.accent,
                     }}
                   />
+                  <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>{dayMonth(photo.takenAt)}</Text>
+                  {w ? <Text style={{ color: colors.textMuted, ...typography.caption }}>{w}</Text> : null}
                 </Pressable>
               );
             })}
           </View>
-        </>
-      )}
+        )}
+      </Card>
+
+      {viewing ? (
+        <Card style={{ gap: spacing.sm }}>
+          <Image source={{ uri: viewing.imageData }} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }} />
+          <Text style={{ color: colors.textSecondary }}>
+            {new Date(viewing.takenAt).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+            {wtLabel(viewing) ? ` · ${wtLabel(viewing)}` : ""}
+          </Text>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Button label="Close" variant="secondary" onPress={() => setViewingPhotoId(null)} style={{ flex: 1 }} />
+            <Button label="Delete" variant="secondary" onPress={() => onDelete(viewing)} style={{ flex: 1 }} />
+          </View>
+        </Card>
+      ) : null}
     </ScreenContainer>
   );
 }

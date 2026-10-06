@@ -16,6 +16,17 @@ export const logMeasurementSchema = z
     // schema.prisma's BodyMeasurement.bodyFatPercent comment); clearly
     // optional here too, same as onboarding.
     bodyFatPercent: z.number().positive().max(70).optional(),
+    // Full tape set (Figma Progress 04). Always cm; inches is a client display toggle.
+    neckCm: z.number().positive().max(100).optional(),
+    shouldersCm: z.number().positive().max(250).optional(),
+    bicepLeftCm: z.number().positive().max(100).optional(),
+    bicepRightCm: z.number().positive().max(100).optional(),
+    forearmLeftCm: z.number().positive().max(100).optional(),
+    forearmRightCm: z.number().positive().max(100).optional(),
+    thighLeftCm: z.number().positive().max(200).optional(),
+    thighRightCm: z.number().positive().max(200).optional(),
+    calfLeftCm: z.number().positive().max(100).optional(),
+    calfRightCm: z.number().positive().max(100).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one measurement is required" });
 

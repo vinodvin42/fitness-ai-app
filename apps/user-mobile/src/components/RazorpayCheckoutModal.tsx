@@ -6,6 +6,8 @@ import { colors } from "../theme/tokens";
 
 interface Props {
   order: RazorpayOrder | null;
+  /** Optional: opens Razorpay on this payment-method tab (checkout's own `prefill.method`). The user can still switch inside checkout. */
+  preferredMethod?: "upi" | "card" | "netbanking";
   onSuccess: (result: VerifyRazorpayPaymentInput) => void;
   onDismiss: () => void;
 }
@@ -30,8 +32,8 @@ interface Props {
  * flag on top of the order state. See src/lib/useRazorpayPurchase.ts for
  * the hook that manages this component's props end to end.
  */
-export function RazorpayCheckoutModal({ order, onSuccess, onDismiss }: Props) {
-  const html = useMemo(() => (order ? buildCheckoutHtml(order) : ""), [order]);
+export function RazorpayCheckoutModal({ order, preferredMethod, onSuccess, onDismiss }: Props) {
+  const html = useMemo(() => (order ? buildCheckoutHtml(order, preferredMethod) : ""), [order, preferredMethod]);
 
   if (!order) return null;
 
@@ -65,7 +67,7 @@ export function RazorpayCheckoutModal({ order, onSuccess, onDismiss }: Props) {
   );
 }
 
-function buildCheckoutHtml(order: RazorpayOrder): string {
+function buildCheckoutHtml(order: RazorpayOrder, preferredMethod?: "upi" | "card" | "netbanking"): string {
   const options = {
     key: order.keyId,
     amount: order.amountCents,
@@ -74,6 +76,7 @@ function buildCheckoutHtml(order: RazorpayOrder): string {
     description: order.description,
     order_id: order.orderId,
     theme: { color: colors.accent },
+    ...(preferredMethod ? { prefill: { method: preferredMethod } } : {}),
   };
 
   // Razorpay's own checkout.js reads `options` and posts the result back

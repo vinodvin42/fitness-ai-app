@@ -122,7 +122,9 @@ const envSchema = z.object({
   // (a per-resource endpoint + "deployment name" instead of a bare model
   // name, since Azure OpenAI deploys a chosen base model under a name you
   // pick yourself) and auth (`api-key` header, not `Authorization: Bearer`).
-  AI_PROVIDER: z.enum(["anthropic", "openai", "azure-openai"]).default("anthropic"),
+  // "mock" is a local-dev-only canned-reply provider (see aiClient.ts); the
+  // production guard below refuses to boot with it.
+  AI_PROVIDER: z.enum(["anthropic", "openai", "azure-openai", "mock"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().optional(),
@@ -184,6 +186,11 @@ if (!parsed.success) {
 // on its own — both go-live hardening (25 Aug 2026), both deliberately
 // refuse to boot rather than degrade quietly, matching this file's
 // existing "a misconfigured .env should never silently boot" philosophy.
+if (parsed.data.NODE_ENV === "production" && parsed.data.AI_PROVIDER === "mock") {
+  console.error("AI_PROVIDER=mock is a local-development stub and must not be used when NODE_ENV=production.");
+  process.exit(1);
+}
+
 if (parsed.data.NODE_ENV === "production" && parsed.data.CORS_ORIGINS.length === 0) {
   // Empty CORS_ORIGINS previously fell back to `origin: true` in app.ts —
   // wide open to any origin, the opposite failure mode from "blocks the

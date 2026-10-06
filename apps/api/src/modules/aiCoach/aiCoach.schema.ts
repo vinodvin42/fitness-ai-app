@@ -8,5 +8,7 @@ import { z } from "zod";
 // conversational field, not a short label.
 export const sendAiCoachMessageSchema = z.object({
   content: z.string().min(1, "Message can't be empty").max(2000, "Message is too long"),
+  // Client-generated idempotency key; resend the same value to retry a failed send without duplicating the message.
+  clientId: z.string().min(1).max(100).optional(),
 });
 export type SendAiCoachMessageInput = z.infer<typeof sendAiCoachMessageSchema>;

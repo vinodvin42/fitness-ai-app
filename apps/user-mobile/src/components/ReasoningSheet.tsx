@@ -25,6 +25,12 @@ interface ReasoningSheetProps {
   caveat?: string;
   action?: { label: string; onPress: () => void };
   title?: string;
+  /** Short lead-in line above the cards (Figma AI 04). */
+  intro?: string;
+  /** Muted helper line under the action button. */
+  footnote?: string;
+  /** Show the "x" close icon instead of the "Close" text. */
+  closeIcon?: boolean;
 }
 
 /** Reusable "Why this?" sheet for any AI recommendation that carries a rationale (Figma AI 04). */
@@ -38,11 +44,15 @@ export function ReasoningSheet({
   caveat = "AI guidance can be wrong — check it against your own logs and judgement. General wellness advice only, not medical advice.",
   action,
   title = "Why this?",
+  intro,
+  footnote,
+  closeIcon,
 }: ReasoningSheetProps) {
   const generated = generatedAt ? new Date(generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
   const allRows = [...(rows ?? []), ...(generated ? [{ label: "Generated", value: generated }] : [])];
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={title}>
+    <BottomSheet visible={visible} onClose={onClose} title={title} closeIcon={closeIcon}>
+      {intro ? <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>{intro}</Text> : null}
       <InfoCard tone="ai" title={heading} body={rationale} />
       {allRows.length > 0 ? (
         <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, gap: 10 }}>
@@ -64,6 +74,7 @@ export function ReasoningSheet({
           }}
         />
       ) : null}
+      {footnote ? <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>{footnote}</Text> : null}
     </BottomSheet>
   );
 }
