@@ -5,6 +5,8 @@ import { trackClientEvent } from "../api/analytics";
 import * as secureStore from "../lib/secureStore";
 
 type WizardState = Partial<OnboardingProfileInput> & {
+  /** Local-only: which of the 4 Figma fitness-level cards is selected ("athlete" is sent as trainingLevel "advanced"). */
+  fitnessLevelChoice?: "beginner" | "intermediate" | "advanced" | "athlete";
   goals: string[];
   allergens: string[];
   medicalConditions: string[];
@@ -163,13 +165,15 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
       await submitOnboarding({
         gender: state.gender,
         age: state.age,
+        dateOfBirth: state.dateOfBirth,
         weightKg: state.weightKg,
         heightCm: state.heightCm,
         goals: state.goals,
         trainingLevel: state.trainingLevel,
         dietType: state.dietType,
-        allergens: state.allergens,
-        medicalConditions: state.medicalConditions,
+        allergens: state.allergens.filter((a) => a !== "None"),
+        // "None" / "Prefer not to say" are answers, not conditions — never sent as medical data.
+        medicalConditions: state.medicalConditions.filter((c) => c !== "None" && c !== "Prefer not to say"),
         injuries: state.injuries,
         trainingDaysPerWeek: state.trainingDaysPerWeek,
         preferredTrainingDays: state.preferredTrainingDays,
@@ -179,6 +183,7 @@ export function OnboardingWizardProvider({ children }: { children: React.ReactNo
         waistCm: state.waistCm,
         hipsCm: state.hipsCm,
         healthDataSkipped: state.healthDataSkipped,
+        healthDataConsent: state.healthDataConsent,
       });
       await clearDraft();
     } finally {

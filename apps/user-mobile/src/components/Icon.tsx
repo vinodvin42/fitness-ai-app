@@ -60,6 +60,13 @@ import {
   Smartphone,
   Watch,
   Wind,
+  User,
+  Venus,
+  CircleX,
+  Info,
+  Users,
+  ShieldOff,
+  Leaf,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -130,6 +137,13 @@ export const ICONS = {
   smartphone: Smartphone,
   watch: Watch,
   wind: Wind,
+  user: User,
+  venus: Venus,
+  "circle-x": CircleX,
+  info: Info,
+  users: Users,
+  "shield-off": ShieldOff,
+  leaf: Leaf,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

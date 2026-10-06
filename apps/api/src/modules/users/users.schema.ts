@@ -1,4 +1,16 @@
 import { z } from "zod";
+import { ageFromDateOfBirth, parseDateOnly } from "../../lib/age";
+
+// YYYY-MM-DD, a real calendar date, not in the future, and not older than 120y.
+const dateOfBirthField = z
+  .string()
+  .refine((v) => parseDateOnly(v) !== null, "Use a real date in YYYY-MM-DD format")
+  .refine((v) => {
+    const d = parseDateOnly(v);
+    if (!d) return false;
+    const age = ageFromDateOfBirth(d);
+    return d.getTime() <= Date.now() && age <= 120;
+  }, "Date of birth is out of range");
 
 // Mirrors docs/mobile/02-information-architecture.md §1 onboarding wizard:
 // About You -> Schedule -> Goals -> Training level -> Equipment -> Food/diet
@@ -20,6 +32,8 @@ export const EQUIPMENT_CONTEXTS = [
 export const onboardingProfileSchema = z.object({
   gender: z.string().optional(),
   age: z.number().int().positive().max(120).optional(),
+  // Figma onboarding 04: when present the server derives age from it.
+  dateOfBirth: dateOfBirthField.optional(),
   weightKg: z.number().positive().optional(),
   heightCm: z.number().positive().optional(),
   goals: z.array(z.string()).default([]),
@@ -44,6 +58,9 @@ export const onboardingProfileSchema = z.object({
   // "Continue without health data" (onboarding/09). When true the server
   // ignores any medicalConditions/injuries sent and stores them empty.
   healthDataSkipped: z.boolean().optional(),
+  // Figma onboarding 08 "Health data consent" checkbox. When true the server
+  // records the health_data_processing consent as granted.
+  healthDataConsent: z.boolean().optional(),
 });
 
 export type OnboardingProfileInput = z.infer<typeof onboardingProfileSchema>;
@@ -96,6 +113,7 @@ export const editOnboardingProfileSchema = z
   .object({
     gender: z.string().optional(),
     age: z.number().int().positive().max(120).optional(),
+    dateOfBirth: dateOfBirthField.optional(),
     weightKg: z.number().positive().optional(),
     heightCm: z.number().positive().optional(),
   })
@@ -154,11 +172,12 @@ export const updateConsentSchema = z.object({
 });
 export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;
 
-// Under-18 guardian review (onboarding/11). Not verified/approved by
-// anything yet — see schema.prisma's GuardianReview comment.
+// Under-18 guardian review (onboarding/11). The app collects ONE field: the
+// guardian's email. `guardianName`/`relationship` are accepted (optional,
+// ignored for new clients) so older app builds keep working.
 export const guardianReviewSchema = z.object({
-  guardianName: z.string().trim().min(1).max(120),
   guardianEmail: z.string().trim().toLowerCase().email().max(254),
-  relationship: z.enum(["parent", "legal_guardian", "other"]),
+  guardianName: z.string().trim().min(1).max(120).optional(),
+  relationship: z.enum(["parent", "legal_guardian", "other"]).optional(),
 });
 export type GuardianReviewInput = z.infer<typeof guardianReviewSchema>;

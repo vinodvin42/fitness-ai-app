@@ -1,10 +1,12 @@
 import type { User } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { ageFromDateOfBirth, parseDateOnly } from "../../lib/age";
+import { assertGuardianCleared } from "../../lib/guardianGate";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { isEmailConfigured, sendEmail } from "../../lib/mailer";
+import { issueGuardianToken, sendGuardianReviewEmail } from "../guardianReview/guardianReview.service";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import {
   buildOtpauthUrl,
@@ -97,12 +99,24 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
  * not a second, competing measurements table bolted onto OnboardingProfile.
  */
 export async function upsertOnboardingProfile(userId: string, input: OnboardingProfileInput) {
-  const { bodyFatPercent, waistCm, hipsCm, healthDataSkipped, ...rest } = input;
+  const { bodyFatPercent, waistCm, hipsCm, healthDataSkipped, healthDataConsent, dateOfBirth: dobInput, ...rest } = input;
+  // Date of birth (Figma onboarding 04) is the source of truth for age when
+  // supplied; the legacy integer `age` is derived from it so every reader
+  // of OnboardingProfile.age keeps working.
+  const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
+  if (dateOfBirth) rest.age = ageFromDateOfBirth(dateOfBirth);
+  // "None" / "Prefer not to say" are answers, not reportable conditions (they must not raise a safety escalation).
+  rest.medicalConditions = rest.medicalConditions.filter((c) => !["none", "prefer not to say"].includes(c.trim().toLowerCase()));
+  rest.allergens = rest.allergens.filter((a) => a.trim().toLowerCase() !== "none");
+  // Gate: no health questions / profiling are accepted while a minor's
+  // guardian authorization is unverified (see lib/guardianGate.ts).
+  await assertGuardianCleared(userId, { dateOfBirth });
   // Skipped health data: store nothing for medical/injuries (never trust
   // lists sent alongside the skip flag) and record WHEN it was skipped so
   // "skipped" stays distinguishable from "answered: none".
   const profileFields = {
     ...rest,
+    ...(dateOfBirth ? { dateOfBirth } : {}),
     ...(healthDataSkipped ? { medicalConditions: [], injuries: [] } : {}),
     healthDataSkippedAt: healthDataSkipped ? new Date() : null,
   };
@@ -140,6 +154,14 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
       entityId: baseline.id,
       metadata: { source: "onboarding_baseline" },
     });
+  }
+
+  // "Health data consent" checkbox (Figma onboarding 08): consenting records
+  // the health_data_processing consent; submitting without it leaves any
+  // existing consent state untouched (conditions/injuries are only kept when
+  // the client sent them, i.e. after consent or via legacy clients).
+  if (healthDataConsent === true && !healthDataSkipped) {
+    await updateConsent(userId, { type: "health_data_processing", granted: true });
   }
 
   await recordAudit({
@@ -229,9 +251,11 @@ export async function getOnboardingProfile(userId: string) {
 export async function editOnboardingProfile(userId: string, input: EditOnboardingProfileInput) {
   await getOnboardingProfile(userId); // 404s if the profile doesn't exist yet
 
+  const { dateOfBirth: dobInput, ...fields } = input;
+  const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
   const profile = await prisma.onboardingProfile.update({
     where: { userId },
-    data: input,
+    data: { ...fields, ...(dateOfBirth ? { dateOfBirth, age: ageFromDateOfBirth(dateOfBirth) } : {}) },
   });
 
   await recordAudit({
@@ -602,19 +626,31 @@ export async function updateConsent(userId: string, input: UpdateConsentInput) {
 
 
 /**
- * Under-18 guardian review (onboarding/11). Records the guardian's contact
- * details and sends a plain-text notice (no links, no tokens) if SMTP is
- * configured. NOT implemented: guardian identity verification, an approval
- * link/endpoint, or any feature gating beyond the conservative plan prompt
- * and the Today notice — status stays `pending` until such a flow exists.
- * Re-submitting updates the same row (and resets it to pending).
+ * Under-18 guardian review (onboarding/11). Stores the guardian's email,
+ * issues a fresh single-use approval token (any previous token is
+ * invalidated) and emails the link — see modules/guardianReview. Calling
+ * this again while pending/declined is "resend" (same email) or "change
+ * email" (new email). An already-approved review is returned unchanged.
  */
 export async function submitGuardianReview(userId: string, input: GuardianReviewInput) {
   const user = await getUserById(userId);
+  const existing = await prisma.guardianReview.findUnique({ where: { userId } });
+  if (existing?.status === "approved") return toGuardianReviewDTO(existing);
+
+  const { token, tokenHash, expiresAt } = issueGuardianToken();
   const review = await prisma.guardianReview.upsert({
     where: { userId },
-    create: { userId, ...input },
-    update: { ...input, status: "pending" },
+    create: { userId, guardianEmail: input.guardianEmail, guardianName: input.guardianName, relationship: input.relationship, tokenHash, tokenExpiresAt: expiresAt, lastSentAt: new Date() },
+    update: {
+      guardianEmail: input.guardianEmail,
+      ...(input.guardianName ? { guardianName: input.guardianName } : {}),
+      ...(input.relationship ? { relationship: input.relationship } : {}),
+      status: "pending",
+      tokenHash,
+      tokenExpiresAt: expiresAt,
+      lastSentAt: new Date(),
+      decidedAt: null,
+    },
   });
 
   await recordAudit({
@@ -622,24 +658,10 @@ export async function submitGuardianReview(userId: string, input: GuardianReview
     action: "user.guardian_review_submitted",
     entityType: "GuardianReview",
     entityId: userId,
-    metadata: { relationship: input.relationship },
+    metadata: { resend: !!existing },
   });
 
-  if (isEmailConfigured()) {
-    try {
-      await sendEmail({
-        to: input.guardianEmail,
-        subject: "A young person has asked you to review their 23PrimeFit account",
-        text: `Hello ${input.guardianName},
-
-${user.fullName} listed you as their ${input.relationship.replace("_", " ")} while setting up a 23PrimeFit fitness account. Because they are under 18, their account is running with a more conservative training plan while this review is pending.
-
-No action is needed from this email; if you have concerns, reply to this message or contact our support.`,
-      });
-    } catch {
-      // Best-effort notice — never fail the submission over SMTP.
-    }
-  }
+  await sendGuardianReviewEmail({ to: input.guardianEmail, childName: user.fullName, token, expiresAt });
 
   return toGuardianReviewDTO(review);
 }
@@ -650,12 +672,24 @@ export async function getGuardianReview(userId: string) {
   return review ? toGuardianReviewDTO(review) : null;
 }
 
-function toGuardianReviewDTO(r: { guardianName: string; guardianEmail: string; relationship: string; status: string; createdAt: Date }) {
+function toGuardianReviewDTO(r: {
+  guardianName: string | null;
+  guardianEmail: string;
+  relationship: string | null;
+  status: string;
+  createdAt: Date;
+  tokenExpiresAt: Date | null;
+  lastSentAt: Date | null;
+  decidedAt: Date | null;
+}) {
   return {
-    guardianName: r.guardianName,
     guardianEmail: r.guardianEmail,
-    relationship: r.relationship,
+    ...(r.guardianName ? { guardianName: r.guardianName } : {}),
+    ...(r.relationship ? { relationship: r.relationship } : {}),
     status: r.status,
     createdAt: r.createdAt.toISOString(),
+    expiresAt: r.tokenExpiresAt ? r.tokenExpiresAt.toISOString() : null,
+    lastSentAt: r.lastSentAt ? r.lastSentAt.toISOString() : null,
+    decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
   };
 }

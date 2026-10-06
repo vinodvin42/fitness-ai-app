@@ -2,30 +2,36 @@ import React from "react";
 import { View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
-import { SelectCard } from "../../components/SelectCard";
+import { LevelCard } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { spacing } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "TrainingLevel">;
 
+// Figma "01 Onboarding / 06": four cards. The API only knows beginner |
+// intermediate | advanced, so "Athlete" is sent as "advanced" (the card
+// choice itself is kept locally in `fitnessLevelChoice`).
 const LEVELS = [
-  { value: "beginner", title: "New to training", subtitle: "Little to no structured training experience" },
-  { value: "beginner", title: "Beginner", subtitle: "Training on and off for under a year" },
-  { value: "intermediate", title: "Intermediate", subtitle: "Consistent training for 1–3 years" },
-  { value: "advanced", title: "Advanced", subtitle: "Structured training for 3+ years" },
+  { choice: "beginner", value: "beginner", title: "Beginner", tag: "1-2 training sessions / week", description: "Just starting out on wellness roadmap" },
+  { choice: "intermediate", value: "intermediate", title: "Intermediate", tag: "3-4 training sessions / week", description: "Active habits formed, comfortable standard" },
+  { choice: "advanced", value: "advanced", title: "Advanced", tag: "5-6 training sessions / week", description: "Consistent intense performance metrics" },
+  { choice: "athlete", value: "advanced", title: "Athlete", tag: "Daily progressive overload", description: "Competitive levels and high workloads" },
 ] as const;
 
-/** docs/mobile/03-screen-inventory.md §A "Setup: Training Level" — 4 experience-level cards. */
+/** docs/mobile/03-screen-inventory.md §A "Setup: Training Level" — restyled to Figma onboarding 06. */
 export function TrainingLevelScreen({ navigation }: Props) {
   const { state, update, markScreenReached } = useOnboardingWizard();
 
+  // Resumed drafts (or older builds) only have trainingLevel — fall back to it.
+  const selectedChoice = state.fitnessLevelChoice ?? state.trainingLevel;
+
   return (
     <WizardLayout
-      step={4}
-      total={8}
-      label="Training Level"
-      title="What's your experience level?"
+      step={3}
+      total={5}
+      title="Your current fitness level"
+      subtitle="Determines initial workout volume and recovery ratios"
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("Equipment");
@@ -34,13 +40,14 @@ export function TrainingLevelScreen({ navigation }: Props) {
       nextDisabled={!state.trainingLevel}
     >
       <View style={{ gap: spacing.sm }}>
-        {LEVELS.map((level, i) => (
-          <SelectCard
-            key={`${level.value}-${i}`}
+        {LEVELS.map((level) => (
+          <LevelCard
+            key={level.choice}
             title={level.title}
-            subtitle={level.subtitle}
-            selected={state.trainingLevel === level.value}
-            onPress={() => update({ trainingLevel: level.value })}
+            tag={level.tag}
+            description={level.description}
+            selected={selectedChoice === level.choice}
+            onPress={() => update({ trainingLevel: level.value, fitnessLevelChoice: level.choice })}
           />
         ))}
       </View>

@@ -165,6 +165,8 @@ export interface OnboardingProfile {
   userId: string;
   gender: string | null;
   age: number | null;
+  /** ISO timestamp (UTC midnight) of the date of birth; null for legacy rows that only have `age`. */
+  dateOfBirth?: string | null;
   weightKg: number | null;
   heightCm: number | null;
   goals: string[];
@@ -291,6 +293,8 @@ export const COMMON_COUNTRIES: Array<{ code: string; name: string }> = [
 export interface OnboardingProfileInput {
   gender?: string;
   age?: number;
+  /** YYYY-MM-DD. When present the server derives `age` from it. */
+  dateOfBirth?: string;
   weightKg?: number;
   heightCm?: number;
   goals: string[];
@@ -308,6 +312,8 @@ export interface OnboardingProfileInput {
   hipsCm?: number;
   /** "Continue without health data" — server discards medical/injury lists and stamps healthDataSkippedAt. */
   healthDataSkipped?: boolean;
+  /** "Health data consent" checkbox on Safety & Preferences — records the health_data_processing consent. */
+  healthDataConsent?: boolean;
 }
 
 /**
@@ -324,6 +330,7 @@ export interface OnboardingProfileInput {
 export interface EditOnboardingProfileInput {
   gender?: string;
   age?: number;
+  dateOfBirth?: string;
   weightKg?: number;
   heightCm?: number;
 }
@@ -4883,11 +4890,17 @@ export interface AcceptQuoteResponse {
 // nothing sets it yet.
 export type GuardianRelationship = "parent" | "legal_guardian" | "other";
 export interface GuardianReviewInput {
-  guardianName: string;
   guardianEmail: string;
-  relationship: GuardianRelationship;
+  /** Legacy (first build) — no longer collected by the app, still accepted by the API. */
+  guardianName?: string;
+  relationship?: GuardianRelationship;
 }
+/** `approved`/`declined` are set only by the guardian via the emailed link (apps/api /guardian-review/approve). */
 export interface GuardianReview extends GuardianReviewInput {
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "declined";
   createdAt: string;
+  /** When the emailed approval link expires (null once no live token exists). */
+  expiresAt?: string | null;
+  lastSentAt?: string | null;
+  decidedAt?: string | null;
 }

@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
+import { effectiveAge } from "../../lib/age";
 import { DecideRecommendationInput } from "./plans.schema";
 
 /**
@@ -279,7 +280,7 @@ export async function generatePlan(userId: string): Promise<PlanDTO> {
     injuries: profile.injuries,
     equipmentContext: profile.equipmentContext,
     healthDataSkipped: profile.healthDataSkippedAt != null,
-    age: profile.age,
+    age: effectiveAge(profile),
   });
 }
 
@@ -316,7 +317,7 @@ export async function retryPlanGeneration(userId: string, planId: string): Promi
     injuries: profile.injuries,
     equipmentContext: profile.equipmentContext,
     healthDataSkipped: profile.healthDataSkippedAt != null,
-    age: profile.age,
+    age: effectiveAge(profile),
   });
 }
 

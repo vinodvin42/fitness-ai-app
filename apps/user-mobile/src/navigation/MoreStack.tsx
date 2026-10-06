@@ -121,7 +121,7 @@ export type MoreStackParamList = {
   SettingsHub: undefined;
   LanguageSelection: undefined;
   NotificationSettings: undefined;
-  Security: undefined;
+  Security: { focus?: "delete" } | undefined;
   // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
   // PrivacySettingsScreen.tsx's own doc comment.
   PrivacySettings: undefined;

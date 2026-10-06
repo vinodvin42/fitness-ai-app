@@ -4,8 +4,7 @@ import { buildApp, prisma, uniqueEmail } from "./helpers";
 
 /**
  * "Continue without health data" (onboarding/09) and Under-18 guardian
- * review (onboarding/11). Real Postgres, no mocked Prisma. Guardian approval
- * is deliberately not implemented, so only submit/read/validation is tested.
+ * review (onboarding/11). Real Postgres, no mocked Prisma. The approval-token flow is covered in guardianReviewFlow.test.ts.
  */
 describe("Onboarding: health-data skip + guardian review", () => {
   const app = buildApp();
@@ -71,29 +70,29 @@ describe("Onboarding: health-data skip + guardian review", () => {
     const res = await request(app)
       .post("/users/me/guardian-review")
       .set("Authorization", `Bearer ${token}`)
-      .send({ guardianName: "Pat Parent", guardianEmail: "Pat@Example.com", relationship: "parent" });
+      .send({ guardianEmail: "Pat@Example.com" });
 
     expect(res.status).toBe(201);
     expect(res.body.guardianReview).toEqual(
-      expect.objectContaining({ guardianName: "Pat Parent", guardianEmail: "pat@example.com", status: "pending" }),
+      expect.objectContaining({ guardianEmail: "pat@example.com", status: "pending" }),
     );
 
     const again = await request(app)
       .post("/users/me/guardian-review")
       .set("Authorization", `Bearer ${token}`)
-      .send({ guardianName: "Pat P.", guardianEmail: "pat@example.com", relationship: "legal_guardian" });
+      .send({ guardianEmail: "pat2@example.com" });
     expect(again.status).toBe(201);
     expect(await prisma.guardianReview.count({ where: { userId } })).toBe(1);
 
     const got = await request(app).get("/users/me/guardian-review").set("Authorization", `Bearer ${token}`);
-    expect(got.body.guardianReview.relationship).toBe("legal_guardian");
+    expect(got.body.guardianReview.guardianEmail).toBe("pat2@example.com");
   });
 
   it("rejects an invalid guardian email and unauthenticated calls", async () => {
     const bad = await request(app)
       .post("/users/me/guardian-review")
       .set("Authorization", `Bearer ${token}`)
-      .send({ guardianName: "X", guardianEmail: "nope", relationship: "parent" });
+      .send({ guardianEmail: "nope" });
     expect(bad.status).toBe(400);
 
     const anon = await request(app).get("/users/me/guardian-review");

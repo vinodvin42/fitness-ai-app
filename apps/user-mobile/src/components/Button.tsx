@@ -10,6 +10,8 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  /** Primary only: when disabled, render a flat grey button with muted text (Figma wizard Continue) instead of a faded accent. */
+  mutedWhenDisabled?: boolean;
   /**
    * Overrides the screen-reader label (defaults to `label`) — use when the
    * visible text alone doesn't say what the action does, e.g. a short
@@ -29,6 +31,7 @@ export function Button({
   loading,
   disabled,
   style,
+  mutedWhenDisabled,
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
@@ -45,14 +48,19 @@ export function Button({
       style={[
         styles.base,
         isPrimary ? [styles.primary, { backgroundColor: theme.accent }] : styles.secondary,
-        (disabled || loading) && styles.disabled,
+        (disabled || loading) && (mutedWhenDisabled && isPrimary && disabled ? styles.mutedDisabled : styles.disabled),
         style,
       ]}
     >
       {loading ? (
         <ActivityIndicator color={isPrimary ? theme.textOnAccent : theme.accent} />
       ) : (
-        <Text style={[styles.label, isPrimary ? [styles.labelPrimary, { color: theme.textOnAccent }] : styles.labelSecondary]}>{label}</Text>
+        <Text
+          style={[
+            styles.label,
+            isPrimary ? [styles.labelPrimary, { color: mutedWhenDisabled && disabled ? colors.textMuted : theme.textOnAccent }] : styles.labelSecondary,
+          ]}
+        >{label}</Text>
       )}
     </Pressable>
   );
@@ -78,6 +86,9 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.45,
+  },
+  mutedDisabled: {
+    backgroundColor: colors.surfaceHigh,
   },
   label: {
     fontFamily: fonts.displayBold,

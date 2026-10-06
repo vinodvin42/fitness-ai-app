@@ -26,11 +26,10 @@ export function GoalsScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={3}
-      total={8}
-      label="Goals"
+      step={2}
+      total={5}
       title="What are your goals?"
-      subtitle="Select as many as apply — you can change these later."
+      subtitle="Select all that apply to fine-tune your tracking dashboards."
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("TrainingLevel");
@@ -38,12 +37,13 @@ export function GoalsScreen({ navigation }: Props) {
       }}
       nextDisabled={state.goals.length === 0}
     >
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
         {GOALS.map((goal) => (
           <Chip
             key={goal}
             label={goal}
             selected={state.goals.includes(goal)}
+            showCheck
             onPress={() => toggleListValue("goals", goal)}
           />
         ))}

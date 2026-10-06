@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Button } from "../../components/Button";
-import { Icon } from "../../components/Icon";
-import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
+import { BrandMark } from "../../components/BrandMark";
+import { colors, layout, spacing, typography } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import { clearStoredResetPasswordToken, getStoredResetPasswordToken } from "../../lib/resetPasswordLink";
 
@@ -31,7 +31,7 @@ export function SplashScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.mark}>
-          <Icon name="zap" size={40} color={colors.textOnAccent} strokeWidth={2.5} />
+          <BrandMark size={88} />
         </View>
         <Text style={styles.logo}>23PrimeFit</Text>
         <Text style={styles.tagline}>Your complete wellness operating system</Text>
@@ -39,7 +39,16 @@ export function SplashScreen({ navigation }: Props) {
 
       <View style={styles.actions}>
         <Button label="Get Started" onPress={() => navigation.navigate("Signup")} />
-        <Button label="Sign In" variant="secondary" onPress={() => navigation.navigate("Login")} />
+        <Pressable
+          onPress={() => navigation.navigate("Login")}
+          accessibilityRole="button"
+          accessibilityLabel="I have an account. Sign In"
+          style={styles.signInLink}
+        >
+          <Text style={styles.signInText}>
+            I have an account. <Text style={styles.signInAccent}>Sign In</Text>
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -54,15 +63,10 @@ const column = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: "space-between" },
   content: { ...column, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: layout.screenPadding, gap: spacing.sm },
-  mark: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.md,
-  },
+  mark: { marginBottom: spacing.md },
+  signInLink: { alignItems: "center", paddingVertical: spacing.sm },
+  signInText: { ...typography.body, fontSize: 12, color: colors.textSecondary },
+  signInAccent: { color: colors.accent, fontWeight: "600" },
   logo: { ...typography.display, color: colors.textPrimary },
   tagline: { ...typography.body, color: colors.textSecondary, textAlign: "center" },
   actions: { ...column, paddingHorizontal: layout.screenPadding, paddingBottom: spacing.xl, gap: spacing.sm },

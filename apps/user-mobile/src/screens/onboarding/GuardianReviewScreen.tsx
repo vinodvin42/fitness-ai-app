@@ -1,94 +1,163 @@
-import React, { useState } from "react";
-import { Alert, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, Text } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { GuardianRelationship } from "@fitness-ai-app/types";
-import { WizardLayout } from "../../components/WizardLayout";
+import { StateLayout, InfoCard } from "../../components/StatePanels";
 import { TextField } from "../../components/TextField";
-import { Chip } from "../../components/Chip";
-import { InfoCard } from "../../components/StatePanels";
-import { submitGuardianReview } from "../../api/users";
+import { fetchGuardianReview, submitGuardianReview } from "../../api/users";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { extractErrorMessage } from "../../lib/apiError";
-import { spacing } from "../../theme/tokens";
+import { colors, fonts, spacing } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "GuardianReview">;
 
-const RELATIONSHIPS: Array<{ value: GuardianRelationship; label: string }> = [
-  { value: "parent", label: "Parent" },
-  { value: "legal_guardian", label: "Legal guardian" },
-  { value: "other", label: "Other" },
-];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const POLL_MS = 5000;
 
 /**
- * Onboarding 11 "Under-18 guardian review" — shown after About You when
- * age < 18 (built from the task description; Figma MCP unavailable).
- * Submits POST /users/me/guardian-review then lets the user continue
- * (restrict, don't dead-end). Not implemented: guardian verification or an
- * approval link — the review stays "pending"; see apps/api users.service.ts.
+ * Figma "01 Onboarding / 11 Guardian review is required" — a real gate, shown
+ * after About You when the date of birth says under 18. The only data
+ * collected is the guardian's email. Submitting makes the API email the
+ * guardian a single-use, expiring approval link; until they approve, the
+ * wizard does NOT proceed (no health questions, profiling or plan
+ * generation — also enforced server-side with 403 guardian_authorization_
+ * pending). This screen then waits, polling GET /users/me/guardian-review,
+ * and continues automatically once approved. Resend / Change email are
+ * available while waiting.
  */
 export function GuardianReviewScreen({ navigation }: Props) {
   const { markScreenReached } = useOnboardingWizard();
-  const [name, setName] = useState("");
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
-  const [relationship, setRelationship] = useState<GuardianRelationship>("parent");
   const [touched, setTouched] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const { data: review, isLoading } = useQuery({
+    queryKey: ["users", "guardian-review"],
+    queryFn: fetchGuardianReview,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? POLL_MS : false),
+  });
+
+  const submit = useMutation({
+    mutationFn: (guardianEmail: string) => submitGuardianReview({ guardianEmail }),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(["users", "guardian-review"], saved);
+      setEditing(false);
+    },
+    onError: (err) => Alert.alert("Couldn't contact your guardian", extractErrorMessage(err, "Check your connection and try again.")),
+  });
+
+  // Approved (here, or earlier in a previous session): the gate is cleared, carry on.
+  useEffect(() => {
+    if (review?.status === "approved") {
+      markScreenReached("Schedule");
+      navigation.replace("Schedule");
+    }
+  }, [review?.status, markScreenReached, navigation]);
+
+  useEffect(() => {
+    if (review?.guardianEmail && !email) setEmail(review.guardianEmail);
+  }, [review?.guardianEmail]);
 
   const emailError = touched && !EMAIL_RE.test(email.trim()) ? "Enter a valid email address" : null;
-  const nameError = touched && !name.trim() ? "Enter your guardian's name" : null;
 
-  const onNext = async () => {
+  const onSubmit = () => {
     setTouched(true);
-    if (!name.trim() || !EMAIL_RE.test(email.trim())) return;
-    setBusy(true);
-    try {
-      await submitGuardianReview({ guardianName: name.trim(), guardianEmail: email.trim(), relationship });
-      markScreenReached("Schedule");
-      navigation.navigate("Schedule");
-    } catch (err) {
-      Alert.alert("Couldn't save guardian details", extractErrorMessage(err, "Check your connection and try again."));
-    } finally {
-      setBusy(false);
-    }
+    if (!EMAIL_RE.test(email.trim())) return;
+    submit.mutate(email.trim());
   };
 
-  return (
-    <WizardLayout
-      step={1}
-      total={8}
-      label="Guardian review"
-      title="A parent or guardian needs to review"
-      subtitle="Because you're under 18, your account needs a parent or guardian review."
-      onBack={() => navigation.goBack()}
-      onNext={onNext}
-      nextLabel="Send & continue"
-      nextLoading={busy}
-    >
-      <View style={{ gap: spacing.md }}>
+  const waiting = review?.status === "pending" && !editing;
+  const declined = review?.status === "declined" && !editing;
+
+  if (isLoading) {
+    return (
+      <StateLayout
+        showBrand
+        flowLabel="Consent / Age check"
+        flowIcon="users"
+        title="Guardian review is required"
+        description="Checking your guardian review status..."
+        onBack={() => navigation.goBack()}
+        actions={[]}
+      />
+    );
+  }
+
+  if (waiting && review) {
+    return (
+      <StateLayout
+        showBrand
+        flowLabel="Consent / Age check"
+        flowIcon="users"
+        title="Waiting for your guardian"
+        description={`We emailed ${review.guardianEmail}. Setup continues automatically as soon as they approve. The link works once and expires in 7 days.`}
+        onBack={() => navigation.goBack()}
+        footnote="Contact details alone do not count as authorization."
+        actions={[
+          { label: "Resend email", onPress: () => submit.mutate(review.guardianEmail), loading: submit.isPending },
+          { label: "Change email", variant: "secondary", onPress: () => setEditing(true) },
+        ]}
+      >
         <InfoCard
           tone="accent"
-          title="You can keep going"
-          body="While the review is pending you can finish setup. Your plan will use a more conservative, age-appropriate approach, and a reminder will show on Today."
+          title="Setup paused · Authorization not verified"
+          body="No health questions, fitness profiling, personalized plans or analysis will run while authorization is pending. Please don't send medical details."
         />
-        <TextField label="Guardian's full name" value={name} onChangeText={setName} error={nameError} autoCapitalize="words" />
-        <TextField
-          label="Guardian's email"
-          value={email}
-          onChangeText={setEmail}
-          error={emailError}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          helper="We'll send them a short notice. It contains no links."
+        <InfoCard
+          title="What happens next"
+          body="Your guardian will be asked to review the request and complete the authorization process. You can resume eligible setup only after that authorization is verified. This screen does not verify identity or establish legal compliance."
         />
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
-          {RELATIONSHIPS.map((r) => (
-            <Chip key={r.value} label={r.label} selected={relationship === r.value} onPress={() => setRelationship(r.value)} />
-          ))}
-        </View>
-      </View>
-    </WizardLayout>
+      </StateLayout>
+    );
+  }
+
+  return (
+    <StateLayout
+      showBrand
+      flowLabel="Consent / Age check"
+      flowIcon="users"
+      title="Guardian review is required"
+      description="Your age check indicates you're under 18. We need verified guardian authorization before any fitness or health-data processing begins."
+      onBack={() => navigation.goBack()}
+      footnote="Contact details alone do not count as authorization."
+      actions={[
+        { label: "Continue to guardian review", onPress: onSubmit, loading: submit.isPending },
+        { label: "Go back to age check", variant: "secondary", onPress: () => navigation.goBack() },
+      ]}
+    >
+      {declined ? (
+        <InfoCard
+          tone="danger"
+          title="Your guardian declined"
+          body="Health questions and personalized plans stay off. If this was a mistake, enter an email and send a new request."
+        />
+      ) : (
+        <InfoCard
+          tone="accent"
+          title="Setup paused · Authorization not verified"
+          body="No health questions, fitness profiling, personalized plans or analysis will run while authorization is pending. Please don't send medical details."
+        />
+      )}
+      <TextField
+        label="Guardian email address"
+        value={email}
+        onChangeText={setEmail}
+        error={emailError}
+        placeholder="Enter guardian's email"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        textContentType="emailAddress"
+      />
+      <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginTop: -spacing.xs }}>
+        Only one contact address is requested at this step so we can arrange guardian review. Ask your guardian before entering their email.
+      </Text>
+      <InfoCard
+        title="What happens next"
+        body="Your guardian will be asked to review the request and complete the authorization process. You can resume eligible setup only after that authorization is verified. This screen does not verify identity or establish legal compliance."
+      />
+    </StateLayout>
   );
 }

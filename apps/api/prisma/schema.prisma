@@ -441,6 +441,9 @@ model OnboardingProfile {
   user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   gender                String?
   age                   Int?
+  // Date of birth (Figma onboarding 04). Nullable: legacy rows only have `age`.
+  // When present, age is derived from it (see lib/age.ts).
+  dateOfBirth           DateTime?
   weightKg              Float?
   heightCm              Float?
   goals                 String[]       @default([])
@@ -3872,23 +3875,30 @@ model QuoteRequest {
 enum GuardianReviewStatus {
   pending
   approved
+  declined
 }
 
-// Under-18 guardian review (onboarding/11). One row per user. NOT
-// implemented: guardian identity verification and any approval flow —
-// `approved` is a reserved status that nothing sets yet (no tokenised
-// approval link exists), so a review stays `pending` until a human/admin
-// process is built. While pending, the plan generator uses its
-// conservative (minor) path.
+// Under-18 guardian review (onboarding/11). One row per user. The only
+// field the app collects is the guardian's email; the API emails that
+// address a single-use, expiring link (to GET /guardian-review/approve)
+// whose token is stored here as a SHA-256 hash only. While `pending` (or
+// `declined`) the server refuses health-data submission and plan/
+// recommendation/meal-plan generation (403 guardian_authorization_pending).
+// `guardianName`/`relationship` are legacy columns from the first build,
+// kept nullable for backwards compatibility.
 model GuardianReview {
-  userId        String               @id
-  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guardianName  String
-  guardianEmail String
-  relationship  String
-  status        GuardianReviewStatus @default(pending)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  userId         String               @id
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guardianName   String?
+  guardianEmail  String
+  relationship   String?
+  status         GuardianReviewStatus @default(pending)
+  tokenHash      String?              @unique
+  tokenExpiresAt DateTime?
+  lastSentAt     DateTime?
+  decidedAt      DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   @@map("guardian_reviews")
 }

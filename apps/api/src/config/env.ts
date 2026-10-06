@@ -160,6 +160,9 @@ const envSchema = z.object({
   // (SendGrid, Postmark, SES, a plain Gmail/Workspace relay, etc. all
   // speak SMTP), same reasoning as AI_PROVIDER supporting multiple
   // providers rather than hardcoding one.
+  // Public base URL of this API, used to build guardian-approval links in
+  // emails (e.g. https://api.example.com). Falls back to http://localhost:PORT.
+  PUBLIC_API_URL: z.string().url().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),

@@ -80,9 +80,9 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={8}
-      total={8}
-      label="Review"
+      step={5}
+      total={5}
+      caption="Review"
       title="Review your assessment"
       subtitle="Check your answers before we build your plan."
       onBack={() => navigation.goBack()}

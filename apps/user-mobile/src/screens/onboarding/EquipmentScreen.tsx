@@ -30,9 +30,10 @@ export function EquipmentScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={5}
-      total={8}
-      label="Equipment"
+      step={3}
+      total={5}
+      progress={0.7}
+      caption="Optional · Equipment"
       title="What do you have access to?"
       subtitle="This helps us steer clear of programs that need equipment you don't have."
       onBack={() => navigation.goBack()}

@@ -99,3 +99,24 @@ export const barcodeRateLimit = rateLimit({
   keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
   message: { error: { code: "too_many_requests", message: "Too many barcode scans — try again in a few minutes" } },
 });
+
+// Guardian review (onboarding/11): the minor's submit/resend is keyed by user
+// (5 per 15 min — each call emails a third party), and the public approval
+// page/decision endpoints are keyed by IP (token guessing is infeasible at
+// 256 bits, this just bounds abuse).
+export const guardianSubmitRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
+  message: { error: { code: "too_many_requests", message: "Too many guardian emails requested — try again in a few minutes" } },
+});
+
+export const guardianPublicRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: "too_many_requests", message: "Too many requests — try again in a few minutes" } },
+});

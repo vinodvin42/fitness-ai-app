@@ -223,14 +223,18 @@ export function TodayScreen({ navigation }: Props) {
           gap: 20,
         }}
       >
-        {guardianReview?.status === "pending" ? (
+        {guardianReview && guardianReview.status !== "approved" ? (
           <View
             accessibilityRole="alert"
             style={{ backgroundColor: colors.surface, borderColor: colors.warning, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 4 }}
           >
-            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Guardian review pending</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>
+              {guardianReview.status === "declined" ? "Guardian declined authorization" : "Guardian authorization pending"}
+            </Text>
             <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>
-              A parent or guardian review is still pending, so your plan stays conservative for now.
+              {guardianReview.status === "declined"
+                ? "Personalized plans, health questions and analysis stay off. Contact support if this was a mistake."
+                : "Personalized plans, health questions and analysis stay off until your guardian approves the request we emailed them."}
             </Text>
           </View>
         ) : null}

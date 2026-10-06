@@ -1,14 +1,18 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StepProgressBar } from "./StepProgressBar";
 import { Button } from "./Button";
-import { colors, layout, spacing, typography } from "../theme/tokens";
+import { Icon } from "./Icon";
+import { colors, layout, radius, spacing, typography } from "../theme/tokens";
 
 interface WizardLayoutProps {
   step: number;
   total: number;
-  label: string;
+  /** Overrides the "Step N of M" caption (used by the optional extra steps). */
+  caption?: string;
+  /** Overrides the progress-bar fill (0-1). */
+  progress?: number;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -17,18 +21,20 @@ interface WizardLayoutProps {
   nextLabel?: string;
   nextDisabled?: boolean;
   nextLoading?: boolean;
+  /** Hide the pinned footer button (the screen renders its own inside the scroll content). */
+  hideFooter?: boolean;
 }
 
 /**
- * Shared shell for the 5-step Setup wizard — docs/mobile/03-screen-inventory.md
- * §A describes this as "A linear, no-back-nav-bar flow with a 5-step
- * progress indicator from step 3 onward"; applied consistently from step 1
- * here since every step benefits from knowing where it sits in the flow.
+ * Shared shell for the Setup wizard — Figma "01 Onboarding" frames 04-08:
+ * thin progress bar + "Step N of M", a small square back chip, a large title
+ * with a muted subtitle, then content and a single full-width Continue button.
  */
 export function WizardLayout({
   step,
   total,
-  label,
+  caption,
+  progress,
   title,
   subtitle,
   children,
@@ -37,27 +43,36 @@ export function WizardLayout({
   nextLabel = "Continue",
   nextDisabled,
   nextLoading,
+  hideFooter,
 }: WizardLayoutProps) {
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <StepProgressBar step={step} total={total} label={label} />
-        <Text style={styles.title}>{title}</Text>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <StepProgressBar step={step} total={total} caption={caption} progress={progress} />
+        {onBack ? (
+          <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" style={styles.backChip}>
+            <Icon name="chevron-left" size={16} color={colors.textPrimary} />
+          </Pressable>
+        ) : null}
+        <Text accessibilityRole="header" style={styles.title}>
+          {title}
+        </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      </View>
+        <View style={styles.body}>{children}</View>
+      </ScrollView>
 
-      <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
-
-      <View style={styles.footer}>
-        {onBack ? <Button label="Back" variant="secondary" onPress={onBack} style={styles.backButton} /> : null}
-        <Button
-          label={nextLabel}
-          onPress={onNext}
-          disabled={nextDisabled}
-          loading={nextLoading}
-          style={styles.nextButton}
-        />
-      </View>
+      {hideFooter ? null : (
+        <View style={styles.footer}>
+          <Button
+            label={nextLabel}
+            onPress={onNext}
+            disabled={nextDisabled}
+            loading={nextLoading}
+            mutedWhenDisabled
+            style={styles.nextButton}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -70,19 +85,21 @@ const column = {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md },
-  title: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.sm },
-  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
-  content: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.sm },
-  footer: {
-    ...column,
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  content: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  backChip: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.sm,
   },
-  backButton: { flex: 1 },
-  nextButton: { flex: 2 },
+  title: { ...typography.h1, fontSize: 24, color: colors.textPrimary, marginTop: spacing.md },
+  subtitle: { ...typography.body, fontSize: 13, lineHeight: 19, color: colors.textSecondary, marginTop: 6 },
+  body: { marginTop: spacing.md, gap: spacing.sm },
+  footer: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  nextButton: { width: "100%", borderRadius: radius.md },
 });

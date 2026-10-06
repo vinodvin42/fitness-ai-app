@@ -89,7 +89,9 @@ function formatDate(iso: string) {
  * the native share sheet rather than saving a file — no file-export
  * library is wired up this pass.
  */
-export function SecurityScreen({ navigation: _navigation }: Props) {
+export function SecurityScreen({ navigation: _navigation, route }: Props) {
+  // Arriving from Consent withdrawn ("Manage account deletion"): show the Delete Account section first.
+  const deleteFirst = route.params?.focus === "delete";
   const {
     user,
     refreshUser,
@@ -314,8 +316,34 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
     );
   };
 
+  const deleteCard = (
+      <Card style={{ marginTop: deleteFirst ? 0 : spacing.md, borderColor: colors.danger }}>
+        <Text style={{ color: colors.danger, ...typography.h2, marginBottom: spacing.sm }}>Delete Account</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
+          Permanently deletes your account and everything in it. Enter your password to confirm.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={colors.textMuted}
+          secureTextEntry
+          value={deletePassword}
+          onChangeText={setDeletePassword}
+        />
+        <Button
+          label="Delete Account"
+          variant="secondary"
+          onPress={onDeleteAccount}
+          loading={isDeleting}
+          disabled={!deletePassword}
+          style={{ marginTop: spacing.md, borderColor: colors.danger }}
+        />
+      </Card>
+  );
+
   return (
     <ScreenContainer title="Security & Privacy">
+      {deleteFirst ? deleteCard : null}
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Change Password</Text>
         <TextInput
@@ -529,28 +557,7 @@ export function SecurityScreen({ navigation: _navigation }: Props) {
         <Button label="Download My Data" variant="secondary" onPress={onDownloadData} loading={isExporting} />
       </Card>
 
-      <Card style={{ marginTop: spacing.md, borderColor: colors.danger }}>
-        <Text style={{ color: colors.danger, ...typography.h2, marginBottom: spacing.sm }}>Delete Account</Text>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-          Permanently deletes your account and everything in it. Enter your password to confirm.
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry
-          value={deletePassword}
-          onChangeText={setDeletePassword}
-        />
-        <Button
-          label="Delete Account"
-          variant="secondary"
-          onPress={onDeleteAccount}
-          loading={isDeleting}
-          disabled={!deletePassword}
-          style={{ marginTop: spacing.md, borderColor: colors.danger }}
-        />
-      </Card>
+      {!deleteFirst ? deleteCard : null}
     </ScreenContainer>
   );
 }

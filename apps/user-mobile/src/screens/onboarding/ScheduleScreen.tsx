@@ -36,9 +36,10 @@ export function ScheduleScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={2}
-      total={8}
-      label="Schedule"
+      step={1}
+      total={5}
+      progress={0.3}
+      caption="Optional · Availability"
       title="When can you train?"
       subtitle="A rough idea helps us understand your availability — this doesn't lock you into a fixed schedule."
       onBack={() => navigation.goBack()}

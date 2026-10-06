@@ -4,12 +4,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon, IconName } from "./Icon";
 import { colors, layout, radius, spacing, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
+import { BrandMark } from "./BrandMark";
 
-export type PanelTone = "neutral" | "accent" | "ai" | "danger";
+export type PanelTone = "neutral" | "accent" | "ai" | "danger" | "warning";
 
 interface InfoCardProps {
   title: string;
-  body: string;
+  /** One paragraph, or several (rendered as separate paragraphs). */
+  body: string | string[];
   tone?: PanelTone;
   style?: StyleProp<ViewStyle>;
 }
@@ -22,6 +24,7 @@ export function InfoCard({ title, body, tone = "neutral", style }: InfoCardProps
     accent: { bg: colors.infoSurface, border: colors.infoBorder, title: theme.accent },
     ai: { bg: colors.aiSurface, border: colors.aiBorder, title: colors.aiAccent },
     danger: { bg: colors.surface, border: colors.danger, title: colors.danger },
+    warning: { bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.35)", title: colors.warning },
   }[tone];
   return (
     <View
@@ -31,7 +34,11 @@ export function InfoCard({ title, body, tone = "neutral", style }: InfoCardProps
       ]}
     >
       <Text style={{ color: palette.title, ...typography.h3, fontSize: 14 }}>{title}</Text>
-      <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>{body}</Text>
+      {(Array.isArray(body) ? body : [body]).map((paragraph, i) => (
+        <Text key={i} style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
+          {paragraph}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -56,6 +63,8 @@ interface StateLayoutProps {
   footnote?: string;
   actions: StateAction[];
   onBack?: () => void;
+  /** Show the logo + brand name at the top right (Figma onboarding consent frames). */
+  showBrand?: boolean;
 }
 
 /**
@@ -63,7 +72,7 @@ interface StateLayoutProps {
  * Fuel 09/10, Settings 13) and AI unavailable (AI 02): back chip, flow label,
  * big title, description, detail cards, then pinned primary/secondary actions.
  */
-export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, description, children, footnote, actions, onBack }: StateLayoutProps) {
+export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, description, children, footnote, actions, onBack, showBrand }: StateLayoutProps) {
   const { colors: theme } = useTheme();
   const tint = flowTone === "ai" ? colors.aiAccent : theme.accent;
   return (
@@ -79,25 +88,28 @@ export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, d
           gap: 18,
         }}
       >
-        {onBack ? (
-          <Pressable
-            onPress={onBack}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Icon name="chevron-left" size={18} color={colors.textPrimary} />
-          </Pressable>
-        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          {onBack ? (
+            <Pressable
+              onPress={onBack}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name="chevron-left" size={18} color={colors.textPrimary} />
+            </Pressable>
+          ) : null}
+          {showBrand ? <BrandMark withName /> : null}
+        </View>
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Icon name={flowIcon} size={18} color={tint} />

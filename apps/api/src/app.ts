@@ -20,6 +20,7 @@ import { paymentsRouter, razorpayWebhookHandler } from "./modules/payments/payme
 import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
+import { guardianReviewRouter } from "./modules/guardianReview/guardianReview.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { mealPlansRouter } from "./modules/mealPlans/mealPlans.routes";
 import { analyticsEventsRouter } from "./modules/analyticsEvents/analyticsEvents.routes";
@@ -133,6 +134,7 @@ export function createApp() {
 
   app.use("/auth", authRouter);
   app.use("/users", usersRouter);
+  app.use("/", guardianReviewRouter);
   // programPurchasesRouter must be mounted before programsRouter: its
   // GET /programs/mine would otherwise be swallowed by programsRouter's
   // GET /programs/:id (Express matches "mine" as the :id param).

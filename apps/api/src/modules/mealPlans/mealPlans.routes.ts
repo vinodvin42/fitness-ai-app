@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { writeRateLimit } from "../../middleware/rateLimit";
+import { requireGuardianCleared } from "../../middleware/guardianGate";
 import * as mealPlansService from "./mealPlans.service";
 
 export const mealPlansRouter = Router();
@@ -11,7 +12,7 @@ export const mealPlansRouter = Router();
 // plans.routes.ts mounting its own endpoints at the router root rather
 // than nesting under a prefix.
 
-mealPlansRouter.post("/nutrition/meal-plans/generate", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+mealPlansRouter.post("/nutrition/meal-plans/generate", requireAuth, requireGuardianCleared, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     res.status(201).json(await mealPlansService.generateMealPlan(req.userId!));
   } catch (err) {

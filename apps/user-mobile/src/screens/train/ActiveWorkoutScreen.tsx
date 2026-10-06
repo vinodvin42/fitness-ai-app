@@ -361,7 +361,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         <StepProgressBar
           step={exerciseIndex + 1}
           total={orderedExercises.length}
-          label={currentExercise ? phaseLabel(currentExercise.phase) : ""}
+          caption={`Step ${exerciseIndex + 1} of ${orderedExercises.length}${currentExercise ? ` — ${phaseLabel(currentExercise.phase)}` : ""}`}
+          showBrand={false}
         />
         {wasResumed ? (
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
