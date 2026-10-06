@@ -1,9 +1,8 @@
 import React from "react";
 import type { ActivityKind } from "@fitness-ai-app/types";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TrainScreen } from "../screens/train/TrainScreen";
+import { ProgramsMarketplaceScreen, TrainScreen } from "../screens/train/TrainScreen";
 import { ProgramDetailScreen } from "../screens/train/ProgramDetailScreen";
-import { ProgramsMarketplaceScreen } from "../screens/train/ProgramsMarketplaceScreen";
 import { WorkoutDetailScreen } from "../screens/train/WorkoutDetailScreen";
 import { ActiveWorkoutScreen } from "../screens/train/ActiveWorkoutScreen";
 import { SetRestTrackerScreen } from "../screens/train/SetRestTrackerScreen";
@@ -18,6 +17,7 @@ import { ExerciseSwapScreen } from "../screens/train/ExerciseSwapScreen";
 import { TrainingAnalyticsScreen } from "../screens/train/TrainingAnalyticsScreen";
 import { RoutinesScreen } from "../screens/train/RoutinesScreen";
 import { RoutineEditorScreen } from "../screens/train/RoutineEditorScreen";
+import { RemindersRoutinesScreen } from "../screens/train/RemindersRoutinesScreen";
 import { WorkoutSettingsScreen } from "../screens/train/WorkoutSettingsScreen";
 import { ActivityTrackerScreen } from "../screens/train/ActivityTrackerScreen";
 import { ActivityDetailScreen } from "../screens/train/ActivityDetailScreen";
@@ -63,6 +63,8 @@ export type TrainStackParamList = {
   TrainingAnalytics: undefined;
   Routines: undefined;
   RoutineEditor: { routineId?: string };
+  // Train 13 - unified reminders + medicine doses + saved routines.
+  RemindersRoutines: undefined;
   WorkoutSettings: undefined;
   ActivityTracker: { kind: ActivityKind };
   ActivityDetail: { activityId: string };
@@ -92,6 +94,7 @@ export function TrainStack() {
       <Stack.Screen name="TrainingAnalytics" component={TrainingAnalyticsScreen} />
       <Stack.Screen name="Routines" component={RoutinesScreen} />
       <Stack.Screen name="RoutineEditor" component={RoutineEditorScreen} />
+      <Stack.Screen name="RemindersRoutines" component={RemindersRoutinesScreen} />
       <Stack.Screen name="WorkoutSettings" component={WorkoutSettingsScreen} />
       <Stack.Screen name="ActivityTracker" component={ActivityTrackerScreen} />
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />

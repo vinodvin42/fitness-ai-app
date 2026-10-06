@@ -18,8 +18,25 @@ import { hasAccess } from "../programPurchases/programPurchases.service";
 // risks breaking access to something a user already has rather than
 // controlling first discovery of it.
 
-export function listPrograms() {
-  return prisma.program.findMany({ where: { status: "published", ownerUserId: null }, orderBy: { createdAt: "desc" } });
+// Catalog cards (Figma Train 02) show a workout count and a level tag. Both are
+// derived from the program's real workouts, no new columns: `level` is the
+// highest workout intensity in the program (null when it has no workouts).
+const LEVEL_RANK = { beginner: 0, intermediate: 1, advanced: 2 } as const;
+
+export async function listPrograms() {
+  const programs = await prisma.program.findMany({
+    where: { status: "published", ownerUserId: null },
+    orderBy: { createdAt: "desc" },
+    include: { workouts: { select: { intensity: true } } },
+  });
+  return programs.map(({ workouts, ...program }) => ({
+    ...program,
+    workoutCount: workouts.length,
+    level: workouts.reduce<keyof typeof LEVEL_RANK | null>(
+      (top, w) => (top === null || LEVEL_RANK[w.intensity] > LEVEL_RANK[top] ? w.intensity : top),
+      null,
+    ),
+  }));
 }
 
 // `purchased` (Phase 3, §I Programs Commerce) tells the client whether this

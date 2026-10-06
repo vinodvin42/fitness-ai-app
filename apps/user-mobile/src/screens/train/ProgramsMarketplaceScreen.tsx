@@ -1,164 +1,270 @@
 import React, { useMemo, useState } from "react";
-import { FlatList, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { Program, ProgramType } from "@fitness-ai-app/types";
-import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
-import { Icon } from "../../components/Icon";
-import { Chip } from "../../components/Chip";
-import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
+import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
 import { fetchPrograms } from "../../api/programs";
+import { fetchMyPrograms } from "../../api/programPurchases";
+import { fetchNextWorkout } from "../../api/plans";
+import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
-type Props = NativeStackScreenProps<TrainStackParamList, "ProgramsMarketplace">;
-
-const ALL_TYPE = "All";
-const PRICE_ALL = "All";
-const PRICE_FREE = "Free";
-const PRICE_PAID = "Paid";
-
-const TYPE_LABELS: Record<ProgramType, string> = {
-  fitness: "Fitness",
-  nutrition: "Nutrition",
-  combined: "Combined",
+const ALL = "All";
+const FREE = "Free";
+const PAID = "Paid";
+const LEVELS = ["beginner", "intermediate", "advanced"] as const;
+const LEVEL_LABEL: Record<(typeof LEVELS)[number], string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
 };
+const TYPE_LABELS: Record<ProgramType, string> = { fitness: "Fitness", nutrition: "Nutrition", combined: "Combined" };
+
+function formatPrice(priceCents: number): string {
+  return priceCents === 0 ? "Free" : `₹${Math.round(priceCents / 100).toLocaleString("en-IN")}`;
+}
+
+/** Small outlined filter chip used by the two filter rows (Figma Train 02). */
+function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const { colors: theme } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      style={{
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: selected ? theme.accent : colors.border,
+        backgroundColor: selected ? theme.accent : colors.surface,
+      }}
+    >
+      <Text style={{ color: selected ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Tag({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "accent" }) {
+  const { colors: theme } = useTheme();
+  return (
+    <View
+      style={{
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: tone === "accent" ? theme.accent : colors.borderStrong,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+      }}
+    >
+      <Text style={{ color: tone === "accent" ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 10 }}>{label}</Text>
+    </View>
+  );
+}
+
+interface CatalogProps {
+  navigation: NativeStackNavigationProp<TrainStackParamList>;
+}
 
 /**
- * Programs Marketplace (trn-02) — docs/mobile/03-screen-inventory.md §C.
- * Added 22 Sep 2026 to close the gap flagged in TrainStack's own doc comment:
- * before this screen, the only way to see a Program was via Train
- * Dashboard's own inline list (unfiltered, unsearchable) or a Plan
- * recommendation — there was no dedicated "browse the full catalog" screen.
- * Reuses the same `GET /programs` the Train Dashboard already calls (no new
- * endpoint — the existing one already returns every published Program) and
- * filters client-side, mirroring ExerciseLibraryScreen's own search/filter
- * pattern. Filters by `Program.type` and free/paid (`priceCents`) — the
- * real schema fields. `Difficulty` is intentionally not a filter here: it's
- * an `Exercise`/`Workout` field, not a `Program` field, so there's nothing
- * real to filter by at the program level. Tapping a card pushes the
- * existing Program Detail screen — this screen does no purchase/entitlement
- * work of its own.
+ * Programs tab body (Figma Train 02): type/level filter chips, a featured
+ * card, the "Explore Programs" two-column grid and the AI footer. The
+ * featured card and footer only appear when the user has a real active
+ * plan; the grid reads the same `GET /programs` as before (now with
+ * `workoutCount`/`level`) and filters client-side. Prices and the Buy flow
+ * live on Program Detail (Razorpay), cards only navigate there.
  */
-export function ProgramsMarketplaceScreen({ navigation }: Props) {
-  const { data: programs, isLoading, isError, refetch } = useQuery({
-    queryKey: ["programs"],
-    queryFn: fetchPrograms,
-  });
+export function ProgramsCatalog({ navigation }: CatalogProps) {
+  const { colors: theme } = useTheme();
+  const { data: programs, isLoading, isError, refetch } = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
+  const myPrograms = useQuery({ queryKey: ["programs", "mine"], queryFn: fetchMyPrograms });
+  const nextWorkout = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout });
 
-  const [query, setQuery] = useState("");
-  const [type, setType] = useState<string>(ALL_TYPE);
-  const [price, setPrice] = useState<string>(PRICE_ALL);
+  const [kind, setKind] = useState<string>(ALL);
+  const [level, setLevel] = useState<string>(ALL);
 
-  const typeOptions = useMemo(() => {
-    const set = new Set((programs ?? []).map((p) => p.type));
-    return [ALL_TYPE, ...Array.from(set).sort()];
+  const kindOptions = useMemo(() => {
+    const types = Array.from(new Set((programs ?? []).map((p) => p.type))).sort();
+    return [ALL, ...types, FREE, PAID];
   }, [programs]);
 
-  const filtered = useMemo(() => {
-    return (programs ?? []).filter((p) => {
-      const matchesQuery = p.name.toLowerCase().includes(query.trim().toLowerCase());
-      const matchesType = type === ALL_TYPE || p.type === type;
-      const matchesPrice =
-        price === PRICE_ALL || (price === PRICE_FREE ? p.priceCents === 0 : p.priceCents > 0);
-      return matchesQuery && matchesType && matchesPrice;
-    });
-  }, [programs, query, type, price]);
+  const levelOptions = useMemo(() => {
+    const present = new Set((programs ?? []).map((p) => p.level).filter(Boolean));
+    return [ALL, ...LEVELS.filter((l) => present.has(l))];
+  }, [programs]);
 
-  if (isError) {
-    return (
-      <ScreenContainer title="Browse Programs">
-        <ErrorState onRetry={() => refetch()} />
-      </ScreenContainer>
-    );
-  }
+  const filtered = useMemo(
+    () =>
+      (programs ?? []).filter((p) => {
+        const matchesKind =
+          kind === ALL || (kind === FREE ? p.priceCents === 0 : kind === PAID ? p.priceCents > 0 : p.type === kind);
+        const matchesLevel = level === ALL || p.level === level;
+        return matchesKind && matchesLevel;
+      }),
+    [programs, kind, level],
+  );
+
+  const progressById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of myPrograms.data ?? []) {
+      if (m.totalWorkouts > 0) map.set(m.program.id, Math.round((m.completedWorkouts / m.totalWorkouts) * 100));
+    }
+    return map;
+  }, [myPrograms.data]);
+
+  const plan = nextWorkout.data?.plan;
+  const featured = useMemo(
+    () => (plan?.programId ? (programs ?? []).find((p) => p.id === plan.programId) ?? null : null),
+    [plan?.programId, programs],
+  );
+
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
+  if (isLoading) return <ActivityIndicator color={colors.accent} />;
+
+  const open = (programId: string) => navigation.navigate("ProgramDetail", { programId });
 
   return (
-    <ScreenContainer title="Browse Programs" scroll={false}>
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search programs" />
-
-      <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.md }}>TYPE</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
-        {typeOptions.map((t) => (
-          <Chip
-            key={t}
-            label={t === ALL_TYPE ? ALL_TYPE : TYPE_LABELS[t as ProgramType] ?? t}
-            selected={type === t}
-            onPress={() => setType(t)}
-          />
-        ))}
+    <View style={{ gap: spacing.md }}>
+      <View style={{ marginHorizontal: -spacing.md }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.md }}>
+          {kindOptions.map((k) => (
+            <FilterChip key={k} label={k === ALL || k === FREE || k === PAID ? k : TYPE_LABELS[k as ProgramType] ?? k} selected={kind === k} onPress={() => setKind(k)} />
+          ))}
+        </ScrollView>
+        {levelOptions.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.md, marginTop: 8 }}
+          >
+            {levelOptions.map((l) => (
+              <FilterChip
+                key={l}
+                label={l === ALL ? ALL : LEVEL_LABEL[l as (typeof LEVELS)[number]]}
+                selected={level === l}
+                onPress={() => setLevel(l)}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
       </View>
 
-      <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: spacing.md }}>PRICE</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
-        {[PRICE_ALL, PRICE_FREE, PRICE_PAID].map((p) => (
-          <Chip key={p} label={p} selected={price === p} onPress={() => setPrice(p)} />
-        ))}
-      </View>
+      {featured ? (
+        <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+          {featured.imageUrl ? (
+            <Image source={{ uri: featured.imageUrl }} style={{ width: "100%", height: 130, backgroundColor: colors.surfaceRaised }} resizeMode="cover" />
+          ) : (
+            <View style={{ height: 90, backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="dumbbell" size={30} color={theme.accent} />
+            </View>
+          )}
+          <View style={{ padding: spacing.md }}>
+            <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>RECOMMENDED FOR YOU</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: 4 }}>{featured.name}</Text>
+            <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
+              {featured.durationWeeks} weeks
+              {featured.workoutCount ? ` · ${featured.workoutCount} workouts` : ""}
+              {featured.level ? ` · ${LEVEL_LABEL[featured.level]}` : ""}
+            </Text>
+            <Button label="View Program" onPress={() => open(featured.id)} style={{ marginTop: spacing.md, height: 44 }} />
+          </View>
+        </View>
+      ) : null}
 
-      <FlatList
-        style={{ marginTop: spacing.md }}
-        data={filtered}
-        keyExtractor={(item: Program) => item.id}
-        refreshing={isLoading}
-        onRefresh={refetch}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.xl }}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => navigation.navigate("ProgramDetail", { programId: item.id })}>
-            <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              {item.imageUrl ? (
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={{ width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.accentSoft }}
-                  resizeMode="cover"
-                />
-              ) : (
+      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Explore Programs</Text>
+      {filtered.length === 0 ? (
+        <EmptyState title="No programs match" subtitle="Try a different filter." />
+      ) : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          {filtered.map((p: Program) => {
+            const progress = progressById.get(p.id);
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => open(p.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${p.name}, ${formatPrice(p.priceCents)}`}
+                style={{
+                  width: "48%",
+                  flexGrow: 1,
+                  minWidth: 150,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: 12,
+                  gap: 6,
+                }}
+              >
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }} numberOfLines={2}>
+                  {p.name}
+                </Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>
+                  {p.durationWeeks} weeks{p.workoutCount ? ` · ${p.workoutCount} workouts` : ""}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                  <Text style={{ color: p.priceCents === 0 ? colors.success : theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+                    {formatPrice(p.priceCents)}
+                    {p.priceCents > 0 ? <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}> /program</Text> : null}
+                  </Text>
+                  {p.level ? <Tag label={LEVEL_LABEL[p.level]} /> : null}
+                </View>
+                {p.isAiOnly ? <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 11 }}>Personalized</Text> : null}
+                {progress != null ? (
+                  <View style={{ gap: 3 }}>
+                    <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: "hidden" }}>
+                      <View style={{ height: "100%", width: `${progress}%`, backgroundColor: theme.accent }} />
+                    </View>
+                    <Text style={{ color: theme.accent, fontSize: 10 }}>{progress}% completed</Text>
+                  </View>
+                ) : null}
                 <View
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.accentSoft,
+                    marginTop: 4,
+                    height: 36,
+                    borderRadius: radius.sm,
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Icon name="dumbbell" size={22} color={colors.accent} />
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>View Program</Text>
                 </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{item.name}</Text>
-                <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                  {item.durationWeeks}-week {item.type} program
-                </Text>
-              </View>
-              <View
-                style={{
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: 4,
-                  borderRadius: radius.pill,
-                  backgroundColor: item.priceCents === 0 ? colors.successSoft : colors.accentSoft,
-                }}
-              >
-                <Text
-                  style={{
-                    color: item.priceCents === 0 ? colors.success : colors.accent,
-                    ...typography.caption,
-                    fontFamily: fonts.bodyBold,
-                  }}
-                >
-                  {item.priceCents === 0 ? "FREE" : `₹${(item.priceCents / 100).toFixed(0)}`}
-                </Text>
-              </View>
-            </Card>
-          </Pressable>
-        )}
-        ListEmptyComponent={<EmptyState title="No programs match" subtitle="Try a different search or filter." />}
-      />
-    </ScreenContainer>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {plan?.programName ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            backgroundColor: colors.aiAccentSoft,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.aiBorder,
+            padding: spacing.md,
+          }}
+        >
+          <Icon name="sparkles" size={16} color={colors.aiAccent} />
+          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 12 }}>
+            {plan.programName} is the program your current plan is built on.
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }

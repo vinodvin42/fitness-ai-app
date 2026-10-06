@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import * as Location from "expo-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
@@ -9,19 +10,19 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { BackButton } from "../../components/BackButton";
-import { Pill } from "../../components/Pill";
 import { TextField } from "../../components/TextField";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { BarChart } from "../../components/Charts";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { StatTile } from "../../components/StatTile";
+import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toast";
 import { createActivity, fetchActivities, fetchActivitySummary } from "../../api/activities";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatDateTime, formatDuration, formatKm, formatPace, formatRate, formatSpeed, kindLabel } from "../../lib/activityFormat";
-import { TrackAccumulator, encodeRouteWithinLimit, paceSecPerKm, speedKmh, type GpsFix } from "../../lib/gpsTrack";
-import { colors, fonts, spacing, typography } from "../../theme/tokens";
+import { TrackAccumulator, encodeRouteWithinLimit, paceSecPerKm, routeToSvgPath, speedKmh, type GpsFix } from "../../lib/gpsTrack";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "ActivityTracker">;
@@ -66,7 +67,9 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const segmentStartRef = useRef<number | null>(null);
   const [mode, setMode] = useState<Mode>(isWeb ? "manual" : "gps");
   const [perm, setPerm] = useState<PermState>("unknown");
-  const [live, setLive] = useState({ distanceM: 0, elevationGainM: 0, points: 0, searching: true });
+  const [live, setLive] = useState<{ distanceM: number; elevationGainM: number; points: number; searching: boolean; accuracy: number | null }>({ distanceM: 0, elevationGainM: 0, points: 0, searching: true, accuracy: null });
+  const [locked, setLocked] = useState(false);
+  const [mapWidth, setMapWidth] = useState(0);
   const accRef = useRef<TrackAccumulator>(new TrackAccumulator(kind));
   const subRef = useRef<Location.LocationSubscription | null>(null);
   const [distanceKm, setDistanceKm] = useState("");
@@ -102,7 +105,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
         };
         accRef.current.add(fix);
         const snap = accRef.current.snapshot();
-        setLive({ distanceM: snap.distanceM, elevationGainM: snap.elevationGainM, points: snap.points, searching: snap.points === 0 });
+        setLive({ distanceM: snap.distanceM, elevationGainM: snap.elevationGainM, points: snap.points, searching: snap.points === 0, accuracy: fix.accuracy ?? null });
       },
     );
     subRef.current = sub;
@@ -131,7 +134,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
       }
       setPerm("unknown");
       accRef.current = new TrackAccumulator(kind);
-      setLive({ distanceM: 0, elevationGainM: 0, points: 0, searching: true });
+      setLive({ distanceM: 0, elevationGainM: 0, points: 0, searching: true, accuracy: null });
       await startWatching();
       begin();
     } catch {
@@ -172,7 +175,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const discard = () => {
     stopWatching();
     accRef.current = new TrackAccumulator(kind);
-    setLive({ distanceM: 0, elevationGainM: 0, points: 0, searching: true });
+    setLive({ distanceM: 0, elevationGainM: 0, points: 0, searching: true, accuracy: null });
     accumulatedRef.current = 0;
     segmentStartRef.current = null;
     startedAtRef.current = null;
@@ -180,6 +183,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
     setDistanceKm("");
     setNotes("");
     setDistanceError(null);
+    setLocked(false);
     setPhase("idle");
   };
 
@@ -255,113 +259,285 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
 
   const summary = summaryQuery.data;
   const timeText = formatDuration(elapsedMs / 1000);
-  const gpsActive = mode === "gps" && phase !== "idle";
   const movingSec = elapsedMs / 1000;
   const paceText = kind === "run" ? formatPace(paceSecPerKm(live.distanceM, movingSec)) : formatSpeed(speedKmh(live.distanceM, movingSec));
 
+  const isRun = kind === "run";
+  const liveRoute = mode === "gps" ? accRef.current.getRoute() : [];
+  const mapPath = mapWidth > 0 ? routeToSvgPath(liveRoute, mapWidth, 190) : null;
+  const splits = mode === "gps" && isRun ? accRef.current.getSplits() : [];
+  const gpsBadge =
+    phase === "idle"
+      ? "GPS ready"
+      : live.searching
+        ? "Searching for GPS..."
+        : live.accuracy == null
+          ? "GPS tracking"
+          : live.accuracy <= 10
+            ? "GPS Strong"
+            : live.accuracy <= 20
+              ? "GPS Fair"
+              : "GPS Weak";
+  const panel = isRun ? colors.infoSurface : colors.surface;
+  const panelBorder = isRun ? colors.infoBorder : colors.border;
+  const tile = (tileLabel: string, value: string) => (
+    <View style={{ flex: 1, backgroundColor: panel, borderColor: panelBorder, borderWidth: 1, borderRadius: radius.md, padding: spacing.md - 2 }}>
+      <Text style={{ color: colors.textMuted, ...typography.caption, letterSpacing: 0.5 }} numberOfLines={1}>
+        {tileLabel.toUpperCase()}
+      </Text>
+      <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 19, marginTop: 4 }} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+    </View>
+  );
+  const circle = (size: number, bg: string) => ({
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    backgroundColor: bg,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  });
+  const centerAction = phase === "idle" ? start : phase === "running" ? pause : phase === "paused" ? resume : undefined;
+
   return (
-    <ScreenContainer title={kind === "run" ? "Running" : "Cycling"} subtitle={mode === "gps" ? "GPS tracking" : "Manual tracking"}>
+    <ScreenContainer
+      title={isRun ? "Outdoor Run" : "Outdoor Cycle"}
+      right={
+        <Pressable
+          onPress={() => navigation.navigate("WorkoutSettings")}
+          accessibilityRole="button"
+          accessibilityLabel="Open workout preferences"
+          hitSlop={8}
+        >
+          <Icon name="settings" size={20} color={isRun ? colors.cyan : colors.textPrimary} />
+        </Pressable>
+      }
+    >
       <BackButton onPress={() => navigation.goBack()} />
 
-      <Card style={{ gap: spacing.sm }}>
-        {mode === "gps" ? (
-          <>
-            <Pill label={phase === "running" && live.searching ? "Searching for GPS signal..." : "GPS tracking"} tone="neutral" />
-            <Text style={{ color: colors.textMuted, ...typography.meta }}>
-              Tracking works only while 23PrimeFit is open on screen. Keep the app open and the screen on; location is not recorded in the background.
+      <View
+        onLayout={(e) => setMapWidth(Math.round(e.nativeEvent.layout.width))}
+        style={{ height: mode === "gps" ? 190 : 96, borderRadius: radius.card, backgroundColor: panel, borderWidth: 1, borderColor: panelBorder, overflow: "hidden" }}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={mapPath ? "Live route" : "Route appears here once tracking starts"}
+      >
+        {mapPath ? (
+          <Svg width={mapWidth} height={190}>
+            <Path d={mapPath.d} stroke={isRun ? colors.cyan : colors.accent} strokeWidth={4} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+            <Circle cx={mapPath.start[0]} cy={mapPath.start[1]} r={5} fill={colors.success} />
+            <Circle cx={mapPath.end[0]} cy={mapPath.end[1]} r={6} fill={colors.orange} />
+          </Svg>
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.md }}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+              {mode === "gps" ? "Your route is drawn here as you move. No map tiles are used." : "Manual mode: no route is recorded."}
             </Text>
+          </View>
+        )}
+        <View
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            borderRadius: radius.sm,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: mode !== "gps" ? colors.warning : live.accuracy != null && live.accuracy > 20 ? colors.warning : colors.success,
+            }}
+          />
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 10 }}>
+            {mode === "gps" ? gpsBadge : "Manual tracking"}
+          </Text>
+        </View>
+      </View>
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>
+        {mode === "gps"
+          ? "Tracking works only while 23PrimeFit is open on screen. Keep the app open; location is not recorded in the background."
+          : `${isWeb ? "GPS is not available on web. " : ""}Start the timer, then enter your distance when you finish. Saved as a manual ${label.toLowerCase()}.`}
+      </Text>
+      {perm === "denied" && phase === "idle" ? (
+        <Card style={{ gap: spacing.xs }}>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Location access is off</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            Allow location access while using the app to record your distance and route. You can also track manually and type your distance in.
+          </Text>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Button label="Open Settings" onPress={() => Linking.openSettings().catch(() => undefined)} style={{ flex: 1 }} />
+            <Button label="Track manually" variant="secondary" onPress={trackManually} style={{ flex: 1 }} />
+          </View>
+        </Card>
+      ) : null}
+
+      <View style={{ flexDirection: "row", gap: spacing.sm }} accessibilityLabel={`Elapsed time ${timeText}`}>
+        {isRun ? (
+          <>
+            {tile("Distance", mode === "gps" ? formatKm(live.distanceM) : "-")}
+            {tile("Avg Pace", mode === "gps" ? paceText : "-")}
+            {tile("Duration", timeText)}
           </>
         ) : (
           <>
-            <Pill label="Manual tracking" tone="warning" />
-            <Text style={{ color: colors.textMuted, ...typography.meta }}>
-              {isWeb ? "GPS isn't available on web. " : ""}Start the timer, then enter your distance when you finish. {label}s are saved as manual activities.
-            </Text>
+            {tile("Speed", mode === "gps" ? paceText : "-")}
+            {tile("Distance", mode === "gps" ? formatKm(live.distanceM) : "-")}
+            {tile("Elevation", mode === "gps" ? `+${live.elevationGainM} m` : "-")}
           </>
         )}
-        {perm === "denied" && phase === "idle" ? (
-          <View style={{ gap: spacing.xs }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Location access is off</Text>
-            <Text style={{ color: colors.textSecondary }}>
-              Allow location access while using the app to record your distance and route. You can also track manually and type your distance in.
-            </Text>
-            <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Button label="Open Settings" onPress={() => Linking.openSettings().catch(() => undefined)} style={{ flex: 1 }} />
-              <Button label="Track manually" variant="secondary" onPress={trackManually} style={{ flex: 1 }} />
+      </View>
+      {!isRun ? (
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          {tile("Duration", timeText)}
+          {tile("Cadence / Power", "No sensor")}
+        </View>
+      ) : null}
+
+      <View style={{ backgroundColor: panel, borderColor: panelBorder, borderWidth: 1, borderRadius: radius.md, padding: spacing.md - 2, gap: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>Wearable Live HR</Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 11 }}>Not connected</Text>
+        </View>
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <View key={i} style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border }} />
+          ))}
+        </View>
+      </View>
+
+      {isRun && mode === "gps" && phase !== "idle" ? (
+        <>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Splits</Text>
+          {splits.length === 0 ? (
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>Your first split appears after 1 km.</Text>
+          ) : (
+            <View style={{ gap: 6 }}>
+              {splits.map((sec, i) => (
+                <View
+                  key={i}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    backgroundColor: panel,
+                    borderColor: panelBorder,
+                    borderWidth: 1,
+                    borderRadius: radius.sm,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: 9,
+                  }}
+                >
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>Km {i + 1}</Text>
+                  <Text style={{ color: colors.cyan, fontFamily: fonts.bodySemi, fontSize: 13 }}>{formatPace(sec)}</Text>
+                </View>
+              ))}
             </View>
-          </View>
-        ) : null}
-        <Text
-          accessibilityLabel={`Elapsed time ${timeText}`}
-          style={{ color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 56, textAlign: "center", marginVertical: spacing.sm }}
+          )}
+        </>
+      ) : null}
+
+      {isRun ? (
+        <Pressable
+          onPress={() => navigation.navigate("WorkoutSettings")}
+          accessibilityRole="button"
+          accessibilityLabel="Audio coaching is not available yet. Open preferences."
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.aiSurface, borderRadius: radius.md, paddingVertical: 11 }}
         >
-          {timeText}
-        </Text>
+          <Icon name="mic" size={14} color={colors.aiAccent} />
+          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyMedium, fontSize: 12 }}>
+            Audio coaching prompts are not available yet
+          </Text>
+        </Pressable>
+      ) : null}
 
-        {gpsActive ? (
+      {phase === "finishing" ? (
+        <Card style={{ gap: spacing.sm }}>
+          {mode === "gps" ? (
+            <>
+              <Text style={{ color: colors.textSecondary }}>
+                {formatKm(live.distanceM)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
+              </Text>
+              {distanceError ? <Text style={{ color: colors.danger, ...typography.meta }}>{distanceError}</Text> : null}
+            </>
+          ) : (
+            <TextField
+              label="Distance (km)"
+              value={distanceKm}
+              onChangeText={setDistanceKm}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 5.2"
+              error={distanceError}
+            />
+          )}
+          <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} maxLength={500} placeholder="How did it feel?" />
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <StatTile icon="target" label="Distance" value={formatKm(live.distanceM)} />
-            <StatTile icon="zap" label={kind === "run" ? "Pace" : "Speed"} value={paceText} tint={colors.orange} tintSoft={colors.warningSoft} />
+            <Button label="Discard" variant="secondary" onPress={discard} style={{ flex: 1 }} />
+            <Button label={`Save ${label.toLowerCase()}`} onPress={onSave} loading={save.isPending} style={{ flex: 1 }} />
           </View>
-        ) : null}
-        {gpsActive && phase === "paused" ? (
-          <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Paused: GPS is off until you resume.</Text>
-        ) : null}
-
-        {phase === "idle" ? (
-          <>
-            <Button label={`Start ${label.toLowerCase()}`} onPress={start} />
-            {mode === "gps" && perm !== "denied" ? (
-              <Pressable onPress={trackManually} accessibilityRole="button" accessibilityLabel="Track manually instead" hitSlop={8}>
-                <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Track manually instead</Text>
-              </Pressable>
-            ) : null}
-          </>
-        ) : null}
-        {phase === "running" ? (
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Button label="Pause" variant="secondary" onPress={pause} style={{ flex: 1 }} />
-            <Button label="Finish" onPress={stop} style={{ flex: 1 }} />
+        </Card>
+      ) : (
+        <>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.lg, paddingVertical: spacing.sm }}>
+            <Pressable
+              onPress={stop}
+              disabled={phase === "idle" || locked}
+              accessibilityRole="button"
+              accessibilityLabel="Finish and save"
+              style={[circle(58, colors.surface), { opacity: phase === "idle" || locked ? 0.4 : 1, borderWidth: 1, borderColor: colors.border }]}
+            >
+              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.danger, alignItems: "center", justifyContent: "center" }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: colors.danger }} />
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={() => centerAction?.()}
+              disabled={locked}
+              accessibilityRole="button"
+              accessibilityLabel={phase === "idle" ? `Start ${label.toLowerCase()}` : phase === "running" ? "Pause" : "Resume"}
+              style={[circle(76, colors.accent), { opacity: locked ? 0.5 : 1 }]}
+            >
+              <Icon name={phase === "running" ? "pause" : "play"} size={30} color={colors.textOnAccent} />
+            </Pressable>
+            <Pressable
+              onPress={() => setLocked(true)}
+              onLongPress={() => setLocked(false)}
+              accessibilityRole="button"
+              accessibilityLabel={locked ? "Controls locked. Press and hold to unlock." : "Lock controls"}
+              style={[circle(58, colors.surface), { borderWidth: 1, borderColor: locked ? colors.warning : colors.border }]}
+            >
+              <Icon name="lock" size={20} color={locked ? colors.warning : colors.textSecondary} />
+            </Pressable>
           </View>
-        ) : null}
-        {phase === "paused" ? (
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Button label="Resume" onPress={resume} style={{ flex: 1 }} />
-            <Button label="Finish" variant="secondary" onPress={stop} style={{ flex: 1 }} />
-          </View>
-        ) : null}
-        {phase === "finishing" ? (
-          <View style={{ gap: spacing.sm }}>
-            {mode === "gps" ? (
-              <>
-                <Text style={{ color: colors.textSecondary }}>
-                  {formatKm(live.distanceM)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
-                </Text>
-                {distanceError ? <Text style={{ color: colors.danger, ...typography.meta }}>{distanceError}</Text> : null}
-              </>
-            ) : (
-              <TextField
-                label="Distance (km)"
-                value={distanceKm}
-                onChangeText={setDistanceKm}
-                keyboardType="decimal-pad"
-                placeholder="e.g. 5.2"
-                error={distanceError}
-              />
-            )}
-            <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} maxLength={500} placeholder="How did it feel?" />
-            <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Button label="Discard" variant="secondary" onPress={discard} style={{ flex: 1 }} />
-              <Button label={`Save ${label.toLowerCase()}`} onPress={onSave} loading={save.isPending} style={{ flex: 1 }} />
-            </View>
-          </View>
-        ) : null}
-        {phase === "paused" || phase === "running" ? (
-          <Pressable onPress={discard} accessibilityRole="button" accessibilityLabel="Discard this session" hitSlop={8}>
-            <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Discard session</Text>
-          </Pressable>
-        ) : null}
-      </Card>
+          <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+            {locked
+              ? "Controls locked. Press and hold the lock to unlock."
+              : phase === "idle"
+                ? `Tap play to start your ${label.toLowerCase()}.`
+                : phase === "paused"
+                  ? "Paused. GPS is off until you resume."
+                  : "Tracking."}
+          </Text>
+          {phase === "idle" && mode === "gps" && perm !== "denied" ? (
+            <Pressable onPress={trackManually} accessibilityRole="button" accessibilityLabel="Track manually instead" hitSlop={8}>
+              <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Track manually instead</Text>
+            </Pressable>
+          ) : null}
+          {phase === "paused" || phase === "running" ? (
+            <Pressable onPress={discard} disabled={locked} accessibilityRole="button" accessibilityLabel="Discard this session" hitSlop={8}>
+              <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Discard session</Text>
+            </Pressable>
+          ) : null}
+        </>
+      )}
 
       <SegmentedControl options={RANGES} value={range} onChange={setRange} />
 

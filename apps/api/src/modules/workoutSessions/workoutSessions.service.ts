@@ -242,6 +242,30 @@ export async function listHistory(userId: string) {
 // doesn't introduce a second, stricter definition of "PR" that could
 // disagree with those. Not built: a heart-rate distribution chart (needs
 // wearable data, gap §13/§E).
+/**
+ * Per-phase sets/volume (warm-up / main / cooldown) for Workout Complete's
+ * "Workout Phase Breakdown". A logged exercise takes the phase of its
+ * WorkoutExercise row in the session's workout; one that isn't in the workout
+ * (e.g. swapped in client-side) counts as "main". Time per phase is not
+ * tracked, so none is reported.
+ */
+export function phaseBreakdown(
+  setLogs: Array<{ exerciseId: string; weightKg: number | null; reps: number }>,
+  phaseByExercise: Map<string, "warmup" | "main" | "cooldown">,
+) {
+  const out = new Map<"warmup" | "main" | "cooldown", { sets: number; volumeKg: number }>();
+  for (const log of setLogs) {
+    const phase = phaseByExercise.get(log.exerciseId) ?? "main";
+    const cur = out.get(phase) ?? { sets: 0, volumeKg: 0 };
+    cur.sets += 1;
+    cur.volumeKg += (log.weightKg ?? 0) * log.reps;
+    out.set(phase, cur);
+  }
+  return (["warmup", "main", "cooldown"] as const)
+    .filter((p) => out.has(p))
+    .map((p) => ({ phase: p, sets: out.get(p)!.sets, volumeKg: Math.round(out.get(p)!.volumeKg * 10) / 10 }));
+}
+
 export async function getSessionSummary(sessionId: string, userId: string) {
   await getOwnedSession(sessionId, userId);
 
@@ -308,6 +332,14 @@ export async function getSessionSummary(sessionId: string, userId: string) {
     return priorBest == null || best.weightKg > priorBest;
   });
 
+  const workoutExercises: Array<{ exerciseId: string; phase: "warmup" | "main" | "cooldown" }> =
+    await prisma.workoutExercise.findMany({
+      where: { workoutId: session.workoutId },
+      select: { exerciseId: true, phase: true },
+    });
+  const phaseByExercise = new Map(workoutExercises.map((we) => [we.exerciseId, we.phase] as const));
+  const phases = phaseBreakdown(setLogs, phaseByExercise);
+
   const streaks = await getStreaks(userId);
   const trainingStreak = streaks.categories.find((c) => c.category === "training");
 
@@ -316,6 +348,7 @@ export async function getSessionSummary(sessionId: string, userId: string) {
     totalVolumeKg,
     durationMinutes,
     newPersonalRecords,
+    phases,
     trainingStreak: {
       currentStreak: trainingStreak?.currentStreak ?? 0,
       longestStreak: trainingStreak?.longestStreak ?? 0,

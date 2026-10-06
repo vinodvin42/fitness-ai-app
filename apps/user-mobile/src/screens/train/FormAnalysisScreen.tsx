@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
@@ -12,13 +13,17 @@ import { BackButton } from "../../components/BackButton";
 import { BottomSheet } from "../../components/BottomSheet";
 import { SearchBar } from "../../components/SearchBar";
 import { Pill } from "../../components/Pill";
+import { BrandMark } from "../../components/BrandMark";
+import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { useToast } from "../../components/Toast";
 import { createFormSubmission, fetchFormSubmissions } from "../../api/formAnalysis";
 import { fetchExercises } from "../../api/programs";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
+import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "FormAnalysis">;
@@ -64,6 +69,10 @@ export function FormAnalysisScreen({ navigation }: Props) {
   const [clip, setClip] = useState<PickedClip | null>(null);
   const [clipError, setClipError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Explicit opt-in before any capture; never persisted, so every setup starts unchecked.
+  const [consented, setConsented] = useState(false);
+  const { colors: theme } = useTheme();
+  const tabs = useNavigation<NavigationProp<MainTabsParamList>>();
   const [search, setSearch] = useState("");
 
   const exercisesQuery = useQuery({ queryKey: ["exercises"], queryFn: fetchExercises, enabled: pickerOpen });
@@ -95,6 +104,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
   };
 
   const record = async () => {
+    if (!consented) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       setClipError("Camera access is off. Enable it in your device settings, or choose a video from your library instead.");
@@ -104,6 +114,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
   };
 
   const choose = async () => {
+    if (!consented) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       setClipError("Library access is off. Enable it in your device settings, or record a clip instead.");
@@ -127,20 +138,31 @@ export function FormAnalysisScreen({ navigation }: Props) {
     onError: (err) => toast.show(extractErrorMessage(err, "Couldn't submit that clip. Try a shorter one."), "error"),
   });
 
+  const rows: Array<[string, string]> = [
+    ["Position", "Stable phone, side or 45 degree view"],
+    ["Frame", "Full body and weights visible, well lit"],
+    ["Space", "Clear floor, no other people in view"],
+  ];
+  const guide = () => {
+    if (exercise) navigation.navigate("ExerciseDetail", { exerciseId: exercise.id });
+    else navigation.navigate("ExerciseLibrary");
+  };
+
   return (
-    <ScreenContainer title="Form Analysis" subtitle="Get a coach to look at your technique">
+    <ScreenContainer
+      title="Set up your form review"
+      right={<BrandMark size={34} />}
+    >
       <BackButton onPress={() => navigation.goBack()} />
+      <View style={{ alignSelf: "flex-start", backgroundColor: colors.accentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 10 }}>Train / Form analysis setup</Text>
+      </View>
+      <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
+        {exercise ? `${exercise.name}. ` : ""}Capture a short clip for general technique feedback. This is not a medical assessment.
+      </Text>
 
       <Card style={{ gap: spacing.sm }}>
-        <Pill label="Queued for coach review" tone="ai" />
-        <Text style={{ color: colors.textMuted, ...typography.meta }}>
-          There is no automatic analysis. Your clip is stored and waits in a queue until a human coach reviews it. Review
-          times aren't guaranteed.
-        </Text>
-      </Card>
-
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>1. Exercise</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Exercise</Text>
         <Text style={{ color: colors.textSecondary }}>{exercise ? exercise.name : "Optional. Which lift is this?"}</Text>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <Button label={exercise ? "Change" : "Pick exercise"} variant="secondary" onPress={() => setPickerOpen(true)} style={{ flex: 1 }} />
@@ -148,30 +170,112 @@ export function FormAnalysisScreen({ navigation }: Props) {
         </View>
       </Card>
 
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>2. Clip</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta }}>
-          Film from the side or front with your whole body in frame. Keep it short: under {mb(MAX_VIDEO_BYTES)}.
-        </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <Button label="Record" variant="secondary" onPress={record} style={{ flex: 1 }} />
-          <Button label="Choose video" variant="secondary" onPress={choose} style={{ flex: 1 }} />
+      <Card style={{ alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
+          <Icon name="camera-off" size={26} color={colors.textMuted} />
+          <Icon name="user" size={40} color={colors.textMuted} strokeWidth={1.5} />
         </View>
-        {clipError ? <Text style={{ color: colors.danger }}>{clipError}</Text> : null}
+        <Text style={{ color: colors.textMuted, ...typography.meta }}>Framing guide only. Camera not active</Text>
+      </Card>
+
+      <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Before you capture</Text>
+      <Card style={{ paddingVertical: spacing.xs }}>
+        {rows.map(([k, v], i) => (
+          <View
+            key={k}
+            style={{
+              flexDirection: "row",
+              gap: spacing.md,
+              paddingVertical: spacing.sm,
+              borderTopWidth: i === 0 ? 0 : 1,
+              borderTopColor: colors.border,
+            }}
+          >
+            <Text style={{ color: colors.textMuted, ...typography.meta, width: 64 }}>{k}</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 13, flex: 1 }}>{v}</Text>
+          </View>
+        ))}
+      </Card>
+
+      <Card style={{ borderColor: colors.infoBorder, backgroundColor: colors.infoSurface, gap: spacing.sm }}>
+        <Text style={{ color: theme.accent, ...typography.h3 }}>Choose whether to share a clip</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 12, lineHeight: 18 }}>
+          Camera permission is separate from consent to process video. Only a clip you review and choose to submit is sent. Your clip is
+          stored and waits in a queue for a human coach to review; there is no automatic analysis, and review times are not guaranteed.
+        </Text>
+        <Pressable
+          onPress={() => setConsented((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: consented }}
+          accessibilityLabel="I agree to video processing for form feedback"
+          style={{ flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" }}
+        >
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 5,
+              borderWidth: 1.5,
+              borderColor: consented ? theme.accent : colors.borderStrong,
+              backgroundColor: consented ? theme.accent : "transparent",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: 1,
+            }}
+          >
+            {consented ? <Icon name="check" size={13} color={theme.textOnAccent} strokeWidth={3} /> : null}
+          </View>
+          <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 12, lineHeight: 18, flex: 1 }}>
+            I agree to video processing for form feedback. I will review the clip before submitting it.
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => tabs.navigate("More", { screen: "PrivacySettings" })} accessibilityRole="link" hitSlop={8}>
+          <Text style={{ color: theme.accent, ...typography.meta }}>Review video processing and retention details</Text>
+        </Pressable>
+        <Text style={{ color: colors.textMuted, ...typography.meta }}>
+          Capture, then review, retake or delete, then submit. You decide whether the clip is submitted.
+        </Text>
+      </Card>
+
+      <Card style={{ borderColor: colors.warning, backgroundColor: colors.warningSoft, gap: spacing.xs }}>
+        <Text style={{ color: colors.warning, ...typography.h3 }}>Feedback has limits</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 12, lineHeight: 18 }}>
+          Camera angle, lighting and occlusion can make feedback inaccurate. It cannot diagnose injuries or confirm that a movement is safe.
+          Stop if you feel pain. Ask a qualified professional if you are unsure; never push through pain to get a rep.
+        </Text>
       </Card>
 
       {clip ? (
         <Card style={{ gap: spacing.sm }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>3. Review</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Review your clip</Text>
           <Text style={{ color: colors.textSecondary }}>
             {exercise ? exercise.name : "No exercise selected"}
             {clip.durationMs ? ` · ${Math.round(clip.durationMs / 1000)}s` : ""}
             {clip.sizeBytes ? ` · ${mb(clip.sizeBytes)}` : ""}
           </Text>
-          <Button label="Submit for coach review" onPress={() => submit.mutate()} loading={submit.isPending} />
+          <Button label="Submit for coach review" onPress={() => submit.mutate()} loading={submit.isPending} disabled={!consented} />
           <Button label="Remove clip" variant="secondary" onPress={() => setClip(null)} disabled={submit.isPending} />
         </Card>
-      ) : null}
+      ) : (
+        <>
+          <Button label="Log sets manually" variant="secondary" onPress={() => navigation.navigate("Routines")} />
+          {consented ? (
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <Button label="Record" onPress={record} style={{ flex: 1 }} />
+              <Button label="Choose video" variant="secondary" onPress={choose} style={{ flex: 1 }} />
+            </View>
+          ) : (
+            <>
+              <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+                Select consent above to enable capture. No recording has started.
+              </Text>
+              <Button label="Consent required to capture" variant="secondary" disabled onPress={() => undefined} />
+            </>
+          )}
+          <Button label="Use video guide instead" variant="secondary" onPress={guide} />
+        </>
+      )}
+      {clipError ? <Text style={{ color: colors.danger }}>{clipError}</Text> : null}
 
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Your submissions</Text>
       {listQuery.isError ? (

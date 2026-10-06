@@ -68,6 +68,10 @@ export class TrackAccumulator {
   private altWindow: number[] = [];
   private smoothedRef: number | null = null;
   private gain = 0;
+  /** Moving time (ms) summed over accepted fixes within a segment; pauses are excluded. */
+  private movingMs = 0;
+  private splitSecs: number[] = [];
+  private lastSplitMovingMs = 0;
   rejected = 0;
 
   constructor(private readonly kind: "run" | "ride") {}
@@ -83,7 +87,21 @@ export class TrackAccumulator {
       this.rejected += 1;
       return decision;
     }
-    if (this.last) this.distance += haversineM(this.last, fix);
+    if (this.last) {
+      const step = haversineM(this.last, fix);
+      const dtMs = fix.t - this.last.t;
+      const before = this.distance;
+      this.distance += step;
+      this.movingMs += dtMs;
+      // Interpolate the moment each whole kilometre was crossed.
+      while (Math.floor(this.distance / 1000) > this.splitSecs.length) {
+        const km = this.splitSecs.length + 1;
+        const frac = step > 0 ? (km * 1000 - before) / step : 1;
+        const crossedAt = this.movingMs - dtMs + dtMs * frac;
+        this.splitSecs.push((crossedAt - this.lastSplitMovingMs) / 1000);
+        this.lastSplitMovingMs = crossedAt;
+      }
+    }
     this.last = fix;
     this.route.push([fix.lat, fix.lon]);
     if (fix.altitude != null && Number.isFinite(fix.altitude)) this.addAltitude(fix.altitude);
@@ -113,6 +131,11 @@ export class TrackAccumulator {
 
   getRoute(): LatLon[] {
     return this.route.slice();
+  }
+
+  /** Seconds taken for each completed kilometre, computed from the real fix timestamps (pauses excluded). */
+  getSplits(): number[] {
+    return this.splitSecs.slice();
   }
 }
 

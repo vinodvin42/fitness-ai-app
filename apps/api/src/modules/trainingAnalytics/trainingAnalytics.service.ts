@@ -33,6 +33,27 @@ function volumeOf(l: { weightKg: number | null; reps: number }): number {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/**
+ * Weekly consistency = completed sessions this (UTC Monday) week / planned
+ * sessions per week, capped at 100%. Planned comes from the user's own
+ * onboarding answer: trainingDaysPerWeek, else the count of preferredTrainingDays.
+ * No plan on file -> percent is null (the client says so; nothing is guessed).
+ */
+export function weeklyConsistency(planned: number | null, completed: number) {
+  if (!planned || planned <= 0) return { plannedPerWeek: null, completedThisWeek: completed, percent: null as number | null };
+  return {
+    plannedPerWeek: planned,
+    completedThisWeek: completed,
+    percent: Math.min(100, Math.round((completed / planned) * 100)),
+  };
+}
+
+/** % change of `current` vs `previous` volume; null when there is nothing to compare against. */
+export function volumeChangePercent(current: number, previous: number): number | null {
+  if (previous <= 0) return null;
+  return round1(((current - previous) / previous) * 100);
+}
+
 export type AcwrStatus = "low" | "optimal" | "high";
 
 export function acwrStatus(ratio: number): AcwrStatus {
@@ -59,7 +80,8 @@ export async function getTrainingAnalytics(userId: string, query: AnalyticsQuery
   // ACWR needs a rolling 28d window regardless of the range requested.
   const fetchFrom = new Date(Math.min(rangeStart.getTime(), now.getTime() - 28 * DAY_MS));
 
-  const [logRows, sessionRows, prRows] = await Promise.all([
+  const prevStart = new Date(rangeStart.getTime() - weeksCount * WEEK_MS);
+  const [logRows, sessionRows, prRows, prevRows, profile, thisWeekSessions] = await Promise.all([
     prisma.exerciseSetLog.findMany({
       where: { session: { userId }, loggedAt: { gte: fetchFrom } },
       select: LOG_SELECT,
@@ -72,6 +94,15 @@ export async function getTrainingAnalytics(userId: string, query: AnalyticsQuery
       where: { session: { userId }, weightKg: { not: null }, isWarmup: false },
       select: LOG_SELECT,
     }),
+    prisma.exerciseSetLog.findMany({
+      where: { session: { userId }, loggedAt: { gte: prevStart, lt: rangeStart } },
+      select: { weightKg: true, reps: true, isWarmup: true },
+    }),
+    prisma.onboardingProfile.findUnique({
+      where: { userId },
+      select: { trainingDaysPerWeek: true, preferredTrainingDays: true },
+    }),
+    prisma.workoutSession.count({ where: { userId, status: "completed", startedAt: { gte: thisWeek } } }),
   ]);
   const logs = (logRows as LogRow[]).filter((l) => !l.isWarmup);
 
@@ -162,8 +193,18 @@ export async function getTrainingAnalytics(userId: string, query: AnalyticsQuery
     .sort((a, b) => b.achievedAt.localeCompare(a.achievedAt))
     .slice(0, 50);
 
+  const currentVolume = weeks.reduce((s, w) => s + w.volumeKg, 0);
+  const previousVolume = (prevRows as Array<{ weightKg: number | null; reps: number; isWarmup: boolean }>)
+    .filter((l) => !l.isWarmup)
+    .reduce((s, l) => s + volumeOf(l), 0);
+  const p = profile as { trainingDaysPerWeek: number | null; preferredTrainingDays: string[] } | null;
+  const planned = p?.trainingDaysPerWeek ?? (p && p.preferredTrainingDays.length > 0 ? p.preferredTrainingDays.length : null);
+
   return {
     range: query.range,
+    /** % change of this range's volume vs the equally long range before it; null with no earlier volume. */
+    volumeChangePercent: volumeChangePercent(currentVolume, previousVolume),
+    consistency: weeklyConsistency(planned, thisWeekSessions as number),
     totalSessions: (sessionRows as unknown[]).length,
     totalSets,
     totalVolumeKg: round1(weeks.reduce((s, w) => s + w.volumeKg, 0)),

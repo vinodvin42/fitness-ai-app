@@ -48,6 +48,21 @@ assert.ok(Math.abs(s.distanceM - 99 * 0.00003 * 111195) < 5, `dist ${s.distanceM
 assert.ok(s.elevationGainM >= 10 && s.elevationGainM <= 25, `gain ${s.elevationGainM}`);
 assert.equal(Math.round(paceSecPerKm(5000, 1500) ?? 0), 300);
 
+// per-km splits: 5 m/s steady (200 s/km) over ~1.5 km, with a 60 s pause in the middle that must not count
+const acc2 = new TrackAccumulator("run");
+let tt = 0;
+for (let i = 0; i < 150; i++) {
+  if (i === 75) {
+    acc2.breakSegment();
+    tt += 60_000;
+  }
+  acc2.add({ lat: 12.97 + i * (10 / 111195), lon: 77.59, t: tt, accuracy: 5 });
+  tt += 2000;
+}
+const splits = acc2.getSplits();
+assert.equal(splits.length, 1);
+assert.ok(Math.abs(splits[0] - 200) < 6, `split ${splits[0]}`);
+
 // simplification + size limit
 const big: LatLon[] = [];
 for (let i = 0; i < 40000; i++) big.push([12 + i * 1e-5 + Math.sin(i / 50) * 1e-4, 77 + Math.cos(i / 80) * 1e-3 + i * 2e-6]);

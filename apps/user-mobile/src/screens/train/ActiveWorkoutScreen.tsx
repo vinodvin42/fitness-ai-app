@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { WorkoutPhase } from "@fitness-ai-app/types";
-import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Chip } from "../../components/Chip";
-import { StepProgressBar } from "../../components/StepProgressBar";
+import { Icon } from "../../components/Icon";
+import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
 import { useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchWorkoutDetail } from "../../api/programs";
+import { fetchReadiness } from "../../api/recovery";
+import { fetchOnboardingProfile } from "../../api/users";
 import {
   abandonWorkoutSession,
   completeWorkoutSession,
@@ -23,6 +23,7 @@ import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
 import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
 import { applySwaps, clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
+import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -31,12 +32,6 @@ const column = { width: "100%" as const, maxWidth: layout.maxContentWidth, align
 type Props = NativeStackScreenProps<TrainStackParamList, "ActiveWorkout">;
 
 const RPE_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const PHASE_PILL_COLOR: Record<WorkoutPhase, string> = {
-  warmup: colors.warning,
-  main: colors.success,
-  cooldown: colors.accent,
-};
 
 interface LoggedSet {
   setNumber: number;
@@ -52,22 +47,6 @@ function formatElapsed(totalSeconds: number): string {
   const mm = String(m).padStart(2, "0");
   const ss = String(s).padStart(2, "0");
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
-function PhasePill({ phase }: { phase: WorkoutPhase }) {
-  return (
-    <View
-      style={{
-        backgroundColor: PHASE_PILL_COLOR[phase],
-        borderRadius: radius.pill,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
-        alignSelf: "flex-start",
-      }}
-    >
-      <Text style={{ color: "#0B0B0F", fontSize: 12, fontFamily: fonts.bodyBold }}>{phaseLabel(phase).toUpperCase()}</Text>
-    </View>
-  );
 }
 
 /**
@@ -142,6 +121,10 @@ function PhasePill({ phase }: { phase: WorkoutPhase }) {
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
   const queryClient = useQueryClient();
+  const { colors: theme } = useTheme();
+  const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
+  const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
+  const [whyOpen, setWhyOpen] = useState(false);
   useWorkoutSettings(); // warm the cache so the rest timer starts at the user's configured length
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
@@ -256,6 +239,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         rpe,
       });
       setLoggedSets((prev) => [...prev, { setNumber, reps: parsedReps, weightKg: parsedWeight, rpe }]);
+      queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
       setReps("");
       setRpe(undefined);
       setShowRestTimer(true);
@@ -329,41 +313,60 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const setsRemaining = currentExercise ? Math.max(0, currentExercise.targetSets - loggedSets.length) : 0;
   const upNext = orderedExercises.slice(exerciseIndex + 1);
+  const score = readiness.data?.score ?? null;
+  const context = profile.data?.equipmentContext ?? null;
+  const modeTitle = context === "full_gym" ? "Gym Mode" : context ? "Home Mode" : null;
+  const currentSetNumber = Math.min(loggedSets.length + 1, currentExercise?.targetSets ?? 1);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <Modal visible={showRestTimer} transparent animationType="fade" onRequestClose={() => setShowRestTimer(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", padding: spacing.lg }}>
-          <Card style={{ width: "100%", maxWidth: 360 }}>
-            <RestTimer onDismiss={() => setShowRestTimer(false)} />
-          </Card>
-        </View>
-      </Modal>
-
       <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
-          {currentExercise ? <PhasePill phase={currentExercise.phase} /> : <View />}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-            {timerStarted ? (
-              <Text style={{ color: paused ? colors.textMuted : colors.textPrimary, ...typography.h2 }}>
-                {formatElapsed(elapsedSeconds)}
-                {paused ? " · paused" : ""}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.md }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <View
+              style={{
+                alignSelf: "flex-start",
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: theme.accent,
+                backgroundColor: theme.accentSoft,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+              }}
+            >
+              <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+                Exercise {exerciseIndex + 1} of {orderedExercises.length}
+                {currentExercise ? ` · ${phaseLabel(currentExercise.phase)}` : ""}
               </Text>
-            ) : null}
-            <Button
-              label={paused ? "Resume" : "Pause"}
-              variant="secondary"
-              onPress={() => setPaused((p) => !p)}
-              style={{ height: 32, paddingHorizontal: spacing.md }}
-            />
+            </View>
+            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }} numberOfLines={1}>
+              {workout.name}
+            </Text>
           </View>
+          {timerStarted ? (
+            <Text style={{ color: paused ? colors.textMuted : colors.aiAccent, fontFamily: fonts.mono, fontSize: 18 }}>
+              {formatElapsed(elapsedSeconds)}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={() => setPaused((p) => !p)}
+            accessibilityRole="button"
+            accessibilityLabel={paused ? "Resume workout timer" : "Pause workout timer"}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name={paused ? "play" : "pause"} size={18} color={colors.textPrimary} />
+          </Pressable>
         </View>
-        <StepProgressBar
-          step={exerciseIndex + 1}
-          total={orderedExercises.length}
-          caption={`Step ${exerciseIndex + 1} of ${orderedExercises.length}${currentExercise ? ` — ${phaseLabel(currentExercise.phase)}` : ""}`}
-          showBrand={false}
-        />
+        {paused ? <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>Paused. Logging is disabled until you resume.</Text> : null}
         {wasResumed ? (
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
             Resumed from where you left off — nothing was lost.
@@ -373,108 +376,243 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ ...column, paddingHorizontal: layout.screenPadding, paddingBottom: spacing.lg, gap: spacing.md }}
+        contentContainerStyle={{ ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.md }}
       >
-        <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{currentExercise?.exercise.name}</Text>
-          <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
-            Target: {currentExercise?.targetSets} sets × {currentExercise?.targetReps} reps
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: spacing.md,
+          }}
+        >
+          <Icon name="heart" size={15} color={colors.textMuted} />
+          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+            Heart Rate:{" "}
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold }}>
+              {readiness.data?.source?.kind === "device" ? "Not shown during workouts yet" : "No wearable connected"}
+            </Text>{" "}
+            (Optional — set logging remains available)
           </Text>
-          {currentExercise && loggedSets.length === 0 ? (
-            <Button
-              label="Swap Exercise"
-              variant="secondary"
-              onPress={() =>
-                navigation.navigate("ExerciseSwap", {
-                  workoutId,
-                  workoutExerciseId: currentExercise.id,
-                  exerciseId: currentExercise.exercise.id,
-                })
-              }
-              style={{ marginTop: spacing.sm, height: 40 }}
-            />
-          ) : null}
-          <Button
-            label="Open Set & Rest Tracker"
-            variant="secondary"
-            onPress={() => navigation.navigate("SetRestTracker", { workoutId, sessionId, exerciseIndex })}
-            style={{ marginTop: spacing.sm, height: 40 }}
-          />
-        </Card>
+        </View>
 
-        {loggedSets.length > 0 ? (
-          <Card>
-            {loggedSets.map((s) => (
-              <Text key={s.setNumber} style={{ color: colors.success, ...typography.meta, marginBottom: 2 }}>
-                ✓ Set {s.setNumber} — {s.reps} reps{s.weightKg ? ` @ ${s.weightKg}kg` : ""}
-                {s.rpe ? ` · RPE ${s.rpe}` : ""}
-              </Text>
-            ))}
-          </Card>
+        {score != null ? (
+          <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
+              ✦ Your readiness is {score}/100.{readiness.data?.summary ? ` ${readiness.data.summary}` : ""}
+            </Text>
+            <Pressable
+              onPress={() => setWhyOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Why this readiness?"
+              style={{
+                alignSelf: "flex-start",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.aiBorder,
+                backgroundColor: colors.aiAccentSoft,
+              }}
+            >
+              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Why?</Text>
+            </Pressable>
+          </View>
         ) : null}
 
-        {setsRemaining > 0 ? (
-          <Card>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>
-              Log set {loggedSets.length + 1} of {currentExercise?.targetSets}
+        {modeTitle ? (
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{modeTitle}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+              Mode changes between exercises. Switching is locked while you're mid-set. Change it from the Train tab.
             </Text>
-            <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Reps"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="number-pad"
-                value={reps}
-                onChangeText={setReps}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Weight (kg, optional)"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="decimal-pad"
-                value={weight}
-                onChangeText={setWeight}
-              />
-            </View>
+          </View>
+        ) : null}
 
-            <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-              RPE (perceived exertion, optional)
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
-              {RPE_SCALE.map((n) => (
-                <Chip key={n} label={String(n)} selected={rpe === n} onPress={() => setRpe(rpe === n ? undefined : n)} />
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.card,
+            borderWidth: 1,
+            borderColor: theme.accent,
+            padding: spacing.md,
+            gap: spacing.sm,
+          }}
+        >
+          <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h1, fontSize: 20 }}>{currentExercise?.exercise.name}</Text>
+            {setsRemaining > 0 ? (
+              <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+                Set {currentSetNumber} of {currentExercise?.targetSets}
+              </Text>
+            ) : (
+              <Text style={{ color: colors.success, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
+            )}
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            Target: {currentExercise?.targetSets} Sets × {currentExercise?.targetReps} Reps
+          </Text>
+
+          {loggedSets.length > 0 ? (
+            <View style={{ gap: 4, marginTop: 4 }}>
+              {loggedSets.map((s) => (
+                <View key={s.setNumber} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    Set {s.setNumber}: {s.weightKg ? `${s.weightKg}kg × ` : ""}
+                    {s.reps} reps
+                  </Text>
+                  <Text style={{ color: colors.success, fontSize: 12 }}>✓ Logged{s.rpe ? ` (RPE ${s.rpe})` : ""}</Text>
+                </View>
               ))}
             </View>
+          ) : null}
 
+          {setsRemaining > 0 ? (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, marginTop: 4 }}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>Weight (kg)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="—"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="decimal-pad"
+                    value={weight}
+                    onChangeText={setWeight}
+                    accessibilityLabel="Weight in kilograms"
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>Reps</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="—"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="number-pad"
+                    value={reps}
+                    onChangeText={setReps}
+                    accessibilityLabel="Reps"
+                  />
+                </View>
+                <Pressable
+                  onPress={onLogSet}
+                  disabled={!reps || paused || isSubmittingSet}
+                  accessibilityRole="button"
+                  accessibilityLabel="Log set"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: radius.md,
+                    backgroundColor: theme.accent,
+                    opacity: !reps || paused ? 0.4 : 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isSubmittingSet ? <ActivityIndicator color={theme.textOnAccent} /> : <Icon name="check" size={22} color={theme.textOnAccent} strokeWidth={3} />}
+                </Pressable>
+              </View>
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>Rate Difficulty (RPE)</Text>
+                <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 11 }}>{rpe ? `RPE ${rpe} — ${rpeLabel(rpe)}` : "Optional"}</Text>
+              </View>
+              <View style={{ flexDirection: "row", gap: 4 }}>
+                {RPE_SCALE.map((n) => (
+                  <Pressable
+                    key={n}
+                    onPress={() => setRpe(rpe === n ? undefined : n)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`RPE ${n} of 10`}
+                    accessibilityState={{ selected: rpe === n }}
+                    style={{
+                      flex: 1,
+                      height: 32,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: rpe === n ? theme.accent : n <= (rpe ?? 0) ? theme.accentSoft : colors.surfaceRaised,
+                    }}
+                  >
+                    <Text style={{ color: rpe === n ? theme.textOnAccent : colors.textSecondary, fontSize: 12, fontFamily: fonts.bodySemi }}>{n}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: 4 }}>
+            {currentExercise && loggedSets.length === 0 ? (
+              <Button
+                label="Swap Exercise"
+                variant="secondary"
+                onPress={() =>
+                  navigation.navigate("ExerciseSwap", {
+                    workoutId,
+                    workoutExerciseId: currentExercise.id,
+                    exerciseId: currentExercise.exercise.id,
+                  })
+                }
+                style={{ flex: 1, height: 38 }}
+              />
+            ) : null}
             <Button
-              label="Log Set"
-              onPress={onLogSet}
-              loading={isSubmittingSet}
-              disabled={!reps || paused}
-              style={{ marginTop: spacing.sm }}
+              label="Set & Rest Tracker"
+              variant="secondary"
+              onPress={() => navigation.navigate("SetRestTracker", { workoutId, sessionId, exerciseIndex })}
+              style={{ flex: 1, height: 38 }}
             />
-          </Card>
+          </View>
+        </View>
+
+        {showRestTimer ? (
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
+            <RestTimer key={loggedSets.length} layout="compact" onDismiss={() => setShowRestTimer(false)} />
+          </View>
         ) : null}
 
         {upNext.length > 0 ? (
-          <Card>
-            <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>Up Next</Text>
+          <>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>Up Next</Text>
             {upNext.map((ex) => (
-              <View key={ex.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs }}>
-                <View>
-                  <Text style={{ color: colors.textPrimary }}>{ex.exercise.name}</Text>
-                  <Text style={{ color: colors.textMuted, ...typography.meta }}>{phaseLabel(ex.phase)}</Text>
+              <View
+                key={ex.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.md,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.sm + 2,
+                }}
+              >
+                {ex.exercise.mediaUrl ? (
+                  <Image source={{ uri: ex.exercise.mediaUrl }} style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceRaised }} resizeMode="cover" />
+                ) : (
+                  <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="dumbbell" size={18} color={theme.textOnAccent} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{ex.exercise.name}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                    {ex.targetSets} Sets · {ex.targetReps} Reps
+                  </Text>
                 </View>
-                <Text style={{ color: colors.textMuted, ...typography.meta }}>
-                  {ex.targetSets} × {ex.targetReps}
-                </Text>
               </View>
             ))}
-          </Card>
+          </>
         ) : null}
       </ScrollView>
 
-      <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.md }}>
+      <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.sm }}>
         <Button
           label={isLastExercise ? "Finish Workout" : "Next Exercise"}
           onPress={onNextExercise}
@@ -487,20 +625,37 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           variant="secondary"
           onPress={onAbandon}
           loading={isAbandoning}
-          style={{ marginTop: spacing.sm, height: 40 }}
+          style={{ marginTop: spacing.xs, height: 34 }}
         />
       </View>
+
+      <ReasoningSheet
+        visible={whyOpen}
+        onClose={() => setWhyOpen(false)}
+        title="Why this readiness?"
+        heading="Based on your own logs"
+        rationale={readiness.data?.summary ?? readiness.data?.headline ?? "Computed from the recovery data you have logged."}
+        rows={(readiness.data?.components ?? []).map((c) => ({ label: c.key, value: `${Math.round(c.score)}/100` }))}
+        caveat={readiness.data?.basis ?? "Based on your logged data"}
+      />
     </SafeAreaView>
   );
 }
 
+function rpeLabel(n: number): string {
+  if (n <= 3) return "Easy";
+  if (n <= 6) return "Moderate";
+  if (n <= 8) return "Hard";
+  if (n === 9) return "Very hard";
+  return "Max effort";
+}
+
 const styles = {
   input: {
-    flex: 1,
     height: 50,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     backgroundColor: colors.surfaceRaised,
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,

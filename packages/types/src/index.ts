@@ -338,6 +338,8 @@ export interface EditOnboardingProfileInput {
   /** null clears the goal weight. */
   targetWeightKg?: number | null;
   heightCm?: number;
+  /** Train dashboard's Gym | Home toggle. */
+  equipmentContext?: EquipmentContext;
 }
 
 // ---- Programs / Exercises / Recipes ---------------------------------------
@@ -371,6 +373,10 @@ export interface Program {
   priceCents: number;
   /** Cover image URL, added 4 Sep 2026. Null for a program with no artwork — clients fall back to their icon tile. */
   imageUrl: string | null;
+  /** GET /programs only: number of workouts in the program. */
+  workoutCount?: number;
+  /** GET /programs only: highest workout intensity in the program; null without workouts. */
+  level?: "beginner" | "intermediate" | "advanced" | null;
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   /** Null for content seeded via `scripts/seed.ts` before the admin CMS existed, or created before this field was added. */
@@ -573,6 +579,8 @@ export interface WorkoutCompletionSummary {
   totalVolumeKg: number;
   durationMinutes: number | null;
   newPersonalRecords: Array<{ exerciseId: string; exerciseName: string; weightKg: number; reps: number }>;
+  /** Sets + volume per workout phase actually logged (no per-phase timing exists). */
+  phases: Array<{ phase: WorkoutPhase; sets: number; volumeKg: number }>;
   trainingStreak: { currentStreak: number; longestStreak: number };
 }
 
@@ -4611,7 +4619,7 @@ export type AiCoachErrorCode =
 // analysis, Fuel gaps, coach session summaries and quotes. Dates are ISO strings.
 
 /** GET /training/analytics?range= */
-export type AnalyticsRange = "4w" | "12w" | "26w";
+export type AnalyticsRange = "1w" | "4w" | "8w" | "12w" | "26w" | "52w";
 export type AcwrStatus = "low" | "optimal" | "high";
 
 export interface TrainingWeekBucket {
@@ -4645,8 +4653,19 @@ export interface TrainingPersonalRecord {
   achievedAt: string;
 }
 
+export interface TrainingConsistency {
+  /** From the user's onboarding answer; null when they have no plan on file. */
+  plannedPerWeek: number | null;
+  completedThisWeek: number;
+  /** completed / planned, capped at 100; null when plannedPerWeek is null. */
+  percent: number | null;
+}
+
 export interface TrainingAnalytics {
   range: AnalyticsRange;
+  /** % change of this range's volume vs the equally long range before it; null with no earlier volume. */
+  volumeChangePercent: number | null;
+  consistency: TrainingConsistency;
   totalSessions: number;
   totalSets: number;
   totalVolumeKg: number;
@@ -4728,7 +4747,17 @@ export interface WorkoutSettings {
   countdownSound: boolean;
   keepScreenAwake: boolean;
   defaultRpeTracking: boolean;
+  /** Train 16 Preferences: 15-120 minutes. */
+  preferredDurationMinutes: number;
+  audioCoaching: boolean;
+  autoDeloadWeek: boolean;
+  /** Chips such as barbell/dumbbells/cables/machines/bands/kettlebells/bodyweight; falls back to the onboarding equipment context. */
+  equipment: WorkoutEquipment[];
+  /** Lowercase mon..sun; falls back to the onboarding preferredTrainingDays. */
+  trainingDays: TrainingDayKey[];
 }
+export type WorkoutEquipment = "barbell" | "dumbbells" | "cables" | "machines" | "bands" | "kettlebells" | "bodyweight";
+export type TrainingDayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type UpdateWorkoutSettingsInput = Partial<WorkoutSettings>;
 
 /** Endurance tracker: /activities */

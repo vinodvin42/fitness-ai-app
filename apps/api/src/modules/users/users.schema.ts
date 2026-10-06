@@ -120,6 +120,8 @@ export const editOnboardingProfileSchema = z
     // null clears the goal weight.
     targetWeightKg: z.number().min(20).max(400).nullable().optional(),
     heightCm: z.number().positive().optional(),
+    // Train dashboard's Gym | Home toggle persists the user's equipment context.
+    equipmentContext: z.enum(EQUIPMENT_CONTEXTS).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });
 

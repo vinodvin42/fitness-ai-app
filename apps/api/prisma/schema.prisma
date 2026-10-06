@@ -3785,6 +3785,14 @@ model WorkoutSettings {
   countdownSound     Boolean           @default(true)
   keepScreenAwake    Boolean           @default(true)
   defaultRpeTracking Boolean           @default(false)
+  // Train 16 "Preferences" extras. `equipment` / `trainingDays` stay empty
+  // until the user edits them; reads then fall back to the onboarding profile
+  // (equipmentContext / preferredTrainingDays) and edits write back to it.
+  preferredDurationMinutes Int         @default(45)
+  audioCoaching      Boolean           @default(true)
+  autoDeloadWeek     Boolean           @default(false)
+  equipment          String[]          @default([])
+  trainingDays       String[]          @default([])
   updatedAt          DateTime          @updatedAt
 
   @@map("workout_settings")

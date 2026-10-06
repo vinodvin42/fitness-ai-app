@@ -1,30 +1,34 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
+import { BackButton } from "../../components/BackButton";
+import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { Button } from "../../components/Button";
-import { Icon, IconName } from "../../components/Icon";
-import { Pill } from "../../components/Pill";
+import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchWorkoutDetail } from "../../api/programs";
+import { fetchReadiness } from "../../api/recovery";
 import { startWorkoutSession } from "../../api/workoutSessions";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { BRAND_NAME } from "../../lib/brand";
+import { useTheme } from "../../theme/ThemeProvider";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "WorkoutDetail">;
 
-const PHASE_LABELS = { warmup: "Warm-Up", main: "Strength Training", cooldown: "Cooldown & Stretch" } as const;
-const PHASE_META: Record<keyof typeof PHASE_LABELS, { icon: IconName; color: string }> = {
-  warmup: { icon: "flame", color: colors.orange },
-  main: { icon: "dumbbell", color: colors.accent },
-  cooldown: { icon: "moon", color: colors.cyan },
+const PHASE_LABELS = { warmup: "Mobility & Warm-up", main: "Strength Training", cooldown: "Cooldown & Stretch" } as const;
+const PHASE_META: Record<keyof typeof PHASE_LABELS, { color: string }> = {
+  warmup: { color: colors.success },
+  main: { color: colors.accent },
+  cooldown: { color: colors.aiAccent },
 };
+const LEVEL_LABEL = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" } as const;
 
 /**
  * Workout Detail (trn-04) — docs/mobile/03-screen-inventory.md §C: "summary,
@@ -43,7 +47,11 @@ const PHASE_META: Record<keyof typeof PHASE_LABELS, { icon: IconName; color: str
 export function WorkoutDetailScreen({ route, navigation }: Props) {
   const { workoutId } = route.params;
   const queryClient = useQueryClient();
+  const { colors: theme } = useTheme();
   const [isStarting, setIsStarting] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
@@ -93,69 +101,129 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
   }
 
   const phases: Array<keyof typeof PHASE_LABELS> = ["warmup", "main", "cooldown"];
+  const allExercises = applySwaps(workout.exercises, swaps);
+  const score = readiness.data?.score ?? null;
 
   return (
     <ScreenContainer title={workout.name}>
-      <Card style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
-        <Pill label={`${workout.durationMinutes} min`} icon="clock" />
-        <Pill label={`${workout.intensity} intensity`} tone="accent" />
-        <Pill label={`${workout.exercises.length} exercises`} icon="dumbbell" />
-      </Card>
+      <BackButton onPress={() => navigation.goBack()} />
+      <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: -spacing.sm }}>
+        {workout.durationMinutes} min · {workout.exercises.length} exercises · {LEVEL_LABEL[workout.intensity]}
+      </Text>
+
+      {score != null && readiness.data ? (
+        <View style={{ gap: spacing.sm }}>
+          <View style={{ alignSelf: "flex-start", borderRadius: radius.sm, borderWidth: 1, borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.6 }}>
+              ✦ {BRAND_NAME.toUpperCase()} READINESS
+            </Text>
+          </View>
+          <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
+              Your readiness is {score}/100.{readiness.data.summary ? ` ${readiness.data.summary}` : ""}
+            </Text>
+            <Pressable
+              onPress={() => setWhyOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Why this readiness?"
+              style={{
+                alignSelf: "flex-start",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.aiBorder,
+                backgroundColor: colors.aiAccentSoft,
+              }}
+            >
+              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Why?</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {phases.map((phase) => {
-        const exercisesInPhase = applySwaps(workout.exercises, swaps).filter((we) => we.phase === phase);
+        const exercisesInPhase = allExercises.filter((we) => we.phase === phase);
         if (exercisesInPhase.length === 0) return null;
         const meta = PHASE_META[phase];
+        const isOpen = expanded[phase] ?? phase === "main";
         return (
-          <View key={phase} style={{ gap: spacing.sm }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-              <Icon name={meta.icon} size={18} color={meta.color} />
-              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{PHASE_LABELS[phase]}</Text>
-            </View>
-            <Card style={{ gap: 0 }}>
-              {exercisesInPhase.map((we, i) => (
-                <View
-                  key={we.id}
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    paddingVertical: spacing.sm,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: colors.border,
-                  }}
-                >
-                  <Text style={{ color: colors.textPrimary, ...typography.body, flex: 1 }}>{we.exercise.name}</Text>
-                  <Pressable
-                    onPress={() =>
-                      navigation.navigate("ExerciseSwap", {
-                        workoutId,
-                        workoutExerciseId: we.id,
-                        exerciseId: we.exercise.id,
-                      })
-                    }
-                    accessibilityRole="button"
-                    accessibilityLabel={`Swap ${we.exercise.name}`}
-                    hitSlop={6}
-                    style={{ marginRight: spacing.sm }}
-                  >
-                    <Text style={{ color: colors.accent, ...typography.label }}>Swap</Text>
-                  </Pressable>
+          <View
+            key={phase}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: isOpen ? theme.accent : colors.border,
+              overflow: "hidden",
+            }}
+          >
+            <Pressable
+              onPress={() => setExpanded((e) => ({ ...e, [phase]: !isOpen }))}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isOpen }}
+              accessibilityLabel={`${PHASE_LABELS[phase]}, ${exercisesInPhase.length} exercises`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: spacing.md }}
+            >
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{PHASE_LABELS[phase]}</Text>
+              <Text style={{ flex: 1, color: colors.textMuted, fontSize: 12 }}>· {exercisesInPhase.length} ex</Text>
+              <View style={{ transform: [{ rotate: isOpen ? "-90deg" : "90deg" }] }}>
+                <Icon name="chevron-right" size={16} color={isOpen ? theme.accent : colors.textMuted} />
+              </View>
+            </Pressable>
+            {isOpen ? (
+              <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                {exercisesInPhase.map((we) => (
                   <View
+                    key={we.id}
                     style={{
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: 3,
-                      borderRadius: radius.sm,
-                      backgroundColor: colors.surfaceHigh,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
                     }}
                   >
-                    <Text style={{ color: colors.textSecondary, ...typography.label }}>
-                      {we.targetSets} × {we.targetReps}
-                    </Text>
+                    <Pressable
+                      onPress={() => navigation.navigate("ExerciseDetail", { exerciseId: we.exercise.id })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${we.exercise.name} details`}
+                      style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md }}
+                    >
+                      {we.exercise.mediaUrl ? (
+                        <Image source={{ uri: we.exercise.mediaUrl }} style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceRaised }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" }}>
+                          <Icon name="dumbbell" size={18} color={colors.textMuted} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{we.exercise.name}</Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                          {we.targetSets}×{we.targetReps} · {we.exercise.muscleGroup}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        navigation.navigate("ExerciseSwap", {
+                          workoutId,
+                          workoutExerciseId: we.id,
+                          exerciseId: we.exercise.id,
+                        })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`Swap ${we.exercise.name}`}
+                      hitSlop={8}
+                    >
+                      <Icon name="swap" size={18} color={theme.accent} />
+                    </Pressable>
                   </View>
-                </View>
-              ))}
-            </Card>
+                ))}
+              </View>
+            ) : null}
           </View>
         );
       })}
@@ -175,6 +243,16 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
           style={{ marginTop: spacing.sm }}
         />
       )}
+
+      <ReasoningSheet
+        visible={whyOpen}
+        onClose={() => setWhyOpen(false)}
+        title="Why this readiness?"
+        heading="Based on your own logs"
+        rationale={readiness.data?.summary ?? readiness.data?.headline ?? "Computed from the recovery data you have logged."}
+        rows={(readiness.data?.components ?? []).map((c) => ({ label: c.key, value: `${Math.round(c.score)}/100` }))}
+        caveat={readiness.data?.basis ?? "Based on your logged data"}
+      />
 
       <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
     </ScreenContainer>
