@@ -152,11 +152,11 @@ function annualSavingsPercent(plan: SubscriptionPlan, allPlans: SubscriptionPlan
  * (gap §35), so it's a plan-lineup table, not an entitlement enforcement
  * point.
  */
-export function SubscriptionScreen({ navigation }: Props) {
+export function SubscriptionScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<SubscriptionPlan["billingCycle"]>("monthly");
+  const [billingCycle, setBillingCycle] = useState<SubscriptionPlan["billingCycle"]>(route.params?.billingCycle ?? "monthly");
   const [couponCode, setCouponCode] = useState("");
 
   const {

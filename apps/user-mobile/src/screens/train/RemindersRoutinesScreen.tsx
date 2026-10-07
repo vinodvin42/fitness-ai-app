@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, Switch, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavigationProp, useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -15,7 +15,7 @@ import { fetchReminders, updateReminder } from "../../api/reminders";
 import { fetchDueMedications, fetchMedications, localDateString, updateMedication } from "../../api/medications";
 import { fetchRoutines, ROUTINES_KEY } from "../../api/routines";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
-import { requestNotificationPermissions, syncScheduledNotifications } from "../../lib/reminderNotifications";
+import { useReminderSync } from "../../lib/useReminderSync";
 import {
   composeHistory,
   composeScheduled,
@@ -25,7 +25,6 @@ import {
   type AgendaItem,
 } from "../../lib/agenda";
 import { extractErrorMessage } from "../../lib/apiError";
-import { useAuth } from "../../context/AuthContext";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -60,7 +59,6 @@ const META: Record<AgendaItem["category"], { icon: IconName; tint: string }> = {
  */
 export function RemindersRoutinesScreen({ navigation }: Props) {
   const { colors: theme } = useTheme();
-  const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
   const tabs = useNavigation<NavigationProp<MainTabsParamList>>();
@@ -83,13 +81,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
 
   // Keep on-device notifications in step with the reminder switches (same rule as the Reminders list).
   const reminders = remindersQ.data;
-  useEffect(() => {
-    if (!reminders) return;
-    const toSchedule = user?.notificationsEnabled === false ? [] : reminders;
-    requestNotificationPermissions()
-      .then((granted) => (granted ? syncScheduledNotifications(toSchedule) : undefined))
-      .catch(() => undefined);
-  }, [reminders, user?.notificationsEnabled]);
+  useReminderSync(reminders, () => navigation.getParent()?.navigate("More", { screen: "NotificationPermission" }));
 
   const toggle = useMutation({
     mutationFn: async ({ item, on }: { item: AgendaItem; on: boolean }) => {

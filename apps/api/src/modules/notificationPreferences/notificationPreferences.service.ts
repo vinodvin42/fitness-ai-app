@@ -9,6 +9,9 @@ type PrefRow = {
   coachMessages: boolean;
   billing: boolean;
   marketing: boolean;
+  masterEnabled: boolean;
+  hydrationReminders: boolean;
+  frequencyCap: number | null;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   updatedAt: Date;
@@ -21,6 +24,9 @@ function toItem(p: PrefRow) {
     coachMessages: p.coachMessages,
     billing: p.billing,
     marketing: p.marketing,
+    masterEnabled: p.masterEnabled,
+    hydrationReminders: p.hydrationReminders,
+    frequencyCap: p.frequencyCap,
     quietHoursStart: p.quietHoursStart,
     quietHoursEnd: p.quietHoursEnd,
     updatedAt: p.updatedAt,

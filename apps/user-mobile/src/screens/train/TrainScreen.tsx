@@ -12,6 +12,7 @@ import { fetchTrendingWorkout, fetchWorkoutDetail } from "../../api/programs";
 import { fetchMyPrograms } from "../../api/programPurchases";
 import { fetchNextWorkout } from "../../api/plans";
 import { fetchReadiness } from "../../api/recovery";
+import { fetchPartner, PARTNER_KEY } from "../../api/partner";
 import { startWorkoutSession } from "../../api/workoutSessions";
 import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -126,6 +127,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
   const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
   const myPrograms = useQuery({ queryKey: ["programs", "mine"], queryFn: fetchMyPrograms });
+  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, staleTime: 60_000 });
   const trending = useQuery({ queryKey: ["trending", "workout"], queryFn: fetchTrendingWorkout, staleTime: 5 * 60_000 });
 
   const todayWorkout = nextWorkout.data?.workout ?? null;
@@ -346,6 +348,33 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
               onAction={() => setTab("programs")}
             />
           )}
+
+          {partner.data ? (
+            <Pressable
+              onPress={() => navigation.navigate("GymWorkout")}
+              accessibilityRole="button"
+              accessibilityLabel="Today's gym workout"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.md,
+                backgroundColor: colors.surface,
+                borderRadius: radius.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: spacing.md,
+              }}
+            >
+              <Icon name="dumbbell" size={20} color={theme.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>Today's gym workout</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta }} numberOfLines={1}>
+                  Checked against {partner.data.gym.name}'s equipment
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
 
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Quick Start</Text>
           <View style={{ marginHorizontal: -spacing.md }}>

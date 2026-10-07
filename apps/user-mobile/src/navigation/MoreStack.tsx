@@ -1,7 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { NavigatorScreenParams } from "@react-navigation/native";
-import type { BookingConfirmation, ConsentType, Medication, ProfessionalServiceType, QuoteServiceType, Reminder, TimelineEvent } from "@fitness-ai-app/types";
+import type { BookingConfirmation, ConsentType, HelpArticleCategory, Medication, ProfessionalServiceType, QuoteServiceType, Reminder, SupportTicketCategory, TimelineEvent } from "@fitness-ai-app/types";
 import { MoreScreen } from "../screens/more/MoreScreen";
 import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
@@ -27,6 +27,10 @@ import { ConsentWithdrawnScreen } from "../screens/more/ConsentWithdrawnScreen";
 import { SupportScreen } from "../screens/more/SupportScreen";
 import { SupportTicketFormScreen } from "../screens/more/SupportTicketFormScreen";
 import { SupportTicketDetailScreen } from "../screens/more/SupportTicketDetailScreen";
+import { NotificationPermissionScreen } from "../screens/more/NotificationPermissionScreen";
+import { DownloadDataScreen } from "../screens/more/DownloadDataScreen";
+import { HelpArticleListScreen } from "../screens/more/HelpArticleListScreen";
+import { HelpArticleScreen } from "../screens/more/HelpArticleScreen";
 import { ReferralScreen } from "../screens/more/ReferralScreen";
 import { ProfessionalRelationshipScreen } from "../screens/coaching/ProfessionalRelationshipScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
@@ -47,6 +51,16 @@ import { SessionSummaryScreen } from "../screens/coaching/SessionSummaryScreen";
 import { QuotesScreen } from "../screens/coaching/QuotesScreen";
 import { QuoteDetailScreen } from "../screens/coaching/QuoteDetailScreen";
 import { RequestQuoteScreen } from "../screens/coaching/RequestQuoteScreen";
+import { MyPlanScreen } from "../screens/more/MyPlanScreen";
+import { MeasurementUnitsScreen } from "../screens/more/MeasurementUnitsScreen";
+import { AppearanceScreen } from "../screens/more/AppearanceScreen";
+import { AppleHealthDevicesScreen } from "../screens/more/AppleHealthDevicesScreen";
+import { PartnerCodeScreen } from "../screens/more/PartnerCodeScreen";
+import { PartnerCodeProblemsScreen } from "../screens/more/PartnerCodeProblemsScreen";
+import { MyGymScreen } from "../screens/more/MyGymScreen";
+import { GymHelpScreen, type GymHelpParams } from "../screens/more/GymHelpScreen";
+import { SavedRecipesScreen } from "../screens/more/SavedRecipesScreen";
+import { MyGoalsScreen } from "../screens/more/MyGoalsScreen";
 
 // docs/mobile/03-screen-inventory.md §N: More Menu -> Profile -> View/Edit
 // Profile, and Preferences. **R1 Developer 1 U1 (14 Sep 2026):** §F's
@@ -105,7 +119,18 @@ export type MoreStackParamList = {
   // see this file's top comment.
   // Progress is no longer a tab (Figma bar has Recover instead); its stack nests here.
   ProgressSection: NavigatorScreenParams<ProgressStackParamList> | undefined;
-  Subscription: undefined;
+  // Profile & Settings (Figma section 11): `billingCycle` pre-selects the Monthly/Annual toggle (My plan -> Change billing period).
+  Subscription: { billingCycle?: "monthly" | "annual" } | undefined;
+  MyPlan: undefined;
+  MeasurementUnits: undefined;
+  Appearance: undefined;
+  AppleHealthDevices: undefined;
+  PartnerCode: undefined;
+  PartnerCodeProblems: { reason?: "not_found" | "expired" | "already_linked"; code?: string } | undefined;
+  MyGym: undefined;
+  GymHelp: GymHelpParams;
+  SavedRecipes: undefined;
+  MyGoals: undefined;
   SubscriptionHistory: undefined;
   // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — "activation_failed"
   // is a genuinely distinct, recoverable state: the payment WAS captured,
@@ -122,13 +147,18 @@ export type MoreStackParamList = {
   SettingsHub: undefined;
   LanguageSelection: undefined;
   NotificationSettings: undefined;
+  // Settings 14 / 16 / 13 (row 2).
+  NotificationPermission: undefined;
+  DownloadData: undefined;
+  HelpArticleList: { category: HelpArticleCategory; title: string };
+  HelpArticle: { slug: string };
   Security: { focus?: "delete" } | undefined;
   // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
   // PrivacySettingsScreen.tsx's own doc comment.
   PrivacySettings: undefined;
   ConsentWithdrawn: { type: ConsentType };
   Support: undefined;
-  SupportTicketForm: undefined;
+  SupportTicketForm: { category?: SupportTicketCategory } | undefined;
   SupportTicketDetail: { ticketId: string };
   Referral: undefined;
   ProfessionalRelationship: undefined;
@@ -165,6 +195,16 @@ export function MoreStack() {
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="ProgressSection" component={ProgressStack} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="MyPlan" component={MyPlanScreen} />
+      <Stack.Screen name="MeasurementUnits" component={MeasurementUnitsScreen} />
+      <Stack.Screen name="Appearance" component={AppearanceScreen} />
+      <Stack.Screen name="AppleHealthDevices" component={AppleHealthDevicesScreen} />
+      <Stack.Screen name="PartnerCode" component={PartnerCodeScreen} />
+      <Stack.Screen name="PartnerCodeProblems" component={PartnerCodeProblemsScreen} />
+      <Stack.Screen name="MyGym" component={MyGymScreen} />
+      <Stack.Screen name="GymHelp" component={GymHelpScreen} />
+      <Stack.Screen name="SavedRecipes" component={SavedRecipesScreen} />
+      <Stack.Screen name="MyGoals" component={MyGoalsScreen} />
       <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} />
       <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
       <Stack.Screen name="TimelineOverview" component={TimelineOverviewScreen} />
@@ -176,6 +216,10 @@ export function MoreStack() {
       <Stack.Screen name="SettingsHub" component={SettingsHubScreen} />
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="NotificationPermission" component={NotificationPermissionScreen} />
+      <Stack.Screen name="DownloadData" component={DownloadDataScreen} />
+      <Stack.Screen name="HelpArticleList" component={HelpArticleListScreen} />
+      <Stack.Screen name="HelpArticle" component={HelpArticleScreen} />
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="ConsentWithdrawn" component={ConsentWithdrawnScreen} />

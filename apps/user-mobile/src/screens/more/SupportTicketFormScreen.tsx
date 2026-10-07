@@ -34,9 +34,10 @@ const CATEGORIES: Array<{ value: SupportTicketCategory; label: string }> = [
  * own doc comment for what's still Phase 6-only (status progression,
  * an admin reply thread).
  */
-export function SupportTicketFormScreen({ navigation }: Props) {
+export function SupportTicketFormScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
-  const [category, setCategory] = useState<SupportTicketCategory>("other");
+  // Report Bug / Feature Request on Help & Support open this form with a preset category.
+  const [category, setCategory] = useState<SupportTicketCategory>(route.params?.category ?? "other");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

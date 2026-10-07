@@ -14,6 +14,10 @@ import { ThemeProvider } from "./src/theme/ThemeProvider";
 import { queryClient, persistOptions } from "./src/lib/queryClient";
 import { captureAcquisitionContext } from "./src/lib/acquisitionContext";
 import { captureResetPasswordToken } from "./src/lib/resetPasswordLink";
+import { initTextScale } from "./src/lib/localSettings";
+
+// Applies the saved "Larger text" choice (Settings) before the first render.
+void initTextScale();
 
 export default function App() {
   // Design System v2 typefaces (31 Aug 2026): Sora (display/headers),

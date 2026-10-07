@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { guardianSubmitRateLimit, twoFactorRateLimit } from "../../middleware/rateLimit";
 import {
@@ -13,6 +14,7 @@ import {
   updateProfileSchema,
 } from "./users.schema";
 import * as usersService from "./users.service";
+import * as dataExportsService from "../dataExports/dataExports.service";
 
 export const usersRouter = Router();
 
@@ -78,7 +80,17 @@ usersRouter.patch("/me/password", requireAuth, async (req: AuthedRequest, res, n
 
 usersRouter.get("/me/sessions", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    res.json({ items: await usersService.listSessions(req.userId!) });
+    const current = req.get("x-refresh-token") || undefined;
+    res.json({ items: await usersService.listSessions(req.userId!, current) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.post("/me/sessions/revoke-others", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { refreshToken } = z.object({ refreshToken: z.string().min(1) }).parse(req.body);
+    res.json(await usersService.revokeOtherSessions(req.userId!, refreshToken));
   } catch (err) {
     next(err);
   }
@@ -96,6 +108,34 @@ usersRouter.delete("/me/sessions/:id", requireAuth, async (req: AuthedRequest, r
 usersRouter.get("/me/export", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await usersService.exportUserData(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.post("/me/exports", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.status(201).json(await dataExportsService.createExport(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.get("/me/exports/latest", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await dataExportsService.getLatestExport(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.get("/me/exports/:id/download", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { bytes, createdAt } = await dataExportsService.downloadExport(req.userId!, req.params.id);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="23primefit-data-${createdAt.toISOString().slice(0, 10)}.zip"`);
+    res.setHeader("Content-Length", String(bytes.length));
+    res.send(bytes);
   } catch (err) {
     next(err);
   }

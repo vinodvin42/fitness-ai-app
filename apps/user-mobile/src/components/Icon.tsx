@@ -86,6 +86,9 @@ import {
   Image as ImageIcon,
   FileText,
   Ruler,
+  Laptop,
+  Trash2,
+  Bug,
   type LucideIcon,
 } from "lucide-react-native";
 import { colors } from "../theme/tokens";
@@ -182,6 +185,9 @@ export const ICONS = {
   image: ImageIcon,
   "file-text": FileText,
   ruler: Ruler,
+  laptop: Laptop,
+  trash: Trash2,
+  bug: Bug,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

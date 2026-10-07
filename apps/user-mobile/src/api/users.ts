@@ -15,7 +15,7 @@ import type {
   User,
   UserDataExport,
 } from "@fitness-ai-app/types";
-import { apiClient } from "./client";
+import { apiClient, getStoredTokens } from "./client";
 
 export function submitOnboarding(input: OnboardingProfileInput) {
   return apiClient
@@ -47,8 +47,17 @@ export function changePassword(input: ChangePasswordInput) {
   return apiClient.patch("/users/me/password", input).then(() => undefined);
 }
 
-export function fetchSessions() {
-  return apiClient.get<{ items: Session[] }>("/users/me/sessions").then((r) => r.data.items);
+export async function fetchSessions() {
+  // The refresh token identifies THIS device so the API can flag it as current.
+  const { refreshToken } = await getStoredTokens();
+  return apiClient
+    .get<{ items: Session[] }>("/users/me/sessions", { headers: refreshToken ? { "X-Refresh-Token": refreshToken } : {} })
+    .then((r) => r.data.items);
+}
+
+export async function revokeOtherSessions() {
+  const { refreshToken } = await getStoredTokens();
+  return apiClient.post<{ revoked: number }>("/users/me/sessions/revoke-others", { refreshToken }).then((r) => r.data);
 }
 
 export function revokeSession(id: string) {

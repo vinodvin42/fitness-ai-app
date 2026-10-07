@@ -39,6 +39,19 @@ async function issueTokenPair(userId: string, email: string) {
   };
 }
 
+/** Stores the sign-in device (User-Agent) on a freshly issued session, for Security > Active Sessions. Best-effort. */
+export async function recordSessionDevice(rawRefreshToken: string, userAgent: string | undefined): Promise<void> {
+  if (!userAgent) return;
+  try {
+    await prisma.refreshToken.updateMany({
+      where: { tokenHash: hashRefreshToken(rawRefreshToken) },
+      data: { userAgent: userAgent.slice(0, 300) },
+    });
+  } catch (err) {
+    console.error("recordSessionDevice failed:", err);
+  }
+}
+
 export async function signup(input: SignupInput) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {

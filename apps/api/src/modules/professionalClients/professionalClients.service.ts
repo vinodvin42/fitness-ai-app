@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import * as plansService from "../plans/plans.service";
+import { getSharingFlags } from "../dataSharing/dataSharing.service";
 import type { DecideRecommendationInput } from "../plans/plans.schema";
 
 /**
@@ -221,6 +222,14 @@ type CheckInSummaryRow = {
   createdAt: Date;
 };
 
+type RecoverySummaryRow = {
+  date: Date;
+  steps: number | null;
+  sleepHours: number | null;
+  restingHeartRate: number | null;
+  hrvMs: number | null;
+};
+
 type BodyMeasurementSummaryRow = {
   id: string;
   weightKg: number | null;
@@ -256,18 +265,24 @@ export async function getClientSummary(professionalId: string, userId: string) {
 
   const since = new Date(Date.now() - SUMMARY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
-  const [workoutSessions, mealLogs, checkIns, bodyMeasurements] = await Promise.all([
+  // Per-professional sharing flags (Profile & Settings 12): the client decides,
+  // per professional, whether food logs / steps / sleep & recovery are visible.
+  const sharing = await getSharingFlags(userId, professionalId);
+
+  const [workoutSessions, mealLogs, checkIns, bodyMeasurements, recoveryRows] = await Promise.all([
     prisma.workoutSession.findMany({
       where: { userId, startedAt: { gte: since } },
       include: { workout: { select: { name: true } } },
       orderBy: { startedAt: "desc" },
       take: SUMMARY_ROW_LIMIT,
     }),
-    prisma.mealLog.findMany({
-      where: { userId, loggedAt: { gte: since } },
-      orderBy: { loggedAt: "desc" },
-      take: SUMMARY_ROW_LIMIT,
-    }),
+    sharing.foodLogs
+      ? prisma.mealLog.findMany({
+          where: { userId, loggedAt: { gte: since } },
+          orderBy: { loggedAt: "desc" },
+          take: SUMMARY_ROW_LIMIT,
+        })
+      : Promise.resolve([]),
     prisma.checkIn.findMany({
       where: { userId, createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
@@ -278,6 +293,13 @@ export async function getClientSummary(professionalId: string, userId: string) {
       orderBy: { loggedAt: "desc" },
       take: SUMMARY_ROW_LIMIT,
     }),
+    sharing.steps || sharing.sleepRecovery
+      ? prisma.recoveryLog.findMany({
+          where: { userId, date: { gte: since } },
+          orderBy: { date: "desc" },
+          take: SUMMARY_ROW_LIMIT,
+        })
+      : Promise.resolve([]),
   ]);
 
   const sessions = workoutSessions as WorkoutSessionSummaryRow[];
@@ -299,7 +321,23 @@ export async function getClientSummary(professionalId: string, userId: string) {
         completedAt: s.completedAt,
       })),
     },
+    sharing,
+    // Only the data classes the client shares with THIS professional; null = not shared.
+    recovery: {
+      steps: sharing.steps
+        ? (recoveryRows as RecoverySummaryRow[]).map((r) => ({ date: r.date, steps: r.steps }))
+        : null,
+      sleep: sharing.sleepRecovery
+        ? (recoveryRows as RecoverySummaryRow[]).map((r) => ({
+            date: r.date,
+            sleepHours: r.sleepHours,
+            restingHeartRate: r.restingHeartRate,
+            hrvMs: r.hrvMs,
+          }))
+        : null,
+    },
     nutrition: {
+      shared: sharing.foodLogs,
       recentLogs: (mealLogs as MealLogSummaryRow[]).map((m) => ({
         id: m.id,
         mealType: m.mealType,

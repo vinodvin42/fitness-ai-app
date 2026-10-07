@@ -32,15 +32,70 @@ function toItem(n: NotificationRow) {
   };
 }
 
+/** True when `now` (server-local HH:MM) falls inside the user's quiet-hours window (handles overnight windows). */
+export function isWithinQuietHours(start: string | null, end: string | null, now: Date): boolean {
+  if (!start || !end || start === end) return false;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const toMin = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3, 5));
+  const s = toMin(start);
+  const e = toMin(end);
+  return s < e ? mins >= s && mins < e : mins >= s || mins < e;
+}
+
+const KIND_TO_CATEGORY: Partial<Record<NotificationKindValue, "workoutReminders" | "mealReminders" | "coachMessages" | "billing">> = {
+  workout: "workoutReminders",
+  nutrition: "mealReminders",
+  coach: "coachMessages",
+  billing: "billing",
+};
+
+export type DeliveryDecision = {
+  /** Whether an inbox row should be created at all. */
+  deliver: boolean;
+  /** Why it was suppressed (undefined when delivered). */
+  reason?: "paused" | "category_off" | "frequency_cap";
+  /**
+   * True when the user's quiet hours are active right now. The inbox row is
+   * still written (it is passive - nothing buzzes the device); a future push
+   * sender must hold or silence the push while this is true.
+   */
+  quiet: boolean;
+};
+
 /**
- * Internal helper for other modules. Never throws — a failed inbox write
+ * Central delivery policy for server-created notifications: the user's
+ * master pause, per-category toggle and daily frequency cap decide whether a
+ * row is created. `system` notifications (security / account) are never
+ * suppressed. No preference row = defaults (everything on, no cap).
+ */
+export async function evaluateDelivery(userId: string, kind: NotificationKindValue, now: Date = new Date()): Promise<DeliveryDecision> {
+  const prefs = await prisma.notificationPreference.findUnique({ where: { userId } });
+  if (!prefs) return { deliver: true, quiet: false };
+  const quiet = isWithinQuietHours(prefs.quietHoursStart, prefs.quietHoursEnd, now);
+  if (kind === "system") return { deliver: true, quiet };
+  if (!prefs.masterEnabled) return { deliver: false, reason: "paused", quiet };
+  const category = KIND_TO_CATEGORY[kind];
+  if (category && !prefs[category]) return { deliver: false, reason: "category_off", quiet };
+  if (prefs.frequencyCap != null) {
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const sent = await prisma.notification.count({ where: { userId, createdAt: { gte: since } } });
+    if (sent >= prefs.frequencyCap) return { deliver: false, reason: "frequency_cap", quiet };
+  }
+  return { deliver: true, quiet };
+}
+
+/**
+ * Internal helper for other modules. Never throws - a failed inbox write
  * must not break the event (payment, message, ...) that triggered it.
+ * Honours the user's notification preferences via evaluateDelivery().
  */
 export async function createNotification(
   userId: string,
   input: { kind: NotificationKindValue; title: string; body: string; deepLink?: string | null },
 ): Promise<void> {
   try {
+    const decision = await evaluateDelivery(userId, input.kind);
+    if (!decision.deliver) return;
     await prisma.notification.create({
       data: {
         userId,

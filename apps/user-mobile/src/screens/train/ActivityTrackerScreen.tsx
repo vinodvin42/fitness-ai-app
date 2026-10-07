@@ -20,6 +20,7 @@ import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toast";
 import { createActivity, fetchActivities, fetchActivitySummary } from "../../api/activities";
 import { extractErrorMessage } from "../../lib/apiError";
+import { miToKm, useMeasureUnits } from "../../lib/measureUnits";
 import { formatDateTime, formatDuration, formatKm, formatPace, formatRate, formatSpeed, kindLabel } from "../../lib/activityFormat";
 import { TrackAccumulator, encodeRouteWithinLimit, paceSecPerKm, routeToSvgPath, speedKmh, type GpsFix } from "../../lib/gpsTrack";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -72,6 +73,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const [mapWidth, setMapWidth] = useState(0);
   const accRef = useRef<TrackAccumulator>(new TrackAccumulator(kind));
   const subRef = useRef<Location.LocationSubscription | null>(null);
+  const { distanceUnit } = useMeasureUnits();
   const [distanceKm, setDistanceKm] = useState("");
   const [notes, setNotes] = useState("");
   const [distanceError, setDistanceError] = useState<string | null>(null);
@@ -220,7 +222,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
         kind,
         startedAt: (startedAtRef.current ?? new Date()).toISOString(),
         durationSeconds: Math.round(accumulatedRef.current / 1000),
-        distanceMeters: Math.round(km * 1000),
+        distanceMeters: Math.round((distanceUnit === "mi" ? miToKm(km) : km) * 1000),
         source: "manual",
         notes: notes.trim() ? notes.trim() : undefined,
       });
@@ -244,9 +246,10 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
       return;
     }
     const km = parseFloat(distanceKm.replace(",", "."));
+    const kmEntered = distanceUnit === "mi" ? miToKm(km) : km;
     const seconds = Math.round(accumulatedRef.current / 1000);
-    if (!Number.isFinite(km) || km < 0.01 || km > 1000) {
-      setDistanceError("Enter the distance in km (0.01 to 1000).");
+    if (!Number.isFinite(km) || kmEntered < 0.01 || kmEntered > 1000) {
+      setDistanceError(`Enter the distance in ${distanceUnit} (0.01 to ${distanceUnit === "mi" ? "620" : "1000"}).`);
       return;
     }
     if (seconds < 10) {
@@ -260,7 +263,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const summary = summaryQuery.data;
   const timeText = formatDuration(elapsedMs / 1000);
   const movingSec = elapsedMs / 1000;
-  const paceText = kind === "run" ? formatPace(paceSecPerKm(live.distanceM, movingSec)) : formatSpeed(speedKmh(live.distanceM, movingSec));
+  const paceText = kind === "run" ? formatPace(paceSecPerKm(live.distanceM, movingSec), distanceUnit) : formatSpeed(speedKmh(live.distanceM, movingSec), distanceUnit);
 
   const isRun = kind === "run";
   const liveRoute = mode === "gps" ? accRef.current.getRoute() : [];
@@ -384,14 +387,14 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
       <View style={{ flexDirection: "row", gap: spacing.sm }} accessibilityLabel={`Elapsed time ${timeText}`}>
         {isRun ? (
           <>
-            {tile("Distance", mode === "gps" ? formatKm(live.distanceM) : "-")}
+            {tile("Distance", mode === "gps" ? formatKm(live.distanceM, distanceUnit) : "-")}
             {tile("Avg Pace", mode === "gps" ? paceText : "-")}
             {tile("Duration", timeText)}
           </>
         ) : (
           <>
             {tile("Speed", mode === "gps" ? paceText : "-")}
-            {tile("Distance", mode === "gps" ? formatKm(live.distanceM) : "-")}
+            {tile("Distance", mode === "gps" ? formatKm(live.distanceM, distanceUnit) : "-")}
             {tile("Elevation", mode === "gps" ? `+${live.elevationGainM} m` : "-")}
           </>
         )}
@@ -464,13 +467,13 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
           {mode === "gps" ? (
             <>
               <Text style={{ color: colors.textSecondary }}>
-                {formatKm(live.distanceM)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
+                {formatKm(live.distanceM, distanceUnit)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
               </Text>
               {distanceError ? <Text style={{ color: colors.danger, ...typography.meta }}>{distanceError}</Text> : null}
             </>
           ) : (
             <TextField
-              label="Distance (km)"
+              label={`Distance (${distanceUnit})`}
               value={distanceKm}
               onChangeText={setDistanceKm}
               keyboardType="decimal-pad"
@@ -549,11 +552,11 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
         <>
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <StatTile icon="activity" label={`${label}s`} value={summary.count} />
-            <StatTile icon="target" label="Distance" value={formatKm(summary.distanceMeters)} tint={colors.success} tintSoft={colors.successSoft} />
+            <StatTile icon="target" label="Distance" value={formatKm(summary.distanceMeters, distanceUnit)} tint={colors.success} tintSoft={colors.successSoft} />
             <StatTile
               icon="zap"
               label={kind === "run" ? "Avg pace" : "Avg speed"}
-              value={kind === "run" ? formatPace(summary.avgPaceSecPerKm) : formatSpeed(summary.avgSpeedKmh)}
+              value={kind === "run" ? formatPace(summary.avgPaceSecPerKm, distanceUnit) : formatSpeed(summary.avgSpeedKmh, distanceUnit)}
               tint={colors.orange}
               tintSoft={colors.warningSoft}
             />
@@ -588,16 +591,16 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
             key={a.id}
             onPress={() => navigation.navigate("ActivityDetail", { activityId: a.id })}
             accessibilityRole="button"
-            accessibilityLabel={`${label} on ${formatDateTime(a.startedAt)}, ${formatKm(a.distanceMeters)}`}
+            accessibilityLabel={`${label} on ${formatDateTime(a.startedAt)}, ${formatKm(a.distanceMeters, distanceUnit)}`}
           >
             <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View>
-                <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{formatKm(a.distanceMeters)}</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{formatKm(a.distanceMeters, distanceUnit)}</Text>
                 <Text style={{ color: colors.textMuted, ...typography.meta }}>{formatDateTime(a.startedAt)}</Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={{ color: colors.textSecondary }}>{formatDuration(a.durationSeconds)}</Text>
-                <Text style={{ color: colors.textMuted, ...typography.meta }}>{formatRate(a)}</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>{formatRate(a, distanceUnit)}</Text>
               </View>
             </Card>
           </Pressable>

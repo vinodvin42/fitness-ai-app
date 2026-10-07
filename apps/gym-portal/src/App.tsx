@@ -4,6 +4,10 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { SupportScreen } from "./screens/SupportScreen";
+import { TimingsScreen } from "./screens/TimingsScreen";
+import { EquipmentScreen } from "./screens/EquipmentScreen";
+import { AnnouncementsScreen } from "./screens/AnnouncementsScreen";
+import { HelpRequestsScreen } from "./screens/HelpRequestsScreen";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -69,6 +73,16 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {(
+        [
+          ["/timings", <TimingsScreen key="t" />],
+          ["/equipment", <EquipmentScreen key="e" />],
+          ["/announcements", <AnnouncementsScreen key="a" />],
+          ["/help-requests", <HelpRequestsScreen key="h" />],
+        ] as const
+      ).map(([path, element]) => (
+        <Route key={path} path={path} element={<RequireAuth>{element}</RequireAuth>} />
+      ))}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

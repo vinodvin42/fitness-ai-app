@@ -54,6 +54,7 @@ import { seedPrograms } from "./seedContent/programs";
 import { seedExercises } from "./seedContent/exercises";
 import { seedWorkouts } from "./seedContent/workouts";
 import { seedRecipes } from "./seedContent/recipes";
+import { seedHelpArticles } from "./seedContent/helpArticles";
 
 /**
  * `includeAccounts: false` seeds content only — plans, programs, exercises,
@@ -224,7 +225,13 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
 
   await writeInBatches(seedRecipes, (r) => prisma.recipe.upsert({ where: { id: r.id }, create: r, update: r }));
 
+  // Help & Support articles - content-only, idempotent by slug.
+  await writeInBatches(seedHelpArticles, (a) =>
+    prisma.helpArticle.upsert({ where: { slug: a.slug }, create: a, update: a }),
+  );
+
   const summary: string[] = [
+    `Seeded ${seedHelpArticles.length} help articles.`,
     `Seeded ${plans.length} plans, ${seedPrograms.length} programs, ${seedWorkouts.length} workouts, ${seedExercises.length} exercises, ${seedRecipes.length} recipes.`,
     // Counted, not asserted — this line is the one place a deploy log shows
     // whether the imagery actually made it into the database, without anyone

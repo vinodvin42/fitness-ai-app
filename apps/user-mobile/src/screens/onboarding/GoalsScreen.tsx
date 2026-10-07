@@ -5,20 +5,10 @@ import { WizardLayout } from "../../components/WizardLayout";
 import { Chip } from "../../components/Chip";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { spacing } from "../../theme/tokens";
+import { GOAL_OPTIONS as GOALS } from "../../lib/goalOptions";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Goals">;
-
-const GOALS = [
-  "Lose Weight",
-  "Build Muscle",
-  "Improve Endurance",
-  "Stay Active",
-  "Increase Flexibility",
-  "Better Sleep",
-  "Reduce Stress",
-  "Sports Performance",
-];
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Goals" — multi-select chip grid. */
 export function GoalsScreen({ navigation }: Props) {

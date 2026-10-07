@@ -9,6 +9,7 @@ import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchRecipes } from "../../api/programs";
+import { useSavedRecipes } from "../../api/savedRecipes";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -31,6 +32,7 @@ const FILTERS: Array<{ key: string; label: string; test: (r: Recipe) => boolean 
 export function RecipesScreen({ navigation }: Props) {
   const recipesQuery = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes });
   const [active, setActive] = useState<string | null>(null);
+  const saved = useSavedRecipes();
 
   const data = useMemo(() => {
     const all = recipesQuery.data ?? [];
@@ -94,6 +96,25 @@ export function RecipesScreen({ navigation }: Props) {
                   {item.calories} kcal / serving
                 </Text>
               </View>
+              <Pressable
+                onPress={() => saved.toggle(item.id)}
+                accessibilityRole="button"
+                accessibilityLabel={saved.isSaved(item.id) ? `Remove ${item.name} from saved recipes` : `Save ${item.name}`}
+                hitSlop={8}
+                style={{
+                  position: "absolute",
+                  top: spacing.sm,
+                  right: spacing.sm,
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: "rgba(9,9,11,0.6)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="heart" size={16} color={saved.isSaved(item.id) ? colors.pink : colors.textPrimary} />
+              </Pressable>
             </Pressable>
           )}
           ListEmptyComponent={

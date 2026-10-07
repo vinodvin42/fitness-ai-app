@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { ActivityIndicator, Alert, Pressable, Switch, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -10,8 +10,7 @@ import { Icon, IconName } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchReminders, updateReminder } from "../../api/reminders";
-import { requestNotificationPermissions, syncScheduledNotifications } from "../../lib/reminderNotifications";
-import { useAuth } from "../../context/AuthContext";
+import { useReminderSync } from "../../lib/useReminderSync";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -61,27 +60,11 @@ function formatDays(daysOfWeek: number[]) {
  * infrastructure anywhere in this app.
  */
 export function RemindersScreen({ navigation }: Props) {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: reminders, isLoading, isError, refetch } = useQuery({ queryKey: ["reminders"], queryFn: fetchReminders });
 
-  useEffect(() => {
-    if (!reminders) return;
-    // §L "Notification Settings"' master toggle (NotificationSettingsScreen.tsx)
-    // gates this at the sync step: disabled -> schedule nothing, regardless
-    // of what individual reminders say, without touching their own
-    // `isEnabled` values.
-    const toSchedule = user?.notificationsEnabled === false ? [] : reminders;
-    requestNotificationPermissions()
-      .then((granted) => {
-        if (granted) return syncScheduledNotifications(toSchedule);
-        return undefined;
-      })
-      .catch(() => {
-        // Local scheduling is best-effort — a permission/scheduling failure
-        // shouldn't block viewing or editing the reminder list itself.
-      });
-  }, [reminders, user?.notificationsEnabled]);
+  // Master/category preferences gate scheduling; the OS prompt is preceded by the pre-prompt screen.
+  useReminderSync(reminders, () => navigation.navigate("NotificationPermission"));
 
   const onToggle = async (reminder: Reminder, isEnabled: boolean) => {
     try {

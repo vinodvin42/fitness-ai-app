@@ -1,45 +1,80 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, AppState, Linking, Switch, Text, View } from "react-native";
-import * as Notifications from "expo-notifications";
+import { Alert, AppState, Pressable, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NotificationPreferences, UpdateNotificationPreferencesInput } from "@fitness-ai-app/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { InfoCard, StateLayout } from "../../components/StatePanels";
+import { Chip } from "../../components/Chip";
+import { InfoCard } from "../../components/StatePanels";
 import { TextField } from "../../components/TextField";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
+import { GroupCard, SectionLabel, ToggleRow, ValueRow } from "../../components/SettingsParts";
 import { fetchNotificationPreferences, updateNotificationPreferences } from "../../api/notifications";
 import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { getNotificationPermissionState, type NotificationPermissionState } from "../../lib/reminderNotifications";
+import { resyncLocalReminders } from "../../lib/reminderResync";
+import { colors, fonts, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "NotificationSettings">;
 
-type ToggleKey = "workoutReminders" | "mealReminders" | "coachMessages" | "billing" | "marketing";
-const TOGGLES: Array<{ key: ToggleKey; label: string; hint: string }> = [
-  { key: "workoutReminders", label: "Workout reminders", hint: "Nudges for planned training" },
-  { key: "mealReminders", label: "Meal reminders", hint: "Logging and meal-plan prompts" },
-  { key: "coachMessages", label: "Coach messages", hint: "Replies from your coach or professional" },
-  { key: "billing", label: "Billing & plan", hint: "Payments, renewals and plan changes" },
-  { key: "marketing", label: "Tips & offers", hint: "Optional product news" },
+type CategoryKey = "workoutReminders" | "mealReminders" | "hydrationReminders" | "coachMessages" | "billing" | "marketing";
+const CATEGORIES: Array<{ key: CategoryKey; label: string; hint: string }> = [
+  { key: "workoutReminders", label: "Workout Reminders", hint: "Reminders for your planned workouts, including changes from your professional." },
+  { key: "mealReminders", label: "Meal Logging Reminders", hint: "Nudges at breakfast, lunch, and dinner to record nutrition." },
+  { key: "hydrationReminders", label: "Hydration Reminders", hint: "Gentle reminders through the day, within your daily limit." },
+  { key: "coachMessages", label: "Messages from your professional", hint: "Alerts when your professional messages you." },
+  { key: "billing", label: "Plan, gym & billing updates", hint: "Plan changes, gym holidays, renewals and payment issues." },
+  { key: "marketing", label: "Tips & offers", hint: "Optional product news. Off by default." },
 ];
+const CAP_OPTIONS: Array<number | null> = [null, 3, 5, 10, 20];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** Real per-category preferences + quiet hours (GET/PATCH /users/me/notification-preferences). */
-function ServerPreferencesCard() {
+/** "22:00" -> "10 PM", "07:30" -> "7:30 AM". */
+function formatHour(hhmm: string): string {
+  const h = Number(hhmm.slice(0, 2));
+  const m = hhmm.slice(3, 5);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return m === "00" ? `${h12} ${suffix}` : `${h12}:${m} ${suffix}`;
+}
+
+/**
+ * Figma Settings 10 - Notifications. Master pause + per-category toggles +
+ * quiet hours and a daily cap, all backed by GET/PATCH
+ * /users/me/notification-preferences. The server applies the master pause,
+ * category toggles and cap whenever it creates a notification; the same
+ * preferences filter the reminders scheduled on this device (see
+ * lib/reminderNotifications.ts#applyReminderPreferences). Quiet hours are
+ * stored for push delivery - this build creates inbox rows only.
+ */
+export function NotificationSettingsScreen({ navigation }: Props) {
+  const { updateProfile } = useAuth();
+  const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["notification-preferences"],
-    queryFn: fetchNotificationPreferences,
-  });
-  const [quietStart, setQuietStart] = useState<string | null>(null);
-  const [quietEnd, setQuietEnd] = useState<string | null>(null);
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["notification-preferences"], queryFn: fetchNotificationPreferences });
+
+  const [permission, setPermission] = useState<NotificationPermissionState>("granted");
+  const [editing, setEditing] = useState<"quiet" | "cap" | null>(null);
+  const [quietStart, setQuietStart] = useState("");
+  const [quietEnd, setQuietEnd] = useState("");
   const [quietError, setQuietError] = useState<string | null>(null);
+
+  const checkPermission = useCallback(() => {
+    getNotificationPermissionState().then(setPermission);
+  }, []);
+  useFocusEffect(checkPermission);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") checkPermission();
+    });
+    return () => sub.remove();
+  }, [checkPermission]);
 
   const mutation = useMutation({
     mutationFn: (input: UpdateNotificationPreferencesInput) => updateNotificationPreferences(input),
@@ -53,18 +88,28 @@ function ServerPreferencesCard() {
       if (ctx?.prev) queryClient.setQueryData(["notification-preferences"], ctx.prev);
       Alert.alert("Couldn't save", extractErrorMessage(err, "Check your connection and try again."));
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["notification-preferences"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
+      resyncLocalReminders();
+    },
   });
 
-  if (isLoading) return <SkeletonCard lines={4} />;
-  if (isError || !data) return <ErrorState message="Couldn't load your notification preferences." onRetry={() => refetch()} />;
+  useEffect(() => {
+    if (data && editing !== "quiet") {
+      setQuietStart(data.quietHoursStart ?? "");
+      setQuietEnd(data.quietHoursEnd ?? "");
+    }
+  }, [data, editing]);
 
-  const startValue = quietStart ?? data.quietHoursStart ?? "";
-  const endValue = quietEnd ?? data.quietHoursEnd ?? "";
+  const onMaster = (value: boolean) => {
+    mutation.mutate({ masterEnabled: value });
+    // Keep the on-device reminder master (User.notificationsEnabled) in step.
+    updateProfile({ notificationsEnabled: value }).catch(() => undefined);
+  };
 
-  const saveQuiet = () => {
-    const s = startValue.trim();
-    const e = endValue.trim();
+  const saveQuiet = (clear = false) => {
+    const s = clear ? "" : quietStart.trim();
+    const e = clear ? "" : quietEnd.trim();
     if ((s === "") !== (e === "")) {
       setQuietError("Set both a start and an end time, or clear both.");
       return;
@@ -75,170 +120,142 @@ function ServerPreferencesCard() {
     }
     setQuietError(null);
     mutation.mutate({ quietHoursStart: s === "" ? null : s, quietHoursEnd: e === "" ? null : e });
-    setQuietStart(null);
-    setQuietEnd(null);
+    setEditing(null);
   };
 
-  return (
-    <>
-      <Card style={{ gap: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>What you get notified about</Text>
-        {TOGGLES.map((t) => (
-          <View key={t.key} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t.label}</Text>
-              <Text style={{ color: colors.textSecondary, ...typography.meta }}>{t.hint}</Text>
-            </View>
-            <Switch
-              value={data[t.key]}
-              onValueChange={(v) => mutation.mutate({ [t.key]: v })}
-              trackColor={{ true: colors.accent, false: colors.border }}
-              accessibilityLabel={t.label}
-            />
-          </View>
-        ))}
-      </Card>
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Quiet hours</Text>
-        <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-          Push alerts are held during this window. Leave both empty to turn quiet hours off.
-        </Text>
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <TextField
-            containerStyle={{ flex: 1 }}
-            label="From (HH:MM)"
-            value={startValue}
-            onChangeText={setQuietStart}
-            placeholder="22:00"
-            maxLength={5}
-            keyboardType="numbers-and-punctuation"
-          />
-          <TextField
-            containerStyle={{ flex: 1 }}
-            label="Until (HH:MM)"
-            value={endValue}
-            onChangeText={setQuietEnd}
-            placeholder="07:00"
-            maxLength={5}
-            keyboardType="numbers-and-punctuation"
-          />
-        </View>
-        {quietError ? <Text style={{ color: colors.danger, ...typography.meta }}>{quietError}</Text> : null}
-        <Button label="Save quiet hours" variant="secondary" loading={mutation.isPending} onPress={saveQuiet} />
-      </Card>
-    </>
-  );
-}
-
-/**
- * Notification Settings (docs/mobile/03-screen-inventory.md §L) — the
- * design shows a master toggle plus 6+ individually-toggleable
- * categories and two "advanced" rows. This build only has one real thing
- * to gate: local, on-device Reminder notifications (§K, Phase 4) — there
- * is no push infrastructure anywhere in this app for the design's
- * broader notion of notification categories (achievement alerts, weekly
- * summaries, etc. would need server-push, see gap §16). So this screen
- * is deliberately just the one master switch (`User.notificationsEnabled`
- * — gates whether the client schedules ANY local notification at all,
- * see apps/user-mobile's src/lib/reminderNotifications.ts), plus a link
- * to Reminders for the real per-item/per-category control that already
- * exists there. Building a second, parallel category-toggle UI here
- * would just duplicate — and risk disagreeing with — the Reminders
- * screen's own per-reminder `isEnabled` toggle.
- */
-export function NotificationSettingsScreen({ navigation }: Props) {
-  const { user, updateProfile } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(user?.notificationsEnabled ?? true);
-  const [isSaving, setIsSaving] = useState(false);
-  // Settings 13 — OS-level notification permission (separate from the in-app master switch).
-  const [osDenied, setOsDenied] = useState(false);
-  const [dismissedDenied, setDismissedDenied] = useState(false);
-
-  const checkPermission = useCallback(() => {
-    Notifications.getPermissionsAsync()
-      .then((p) => setOsDenied(p.status === "denied"))
-      .catch(() => undefined);
-  }, []);
-  // Re-check on focus and when returning from the OS Settings app.
-  useFocusEffect(checkPermission);
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") checkPermission();
-    });
-    return () => sub.remove();
-  }, [checkPermission]);
-
-  const onToggle = async (value: boolean) => {
-    setNotificationsEnabled(value);
-    setIsSaving(true);
-    try {
-      await updateProfile({ notificationsEnabled: value });
-    } catch (err) {
-      setNotificationsEnabled(!value);
-      Alert.alert("Couldn't save preference", extractErrorMessage(err, "Check your connection and try again."));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (osDenied && !dismissedDenied) {
+  if (isLoading) {
     return (
-      <StateLayout
-        flowLabel="Permissions / Notifications"
-        flowIcon="bell-off"
-        title="Want a gentle reminder?"
-        description="Notifications are currently not allowed for 23PrimeFit. Enable them in settings if you'd like scheduled reminders on your device."
-        footnote="Optional. Your app remains usable without notifications."
-        onBack={() => navigation.goBack()}
-        actions={[
-          { label: "Open settings", onPress: () => Linking.openSettings().catch(() => undefined) },
-          { label: "Not now", variant: "secondary", onPress: () => setDismissedDenied(true) },
-        ]}
-      >
-        <InfoCard
-          tone="accent"
-          title="Permission not granted"
-          body="Push alerts won't appear while permission is off. Scheduled reminders remain visible in the app; device delivery is not guaranteed."
-        />
-        <InfoCard
-          title="Private by default"
-          body="Lock-screen text is generic. It doesn't show your reminder name, medicine, dose, health conditions or fitness details. Open 23PrimeFit to view your in-app reminder."
-        />
-        <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
-          Open your device settings and allow notifications for 23PrimeFit. You can change permission and reminder preferences later.
-        </Text>
-      </StateLayout>
+      <ScreenContainer title="Notifications">
+        <SkeletonCard lines={4} />
+      </ScreenContainer>
+    );
+  }
+  if (isError || !data) {
+    return (
+      <ScreenContainer title="Notifications">
+        <ErrorState message="Couldn't load your notification preferences." onRetry={() => refetch()} />
+      </ScreenContainer>
     );
   }
 
+  const paused = !data.masterEnabled;
+  const quietLabel = data.quietHoursStart && data.quietHoursEnd ? `${formatHour(data.quietHoursStart)} - ${formatHour(data.quietHoursEnd)}` : "Off";
+  const capLabel = data.frequencyCap ? `Max ${data.frequencyCap}x / Day` : "No limit";
+
   return (
     <ScreenContainer title="Notifications">
-      <Card>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <View style={{ flex: 1, marginRight: spacing.md }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Reminder notifications</Text>
-            <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
-              Master switch for every Reminder's local, on-device notification. Turning this off cancels all of
-              them without deleting or disabling any individual reminder.
-            </Text>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={onToggle}
-            trackColor={{ true: colors.accent, false: colors.border }}
+      {permission !== "granted" ? (
+        <Pressable onPress={() => navigation.navigate("NotificationPermission")} accessibilityRole="button" accessibilityLabel="Allow notifications on this device">
+          <InfoCard
+            tone="accent"
+            title="Notifications are off on this device"
+            body="Allow them to get reminders on your device. Tap to review what 23PrimeFit will and won't show."
           />
+        </Pressable>
+      ) : null}
+
+      <GroupCard>
+        <ToggleRow
+          title="Push Notifications"
+          subtitle="Temporarily pause all notifications"
+          value={data.masterEnabled}
+          onValueChange={onMaster}
+        />
+      </GroupCard>
+
+      <SectionLabel text="Active Categories" />
+      <GroupCard>
+        {CATEGORIES.map((c) => (
+          <ToggleRow
+            key={c.key}
+            title={c.label}
+            subtitle={c.hint}
+            value={data[c.key]}
+            disabled={paused}
+            onValueChange={(v) => mutation.mutate({ [c.key]: v })}
+          />
+        ))}
+      </GroupCard>
+
+      <SectionLabel text="Medicine, water & workout reminders" />
+      <GroupCard>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>Reminders & Routines</Text>
+            <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }}>Manage saved reminders</Text>
+          </View>
+          <Pressable
+            onPress={() => navigation.getParent()?.navigate("Train", { screen: "RemindersRoutines" })}
+            accessibilityRole="button"
+            accessibilityLabel="Manage reminders and routines"
+            style={{ backgroundColor: theme.accent, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 }}
+          >
+            <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 13 }}>Manage</Text>
+          </Pressable>
         </View>
-        {isSaving ? <Text style={{ color: colors.textMuted, marginTop: spacing.sm }}>Saving…</Text> : null}
-      </Card>
+      </GroupCard>
 
-      <ServerPreferencesCard />
-
-      <Button
-        label="Manage Reminders"
-        variant="secondary"
-        onPress={() => navigation.navigate("Reminders")}
-        style={{ marginTop: spacing.md }}
-      />
+      <SectionLabel text="Quiet hours & limits" />
+      <GroupCard>
+        <ValueRow
+          title="Quiet Hours"
+          subtitle={data.quietHoursStart ? "Do not disturb schedule activated" : "No quiet hours set"}
+          value={quietLabel}
+          onPress={() => setEditing(editing === "quiet" ? null : "quiet")}
+        />
+        {editing === "quiet" ? (
+          <View style={{ padding: 14, gap: spacing.sm }}>
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <TextField
+                containerStyle={{ flex: 1 }}
+                label="From (HH:MM)"
+                value={quietStart}
+                onChangeText={setQuietStart}
+                placeholder="22:00"
+                maxLength={5}
+                keyboardType="numbers-and-punctuation"
+              />
+              <TextField
+                containerStyle={{ flex: 1 }}
+                label="Until (HH:MM)"
+                value={quietEnd}
+                onChangeText={setQuietEnd}
+                placeholder="07:00"
+                maxLength={5}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
+            {quietError ? <Text style={{ color: colors.danger, ...typography.meta }}>{quietError}</Text> : null}
+            <Text style={{ color: colors.textSecondary, ...typography.meta }}>Push alerts are held during this window.</Text>
+            <Button label="Save quiet hours" onPress={() => saveQuiet(false)} loading={mutation.isPending} />
+            {data.quietHoursStart ? <Button label="Turn off quiet hours" variant="secondary" onPress={() => saveQuiet(true)} /> : null}
+          </View>
+        ) : null}
+        <ValueRow
+          title="Alert Frequency Cap"
+          subtitle="Throttle excessive notification noise"
+          value={capLabel}
+          onPress={() => setEditing(editing === "cap" ? null : "cap")}
+        />
+        {editing === "cap" ? (
+          <View style={{ padding: 14, gap: spacing.sm }}>
+            <Text style={{ color: colors.textSecondary, ...typography.meta }}>Most notifications you can receive in a day.</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
+              {CAP_OPTIONS.map((n) => (
+                <Chip
+                  key={String(n)}
+                  label={n === null ? "No limit" : `${n} / day`}
+                  selected={data.frequencyCap === n}
+                  onPress={() => {
+                    mutation.mutate({ frequencyCap: n });
+                    setEditing(null);
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </GroupCard>
     </ScreenContainer>
   );
 }

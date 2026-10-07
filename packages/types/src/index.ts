@@ -110,6 +110,15 @@ export interface ResetPasswordResponse {
 export type UnitSystem = "metric" | "imperial";
 export type AccentColor = "blue" | "green" | "yellow" | "red";
 
+/** Profile & Settings 05 — per-measure display units. Storage stays metric; a missing key follows `unitSystem`. */
+export interface UnitPreferences {
+  weight?: "kg" | "lb";
+  height?: "cm" | "ft";
+  distance?: "km" | "mi";
+  temperature?: "C" | "F";
+  water?: "ml" | "oz";
+}
+
 export interface User {
   id: string;
   email: string;
@@ -119,6 +128,8 @@ export interface User {
   countryCode: string | null;
   languagePreference: string;
   unitSystem: UnitSystem;
+  /** Per-measure display units (Settings -> Measurement Units). Null until the user customises them. */
+  unitPreferences?: UnitPreferences | null;
   accentColor: AccentColor;
   /** §L "Notification Settings" master toggle — see UpdateProfileInput's doc comment. */
   notificationsEnabled: boolean;
@@ -205,6 +216,7 @@ export interface UpdateProfileInput {
   phone?: string;
   languagePreference?: string;
   unitSystem?: UnitSystem;
+  unitPreferences?: UnitPreferences;
   accentColor?: AccentColor;
   notificationsEnabled?: boolean;
   /** ISO 3166-1 alpha-2, uppercase (e.g. "US"). See `COMMON_COUNTRIES` below for the picker's curated list — this field itself accepts any 2-letter code, format-validated only. */
@@ -340,6 +352,8 @@ export interface EditOnboardingProfileInput {
   heightCm?: number;
   /** Train dashboard's Gym | Home toggle. */
   equipmentContext?: EquipmentContext;
+  /** Profile > My Goals: the onboarding goal chips. */
+  goals?: string[];
 }
 
 // ---- Programs / Exercises / Recipes ---------------------------------------
@@ -720,6 +734,31 @@ export interface Recipe {
 export interface RecipeIngredient {
   name: string;
   quantity: string;
+}
+
+/** Profile & Settings 01 "Saved Recipes": GET /saved-recipes items (the recipe plus when it was saved). */
+export interface SavedRecipe extends Recipe {
+  savedAt: string;
+}
+
+/** Profile & Settings 09 "Partner code": GET /users/me/partner. */
+export interface PartnerGymLocation {
+  id: string;
+  name: string;
+  address: string;
+  equipment: string | null;
+}
+export interface PartnerLink {
+  code: string;
+  linkedAt: string;
+  /** False when the partner gym was suspended after the member linked. */
+  active: boolean;
+  gym: { id: string; name: string; locations: PartnerGymLocation[] };
+  /** No per-code offers exist yet; always null. */
+  offer: null;
+}
+export interface PartnerResponse {
+  partner: PartnerLink | null;
 }
 
 /** Fuel 02 "My Saved Meals" — see apps/api's SavedMeal model. */
@@ -1344,6 +1383,10 @@ export interface Session {
   id: string;
   createdAt: string;
   expiresAt: string;
+  /** User-Agent captured at sign-in (null for older sessions). */
+  userAgent: string | null;
+  /** True for the session identified by the caller's X-Refresh-Token header. */
+  current: boolean;
 }
 
 /** Matches apps/api's deleteAccountSchema (Zod) — current password required as confirmation. */
@@ -4670,6 +4713,11 @@ export interface NotificationPreferences {
   coachMessages: boolean;
   billing: boolean;
   marketing: boolean;
+  /** false = every non-system notification is paused. */
+  masterEnabled: boolean;
+  hydrationReminders: boolean;
+  /** Max notifications per rolling 24h; null = no cap. */
+  frequencyCap: number | null;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   updatedAt: string;
@@ -5296,4 +5344,125 @@ export interface GuardianReview extends GuardianReviewInput {
   expiresAt?: string | null;
   lastSentAt?: string | null;
   decidedAt?: string | null;
+}
+
+// ---- Profile & Settings row 2 (Security / Data & Privacy / Help / Export) ----
+
+/** GET/PATCH /coaching/professionals/:id/sharing and items of GET /coaching/sharing */
+export interface ProfessionalDataSharing {
+  professionalId: string;
+  professionalFullName: string;
+  steps: boolean;
+  foodLogs: boolean;
+  sleepRecovery: boolean;
+}
+export type UpdateProfessionalDataSharingInput = Partial<Pick<ProfessionalDataSharing, "steps" | "foodLogs" | "sleepRecovery">>;
+
+export type UserDataExportStatus = "ready" | "failed" | "expired";
+export interface UserDataExportMeta {
+  id: string;
+  status: UserDataExportStatus;
+  createdAt: string;
+  expiresAt: string;
+  zipSize: number;
+  files: { name: string; size: number }[];
+  /** The three rows shown on the Download my data screen. */
+  groups: { key: "summary" | "activity" | "decisions"; label: string; size: number }[];
+}
+
+export type HelpArticleCategory = "getting_started" | "workouts" | "nutrition" | "billing" | "professionals";
+export interface HelpCategorySummary {
+  key: HelpArticleCategory;
+  label: string;
+  articleCount: number;
+}
+export interface HelpArticleSummary {
+  slug: string;
+  category: HelpArticleCategory;
+  title: string;
+  snippet: string;
+}
+export interface HelpArticle extends HelpArticleSummary {
+  body: string;
+  categoryLabel: string;
+  updatedAt: string;
+}
+
+// ---- My Gym (member-facing; see apps/api/src/modules/gymMember) ----
+export type GymTimingKind = "regular" | "women_only" | "special";
+export interface GymMeTiming {
+  id: string;
+  label: string;
+  /** "daily", a day ("sun"), a list ("mon,wed") or a range ("mon-sat"). */
+  days: string;
+  opensAt: string | null;
+  closesAt: string | null;
+  closed: boolean;
+  kind: GymTimingKind;
+}
+export interface GymMeEquipment {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number | null;
+  available: boolean;
+  availabilityUpdatedAt: string;
+  note: string | null;
+}
+export interface GymMe {
+  gym: { id: string; name: string; timezone: string; active: boolean };
+  location: { id: string; name: string; address: string } | null;
+  joinedWithCode: string;
+  linkedAt: string;
+  /** null when the gym has not entered any opening hours. */
+  openNow: boolean | null;
+  today: { day: "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat"; closed: boolean; opensAt: string | null; closesAt: string | null };
+  announcement: { id: string; title: string; body: string; kind: "holiday" | "notice"; postedAt: string } | null;
+  timings: GymMeTiming[];
+  equipment: GymMeEquipment[];
+  equipmentUpdatedAt: string | null;
+}
+export type GymHelpTopic = "form_check" | "machine_help" | "trainer_available" | "other";
+export type GymHelpStatus = "open" | "seen" | "resolved";
+export interface GymHelpRequestItem {
+  id: string;
+  topic: GymHelpTopic;
+  exerciseName: string | null;
+  workoutName: string | null;
+  note: string | null;
+  status: GymHelpStatus;
+  createdAt: string;
+  respondedAt: string | null;
+}
+export interface GymWorkoutExercise {
+  workoutExerciseId: string;
+  exerciseId: string;
+  name: string;
+  phase: "warmup" | "main" | "cooldown";
+  sets: number;
+  reps: number;
+  lastWeightKg: number | null;
+  equipment: string;
+  /** The gym's own name for the matching equipment, e.g. "Cable station". */
+  equipmentLabel: string | null;
+  gymUnavailable: boolean;
+  unavailableSince: string | null;
+}
+export interface GymSwapSuggestion {
+  workoutExerciseId: string;
+  from: { id: string; name: string };
+  to: Exercise;
+  toEquipmentLabel: string | null;
+  unavailableEquipmentName: string;
+  updatedAt: string;
+  reason: string;
+}
+export interface GymTodayWorkout {
+  gym: { id: string; name: string; locationName: string | null };
+  equipmentContext: string | null;
+  workout: { id: string; name: string; durationMinutes: number; mainCount: number; otherCount: number } | null;
+  emptyReason: "no_plan" | "program_complete" | "no_workout" | null;
+  exercises: GymWorkoutExercise[];
+  swapSuggestion: GymSwapSuggestion | null;
+  swapSuggestions: GymSwapSuggestion[];
 }

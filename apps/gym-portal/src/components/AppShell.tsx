@@ -10,6 +10,10 @@ import { useAuth } from "../lib/auth";
  */
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/", glyph: "▦" },
+  { label: "Timings", path: "/timings", glyph: "◷" },
+  { label: "Equipment", path: "/equipment", glyph: "▣" },
+  { label: "Announcements", path: "/announcements", glyph: "✎" },
+  { label: "Help requests", path: "/help-requests", glyph: "✋" },
   { label: "Support", path: "/support", glyph: "◑" },
 ];
 

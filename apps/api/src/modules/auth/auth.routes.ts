@@ -17,6 +17,7 @@ authRouter.post("/signup", writeRateLimit, async (req, res, next) => {
   try {
     const input = signupSchema.parse(req.body);
     const { user, tokens } = await authService.signup(input);
+    await authService.recordSessionDevice(tokens.refreshToken, req.get("user-agent"));
     // A brand-new account has no OnboardingProfile row yet — always false,
     // no need to query for it here.
     res.status(201).json({ user: toPublicUser(user), tokens, onboardingCompleted: false });
@@ -34,6 +35,7 @@ authRouter.post("/login", authRateLimit, async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const result = await authService.login(input);
+    if (!result.twoFactorRequired) await authService.recordSessionDevice(result.tokens.refreshToken, req.get("user-agent"));
     if (result.twoFactorRequired) {
       res.status(200).json({ twoFactorRequired: true, twoFactorToken: result.twoFactorToken });
     } else {
@@ -53,6 +55,7 @@ authRouter.post("/2fa/verify", twoFactorRateLimit, async (req, res, next) => {
   try {
     const { twoFactorToken, code } = verifyTwoFactorLoginSchema.parse(req.body);
     const { user, tokens, onboardingCompleted } = await authService.verifyTwoFactorLogin(twoFactorToken, code);
+    await authService.recordSessionDevice(tokens.refreshToken, req.get("user-agent"));
     res.status(200).json({ user: toPublicUser(user), tokens, onboardingCompleted });
   } catch (err) {
     next(err);
@@ -63,6 +66,7 @@ authRouter.post("/refresh", async (req, res, next) => {
   try {
     const { refreshToken } = refreshSchema.parse(req.body);
     const { user, tokens } = await authService.refresh(refreshToken);
+    await authService.recordSessionDevice(tokens.refreshToken, req.get("user-agent"));
     res.status(200).json({ user: toPublicUser(user), tokens });
   } catch (err) {
     next(err);

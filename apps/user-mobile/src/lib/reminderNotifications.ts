@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import type { Reminder } from "@fitness-ai-app/types";
+import type { NotificationPreferences, Reminder } from "@fitness-ai-app/types";
 
 /**
  * Local, on-device notification scheduling for Reminders
@@ -85,5 +85,41 @@ export async function syncScheduledNotifications(reminders: Reminder[]) {
         },
       });
     }
+  }
+}
+
+/**
+ * Applies the user's server-side notification preferences (Settings 10) to
+ * the local reminder list before scheduling: the master pause drops
+ * everything, and workout / meal / water reminders follow their own toggles.
+ * Quiet hours and the daily cap are enforced server-side for inbox rows; a
+ * local reminder is something the user scheduled themselves, so it is not
+ * throttled here.
+ */
+export function applyReminderPreferences(
+  reminders: Reminder[],
+  prefs: Pick<NotificationPreferences, "masterEnabled" | "workoutReminders" | "mealReminders" | "hydrationReminders"> | undefined,
+): Reminder[] {
+  if (!prefs) return reminders;
+  if (!prefs.masterEnabled) return [];
+  return reminders.filter((r) => {
+    if (r.category === "workout") return prefs.workoutReminders;
+    if (r.category === "meal") return prefs.mealReminders;
+    if (r.category === "water") return prefs.hydrationReminders;
+    return true;
+  });
+}
+
+export type NotificationPermissionState = "granted" | "denied" | "undetermined";
+
+/** Current OS permission without prompting. Web / unsupported platforms report "undetermined" on failure. */
+export async function getNotificationPermissionState(): Promise<NotificationPermissionState> {
+  try {
+    const p = await Notifications.getPermissionsAsync();
+    if (p.granted) return "granted";
+    // Denied but still askable (e.g. Android after one refusal) counts as undetermined: the OS prompt can still appear.
+    return p.status === "denied" && p.canAskAgain === false ? "denied" : "undetermined";
+  } catch {
+    return "undetermined";
   }
 }

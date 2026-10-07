@@ -8,6 +8,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { fetchRecipeDetail } from "../../api/programs";
 import { logMeal } from "../../api/nutrition";
+import { useSavedRecipes } from "../../api/savedRecipes";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -31,6 +32,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const { colors: theme } = useTheme();
   const [isLogging, setIsLogging] = useState(false);
   const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const saved = useSavedRecipes();
   const { data: recipe, isLoading, isError, refetch } = useQuery({
     queryKey: ["recipe", recipeId],
     queryFn: () => fetchRecipeDetail(recipeId),
@@ -76,15 +78,26 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ ...column, paddingBottom: spacing.lg, gap: spacing.md }} showsVerticalScrollIndicator={false}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={10}
-          style={{ width: 36, height: 36, justifyContent: "center", marginTop: spacing.xs }}
-        >
-          <Icon name="arrow-left" size={22} color={colors.textPrimary} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+            style={{ width: 36, height: 36, justifyContent: "center", marginTop: spacing.xs }}
+          >
+            <Icon name="arrow-left" size={22} color={colors.textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={() => saved.toggle(recipe.id)}
+            accessibilityRole="button"
+            accessibilityLabel={saved.isSaved(recipe.id) ? "Remove from saved recipes" : "Save recipe"}
+            hitSlop={10}
+            style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center", marginTop: spacing.xs }}
+          >
+            <Icon name="heart" size={22} color={saved.isSaved(recipe.id) ? colors.pink : colors.textPrimary} />
+          </Pressable>
+        </View>
 
         {recipe.imageUrl ? (
           <Image

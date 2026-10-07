@@ -8,6 +8,7 @@ import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { issueGuardianToken, sendGuardianReviewEmail } from "../guardianReview/guardianReview.service";
 import { hashPassword, verifyPassword } from "../../lib/password";
+import { hashRefreshToken } from "../../lib/jwt";
 import {
   buildOtpauthUrl,
   decryptSecret,
@@ -306,12 +307,40 @@ export async function changePassword(userId: string, input: ChangePasswordInput)
  * design shows — see docs/mobile/07-open-questions-gaps.md. Never expose
  * `tokenHash`.
  */
-export async function listSessions(userId: string) {
-  return prisma.refreshToken.findMany({
+export async function listSessions(userId: string, currentRefreshToken?: string) {
+  const rows = await prisma.refreshToken.findMany({
     where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-    select: { id: true, createdAt: true, expiresAt: true },
+    select: { id: true, createdAt: true, expiresAt: true, userAgent: true, tokenHash: true },
     orderBy: { createdAt: "desc" },
   });
+  const currentHash = currentRefreshToken ? hashRefreshToken(currentRefreshToken) : null;
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt,
+    expiresAt: r.expiresAt,
+    userAgent: r.userAgent,
+    current: currentHash !== null && r.tokenHash === currentHash,
+  }));
+}
+
+/** "Sign Out All Other Devices": revokes every live session except the one identified by the caller's refresh token. */
+export async function revokeOtherSessions(userId: string, currentRefreshToken: string) {
+  const current = await prisma.refreshToken.findUnique({ where: { tokenHash: hashRefreshToken(currentRefreshToken) } });
+  if (!current || current.userId !== userId || current.revokedAt) {
+    throw new ApiHttpError(400, "invalid_current_session", "Could not identify the current session");
+  }
+  const result = await prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null, id: { not: current.id } },
+    data: { revokedAt: new Date() },
+  });
+  await recordAudit({
+    actorId: userId,
+    action: "user.other_sessions_revoked",
+    entityType: "User",
+    entityId: userId,
+    metadata: { count: result.count },
+  });
+  return { revoked: result.count };
 }
 
 async function getOwnedSession(sessionId: string, userId: string) {

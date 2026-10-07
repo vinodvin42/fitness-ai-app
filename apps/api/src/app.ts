@@ -23,6 +23,8 @@ import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
 import { guardianReviewRouter } from "./modules/guardianReview/guardianReview.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { savedMealsRouter } from "./modules/savedMeals/savedMeals.routes";
+import { savedRecipesRouter } from "./modules/savedRecipes/savedRecipes.routes";
+import { userPartnerRouter } from "./modules/userPartner/userPartner.routes";
 import { mealPlansRouter } from "./modules/mealPlans/mealPlans.routes";
 import { analyticsEventsRouter } from "./modules/analyticsEvents/analyticsEvents.routes";
 import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
@@ -48,6 +50,8 @@ import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluenc
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
 import { gymsRouter } from "./modules/gyms/gyms.routes";
 import { gymAuthRouter } from "./modules/gymAuth/gymAuth.routes";
+import { gymMemberRouter } from "./modules/gymMember/gymMember.routes";
+import { gymPortalManageRouter } from "./modules/gymPortalManage/gymPortalManage.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
@@ -63,6 +67,8 @@ import { professionalDashboardRouter } from "./modules/professionalDashboard/pro
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
+import { dataSharingRouter } from "./modules/dataSharing/dataSharing.routes";
+import { helpRouter } from "./modules/help/help.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
 import { adminSearchRouter } from "./modules/adminSearch/adminSearch.routes";
@@ -135,6 +141,8 @@ export function createApp() {
 
   app.use("/auth", authRouter);
   app.use("/users", usersRouter);
+  app.use("/users", userPartnerRouter);
+  app.use("/", savedRecipesRouter);
   app.use("/", guardianReviewRouter);
   // programPurchasesRouter must be mounted before programsRouter: its
   // GET /programs/mine would otherwise be swallowed by programsRouter's
@@ -282,6 +290,9 @@ export function createApp() {
   // login, a distinct identity from AdminUser. See gymAuth.service.ts's own
   // doc comment.
   app.use("/", gymAuthRouter);
+  // My Gym: member-facing endpoints + gym-staff management (see gymMember / gymPortalManage).
+  app.use("/", gymMemberRouter);
+  app.use("/", gymPortalManageRouter);
   // Module 07.04 Campaigns & Attribution (20 Sep 2026, R2 Wave 4) — real
   // admin-web reporting over R2 Wave 1's Source/Campaign/Touchpoint schema.
   // See adminAcquisition.service.ts's own doc comment.
@@ -337,6 +348,8 @@ export function createApp() {
   // not Professional Bearer, since it's the user-mobile side of the
   // journey — see coaching.service.ts's doc comment (closes gap §1).
   app.use("/", coachingRouter);
+  app.use("/", dataSharingRouter);
+  app.use("/", helpRouter);
   // Coach ↔ Client Messaging (31 Aug 2026) — mixed auth per route (User
   // Bearer for /coaching/conversations*, Professional Bearer for
   // /professionals/me/conversations*). See coachMessages.service.ts.

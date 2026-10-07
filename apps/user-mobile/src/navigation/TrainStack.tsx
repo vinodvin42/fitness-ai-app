@@ -24,6 +24,8 @@ import { ActivityTrackerScreen } from "../screens/train/ActivityTrackerScreen";
 import { ActivityDetailScreen } from "../screens/train/ActivityDetailScreen";
 import { FormAnalysisScreen } from "../screens/train/FormAnalysisScreen";
 import { SessionSetsScreen } from "../screens/train/SessionSetsScreen";
+import { GymWorkoutScreen } from "../screens/train/GymWorkoutScreen";
+import { GymHelpScreen, type GymHelpParams } from "../screens/more/GymHelpScreen";
 
 // docs/mobile/03-screen-inventory.md §C: Train Dashboard -> Training
 // Programs -> Program Detail -> Workout Detail -> Active Workout ->
@@ -73,6 +75,9 @@ export type TrainStackParamList = {
   ActivityDetail: { activityId: string };
   FormAnalysis: undefined;
   SessionSets: { sessionId: string; workoutName: string; workoutId?: string };
+  // My Gym 02/03: help request + today's workout checked against the linked gym.
+  GymHelp: GymHelpParams;
+  GymWorkout: undefined;
 };
 
 const Stack = createNativeStackNavigator<TrainStackParamList>();
@@ -104,6 +109,8 @@ export function TrainStack() {
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       <Stack.Screen name="FormAnalysis" component={FormAnalysisScreen} />
       <Stack.Screen name="SessionSets" component={SessionSetsScreen} />
+      <Stack.Screen name="GymHelp" component={GymHelpScreen} />
+      <Stack.Screen name="GymWorkout" component={GymWorkoutScreen} />
     </Stack.Navigator>
   );
 }

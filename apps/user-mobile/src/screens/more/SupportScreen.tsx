@@ -1,33 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SupportTicket } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
-import { ListRow } from "../../components/ListRow";
+import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
-import { EmptyState } from "../../components/EmptyState";
+import { GroupCard, SectionLabel } from "../../components/SettingsParts";
 import { fetchMyTickets } from "../../api/support";
-import { colors, fonts, spacing, typography } from "../../theme/tokens";
+import { fetchHelpArticles, fetchHelpCategories } from "../../api/help";
+import { BRAND_NAME, SUPPORT_EMAIL } from "../../lib/brand";
+import { timeAgo } from "../../lib/deviceLabel";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Support">;
-
-// Real answers about this build's actual behavior, not generic filler —
-// each one points at a screen/flow that genuinely exists.
-const FAQ_ITEMS: Array<{ q: string; a: string }> = [
-  { q: "How do I log a workout?", a: "Open a program from Train, pick a workout, and tap Start Workout. Log each set as you go, then tap Finish." },
-  { q: "How do I purchase a program?", a: "Open a priced program from Train and tap Purchase — it unlocks immediately. No payment card is required yet." },
-  { q: "How do I change my password?", a: "Go to More -> Settings -> Security & Privacy -> Change Password. You'll be signed out of every session afterward, for security." },
-  { q: "Are Reminders synced across devices?", a: "Not yet — Reminders schedule local notifications on each device individually; there's no server-push sync between devices." },
-  { q: "How do I change my language?", a: "Go to More -> Settings -> Language. Your choice is saved, but the app's own text is still English everywhere for now." },
-  { q: "How do I delete my account?", a: "Go to More -> Settings -> Security & Privacy -> Delete Account. This permanently deletes your workouts, meals, measurements, purchases, and reminders." },
-];
 
 // Exported so SupportTicketDetailScreen.tsx can reuse the exact same
 // labels/tones rather than duplicating this mapping.
@@ -53,108 +44,203 @@ export const CATEGORY_LABEL: Record<SupportTicket["category"], string> = {
   other: "Other",
 };
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
+function ContactCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  tint,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  tint: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={{
+        flex: 1,
+        minHeight: 92,
+        backgroundColor: colors.surface,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: 14,
+        gap: 6,
+        justifyContent: "space-between",
+      }}
+    >
+      <Icon name={icon} size={20} color={tint} />
+      <View style={{ gap: 2 }}>
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>{title}</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }} numberOfLines={2}>
+          {subtitle}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 /**
- * Support (docs/mobile/03-screen-inventory.md §L, Phase 4 continued
- * 19 Aug 2026) — real ticket submission and a real "my tickets" list
- * against a new `SupportTicket` backend (`apps/api/src/modules/support`),
- * a real "Email Support" quick-contact action via the device's mail app,
- * and a static (not fake — just not server-driven) FAQ list answering
- * real questions about this build. Not built: live chat (needs real
- * chat/agent infrastructure, not just a screen).
- *
- * **3 Sep 2026:** ticket status progression and a real reply thread are
- * live now — the admin console (Phase 6) can triage a ticket's Status/
- * Priority/Category and reply on it, so a ticket no longer necessarily
- * stays "Open" forever. Tapping a row opens `SupportTicketDetailScreen`,
- * which shows the full thread and lets you reply too.
+ * Figma Settings 13 - Help & Support. Search real help articles
+ * (GET /help/articles), an "Open a ticket" card (there is no live chat -
+ * tickets get a reply thread), an Email Us card (only when a support email is
+ * configured, see lib/brand.ts), FAQ categories with real article counts,
+ * your most recent real tickets with status chips, and Report Bug / Feature
+ * Request shortcuts that open the ticket form with that category preset.
  */
 export function SupportScreen({ navigation }: Props) {
+  const { colors: theme } = useTheme();
   const [query, setQuery] = useState("");
-  const { data: tickets, isLoading, isError, refetch } = useQuery({ queryKey: ["support", "tickets"], queryFn: fetchMyTickets });
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  const filteredFaq = FAQ_ITEMS.filter(
-    (item) =>
-      item.q.toLowerCase().includes(query.trim().toLowerCase()) ||
-      item.a.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const categories = useQuery({ queryKey: ["help", "categories"], queryFn: fetchHelpCategories });
+  const tickets = useQuery({ queryKey: ["support", "tickets"], queryFn: fetchMyTickets });
+  const search = useQuery({
+    queryKey: ["help", "search", debounced],
+    queryFn: () => fetchHelpArticles({ search: debounced }),
+    enabled: debounced.length > 0,
+  });
 
-  const onEmailSupport = () => {
-    Linking.openURL("mailto:support@23primefit.app?subject=23PrimeFit%20Support");
-  };
+  const searching = query.trim().length > 0;
+  const recent = (tickets.data ?? []).slice(0, 4);
 
   return (
-    <ScreenContainer title="Support">
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search help articles" />
+    <ScreenContainer title="Help & Support">
+      <SearchBar value={query} onChangeText={setQuery} placeholder="Search help articles..." />
 
-      <ListRow
-        icon="mail"
-        title="Email Support"
-        subtitle="support@23primefit.app"
-        tint={colors.accent}
-        tintSoft={colors.accentSoft}
-        onPress={onEmailSupport}
-      />
-
-      <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>FAQ</Text>
-        {filteredFaq.length === 0 ? (
-          <Text style={{ color: colors.textSecondary }}>No articles match "{query}".</Text>
-        ) : (
-          <View style={{ gap: spacing.md }}>
-            {filteredFaq.map((item) => (
-              <View key={item.q}>
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi }}>{item.q}</Text>
-                <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>{item.a}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </Card>
-
-      <Card style={{ marginTop: spacing.md }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>My Tickets</Text>
-          <Button
-            label="New Ticket"
-            onPress={() => navigation.navigate("SupportTicketForm")}
-            style={{ height: 36, paddingHorizontal: spacing.md }}
-          />
-        </View>
-        {isLoading ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : isError ? (
-          <ErrorState onRetry={() => refetch()} />
-        ) : (tickets ?? []).length === 0 ? (
-          <EmptyState title="No tickets yet" subtitle="Run into a bug or have a question? Open a new ticket." />
-        ) : (
-          <View style={{ gap: spacing.sm }}>
-            {(tickets ?? []).map((ticket) => (
-              <Pressable
-                key={ticket.id}
-                onPress={() => navigation.navigate("SupportTicketDetail", { ticketId: ticket.id })}
-                style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, flex: 1, marginRight: spacing.sm }}>
-                    {ticket.subject}
+      {searching ? (
+        <>
+          <SectionLabel text="Search results" />
+          {search.isLoading || debounced !== query.trim() ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : search.isError ? (
+            <ErrorState onRetry={() => search.refetch()} />
+          ) : (search.data ?? []).length === 0 ? (
+            <Text style={{ color: colors.textSecondary }}>No articles match "{query.trim()}". Try different words or open a ticket.</Text>
+          ) : (
+            <GroupCard>
+              {(search.data ?? []).map((a) => (
+                <Pressable
+                  key={a.slug}
+                  onPress={() => navigation.navigate("HelpArticle", { slug: a.slug })}
+                  accessibilityRole="button"
+                  style={{ padding: 14, gap: 3 }}
+                >
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{a.title}</Text>
+                  <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 16 }} numberOfLines={2}>
+                    {a.snippet}
                   </Text>
-                  <Pill label={STATUS_LABEL[ticket.status]} tone={STATUS_TONE[ticket.status]} />
-                </View>
-                <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-                  {CATEGORY_LABEL[ticket.category]} · {formatDate(ticket.createdAt)}
-                </Text>
-              </Pressable>
-            ))}
+                </Pressable>
+              ))}
+            </GroupCard>
+          )}
+        </>
+      ) : (
+        <>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <ContactCard
+              icon="message"
+              title="Open a ticket"
+              subtitle="Describe the problem; replies arrive in the ticket thread."
+              tint={colors.success}
+              onPress={() => navigation.navigate("SupportTicketForm")}
+            />
+            {SUPPORT_EMAIL ? (
+              <ContactCard
+                icon="mail"
+                title="Email Us"
+                subtitle={SUPPORT_EMAIL}
+                tint={theme.accent}
+                onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`${BRAND_NAME} Support`)}`)}
+              />
+            ) : null}
           </View>
-        )}
-      </Card>
 
-      <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.lg }}>
-        23PrimeFit v{Constants.expoConfig?.version ?? "—"}
+          <SectionLabel text="FAQ Categories" />
+          {categories.isLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : categories.isError ? (
+            <ErrorState onRetry={() => categories.refetch()} />
+          ) : (
+            <GroupCard>
+              {(categories.data ?? []).map((c) => (
+                <Pressable
+                  key={c.key}
+                  onPress={() => navigation.navigate("HelpArticleList", { category: c.key, title: c.label })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${c.label}, ${c.articleCount} articles`}
+                  style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: spacing.sm }}
+                >
+                  <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{c.label}</Text>
+                  <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+                    {c.articleCount} {c.articleCount === 1 ? "article" : "articles"}
+                  </Text>
+                  <Icon name="chevron-right" size={16} color={colors.textMuted} />
+                </Pressable>
+              ))}
+            </GroupCard>
+          )}
+
+          <SectionLabel text="Your Recent Tickets" />
+          {tickets.isLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : tickets.isError ? (
+            <ErrorState onRetry={() => tickets.refetch()} />
+          ) : recent.length === 0 ? (
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
+              <Text style={{ color: colors.textSecondary, ...typography.meta }}>No tickets yet. Run into a problem or have a question? Open a ticket.</Text>
+            </View>
+          ) : (
+            <GroupCard>
+              {recent.map((ticket) => (
+                <Pressable
+                  key={ticket.id}
+                  onPress={() => navigation.navigate("SupportTicketDetail", { ticketId: ticket.id })}
+                  accessibilityRole="button"
+                  style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: 14 }}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }} numberOfLines={1}>
+                      #{ticket.id.slice(0, 4).toUpperCase()} {ticket.subject}
+                    </Text>
+                    <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Created {timeAgo(ticket.createdAt)}</Text>
+                  </View>
+                  <Pill label={STATUS_LABEL[ticket.status]} tone={STATUS_TONE[ticket.status]} />
+                </Pressable>
+              ))}
+            </GroupCard>
+          )}
+
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <ContactCard
+              icon="bug"
+              title="Report Bug"
+              subtitle="Something isn't working"
+              tint={colors.danger}
+              onPress={() => navigation.navigate("SupportTicketForm", { category: "bug" })}
+            />
+            <ContactCard
+              icon="star"
+              title="Feature Request"
+              subtitle="Tell us what's missing"
+              tint={theme.accent}
+              onPress={() => navigation.navigate("SupportTicketForm", { category: "feature_request" })}
+            />
+          </View>
+        </>
+      )}
+
+      <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.md }}>
+        App Version {Constants.expoConfig?.version ?? "-"}
       </Text>
     </ScreenContainer>
   );

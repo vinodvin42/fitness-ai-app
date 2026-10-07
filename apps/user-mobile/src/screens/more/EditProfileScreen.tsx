@@ -1,90 +1,141 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
-import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/Button";
-import { SelectCard } from "../../components/SelectCard";
-import { Stepper } from "../../components/Stepper";
 import { ErrorState } from "../../components/ErrorState";
+import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { cmToIn, inToCm, kgToLb, lbToKg, useMeasureUnits } from "../../lib/measureUnits";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { RecoverShell } from "../recover/parts";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "EditProfile">;
 
 const GENDERS = ["male", "female", "other"] as const;
+const DOB_RE = /^\d{4}-\d{2}-\d{2}$/;
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+function Field({ label, children, onPress, chevron }: { label: string; children: React.ReactNode; onPress?: () => void; chevron?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{label}</Text>
+        {children}
+      </View>
+      {chevron ? <Icon name="chevron-right" size={16} color={colors.textMuted} /> : null}
+    </Pressable>
+  );
+}
 
 /**
- * View/Edit Profile (docs/mobile/03-screen-inventory.md §N). Phase 1
- * shipped the User-backed fields only (full name/mobile, via
- * `PATCH /users/me`) since gender/height/weight live on OnboardingProfile
- * and had no GET endpoint yet. 19 Aug 2026: that gap closed — a new
- * `GET`/`PATCH /users/me/onboarding` (distinct from the onboarding
- * wizard's own upsert, which always stamps `completedAt`; this edit
- * doesn't) backs a real "About You" section here, reusing the exact same
- * `SelectCard`/`Stepper` components and gender options/ranges the
- * onboarding wizard's AboutYouScreen already uses, so editing here feels
- * identical to how these values were first entered. **There's still no
- * real "date of birth" field** — the design's form asks for one, but
- * onboarding only ever collected `age`, so this edits age, not a DOB —
- * see gap §31. **26 Aug 2026:** added a Country row — navigates to
- * CountrySelectionScreen.tsx, its own searchable picker/save flow (same
- * pattern as Preferences -> Language), rather than an inline field here,
- * since the list is long enough to need search.
+ * View Profile (Figma Profile & Settings 02): Full Name, Date of Birth, Mobile
+ * Number, Gender, Height and Weight as tappable rows, plus Country (kept from
+ * the previous Edit Profile). Name/mobile live on User; DOB/gender/height/
+ * weight on OnboardingProfile (storage is always cm/kg; the inputs follow the
+ * user's Measurement Units). Mobile is optional free text with no OTP check.
+ * Profile photos are not supported yet (no image storage for avatars), so the
+ * avatar shows initials with an honest caption.
  */
 export function EditProfileScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
+  const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
+  const units = useMeasureUnits();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: onboardingProfile,
-    isLoading: isLoadingAboutYou,
-    isError: isAboutYouError,
-    refetch: refetchAboutYou,
-  } = useQuery({
+  const { data: profile, isLoading, isError, refetch } = useQuery({
     queryKey: ["onboardingProfile"],
     queryFn: fetchOnboardingProfile,
   });
 
-  const [gender, setGender] = useState<string | undefined>(undefined);
-  const [age, setAge] = useState<number | undefined>(undefined);
-  const [weightKg, setWeightKg] = useState<number | undefined>(undefined);
-  const [heightCm, setHeightCm] = useState<number | undefined>(undefined);
-  // Optional goal weight (Today's "Weight Goal" row). undefined = no target.
-  const [targetWeightKg, setTargetWeightKg] = useState<number | undefined>(undefined);
-  const [aboutYouLoaded, setAboutYouLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [gender, setGender] = useState<string | undefined>();
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [dob, setDob] = useState("");
+  const [heightText, setHeightText] = useState("");
+  const [heightInText, setHeightInText] = useState("");
+  const [weightText, setWeightText] = useState("");
+  // Values as first shown: untouched height/weight are not re-sent, so unit rounding (5'9" vs 175 cm) never rewrites stored data.
+  const initial = useRef({ height: "", heightIn: "", weight: "" });
+  const ft = units.heightUnit === "ft";
+  const lb = units.weightUnit === "lb";
 
   useEffect(() => {
-    if (onboardingProfile && !aboutYouLoaded) {
-      setGender(onboardingProfile.gender ?? undefined);
-      setAge(onboardingProfile.age ?? undefined);
-      setWeightKg(onboardingProfile.weightKg ?? undefined);
-      setHeightCm(onboardingProfile.heightCm ?? undefined);
-      setTargetWeightKg(onboardingProfile.targetWeightKg ?? undefined);
-      setAboutYouLoaded(true);
+    if (!profile || loaded) return;
+    setGender(profile.gender ?? undefined);
+    setDob(profile.dateOfBirth ? profile.dateOfBirth.slice(0, 10) : "");
+    if (profile.heightCm != null) {
+      if (ft) {
+        const totalIn = Math.round(cmToIn(profile.heightCm));
+        initial.current.height = String(Math.floor(totalIn / 12));
+        initial.current.heightIn = String(totalIn % 12);
+      } else {
+        initial.current.height = String(round1(profile.heightCm));
+      }
+      setHeightText(initial.current.height);
+      setHeightInText(initial.current.heightIn);
     }
-  }, [onboardingProfile, aboutYouLoaded]);
+    if (profile.weightKg != null) {
+      initial.current.weight = String(round1(lb ? kgToLb(profile.weightKg) : profile.weightKg));
+      setWeightText(initial.current.weight);
+    }
+    setLoaded(true);
+  }, [profile, loaded, ft, lb]);
 
-  const canSubmit = fullName.trim().length > 0;
+  const onSave = async () => {
+    setError(null);
+    const name = fullName.trim();
+    if (!name) return setError("Enter your full name.");
+    if (dob && !DOB_RE.test(dob)) return setError("Enter your date of birth as YYYY-MM-DD.");
 
-  const onSubmit = async () => {
-    if (!canSubmit) return;
+    let heightCm: number | undefined;
+    if (heightText.trim() && (heightText !== initial.current.height || heightInText !== initial.current.heightIn)) {
+      const first = parseFloat(heightText.replace(",", "."));
+      heightCm = ft ? inToCm(first * 12 + (parseFloat(heightInText) || 0)) : first;
+      if (!Number.isFinite(heightCm) || heightCm < 100 || heightCm > 230) return setError("Enter a height between 100 and 230 cm.");
+    }
+    let weightKg: number | undefined;
+    if (weightText.trim() && weightText !== initial.current.weight) {
+      const w = parseFloat(weightText.replace(",", "."));
+      weightKg = lb ? lbToKg(w) : w;
+      if (!Number.isFinite(weightKg) || weightKg < 30 || weightKg > 250) return setError("Enter a weight between 30 and 250 kg.");
+    }
+
     setIsSubmitting(true);
     try {
-      await updateProfile({ fullName: fullName.trim(), phone: phone.trim() || undefined });
-      // Only writes the About You fields if they actually loaded — a failed
-      // GET here shouldn't block saving the name/phone fields above, which
-      // don't depend on it.
-      if (aboutYouLoaded) {
-        await editOnboardingProfile({ gender, age, weightKg, heightCm, targetWeightKg: targetWeightKg ?? null });
+      await updateProfile({ fullName: name, phone: phone.trim() || undefined });
+      // Only writes the onboarding fields if they loaded: a failed GET must not block saving the name/phone.
+      if (loaded) {
+        await editOnboardingProfile({
+          gender,
+          dateOfBirth: dob || undefined,
+          heightCm: heightCm != null ? Math.round(heightCm * 10) / 10 : undefined,
+          weightKg: weightKg != null ? Math.round(weightKg * 10) / 10 : undefined,
+        });
         await queryClient.invalidateQueries({ queryKey: ["onboardingProfile"] });
       }
       navigation.goBack();
@@ -95,98 +146,144 @@ export function EditProfileScreen({ navigation }: Props) {
     }
   };
 
+  const input = {
+    color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    paddingVertical: 4,
+    minHeight: 28,
+  } as const;
+
   return (
-    <ScreenContainer title="Edit Profile">
-      <Card>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Full name</Text>
+    <RecoverShell centered title="View Profile" onBack={() => navigation.goBack()}>
+      <View style={{ alignItems: "center", gap: 6 }}>
+        <Avatar name={fullName || user?.fullName} size={84} />
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Profile photos are coming soon</Text>
+      </View>
+
+      {isLoading ? <ActivityIndicator color={colors.accent} /> : null}
+      {isError ? <ErrorState message="Couldn't load your date of birth, gender, height and weight." onRetry={() => refetch()} /> : null}
+
+      <Field label="Full Name">
         <TextInput
-          style={styles.input}
-          placeholder="Full name"
-          placeholderTextColor={colors.textMuted}
+          style={input}
           value={fullName}
           onChangeText={setFullName}
-        />
-
-        <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-          Mobile number
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Mobile number"
+          placeholder="Full name"
           placeholderTextColor={colors.textMuted}
-          keyboardType="phone-pad"
+          accessibilityLabel="Full name"
+        />
+      </Field>
+
+      <Field label="Date of Birth">
+        <TextInput
+          style={input}
+          value={dob}
+          onChangeText={setDob}
+          editable={loaded}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor={colors.textMuted}
+          maxLength={10}
+          accessibilityLabel="Date of birth"
+        />
+      </Field>
+
+      <Field label="Mobile Number">
+        <TextInput
+          style={input}
           value={phone}
           onChangeText={setPhone}
+          keyboardType="phone-pad"
+          placeholder="Optional"
+          placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Mobile number"
         />
+      </Field>
 
-        <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Country</Text>
-        <Pressable
-          style={[styles.input, { justifyContent: "center" }]}
-          onPress={() => navigation.navigate("CountrySelection")}
-        >
-          <Text style={{ color: user?.countryCode ? colors.textPrimary : colors.textMuted }}>
-            {user?.countryCode ? COMMON_COUNTRIES.find((c) => c.code === user.countryCode)?.name ?? user.countryCode : "Not set"}
-          </Text>
-        </Pressable>
-      </Card>
+      <Field label="Gender" onPress={loaded ? () => setGenderOpen((o) => !o) : undefined} chevron>
+        <Text style={{ ...input, color: gender ? colors.textPrimary : colors.textMuted, textTransform: "capitalize" }}>
+          {gender ?? "Not set"}
+        </Text>
+      </Field>
+      {genderOpen ? (
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          {GENDERS.map((g) => {
+            const on = gender === g;
+            return (
+              <Pressable
+                key={g}
+                onPress={() => {
+                  setGender(g);
+                  setGenderOpen(false);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  paddingVertical: 10,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: on ? theme.accent : colors.border,
+                  backgroundColor: on ? theme.accentSoft : colors.surface,
+                }}
+              >
+                <Text style={{ color: on ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13, textTransform: "capitalize" }}>{g}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
 
-      <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>About You</Text>
-        {isAboutYouError ? (
-          <ErrorState message="Couldn't load gender/age/height/weight." onRetry={() => refetchAboutYou()} />
-        ) : isLoadingAboutYou || !aboutYouLoaded ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : (
-          <>
-            <View style={{ gap: spacing.sm }}>
-              {GENDERS.map((g) => (
-                <SelectCard
-                  key={g}
-                  title={g.charAt(0).toUpperCase() + g.slice(1)}
-                  selected={gender === g}
-                  onPress={() => setGender(g)}
-                />
-              ))}
-            </View>
-            <View style={{ marginTop: spacing.sm }}>
-              <Stepper label="Age" value={age} unit="yrs" step={1} min={13} max={100} onChange={setAge} />
-              <Stepper label="Weight" value={weightKg} unit="kg" step={0.5} min={30} max={250} onChange={setWeightKg} />
-              <Stepper label="Height" value={heightCm} unit="cm" step={1} min={100} max={230} onChange={setHeightCm} />
-              {targetWeightKg != null ? (
-                <>
-                  <Stepper label="Goal weight" value={targetWeightKg} unit="kg" step={0.5} min={30} max={250} onChange={setTargetWeightKg} />
-                  <Pressable onPress={() => setTargetWeightKg(undefined)} accessibilityRole="button" accessibilityLabel="Clear goal weight" hitSlop={8}>
-                    <Text style={{ color: colors.textSecondary, ...typography.label, marginTop: spacing.xs }}>Clear goal weight</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <Pressable
-                  onPress={() => setTargetWeightKg(weightKg ?? 70)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Set a goal weight"
-                  hitSlop={8}
-                >
-                  <Text style={{ color: colors.accent, ...typography.label, marginTop: spacing.sm }}>+ Set a goal weight (optional)</Text>
-                </Pressable>
-              )}
-            </View>
-          </>
-        )}
-      </Card>
+      <Field label={`Height (${ft ? "ft / in" : "cm"})`}>
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <TextInput
+            style={[input, { flex: 1 }]}
+            value={heightText}
+            onChangeText={setHeightText}
+            editable={loaded}
+            keyboardType="decimal-pad"
+            placeholder={ft ? "ft" : "cm"}
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel={ft ? "Height feet" : "Height centimetres"}
+          />
+          {ft ? (
+            <TextInput
+              style={[input, { flex: 1 }]}
+              value={heightInText}
+              onChangeText={setHeightInText}
+              editable={loaded}
+              keyboardType="number-pad"
+              placeholder="in"
+              placeholderTextColor={colors.textMuted}
+              accessibilityLabel="Height inches"
+            />
+          ) : null}
+        </View>
+      </Field>
 
-      <Button label="Save" onPress={onSubmit} loading={isSubmitting} disabled={!canSubmit} style={{ marginTop: spacing.lg }} />
-    </ScreenContainer>
+      <Field label={`Weight (${lb ? "lb" : "kg"})`}>
+        <TextInput
+          style={input}
+          value={weightText}
+          onChangeText={setWeightText}
+          editable={loaded}
+          keyboardType="decimal-pad"
+          placeholder={lb ? "lb" : "kg"}
+          placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Weight"
+        />
+      </Field>
+
+      <Field label="Country" onPress={() => navigation.navigate("CountrySelection")} chevron>
+        <Text style={{ ...input, color: user?.countryCode ? colors.textPrimary : colors.textMuted }}>
+          {user?.countryCode ? COMMON_COUNTRIES.find((c) => c.code === user.countryCode)?.name ?? user.countryCode : "Not set"}
+        </Text>
+      </Field>
+
+      {error ? <Text style={{ color: colors.danger, ...typography.meta }}>{error}</Text> : null}
+
+      <Button label="Save Changes" onPress={onSave} loading={isSubmitting} disabled={!fullName.trim()} />
+    </RecoverShell>
   );
 }
-
-const styles = {
-  input: {
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-  },
-} as const;

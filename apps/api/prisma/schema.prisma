@@ -334,9 +334,19 @@ model User {
   // from this array the moment it's used to complete a login, same
   // "can't be replayed" property a TOTP code already has by expiring.
   twoFactorRecoveryCodes String[]    @default([])
+  // Profile & Settings 05 "Measurement units" (Oct 2026) — per-measure
+  // display units, additive to the legacy `unitSystem` above (which stays
+  // the coarse metric/imperial default). Shape: { weight?: "kg"|"lb",
+  // height?: "cm"|"ft", distance?: "km"|"mi", temperature?: "C"|"F",
+  // water?: "ml"|"oz" }. A missing key means "follow unitSystem". Storage
+  // everywhere stays metric (kg/cm/km/°C/ml); this only changes display.
+  unitPreferences        Json?
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
+  savedRecipes                SavedRecipe[]
+  partnerLink                 UserPartnerLink?
+  gymHelpRequests             GymHelpRequest[]
   onboardingProfile           OnboardingProfile?
   subscriptions               Subscription[]
   refreshTokens               RefreshToken[]
@@ -401,6 +411,8 @@ model User {
   notifications               Notification[]
   pushTokens                  PushToken[]
   notificationPreference      NotificationPreference?
+  professionalDataSharing     ProfessionalDataSharing[]
+  dataExports                 UserDataExport[]
   healthConnections           HealthConnection[]
   connectedDevices            ConnectedDevice[]
   deviceSyncRuns              DeviceSyncRun[]
@@ -530,6 +542,8 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
+  // Profile & Settings 11: device label shown under Active Sessions (User-Agent at sign-in).
+  userAgent String?
   createdAt DateTime  @default(now())
 
   @@index([userId])
@@ -912,9 +926,44 @@ model Recipe {
   // Meal-Plan Generation Engine (22 Sep 2026) — see MealPlan's own doc
   // comment.
   mealPlanItems MealPlanItem[]
+  savedBy       SavedRecipe[]
 
   @@index([createdByAdminId])
   @@map("recipes")
+}
+
+// Profile & Settings 01 "Saved Recipes" (Oct 2026) — a user's bookmarked
+// recipes. One row per (user, recipe); idempotent to save twice.
+model SavedRecipe {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, recipeId])
+  @@index([userId, createdAt])
+  @@map("saved_recipes")
+}
+
+// Profile & Settings 09 "Partner code" (Oct 2026) — a member's link to a
+// partner gym, created by entering that gym's invite code. One link per user
+// (change = replace). Linking also sets User.gymId so the gym portal's member
+// count is real; removing the link clears it. `code` is the invite code as
+// entered (normalised upper-case) at link time. The gym only ever learns that
+// the member joined with its code, never their data.
+model UserPartnerLink {
+  id       String   @id @default(uuid())
+  userId   String   @unique
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gymId    String
+  gym      Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  code     String
+  linkedAt DateTime @default(now())
+
+  @@index([gymId])
+  @@map("user_partner_links")
 }
 
 // ---- Meal-Plan Generation Engine (22 Sep 2026) -----------------------------
@@ -2377,6 +2426,7 @@ model Professional {
   // replacement via a Handover action, distinct from `offersReceived`
   // above (offers proposed FOR this professional by someone else).
   offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
+  dataSharing      ProfessionalDataSharing[]
 
   @@map("professionals")
 }
@@ -3456,12 +3506,19 @@ model Gym {
   // that identically to a wrong password, never a distinct "no portal yet"
   // error, so this can't be used to enumerate which gyms have portal access).
   gymPasswordHash    String?
+  // IANA timezone used to compute "open now" and today's hours for members.
+  timezone           String    @default("Asia/Kolkata")
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  locations GymLocation[]
-  members   User[]
-  campaigns Campaign[]
+  locations      GymLocation[]
+  members        User[]
+  campaigns      Campaign[]
+  partnerLinks   UserPartnerLink[]
+  timings        GymTiming[]
+  equipmentItems GymEquipment[]
+  announcements  GymAnnouncement[]
+  helpRequests   GymHelpRequest[]
 
   @@index([status])
   @@map("gyms")
@@ -3483,6 +3540,10 @@ model GymLocation {
   equipment String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  timings        GymTiming[]
+  equipmentItems GymEquipment[]
+  helpRequests   GymHelpRequest[]
 
   @@index([gymId])
   @@map("gym_locations")
@@ -3662,18 +3723,24 @@ model PushToken {
 }
 
 model NotificationPreference {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutReminders Boolean  @default(true)
-  mealReminders    Boolean  @default(true)
-  coachMessages    Boolean  @default(true)
-  billing          Boolean  @default(true)
-  marketing        Boolean  @default(false)
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutReminders   Boolean  @default(true)
+  mealReminders      Boolean  @default(true)
+  coachMessages      Boolean  @default(true)
+  billing            Boolean  @default(true)
+  marketing          Boolean  @default(false)
+  // Profile & Settings 10: master pause, hydration category, daily cap.
+  // masterEnabled=false pauses every non-system notification; frequencyCap
+  // (null = unlimited) is the max inbox notifications created per rolling 24h.
+  masterEnabled      Boolean  @default(true)
+  hydrationReminders Boolean  @default(true)
+  frequencyCap       Int?
   // "HH:MM" local time strings; both null = quiet hours off.
-  quietHoursStart  String?
-  quietHoursEnd    String?
-  updatedAt        DateTime @updatedAt
+  quietHoursStart    String?
+  quietHoursEnd      String?
+  updatedAt          DateTime @updatedAt
 
   @@map("notification_preferences")
 }
@@ -3999,4 +4066,188 @@ model GuardianReview {
   updatedAt      DateTime             @updatedAt
 
   @@map("guardian_reviews")
+}
+
+// ---- Profile & Settings 12: per-professional data sharing ----------------
+// What a professional with an ACTIVE relationship may see in the client
+// summary, on top of the health_data_processing consent. Defaults preserve
+// the pre-existing behaviour (food logs were already visible to an active
+// coach with consent) and keep the newly-exposed classes (steps, sleep &
+// recovery) private until the user opts in.
+model ProfessionalDataSharing {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  steps          Boolean      @default(false)
+  foodLogs       Boolean      @default(true)
+  sleepRecovery  Boolean      @default(false)
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, professionalId])
+  @@map("professional_data_sharing")
+}
+
+// ---- Profile & Settings 16: downloadable data export ---------------------
+// One row per export request. The ZIP bytes live in `bytes` (nulled once the
+// export expires or is replaced) - a stopgap like ProgressPhoto's base64 rows.
+enum UserDataExportStatus {
+  ready
+  failed
+  expired
+}
+
+model UserDataExport {
+  id        String               @id @default(uuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    UserDataExportStatus @default(ready)
+  // [{ name, bytes }] per file inside the ZIP, for the "Your data is ready" list.
+  files     Json
+  zipSize   Int                  @default(0)
+  bytes     Bytes?
+  createdAt DateTime             @default(now())
+  expiresAt DateTime
+
+  @@index([userId, createdAt])
+  @@map("user_data_exports")
+}
+
+// ---- Profile & Settings 13: help articles --------------------------------
+enum HelpArticleCategory {
+  getting_started
+  workouts
+  nutrition
+  billing
+  professionals
+}
+
+model HelpArticle {
+  id        String              @id @default(uuid())
+  slug      String              @unique
+  category  HelpArticleCategory
+  title     String
+  body      String              @db.Text
+  order     Int                 @default(0)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([category, order])
+  @@map("help_articles")
+}
+
+// ---- My Gym (member-facing gym info, staff-managed) ------------------------
+enum GymTimingKind {
+  regular
+  women_only
+  special
+}
+
+enum GymAnnouncementKind {
+  holiday
+  notice
+}
+
+enum GymHelpTopic {
+  form_check
+  machine_help
+  trainer_available
+  other
+}
+
+enum GymHelpStatus {
+  open
+  seen
+  resolved
+}
+
+// Opening hours. `days` is "daily", a comma list ("mon,wed") and/or ranges
+// ("mon-sat", wrap-around allowed "fri-mon"). opensAt/closesAt are "HH:MM" in
+// the gym's timezone; closesAt <= opensAt means the window runs past midnight.
+// `closed` rows say the gym is shut on those days. A `special` row overrides
+// regular rows for the days it covers; `women_only` is informational only.
+model GymTiming {
+  id         String        @id @default(uuid())
+  gymId      String
+  gym        Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  locationId String?
+  location   GymLocation?  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  label      String
+  days       String
+  opensAt    String?
+  closesAt   String?
+  closed     Boolean       @default(false)
+  kind       GymTimingKind @default(regular)
+  sortOrder  Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([gymId])
+  @@map("gym_timings")
+}
+
+// Equipment the gym has. `category` is an Exercise.equipment value ("Machine",
+// "Cable machine", "Barbell", ...). `exerciseKeyword` narrows a row to exercises
+// whose name contains it (e.g. a "Rowing machine" row with category "Machine"
+// and keyword "row").
+model GymEquipment {
+  id                    String       @id @default(uuid())
+  gymId                 String
+  gym                   Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  locationId            String?
+  location              GymLocation? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name                  String
+  category              String
+  exerciseKeyword       String?
+  quantity              Int?
+  available             Boolean      @default(true)
+  availabilityUpdatedAt DateTime     @default(now())
+  note                  String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([gymId])
+  @@map("gym_equipment")
+}
+
+model GymAnnouncement {
+  id        String              @id @default(uuid())
+  gymId     String
+  gym       Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  kind      GymAnnouncementKind @default(notice)
+  postedAt  DateTime            @default(now())
+  expiresAt DateTime?
+
+  @@index([gymId, postedAt])
+  @@map("gym_announcements")
+}
+
+// A member's ask for help in the gym. Staff see ONLY memberFirstName,
+// memberNumber, topic, exercise/workout name and the note. userId is kept so
+// the member can read their own history and so deleting the account deletes
+// the request; it is never returned to staff.
+model GymHelpRequest {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gymId           String
+  gym             Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  locationId      String?
+  location        GymLocation?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  memberFirstName String
+  memberNumber    String
+  topic           GymHelpTopic
+  exerciseName    String?
+  workoutName     String?
+  note            String?
+  status          GymHelpStatus @default(open)
+  createdAt       DateTime      @default(now())
+  respondedAt     DateTime?
+
+  @@index([gymId, status, createdAt])
+  @@index([userId, createdAt])
+  @@map("gym_help_requests")
 }

@@ -91,6 +91,18 @@ export const updateProfileSchema = z
     unitSystem: z.enum(["metric", "imperial"]).optional(),
     accentColor: z.enum(["blue", "green", "yellow", "red"]).optional(),
     notificationsEnabled: z.boolean().optional(),
+    // Profile & Settings 05 — per-measure display units (storage stays metric).
+    // Sent as a full object; a missing key means "follow unitSystem".
+    unitPreferences: z
+      .object({
+        weight: z.enum(["kg", "lb"]).optional(),
+        height: z.enum(["cm", "ft"]).optional(),
+        distance: z.enum(["km", "mi"]).optional(),
+        temperature: z.enum(["C", "F"]).optional(),
+        water: z.enum(["ml", "oz"]).optional(),
+      })
+      .strict()
+      .optional(),
     // Module 09.05 Geographic (26 Aug 2026) — ISO 3166-1 alpha-2, uppercase.
     // Format-validated only, not checked against a fixed country list —
     // see schema.prisma's User.countryCode comment for why.
@@ -122,6 +134,8 @@ export const editOnboardingProfileSchema = z
     heightCm: z.number().positive().optional(),
     // Train dashboard's Gym | Home toggle persists the user's equipment context.
     equipmentContext: z.enum(EQUIPMENT_CONTEXTS).optional(),
+    // Profile > My Goals: the onboarding goal chips, editable after setup.
+    goals: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });
 
