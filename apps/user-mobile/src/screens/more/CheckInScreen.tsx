@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -50,6 +51,7 @@ const RATING_SCALE = [1, 2, 3, 4, 5];
  * form, rather than trusting client-side state alone.
  */
 export function CheckInScreen({ navigation: _navigation }: Props) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<CheckInPeriod>("daily");
   const [energy, setEnergy] = useState<number | undefined>();
@@ -71,7 +73,7 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Check-In">
+      <ScreenContainer title={t("checkIn.title")}>
         <ErrorState onRetry={refetchAll} />
       </ScreenContainer>
     );
@@ -79,7 +81,7 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
 
   if (isLoading || !statusQuery.data) {
     return (
-      <ScreenContainer title="Check-In">
+      <ScreenContainer title={t("checkIn.title")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -120,10 +122,10 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Check-In" subtitle="How's it going?">
+    <ScreenContainer title={t("checkIn.title")} subtitle={t("checkIn.subtitle")}>
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
-        <Chip label="Daily" selected={period === "daily"} onPress={() => onSelectPeriod("daily")} />
-        <Chip label="Weekly" selected={period === "weekly"} onPress={() => onSelectPeriod("weekly")} />
+        <Chip label={t("checkIn.daily")} selected={period === "daily"} onPress={() => onSelectPeriod("daily")} />
+        <Chip label={t("checkIn.weekly")} selected={period === "weekly"} onPress={() => onSelectPeriod("weekly")} />
       </View>
 
       {periodStatus.submitted && periodStatus.checkIn ? (
@@ -144,12 +146,12 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
         </Card>
       ) : (
         <Card style={{ marginTop: spacing.md }}>
-          <RatingPicker label="Energy" value={energy} onChange={setEnergy} />
-          <RatingPicker label="Soreness" value={soreness} onChange={setSoreness} />
-          <RatingPicker label="Adherence to plan" value={adherence} onChange={setAdherence} />
+          <RatingPicker label={t("checkIn.energy")} value={energy} onChange={setEnergy} />
+          <RatingPicker label={t("checkIn.soreness")} value={soreness} onChange={setSoreness} />
+          <RatingPicker label={t("checkIn.adherence")} value={adherence} onChange={setAdherence} />
 
           <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-            Note (optional)
+            {t("checkIn.note")}
           </Text>
           <TextInput
             style={{
@@ -162,7 +164,7 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
               color: colors.textPrimary,
               textAlignVertical: "top",
             }}
-            placeholder="Anything worth noting?"
+            placeholder={t("checkIn.notePlaceholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={280}
@@ -171,7 +173,7 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
           />
 
           <Button
-            label={period === "daily" ? "Check In for Today" : "Check In for This Week"}
+            label={period === "daily" ? t("checkIn.submitDaily") : t("checkIn.submitWeekly")}
             onPress={onSubmit}
             loading={isSubmitting}
             disabled={!canSubmit}
@@ -182,7 +184,7 @@ export function CheckInScreen({ navigation: _navigation }: Props) {
 
       {historyQuery.data && historyQuery.data.length > 0 ? (
         <View style={{ marginTop: spacing.lg }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Recent check-ins</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("checkIn.recent")}</Text>
           {historyQuery.data.slice(0, 8).map((c) => (
             <Card key={c.id} style={{ marginBottom: spacing.sm }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -227,11 +229,12 @@ function RatingPicker({
 }
 
 function RatingSummary({ checkIn, compact }: { checkIn: CheckIn; compact?: boolean }) {
+  const { t } = useTranslation();
   return (
     <View style={{ flexDirection: "row", gap: spacing.lg, marginTop: compact ? spacing.xs : 0 }}>
-      <RatingValue label="Energy" value={checkIn.energy} />
-      <RatingValue label="Soreness" value={checkIn.soreness} />
-      <RatingValue label="Adherence" value={checkIn.adherence} />
+      <RatingValue label={t("checkIn.energy")} value={checkIn.energy} />
+      <RatingValue label={t("checkIn.soreness")} value={checkIn.soreness} />
+      <RatingValue label={t("checkIn.adherence")} value={checkIn.adherence} />
     </View>
   );
 }

@@ -1,8 +1,8 @@
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "./secureStore";
 
-const BIOMETRIC_LOCK_ENABLED_KEY = "primefit.biometricLockEnabled";
-const BIOMETRIC_LOCK_IDLE_TIMEOUT_KEY = "primefit.biometricLockIdleTimeoutMinutes";
+const BIOMETRIC_LOCK_ENABLED_KEY = "fynrox.biometricLockEnabled";
+const BIOMETRIC_LOCK_IDLE_TIMEOUT_KEY = "fynrox.biometricLockIdleTimeoutMinutes";
 
 /** The set of idle-timeout options SecurityScreen offers — "Immediately" (0) preserves the exact old always-lock-on-background behavior, so it's the default for anyone who never touches this setting. */
 export const BIOMETRIC_LOCK_IDLE_TIMEOUT_OPTIONS = [0, 1, 5, 15, 30] as const;

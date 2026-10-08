@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Switch, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -53,6 +54,7 @@ function sameDays(a: number[], b: number[]) {
  * (see ../../lib/reminderNotifications.ts).
  */
 export function ReminderFormScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const existing = route.params?.reminder;
   const queryClient = useQueryClient();
 
@@ -163,10 +165,10 @@ export function ReminderFormScreen({ navigation, route }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Label</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("reminders.label")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Drink water"
+          placeholder={t("reminders.labelPlaceholder")}
           placeholderTextColor={colors.textMuted}
           value={label}
           onChangeText={setLabel}
@@ -175,20 +177,20 @@ export function ReminderFormScreen({ navigation, route }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Time</Text>
-        <Stepper label="Hour" value={hour12} unit="" min={1} max={12} onChange={setHour12} />
-        <Stepper label="Minute" value={minute} unit="" min={0} max={59} onChange={setMinute} />
+        <Stepper label={t("reminders.hour")} value={hour12} unit="" min={1} max={12} onChange={setHour12} />
+        <Stepper label={t("reminders.minute")} value={minute} unit="" min={0} max={59} onChange={setMinute} />
         <View style={{ flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs }}>
-          <Chip label="AM" selected={period === "AM"} onPress={() => togglePeriod("AM")} />
-          <Chip label="PM" selected={period === "PM"} onPress={() => togglePeriod("PM")} />
+          <Chip label={t("reminders.am")} selected={period === "AM"} onPress={() => togglePeriod("AM")} />
+          <Chip label={t("reminders.pm")} selected={period === "PM"} onPress={() => togglePeriod("PM")} />
         </View>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Repeat</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("reminders.repeat")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.sm }}>
-          <Chip label="Every day" selected={sameDays(daysOfWeek, ALL_DAYS)} onPress={() => setDaysOfWeek(ALL_DAYS)} />
-          <Chip label="Weekdays" selected={sameDays(daysOfWeek, WEEKDAYS)} onPress={() => setDaysOfWeek(WEEKDAYS)} />
-          <Chip label="Weekends" selected={sameDays(daysOfWeek, WEEKENDS)} onPress={() => setDaysOfWeek(WEEKENDS)} />
+          <Chip label={t("reminders.everyDay")} selected={sameDays(daysOfWeek, ALL_DAYS)} onPress={() => setDaysOfWeek(ALL_DAYS)} />
+          <Chip label={t("reminders.weekdays")} selected={sameDays(daysOfWeek, WEEKDAYS)} onPress={() => setDaysOfWeek(WEEKDAYS)} />
+          <Chip label={t("reminders.weekends")} selected={sameDays(daysOfWeek, WEEKENDS)} onPress={() => setDaysOfWeek(WEEKENDS)} />
         </View>
         <View style={{ flexDirection: "row", gap: spacing.xs }}>
           {DAY_LABELS.map((dayLabel, day) => (
@@ -199,7 +201,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
 
       <Card style={{ marginTop: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ color: colors.textPrimary }}>Play sound</Text>
+          <Text style={{ color: colors.textPrimary }}>{t("reminders.playSound")}</Text>
           <Switch value={playSound} onValueChange={setPlaySound} trackColor={{ true: colors.accent, false: colors.border }} />
         </View>
         <View
@@ -216,7 +218,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
       </Card>
 
       <Button
-        label="Save"
+        label={t("common.save")}
         onPress={onSubmit}
         loading={isSubmitting}
         disabled={!canSubmit}
@@ -225,7 +227,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
 
       {existing ? (
         <Button
-          label="Delete Reminder"
+          label={t("reminders.delete")}
           variant="secondary"
           onPress={onDelete}
           loading={isDeleting}

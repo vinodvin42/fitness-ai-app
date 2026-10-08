@@ -7,7 +7,6 @@ import { WorkoutDetailScreen } from "../screens/train/WorkoutDetailScreen";
 import { ActiveWorkoutScreen } from "../screens/train/ActiveWorkoutScreen";
 import { SetRestTrackerScreen } from "../screens/train/SetRestTrackerScreen";
 import { WorkoutCompleteScreen } from "../screens/train/WorkoutCompleteScreen";
-import { ProgramCheckoutScreen } from "../screens/train/ProgramCheckoutScreen";
 import { MyProgramsScreen } from "../screens/train/MyProgramsScreen";
 import { ProgramProgressScreen } from "../screens/train/ProgramProgressScreen";
 import { ProgramCompletionScreen } from "../screens/train/ProgramCompletionScreen";
@@ -25,7 +24,6 @@ import { ActivityDetailScreen } from "../screens/train/ActivityDetailScreen";
 import { FormAnalysisScreen } from "../screens/train/FormAnalysisScreen";
 import { SessionSetsScreen } from "../screens/train/SessionSetsScreen";
 import { GymWorkoutScreen } from "../screens/train/GymWorkoutScreen";
-import { GymHelpScreen, type GymHelpParams } from "../screens/more/GymHelpScreen";
 
 // docs/mobile/03-screen-inventory.md §C: Train Dashboard -> Training
 // Programs -> Program Detail -> Workout Detail -> Active Workout ->
@@ -51,7 +49,6 @@ export type TrainStackParamList = {
   ProgramsMarketplace: undefined;
   ProgramDetail: { programId: string };
   // Figma Programs 01 - checkout summary reached from Program Detail's Buy button.
-  ProgramCheckout: { programId: string };
   WorkoutDetail: { workoutId: string };
   ActiveWorkout: { workoutId: string; sessionId: string };
   SetRestTracker: { workoutId: string; sessionId: string; exerciseIndex: number };
@@ -76,7 +73,6 @@ export type TrainStackParamList = {
   FormAnalysis: undefined;
   SessionSets: { sessionId: string; workoutName: string; workoutId?: string };
   // My Gym 02/03: help request + today's workout checked against the linked gym.
-  GymHelp: GymHelpParams;
   GymWorkout: undefined;
 };
 
@@ -88,7 +84,6 @@ export function TrainStack() {
       <Stack.Screen name="TrainDashboard" component={TrainScreen} />
       <Stack.Screen name="ProgramsMarketplace" component={ProgramsMarketplaceScreen} />
       <Stack.Screen name="ProgramDetail" component={ProgramDetailScreen} />
-      <Stack.Screen name="ProgramCheckout" component={ProgramCheckoutScreen} />
       <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
       <Stack.Screen name="ActiveWorkout" component={ActiveWorkoutScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="SetRestTracker" component={SetRestTrackerScreen} options={{ presentation: "modal" }} />
@@ -109,7 +104,6 @@ export function TrainStack() {
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       <Stack.Screen name="FormAnalysis" component={FormAnalysisScreen} />
       <Stack.Screen name="SessionSets" component={SessionSetsScreen} />
-      <Stack.Screen name="GymHelp" component={GymHelpScreen} />
       <Stack.Screen name="GymWorkout" component={GymWorkoutScreen} />
     </Stack.Navigator>
   );

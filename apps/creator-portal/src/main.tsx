@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles/index.css";
+// Imported for its side effect: initialises i18next before React renders.
+import "./i18n";
 
 // This portal is served from a subpath (/creator/) on the combined static
 // site, not from its own domain root — see scripts/merge-web-deploy.js. Vite's

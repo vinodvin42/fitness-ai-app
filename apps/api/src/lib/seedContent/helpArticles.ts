@@ -17,10 +17,10 @@ export const seedHelpArticles: SeedHelpArticle[] = [
   {
     slug: "what-is-23primefit",
     category: "getting_started",
-    title: "What is 23PrimeFit?",
+    title: "What is Fynrox?",
     order: 1,
     body:
-      "23PrimeFit brings your training, food, recovery and professional support into one app. The bottom tabs are Today (your day at a glance), Train (programs, routines and workouts), Fuel (meals and nutrition), Recover (sleep, devices and guided sessions) and More (profile, settings and support).",
+      "Fynrox brings your training, food, recovery and professional support into one app. The bottom tabs are Today (your day at a glance), Train (programs, routines and workouts), Fuel (meals and nutrition), Recover (sleep, devices and guided sessions) and More (profile, settings and support).",
   },
   {
     slug: "set-up-your-plan",
@@ -36,7 +36,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Turning notifications and reminders on",
     order: 3,
     body:
-      "Go to More > Settings > Notifications to choose what you hear about, set quiet hours and an optional daily limit. Reminders for workouts, meals and medicines are scheduled on your device, so they need the system notification permission. If you declined it, open your device settings and allow notifications for 23PrimeFit.",
+      "Go to More > Settings > Notifications to choose what you hear about, set quiet hours and an optional daily limit. Reminders for workouts, meals and medicines are scheduled on your device, so they need the system notification permission. If you declined it, open your device settings and allow notifications for Fynrox.",
   },
   {
     slug: "keep-your-account-secure",
@@ -122,7 +122,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Plans and pricing",
     order: 1,
     body:
-      "23PrimeFit has Basic (free), Pro and Elite plans, billed monthly or annually. Open More > Subscription to compare what each includes and to subscribe or change plan. Prices are shown in rupees before you pay.",
+      "Fynrox has Basic (free), Pro and Elite plans, billed monthly or annually. Open More > Subscription to compare what each includes and to subscribe or change plan. Prices are shown in rupees before you pay.",
   },
   {
     slug: "cancel-a-subscription",

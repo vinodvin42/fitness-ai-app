@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminUnitEconomicsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -51,6 +52,7 @@ async function fetchUnitEconomics(filters: Filters): Promise<AdminUnitEconomicsR
  * render via `NotAvailablePanel`.
  */
 export function UnitEconomicsScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ startDate: "", endDate: "" });
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -61,15 +63,15 @@ export function UnitEconomicsScreen() {
   });
 
   return (
-    <AppShell title="Unit Economics" subNav={ANALYTICS_SUB_NAV}>
+    <AppShell title={t("unitEconomics.unitEconomics")} subNav={ANALYTICS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <p className="max-w-md text-xs text-text-secondary">
-            What it costs to acquire a user (period) against what a user is worth over their lifetime (all-time).
+            {t("unitEconomics.whatItCostsTo")}
           </p>
           <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              From
+              {t("unitEconomics.from")}
               <input
                 type="date"
                 value={filters.startDate}
@@ -86,17 +88,17 @@ export function UnitEconomicsScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
-            <span className="pb-1.5 text-[11px] text-text-dim">Applies to New Users / Marketing Spend / CAC only</span>
+            <span className="pb-1.5 text-[11px] text-text-dim">{t("unitEconomics.appliesToNewUsers")}</span>
           </div>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("unitEconomics.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load unit economics.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("unitEconomics.retry")}
             </button>
           </div>
         )}
@@ -105,13 +107,13 @@ export function UnitEconomicsScreen() {
           <>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
               <StatCard
-                label="New Users"
+                label={t("unitEconomics.newUsers")}
                 value={data.kpis.newUsers.value}
                 trendPct={data.kpis.newUsers.trendPct}
                 hint="Selected period"
               />
               <StatCard
-                label="Marketing Spend"
+                label={t("unitEconomics.marketingSpend")}
                 value={money(data.kpis.marketingSpendCents.value)}
                 trendPct={data.kpis.marketingSpendCents.trendPct}
                 hint="Real Expense rows, category: marketing"
@@ -124,19 +126,19 @@ export function UnitEconomicsScreen() {
                 hint={data.kpis.cacCents.value === null ? "No marketing spend logged this period" : "Marketing spend ÷ new users"}
               />
               <StatCard
-                label="Avg LTV"
+                label={t("unitEconomics.avgLtv")}
                 value={money(data.avgLtvCents)}
                 hint={`All-time, across ${data.totalUsers} users — not scoped to the date filter above`}
               />
               <StatCard
-                label="LTV : CAC"
+                label={t("unitEconomics.ltvCac")}
                 value={data.ltvToCacRatio === null ? "—" : `${data.ltvToCacRatio.toFixed(2)} : 1`}
                 hint="All-time avg LTV ÷ this period's CAC"
               />
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Cohort Economics — last 6 months</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("unitEconomics.cohortEconomicsLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Each signup cohort's real avg lifetime revenue alongside that calendar month's real marketing spend
                 and CAC. Independent of the date filter above, same reasoning as 09.01's Retention Cohort table.
@@ -145,10 +147,10 @@ export function UnitEconomicsScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Cohort</th>
-                      <th className="px-3 py-2 font-normal">Size</th>
-                      <th className="px-3 py-2 font-normal">Avg LTV</th>
-                      <th className="px-3 py-2 font-normal">Marketing Spend</th>
+                      <th className="px-3 py-2 font-normal">{t("unitEconomics.cohort")}</th>
+                      <th className="px-3 py-2 font-normal">{t("unitEconomics.size")}</th>
+                      <th className="px-3 py-2 font-normal">{t("unitEconomics.avgLtv")}</th>
+                      <th className="px-3 py-2 font-normal">{t("unitEconomics.marketingSpend")}</th>
                       <th className="px-3 py-2 font-normal">CAC</th>
                     </tr>
                   </thead>
@@ -169,7 +171,7 @@ export function UnitEconomicsScreen() {
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="The Figma's donut split + leaderboard and waterfall chart — no acquisition-channel dimension or unambiguous cost breakdown exists anywhere in this build to back either."
+              subtitle={t("unitEconomics.theFigmaSDonut")}
             />
           </>
         )}

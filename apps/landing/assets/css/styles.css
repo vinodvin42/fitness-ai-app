@@ -1,5 +1,5 @@
 /*
- * 23PrimeFit — landing page styles
+ * Fynrox — landing page styles
  *
  * Design tokens below are ported 1:1 from apps/user-mobile/src/theme/tokens.ts
  * (Design System v2, 31 Aug 2026 — the OLED-first "instrument panel" look).
@@ -16,52 +16,89 @@
 /* ---------------------------------------------------------------------- */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Surfaces */
-  --bg: #0b0c10;
-  --surface: #14161c;
-  --surface-raised: #1b1e26;
-  --surface-high: #242833;
-  --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* Surfaces — cream canvas, white cards, a deeper cream for insets.
+   * surface-high is the DARKEST of the four, so it is the worst case for
+   * every text token below; that is the surface the contrast test
+   * measures against. */
+  --bg: #F6F4EB;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFDF7;
+  --surface-high: #EFEBDC;
+  --border: rgba(26, 26, 26, 0.12);
+  --border-strong: rgba(26, 26, 26, 0.24);
 
   /* Text */
-  --text-primary: #edf0f5;
-  --text-secondary: #98a2b3;
-  --text-muted: #5e6675;
-  --text-on-accent: #04120e;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4D51;
+  /*
+   * Measured, not eyeballed — the same discipline the dark palette
+   * learned the hard way. Every value below clears 4.5:1 against all
+   * four surfaces, worst case on --surface-high:
+   *
+   *   text-primary   14.58:1   accent        4.95:1
+   *   text-secondary  7.12:1   accent-alt    6.85:1
+   *   text-muted      5.21:1   success       5.43:1
+   *   orange          6.11:1   warning       6.03:1
+   *   pink            5.96:1   danger        6.33:1
+   *   cyan            5.11:1   ai-accent     5.41:1
+   *
+   * The brand's own slate (#8E9194) and gold (#DA9F3E) are 2.88:1 and
+   * 2.12:1 on cream. Neither can carry text, so --text-muted and
+   * --accent are darkened derivations of them rather than the brand
+   * values themselves. The gold is still the gold — it just does its
+   * job as a fill (--accent-fill), where charcoal on it is 7.47:1.
+   */
+  --text-muted: #5E6165;
+  /** Ink that sits ON --accent-fill. Charcoal on brand gold, 7.47:1. */
+  --text-on-accent: #1A1A1A;
 
-  /* Brand accent (mint-cyan) */
-  --accent: #35e6c5;
-  --accent-alt: #0fb89a;
-  --accent-soft: rgba(53, 230, 197, 0.16);
+  /* Brand gold.
+   *
+   * Two tokens on purpose, and the split is load-bearing. --accent is
+   * ink: links, dots, focus rings, meter bars — anything whose colour
+   * has to be legible against cream. --accent-fill is the brand gold
+   * itself, used only as a background with --text-on-accent on top.
+   *
+   * Using one token for both is what made the light theme fail: gold
+   * reads beautifully as a fill and is unreadable as text. There is a
+   * test (landingAccentFill in apps/api/tests/landingTheme.test.ts)
+   * asserting --accent-fill never appears in a `color:` declaration, so
+   * this is enforced rather than remembered. */
+  --accent: #8A5A0E;
+  --accent-alt: #6E4708;
+  --accent-fill: #DA9F3E;
+  --accent-fill-strong: #C68B2A;
+  --accent-soft: rgba(218, 159, 62, 0.18);
 
   /* AI accent — reserved for AI Coach touchpoints only, same rule the app follows */
-  --ai-accent: #9b87ff;
-  --ai-accent-soft: rgba(155, 135, 255, 0.16);
+  --ai-accent: #5B4BC4;
+  --ai-accent-soft: rgba(91, 75, 196, 0.14);
 
   /* Status */
-  --success: #3fe08a;
-  --success-soft: rgba(63, 224, 138, 0.16);
-  --warning: #ffb020;
-  --warning-soft: rgba(255, 176, 32, 0.16);
-  --danger: #ff5064;
-  --danger-soft: rgba(255, 80, 100, 0.16);
+  --success: #1C6B44;
+  --success-soft: rgba(28, 107, 68, 0.12);
+  --warning: #7A4E00;
+  --warning-soft: rgba(122, 78, 0, 0.12);
+  --danger: #A3201A;
+  --danger-soft: rgba(163, 32, 26, 0.10);
 
-  /* Secondary data hues (infrared / pink / cyan) */
-  --orange: #ff6552;
-  --orange-soft: rgba(255, 101, 82, 0.16);
-  --pink: #ec4899;
-  --pink-soft: rgba(236, 72, 153, 0.16);
-  --cyan: #22d3ee;
-  --cyan-soft: rgba(34, 211, 238, 0.16);
+  /* Secondary data hues, darkened for a light canvas */
+  --orange: #9A3418;
+  --orange-soft: rgba(154, 52, 24, 0.12);
+  --pink: #9B2D63;
+  --pink-soft: rgba(155, 45, 99, 0.12);
+  --cyan: #1E6B7A;
+  --cyan-soft: rgba(30, 107, 122, 0.12);
 
-  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(26, 26, 26, 0.55);
 
-  /* Type */
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  /* Type — Archivo Black for display, Inter for body, JetBrains Mono for
+   * data. Archivo Black ships one weight (400) and is already black, so
+   * never set font-weight on it; see .u-display. */
+  --font-display: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Spacing (4/8/16/24/32/48 from tokens.ts, extended upward for web sections) */
@@ -82,12 +119,29 @@
   --radius-lg: 24px;
   --radius-pill: 999px;
 
-  /* Elevation (mirrors tokens.ts's elevation.card / elevation.floating) */
-  --shadow-card: 0 8px 16px rgba(0, 0, 0, 0.35);
-  --shadow-floating: 0 10px 24px rgba(0, 0, 0, 0.45);
+  /* Elevation. A light theme cannot borrow the dark one's shadows: the
+   * same rgba(0,0,0,.35) that reads as depth on #0b0c10 reads as dirt
+   * on cream. These are much softer and tinted with the brand charcoal
+   * rather than pure black. */
+  --shadow-card: 0 2px 4px rgba(26, 26, 26, 0.04), 0 8px 24px rgba(26, 26, 26, 0.07);
+  --shadow-floating: 0 4px 10px rgba(26, 26, 26, 0.06), 0 18px 40px rgba(26, 26, 26, 0.12);
 
-  --container-max: 1180px;
+  /* Was 1180px, which left ~370px of dead gutter each side at 1920 and
+   * made a wide screen look like a phone layout stranded in the middle.
+   * Wide enough to use the display, capped so a 2560px monitor does not
+   * stretch body copy past a readable measure — long-form pages pull
+   * this in again with .wrap--reading below. */
+  --container-max: 1240px;
+  --container-reading: 880px;
   --header-h: 72px;
+
+  /* Motion. One easing and three durations, so every transition on the
+   * site moves the same way. Honoured by the reduced-motion block at the
+   * end of this file. */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 0.18s;
+  --dur: 0.32s;
+  --dur-slow: 0.6s;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -121,7 +175,9 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* White page, cream panels — the artboard's arrangement. The site had
+     cream as the canvas, which left nothing for a panel to sit against. */
+  background: var(--surface);
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 16px;
@@ -169,7 +225,7 @@ button {
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   padding: 0.75rem 1.25rem;
   border-radius: 0 0 var(--radius-sm) 0;
@@ -202,24 +258,59 @@ button {
   width: 100%;
   max-width: var(--container-max);
   margin-inline: auto;
-  padding-inline: clamp(1.25rem, 4vw, 3rem);
+  padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+/* Long-form text (legal, articles, FAQ answers) keeps a readable measure
+   rather than running the full 1560px — 1560px of 16px prose is roughly
+   190 characters a line, about triple what is comfortable. */
+.wrap--reading {
+  max-width: var(--container-reading);
+}
+
+/* Breaks a child out of .wrap to the full viewport width. The negative
+   margin is the container's own gutter plus however much of the page is
+   margin at this width, so it works at every breakpoint without a media
+   query. */
+.full-bleed {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
 }
 
 .section-eyebrow {
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.8125rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+/* A short bar of the real brand gold in front of every section label.
+ * The label text itself has to be the darker ink gold — #DA9F3E is
+ * 2.12:1 on cream and this is 13px — but a 2.5rem solid bar is a
+ * graphic, not text, so it can be the brand colour at full strength.
+ * That is what puts the actual gold on the page rather than only on
+ * buttons. */
+.section-eyebrow::before {
+  content: "";
+  flex: none;
+  width: 2.5rem;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent-fill);
 }
 
 .section-title {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-size: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  text-transform: uppercase;
+  font-size: clamp(1.5rem, 1.25rem + 1.1vw, 2.25rem);
   color: var(--text-primary);
   max-width: 40rem;
 }
@@ -243,13 +334,23 @@ button {
   gap: 0.5em;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 0.9375rem;
-  line-height: 1;
-  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  /* Not nowrap. Uppercasing these and adding 0.08em of tracking made
+     "Creator Partner Portal login" wider than a 390px phone, and nowrap
+     turned that into 41px of horizontal page scroll rather than a second
+     line. Long labels are rare and a wrapped button is fine; a page that
+     scrolls sideways on a phone is not. */
+  text-wrap: balance;
+  max-width: 100%;
+  text-align: center;
   text-decoration: none;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  padding: 0.85em 1.4em;
+  border-radius: var(--radius-sm);
+  padding: 1.05em 1.6em;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease,
     border-color 0.15s ease;
@@ -262,24 +363,26 @@ button {
 }
 
 .btn--primary {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  box-shadow: 0 8px 20px rgba(53, 230, 197, 0.22);
+  background: var(--text-primary);
+  color: var(--bg);
+  box-shadow: 0 6px 16px rgba(26, 26, 26, 0.18);
 }
 
 .btn--primary:hover {
+  background: #000000;
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(53, 230, 197, 0.3);
+  box-shadow: 0 10px 24px rgba(26, 26, 26, 0.24);
 }
 
 .btn--ghost {
   background: transparent;
   color: var(--text-primary);
-  border-color: var(--border-strong);
+  border-width: 1.5px;
+  border-color: var(--text-primary);
 }
 
 .btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(26, 26, 26, 0.04);
   transform: translateY(-1px);
 }
 
@@ -358,7 +461,7 @@ button {
   min-height: var(--header-h);
   display: flex;
   align-items: center;
-  background: rgba(11, 12, 16, 0.6);
+  background: rgba(246, 244, 235, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid transparent;
@@ -368,7 +471,7 @@ button {
 }
 
 .site-header.is-scrolled {
-  background: rgba(11, 12, 16, 0.92);
+  background: rgba(246, 244, 235, 0.94);
   border-bottom-color: var(--border);
 }
 
@@ -392,20 +495,28 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.125rem;
+  height: 1.5rem;
   flex: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.85rem;
+}
+
+/* Two gold chevrons and a charcoal one, as on the supplied logo sheet.
+ * `fill` on the <svg> rather than per <path> so the tail can override
+ * it, and so the mark inverts as one unit on the dark band below. */
+.brand__mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: var(--accent-fill);
+}
+
+.brand__mark-tail {
+  fill: var(--text-primary);
 }
 
 .brand__word {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.1rem;
   letter-spacing: -0.01em;
 }
@@ -460,10 +571,11 @@ button {
 
 .page-hero__title {
   font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  text-transform: uppercase;
+  font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.75rem);
   color: var(--text-primary);
 }
 
@@ -535,7 +647,7 @@ button {
 }
 
 .step-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -620,7 +732,7 @@ button {
   position: absolute;
   top: -0.75rem;
   left: var(--space-5);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   font-family: var(--font-body);
   font-weight: 700;
@@ -632,7 +744,7 @@ button {
 }
 
 .pricing-card__name {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--text-primary);
@@ -716,7 +828,7 @@ button {
 
 .legal h2 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.375rem;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -729,7 +841,7 @@ button {
 }
 
 .legal h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--text-primary);
@@ -812,7 +924,7 @@ button {
 
 .faq-item summary {
   cursor: pointer;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.9375rem;
   color: var(--text-primary);
@@ -847,7 +959,12 @@ button {
 .hero {
   position: relative;
   overflow: hidden;
-  padding-block: clamp(3rem, 5vw + 1rem, 5.5rem) clamp(3.5rem, 6vw + 1rem, 6.5rem);
+  /* An inset cream panel with a 22px radius, as on the artboard, rather
+     than a band running the full width of the window. */
+  background: var(--bg);
+  border-radius: 22px;
+  margin: 1.125rem 1.125rem 0;
+  padding-block: clamp(2rem, 2.5vw + 0.75rem, 3.25rem) clamp(2.5rem, 3vw + 1rem, 4rem);
 }
 
 .hero__bg {
@@ -857,24 +974,29 @@ button {
   pointer-events: none;
 }
 
+/* The dark theme's dot grid was white at 5% — invisible on cream. This
+ * is the same idea inverted: charcoal dots at 5%, masked to fade out,
+ * so the hero has texture without a second colour in it. */
 .hero__bg::before {
   content: "";
   position: absolute;
   inset: -15%;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(26, 26, 26, 0.055) 1px, transparent 1px);
   background-size: 26px 26px;
-  -webkit-mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 72%);
-  mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 72%);
-  opacity: 0.7;
+  -webkit-mask-image: radial-gradient(62% 58% at 32% 28%, #000 0%, transparent 74%);
+  mask-image: radial-gradient(62% 58% at 32% 28%, #000 0%, transparent 74%);
+  opacity: 0.85;
 }
 
+/* One warm gold wash, where the dark theme had three coloured glows
+ * (mint, violet, infrared). Three glows on a light canvas muddy it; the
+ * brand has one accent, so the hero gets one. */
 .hero__bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(42% 38% at 14% 10%, rgba(53, 230, 197, 0.22), transparent 60%),
-    radial-gradient(38% 34% at 88% 6%, rgba(155, 135, 255, 0.18), transparent 60%),
-    radial-gradient(46% 40% at 78% 92%, rgba(255, 101, 82, 0.1), transparent 62%);
+  background: radial-gradient(52% 46% at 88% 4%, rgba(218, 159, 62, 0.20), transparent 64%),
+    radial-gradient(44% 40% at 4% 92%, rgba(218, 159, 62, 0.10), transparent 62%);
 }
 
 .hero__inner {
@@ -910,10 +1032,10 @@ button {
 
 .hero__title {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.08;
-  font-size: clamp(2.25rem, 1.7rem + 2.6vw, 3.75rem);
+  font-size: clamp(2rem, 1.35rem + 2.1vw, 3.125rem);
   color: var(--text-primary);
 }
 
@@ -946,6 +1068,9 @@ button {
 }
 
 .float-card {
+  /* relative so z-index applies while the cards are stacked in flow;
+     the 900px block below switches them to absolute. */
+  position: relative;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
@@ -963,7 +1088,7 @@ button {
 }
 
 .float-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.9375rem;
   color: var(--text-primary);
@@ -1055,7 +1180,9 @@ button {
 
 @media (min-width: 900px) {
   .hero__inner {
-    grid-template-columns: 1.05fr 0.95fr;
+    /* More room for the headline than for the media: the media bleeds
+       off the right edge and gains the gutter back anyway. */
+    grid-template-columns: 1.2fr 0.8fr;
   }
 
   .hero__visual {
@@ -1178,7 +1305,7 @@ button {
 }
 
 .feature-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.125rem;
   letter-spacing: -0.01em;
@@ -1259,7 +1386,7 @@ button {
 }
 
 .platform-card__title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--text-primary);
@@ -1304,7 +1431,7 @@ button {
 
 .cta-strip__title {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.02em;
   font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
   max-width: 30rem;
@@ -1395,8 +1522,820 @@ button {
   font-size: 0.8125rem;
 }
 
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .footer__copy {
   margin-top: var(--space-4);
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+
+/*
+ * Language picker. Hidden by the `hidden` attribute in the markup and
+ * un-hidden by assets/js/i18n.js once there is more than one language
+ * to choose between, which is the same honest order the mobile nav
+ * toggle uses: a control that cannot do anything is worse than no
+ * control.
+ */
+.footer__lang-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.footer__lang-wrap[hidden] {
+  /* `hidden` loses to `display: flex` in the cascade — the same bug the
+     forms had, and the reason .form[hidden] exists further up. */
+  display: none;
+}
+
+.footer__lang-label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.footer__lang {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.6rem;
+}
+
+.footer__lang:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------
+   Cookie consent banner (W-M3)
+   Fixed to the bottom rather than an overlay: a modal that blocks the
+   page until you choose is a dark pattern in the other direction, and
+   this site's content is readable whether or not you have decided.
+   ------------------------------------------------------------------ */
+.cookie-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--surface, #ffffff);
+  border-top: 1px solid var(--border, rgba(26, 26, 26, 0.12));
+  box-shadow: 0 -4px 28px rgba(26, 26, 26, 0.12);
+  padding: 14px 0;
+}
+
+.cookie-bar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cookie-bar__text {
+  margin: 0;
+  flex: 1 1 320px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #4a4d51);
+}
+
+.cookie-bar__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .cookie-bar__actions {
+    width: 100%;
+  }
+  .cookie-bar__actions .btn {
+    flex: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Mobile navigation (spec §8 — "mobile navigation")                       */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The nav used to be one flat row that simply wrapped on a phone, which
+ * put eight links and a button over three lines above the fold. Below
+ * 900px it collapses behind a toggle instead; above it, nothing changes.
+ *
+ * The toggle is a real <button aria-expanded>, and the panel is hidden
+ * with `display:none` rather than opacity — a link a sighted user cannot
+ * see must not be reachable by tab or read by a screen reader either.
+ */
+.nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  /* 44px minimum touch target. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-toggle__bars {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-toggle__bars span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+@media (min-width: 900px) {
+  .nav-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  /*
+   * Scoped to `.has-nav-toggle`, which main.js adds to <html> only once
+   * it has a working toggle to offer. Without JS the nav keeps its old
+   * wrapped layout — visually busier, but reachable, which a collapsed
+   * panel with no button to open it would not be.
+   */
+  .has-nav-toggle .nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--space-3);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 18px 40px rgba(26, 26, 26, 0.16);
+  }
+
+  .has-nav-toggle .nav.is-open {
+    display: flex;
+  }
+
+  .has-nav-toggle .nav .nav__link {
+    padding: 0.85rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .has-nav-toggle .nav .btn {
+    margin-top: var(--space-3);
+    text-align: center;
+  }
+
+  .site-header__inner {
+    position: relative;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Forms (spec §8 — Early Access, partner applications, contact)           */
+/* ---------------------------------------------------------------------- */
+
+.form {
+  margin-top: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  max-width: 34rem;
+}
+
+/*
+ * `display: grid` beats the `hidden` attribute, so a form hidden on
+ * success stayed on screen underneath its own "you're on the list"
+ * message. Found by driving the real page, not by reading this file.
+ * Scoped to the elements that set a display, rather than a blanket
+ * `[hidden] { display: none !important }`.
+ */
+.form[hidden],
+.form-state[hidden],
+.field[hidden] {
+  display: none;
+}
+
+.form--wide {
+  max-width: none;
+}
+
+@media (min-width: 720px) {
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.field__input,
+.field__textarea,
+.field__select {
+  width: 100%;
+  /* 44px minimum, so the tap target matches the buttons. */
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.field__textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.field__input:focus-visible,
+.field__textarea:focus-visible,
+.field__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/*
+ * Field-level errors, driven by the API's own `fields` array rather than
+ * by a second copy of the validation rules in the browser. A form that
+ * disagrees with the server about what is valid is a form that rejects
+ * submissions the server would have accepted.
+ */
+.field.is-invalid .field__input,
+.field.is-invalid .field__textarea,
+.field.is-invalid .field__select {
+  border-color: var(--danger);
+}
+
+.field__error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.field--check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.field--check input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.field--check .field__label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/*
+ * The four states §8 names for these forms. Each is a real region with
+ * `role="status"`, so the outcome is announced rather than merely
+ * appearing somewhere below the fold.
+ */
+.form-state {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+
+.form-state__title {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+}
+
+.form-state__body {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.form-state--success {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.form-state--error {
+  border-color: var(--danger);
+}
+
+.form-state--known {
+  border-color: var(--border-strong);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Learn (spec §8 — Learn category index + article template)               */
+/* ---------------------------------------------------------------------- */
+
+.article-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .article-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.article-card {
+  display: block;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.article-card:hover,
+.article-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.article-card__category {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.article-card__title {
+  margin-top: var(--space-2);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--text-primary);
+}
+
+.article-card__body {
+  margin-top: var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.article-card__meta {
+  margin-top: var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* The article template itself — reuses the legal pages' reading column,
+   which is already tuned for long-form text. */
+.article__meta {
+  margin-top: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.article__review {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-raised);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Photography and motion — added 3 Oct 2026 with the light theme          */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The hero's media panel.
+ *
+ * The float cards used to hover over a blank gradient. They now sit over
+ * real footage, which is the whole point of the cards: app UI on top of
+ * the training it describes.
+ *
+ * The poster image is always in the markup and always loads. The video
+ * element carries no `src` — assets/js/main.js attaches one only on a
+ * wide viewport, on a connection that is not metered or saving data, and
+ * never when the visitor prefers reduced motion. So the 7.6 MB download
+ * is opt-in by capability rather than something every phone pays for,
+ * and a visitor with JavaScript off sees the still.
+ */
+.hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-high);
+  box-shadow: var(--shadow-floating);
+}
+
+.hero__media img,
+.hero__media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The video sits over the still and fades in once it can actually play,
+   so a slow start shows the poster rather than a black rectangle. */
+.hero__media video {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.hero__media video.is-playing {
+  opacity: 1;
+}
+
+/* Warms the footage toward the brand and keeps the white float cards
+   legible over whatever frame happens to be showing. */
+.hero__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(190deg, rgba(26, 26, 26, 0.12) 0%, rgba(26, 26, 26, 0.42) 100%);
+}
+
+.hero__visual {
+  position: relative;
+  min-height: 420px;
+  isolation: isolate;
+}
+
+/* z-index only. Setting `position` here would override the absolute
+   placement in the 900px block above, which is what the cards' desktop
+   composition is built from. */
+.hero__visual > .float-card {
+  z-index: 1;
+}
+
+/* ---- Editorial photo band ------------------------------------------- */
+
+/*
+ * A full-width photograph with a caption column beside it. Used between
+ * card sections to break the rhythm — the reference layout's "picture,
+ * then claim, then picture" cadence.
+ */
+.photo-band {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+/* The positioning parent for the overlapping inset. It must sit OUTSIDE
+   .photo-band__media, whose overflow:hidden rounds the main photograph
+   and was also clipping the frame that is supposed to hang off it. */
+.photo-band__frame {
+  position: relative;
+}
+
+.photo-band__media {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-high);
+  aspect-ratio: 4 / 3;
+  box-shadow: var(--shadow-card);
+}
+
+.photo-band__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* A small second frame, overlapped onto the first — the offset detail
+   shot from the reference layout. Hidden below the two-column
+   breakpoint, where there is no room to overlap anything. */
+.photo-band__inset {
+  display: none;
+}
+
+.photo-band__label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.photo-band__title {
+  margin-top: var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 3vw + 0.5rem, 2.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.photo-band__body {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ---- Dark guidance band --------------------------------------------- */
+
+/*
+ * The one charcoal section on the site. It carries the human-coach
+ * story, so it gets the two coach photographs and inverts the palette.
+ *
+ * Inverting by redefining the tokens inside the block, rather than
+ * writing new rules, means every component dropped in here — buttons,
+ * eyebrows, the brand mark — adapts without being special-cased. The
+ * values are the light palette's dark counterparts and are measured:
+ * cream on charcoal is 15.80:1, and the gold is the brand gold at
+ * 7.47:1, which is legible on charcoal in a way it never was on cream.
+ */
+.band-dark {
+  --bg: #1A1A1A;
+  --surface: #242424;
+  --surface-raised: #2A2A2A;
+  --surface-high: #333333;
+  --border: rgba(246, 244, 235, 0.16);
+  --border-strong: rgba(246, 244, 235, 0.3);
+  --text-primary: #F6F4EB;
+  --text-secondary: #CFCCC0;
+  --text-muted: #A8A59B;
+  --accent: #DA9F3E;
+  --accent-alt: #E8B45C;
+  --accent-fill: #DA9F3E;
+  --text-on-accent: #1A1A1A;
+  --accent-soft: rgba(218, 159, 62, 0.2);
+
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.band-dark .brand__mark-tail {
+  fill: var(--text-primary);
+}
+
+.band-dark .section-title,
+.band-dark .photo-band__title {
+  color: var(--text-primary);
+}
+
+/* The group shot, with the individual portrait overlapping its corner. */
+.coach-stack {
+  position: relative;
+}
+
+.coach-stack__main {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  background: var(--surface-high);
+}
+
+.coach-stack__main img,
+.coach-stack__portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coach-stack__portrait {
+  display: none;
+}
+
+/* ---- Reveal on scroll ------------------------------------------------ */
+
+/*
+ * Gated on `.has-js`, which assets/js/main.js sets on <html> before
+ * first paint. Without that gate an `opacity: 0` start state would hide
+ * every section permanently for a visitor whose JavaScript fails to
+ * run — the classic way a scroll animation takes a site down.
+ */
+.has-js .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+
+.has-js .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Children stagger, so a row of cards arrives as a row rather than as
+   one block. Four steps is enough for every grid on the site. */
+.has-js .reveal--stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+
+.has-js .reveal--stagger.is-in > * {
+  opacity: 1;
+  transform: none;
+}
+
+.has-js .reveal--stagger.is-in > *:nth-child(2) { transition-delay: 0.08s; }
+.has-js .reveal--stagger.is-in > *:nth-child(3) { transition-delay: 0.16s; }
+.has-js .reveal--stagger.is-in > *:nth-child(4) { transition-delay: 0.24s; }
+
+/*
+ * The global reduced-motion block near the top of this file already
+ * collapses every duration to 0.001ms, which lands these elements on
+ * their final state instantly. The start state still has to be undone
+ * explicitly: a transition that never runs would otherwise leave
+ * opacity at 0 forever.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .has-js .reveal,
+  .has-js .reveal.is-in,
+  .has-js .reveal--stagger > *,
+  .has-js .reveal--stagger.is-in > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ---- Two-column and up ---------------------------------------------- */
+
+@media (min-width: 900px) {
+  .photo-band {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: var(--space-7);
+  }
+
+  /* On the frame, not the media: the media is nested inside the frame
+     now, and `order` only applies to a grid child. */
+  .photo-band--flip .photo-band__frame {
+    order: 2;
+  }
+
+  .photo-band__inset {
+    display: block;
+    position: absolute;
+    right: -2.25rem;
+    bottom: -2.25rem;
+    width: 11.5rem;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 6px solid var(--bg);
+    box-shadow: var(--shadow-floating);
+    background: var(--surface-high);
+  }
+
+  .photo-band__inset img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .coach-stack__portrait {
+    display: block;
+    position: absolute;
+    left: -2.5rem;
+    bottom: -2rem;
+    width: 10.5rem;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 6px solid var(--bg);
+    box-shadow: var(--shadow-floating);
+  }
+
+  .hero__visual {
+    min-height: 520px;
+  }
+}
+
+/* The dark band's two-column layout: photographs on one side, the
+   closing call to action on the other. Below 900px the stack collapses
+   and the portrait overlay is hidden by the rule above, so the group
+   shot simply sits over the text. */
+.band-dark .cta-strip__inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.band-dark .cta-strip__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .band-dark .cta-strip__inner {
+    grid-template-columns: 0.85fr 1fr;
+    gap: var(--space-8);
+  }
+
+  .band-dark .coach-stack {
+    margin-left: 2.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Contained imagery                                                       */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The photographs used to run to the edge of the glass. The artboard
+ * keeps them inside the column, in rounded frames, and that is what was
+ * signed off — a bled photograph under a rounded panel also has nowhere
+ * to bleed to. The --bleed variable and the rules that used it are gone
+ * rather than left switched off.
+ */
+.band-dark {
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .photo-band {
+    padding-bottom: 2.5rem;
+  }
+
+  /* The detail frame overlaps the photograph's outer corner. */
+  .photo-band .photo-band__inset {
+    right: -1.5rem;
+    left: auto;
+    bottom: -1.5rem;
+    width: 9.5rem;
+  }
+
+  .photo-band--flip .photo-band__inset {
+    right: auto;
+    left: -1.5rem;
+  }
+
+  .photo-band--flip .photo-band__frame {
+    order: 2;
+  }
+}
+
+
+@media (min-width: 900px) {
+  .photo-band {
+    padding-bottom: 2.5rem;
+  }
 }

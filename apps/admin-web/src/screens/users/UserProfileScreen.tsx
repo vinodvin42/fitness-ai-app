@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
@@ -93,6 +94,7 @@ function Row({ label, value }: { label: string; value: string | number }) {
 const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 export function UserProfileScreen() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
   const [accessReason, setAccessReason] = useState("");
@@ -195,14 +197,14 @@ export function UserProfileScreen() {
   const overviewNotAvailable = (data?.notAvailable ?? []).filter((k) => k !== "activity");
 
   return (
-    <AppShell title="User Profile">
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("userProfile.userProfile")}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("userProfile.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           {extractErrorMessage(error, "Couldn't load this user.")}
           <button type="button" onClick={() => refetch()} className="ml-3 underline">
-            Retry
+            {t("userProfile.retry")}
           </button>
         </div>
       )}
@@ -223,7 +225,7 @@ export function UserProfileScreen() {
               <div className="text-[10px] text-text-dim">{data.user.id}</div>
             </div>
             <Link to="/users" className="text-xs text-text-secondary hover:text-text-primary">
-              ← Back to Directory
+              {t("userProfile.backToDirectory")}
             </Link>
           </div>
 
@@ -248,22 +250,22 @@ export function UserProfileScreen() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Profile</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.profile")}</div>
                   <dl className="mt-3 space-y-2 text-sm">
-                    <Row label="Referral code" value={data.user.referralCode} />
-                    <Row label="Joined" value={new Date(data.user.createdAt).toLocaleDateString()} />
-                    <Row label="Last updated" value={new Date(data.user.updatedAt).toLocaleDateString()} />
+                    <Row label={t("userProfile.referralCode")} value={data.user.referralCode} />
+                    <Row label={t("userProfile.joined")} value={new Date(data.user.createdAt).toLocaleDateString()} />
+                    <Row label={t("userProfile.lastUpdated")} value={new Date(data.user.updatedAt).toLocaleDateString()} />
                   </dl>
                 </div>
 
                 <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Lifetime Value</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.lifetimeValue")}</div>
                   <dl className="mt-3 space-y-2 text-sm">
-                    <Row label="Total spent" value={money(data.lifetimeValue.totalSpentCents)} />
-                    <Row label="Months active" value={data.lifetimeValue.monthsActive} />
-                    <Row label="Avg monthly spend" value={money(data.lifetimeValue.avgMonthlySpendCents)} />
+                    <Row label={t("userProfile.totalSpent")} value={money(data.lifetimeValue.totalSpentCents)} />
+                    <Row label={t("userProfile.monthsActive")} value={data.lifetimeValue.monthsActive} />
+                    <Row label={t("userProfile.avgMonthlySpend")} value={money(data.lifetimeValue.avgMonthlySpendCents)} />
                     <Row
-                      label="Payment success rate"
+                      label={t("userProfile.paymentSuccessRate")}
                       value={
                         data.lifetimeValue.paymentSuccessRate == null
                           ? "—"
@@ -276,26 +278,26 @@ export function UserProfileScreen() {
 
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">Current Subscription</div>
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.currentSubscription")}</div>
                   {data.currentSubscription && <StatusBadge status={data.currentSubscription.status} />}
                 </div>
                 {data.currentSubscription ? (
                   <dl className="mt-3 space-y-2 text-sm">
-                    <Row label="Plan" value={data.currentSubscription.plan.name} />
-                    <Row label="Billing cycle" value={data.currentSubscription.plan.billingCycle} />
-                    <Row label="Plan price" value={money(data.currentSubscription.plan.priceCents)} />
+                    <Row label={t("userProfile.plan")} value={data.currentSubscription.plan.name} />
+                    <Row label={t("userProfile.billingCycle")} value={data.currentSubscription.plan.billingCycle} />
+                    <Row label={t("userProfile.planPrice")} value={money(data.currentSubscription.plan.priceCents)} />
                     <Row
-                      label="Renews"
+                      label={t("userProfile.renews")}
                       value={data.currentSubscription.renewsAt ? new Date(data.currentSubscription.renewsAt).toLocaleDateString() : "—"}
                     />
                   </dl>
                 ) : (
-                  <p className="mt-3 text-sm text-text-dim">No subscription — this user is on the Free plan.</p>
+                  <p className="mt-3 text-sm text-text-dim">{t("userProfile.noSubscriptionThisUser")}</p>
                 )}
               </div>
 
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Recent Activity</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.recentActivity")}</div>
                 <ul className="mt-3 divide-y divide-border-subtle">
                   {data.recentActivity.map((a) => (
                     <li key={a.id} className="py-2 text-sm">
@@ -305,49 +307,49 @@ export function UserProfileScreen() {
                       </div>
                     </li>
                   ))}
-                  {data.recentActivity.length === 0 && <li className="py-4 text-center text-sm text-text-dim">No activity yet.</li>}
+                  {data.recentActivity.length === 0 && <li className="py-4 text-center text-sm text-text-dim">{t("userProfile.noActivityYet")}</li>}
                 </ul>
               </div>
 
               <NotAvailablePanel
                 keys={overviewNotAvailable}
-                subtitle="No backing field exists yet for these Figma-spec'd Overview fields — see adminUsers.service.ts."
+                subtitle={t("userProfile.noBackingFieldExists")}
               />
 
               <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-text-dim">
-                  🔒 Sensitive Health Metrics
+                  {t("userProfile.sensitiveHealthMetrics")}
                 </div>
 
                 {data.sensitiveAccess.permitted && data.sensitiveHealthMetrics ? (
                   <div className="mt-3">
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <Row label="Gender" value={data.sensitiveHealthMetrics.gender ?? "—"} />
-                      <Row label="Age" value={data.sensitiveHealthMetrics.age ?? "—"} />
-                      <Row label="Weight" value={data.sensitiveHealthMetrics.weightKg != null ? `${data.sensitiveHealthMetrics.weightKg} kg` : "—"} />
-                      <Row label="Height" value={data.sensitiveHealthMetrics.heightCm != null ? `${data.sensitiveHealthMetrics.heightCm} cm` : "—"} />
+                      <Row label={t("userProfile.gender")} value={data.sensitiveHealthMetrics.gender ?? "—"} />
+                      <Row label={t("userProfile.age")} value={data.sensitiveHealthMetrics.age ?? "—"} />
+                      <Row label={t("userProfile.weight")} value={data.sensitiveHealthMetrics.weightKg != null ? `${data.sensitiveHealthMetrics.weightKg} kg` : "—"} />
+                      <Row label={t("userProfile.height")} value={data.sensitiveHealthMetrics.heightCm != null ? `${data.sensitiveHealthMetrics.heightCm} cm` : "—"} />
                     </dl>
                     <dl className="mt-3 space-y-1.5 text-xs">
                       <div>
-                        <dt className="inline text-text-dim">Allergens: </dt>
+                        <dt className="inline text-text-dim">{t("userProfile.allergens")}</dt>
                         <dd className="inline text-text-secondary">{data.sensitiveHealthMetrics.allergens.join(", ") || "None recorded"}</dd>
                       </div>
                       <div>
-                        <dt className="inline text-text-dim">Medical conditions: </dt>
+                        <dt className="inline text-text-dim">{t("userProfile.medicalConditions")}</dt>
                         <dd className="inline text-text-secondary">{data.sensitiveHealthMetrics.medicalConditions.join(", ") || "None recorded"}</dd>
                       </div>
                       <div>
-                        <dt className="inline text-text-dim">Injuries: </dt>
+                        <dt className="inline text-text-dim">{t("userProfile.injuries")}</dt>
                         <dd className="inline text-text-secondary">{data.sensitiveHealthMetrics.injuries.join(", ") || "None recorded"}</dd>
                       </div>
                     </dl>
                     <p className="mt-3 text-[11px] text-text-dim">
-                      Visible because your access request was approved — this view is logged in the audit trail.
+                      {t("userProfile.visibleBecauseYourAccess")}
                     </p>
                   </div>
                 ) : !data.sensitiveAccess.canRequest ? (
                   <p className="mt-1 text-xs text-text-secondary">
-                    Locked — your admin role doesn't carry permission to request access to sensitive health data.
+                    {t("userProfile.lockedYourAdminRole")}
                   </p>
                 ) : data.sensitiveAccess.myLatestRequest?.status === "pending" ? (
                   <p className="mt-1 text-xs text-text-secondary">
@@ -370,7 +372,7 @@ export function UserProfileScreen() {
                       </p>
                     )}
                     <textarea
-                      placeholder="Why do you need access? (required, at least 10 characters)"
+                      placeholder={t("userProfile.whyDoYouNeed")}
                       value={accessReason}
                       onChange={(e) => setAccessReason(e.target.value)}
                       className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -382,7 +384,7 @@ export function UserProfileScreen() {
                       onClick={() => requestAccessMutation.mutate(accessReason.trim())}
                       className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                     >
-                      Request Access
+                      {t("userProfile.requestAccess")}
                     </button>
                     {requestAccessMutation.isError && (
                       <p className="mt-2 text-xs text-danger">
@@ -408,7 +410,7 @@ export function UserProfileScreen() {
                         onClick={() => approveAccessMutation.mutate(data.sensitiveAccess.pendingRequestForReview!.id)}
                         className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                       >
-                        Approve
+                        {t("userProfile.approve")}
                       </button>
                       <button
                         type="button"
@@ -416,7 +418,7 @@ export function UserProfileScreen() {
                         onClick={() => denyAccessMutation.mutate(data.sensitiveAccess.pendingRequestForReview!.id)}
                         className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
                       >
-                        Deny
+                        {t("userProfile.deny")}
                       </button>
                     </div>
                     {(approveAccessMutation.isError || denyAccessMutation.isError) && (
@@ -430,7 +432,7 @@ export function UserProfileScreen() {
             </div>
           )}
 
-          {tab === "activity" && <NotAvailablePanel keys={["activity"]} subtitle="See this screen's own doc comment for why." />}
+          {tab === "activity" && <NotAvailablePanel keys={["activity"]} subtitle={t("userProfile.seeThisScreenS")} />}
 
           {tab === "subscription" && (
             <div className="space-y-4">
@@ -438,11 +440,11 @@ export function UserProfileScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-4 py-3 font-normal">Plan</th>
-                      <th className="px-4 py-3 font-normal">Status</th>
-                      <th className="px-4 py-3 font-normal">Billing Cycle</th>
-                      <th className="px-4 py-3 font-normal">Renews</th>
-                      <th className="px-4 py-3 font-normal">Started</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.plan")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.status")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.billingCycle2")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.renews")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.started")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -469,7 +471,7 @@ export function UserProfileScreen() {
                     {data.subscriptions.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                          No subscription history.
+                          {t("userProfile.noSubscriptionHistory")}
                         </td>
                       </tr>
                     )}
@@ -481,9 +483,9 @@ export function UserProfileScreen() {
                 data.currentSubscription &&
                 NON_TERMINAL_SUBSCRIPTION_STATUSES.has(data.currentSubscription.status) && (
                   <ReasonGatedAction
-                    title="Force Revoke (fraud / chargeback / ToS)"
-                    description="Immediately sets this user's current subscription to a terminal Revoked status — distinct from a normal cancellation or lapse, and not reversible from this screen. A reason is required and is recorded to the audit trail."
-                    actionLabel="Revoke Subscription"
+                    title={t("userProfile.forceRevokeFraudChargeback")}
+                    description={t("userProfile.immediatelySetsThisUser")}
+                    actionLabel={t("userProfile.revokeSubscription")}
                     isPending={revokeSubscriptionMutation.isPending}
                     isError={revokeSubscriptionMutation.isError}
                     error={revokeSubscriptionMutation.error}
@@ -503,9 +505,9 @@ export function UserProfileScreen() {
               */}
               {data.canForceRevoke && data.currentSubscription && data.currentSubscription.status === "revoked" && (
                 <ReasonGatedAction
-                  title="Un-revoke Subscription"
-                  description="Reverses a force-revoke — for a chargeback/fraud dispute later resolved in the user's favor, or a revocation made in error. Restores the subscription to active if its billing period is still current, or expired if that period has already passed — never silently reinstated for free beyond what was actually paid for. A reason is required and is recorded to the audit trail."
-                  actionLabel="Un-revoke Subscription"
+                  title={t("userProfile.unRevokeSubscription")}
+                  description={t("userProfile.reversesAForceRevoke")}
+                  actionLabel={t("userProfile.unRevokeSubscription")}
                   tone="warning"
                   isPending={unrevokeSubscriptionMutation.isPending}
                   isError={unrevokeSubscriptionMutation.isError}
@@ -523,10 +525,10 @@ export function UserProfileScreen() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Purpose</th>
-                    <th className="px-4 py-3 font-normal">Amount</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Date</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.purpose")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.amount")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.status")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.date")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -545,7 +547,7 @@ export function UserProfileScreen() {
                   {data.payments.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
-                        No payment history.
+                        {t("userProfile.noPaymentHistory")}
                       </td>
                     </tr>
                   )}
@@ -560,10 +562,10 @@ export function UserProfileScreen() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-4 py-3 font-normal">Professional</th>
-                      <th className="px-4 py-3 font-normal">Service</th>
-                      <th className="px-4 py-3 font-normal">Status</th>
-                      <th className="px-4 py-3 font-normal">Since</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.professional")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.service")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.status")}</th>
+                      <th className="px-4 py-3 font-normal">{t("userProfile.since")}</th>
                       <th className="px-4 py-3 font-normal" />
                     </tr>
                   </thead>
@@ -585,7 +587,7 @@ export function UserProfileScreen() {
                               not duplicated here — this links straight to it rather than a
                               second copy of those actions on this screen. */}
                           <Link to={`/relationships/${r.relationshipId}`} className="text-xs text-accent hover:underline">
-                            Manage →
+                            {t("userProfile.manage")}
                           </Link>
                         </td>
                       </tr>
@@ -593,7 +595,7 @@ export function UserProfileScreen() {
                     {data.relationships.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                          No assigned professionals yet.
+                          {t("userProfile.noAssignedProfessionalsYet")}
                         </td>
                       </tr>
                     )}
@@ -612,7 +614,7 @@ export function UserProfileScreen() {
                 full "why a new, parallel model" reasoning.
               */}
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Propose Professional</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.proposeProfessional")}</div>
                 <p className="mt-1 text-xs text-text-secondary">
                   Manually pair this user with a specific `available` professional (e.g. a VIP user, or a
                   subscription tier that includes "matched with a coach"). No auto-matching — you pick the exact
@@ -621,10 +623,10 @@ export function UserProfileScreen() {
 
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[220px]">
-                    <label className="text-[11px] text-text-dim">Available professional</label>
+                    <label className="text-[11px] text-text-dim">{t("userProfile.availableProfessional")}</label>
                     <input
                       type="text"
-                      placeholder="Search by name…"
+                      placeholder={t("userProfile.searchByName")}
                       value={proposeSearch}
                       onChange={(e) => setProposeSearch(e.target.value)}
                       className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
@@ -646,20 +648,20 @@ export function UserProfileScreen() {
                     </select>
                     {availableProfessionalsQuery.data?.professionals.length === 0 && (
                       <p className="mt-1 text-[11px] text-text-dim">
-                        No professionals are currently available for new clients.
+                        {t("userProfile.noProfessionalsAreCurrently")}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-text-dim">Service</label>
+                    <label className="text-[11px] text-text-dim">{t("userProfile.service")}</label>
                     <select
                       value={proposeServiceType}
                       onChange={(e) => setProposeServiceType(e.target.value as ProfessionalServiceType)}
                       className="mt-1 rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
                     >
-                      <option value="fitness">Fitness</option>
-                      <option value="nutrition">Nutrition</option>
+                      <option value="fitness">{t("userProfile.fitness")}</option>
+                      <option value="nutrition">{t("userProfile.nutrition")}</option>
                     </select>
                   </div>
 
@@ -671,7 +673,7 @@ export function UserProfileScreen() {
                     }
                     className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-canvas disabled:opacity-40"
                   >
-                    Propose
+                    {t("userProfile.propose")}
                   </button>
                 </div>
 
@@ -681,7 +683,7 @@ export function UserProfileScreen() {
                   </p>
                 )}
                 {createOfferMutation.isSuccess && (
-                  <p className="mt-2 text-xs text-accent">Offer created — the professional can now accept or decline it.</p>
+                  <p className="mt-2 text-xs text-accent">{t("userProfile.offerCreatedTheProfessional")}</p>
                 )}
 
                 {(userOffersQuery.data?.offers.length ?? 0) > 0 && (
@@ -689,10 +691,10 @@ export function UserProfileScreen() {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-border-subtle uppercase tracking-wide text-text-dim">
-                          <th className="px-3 py-2 font-normal">Professional</th>
-                          <th className="px-3 py-2 font-normal">Service</th>
-                          <th className="px-3 py-2 font-normal">Status</th>
-                          <th className="px-3 py-2 font-normal">Proposed</th>
+                          <th className="px-3 py-2 font-normal">{t("userProfile.professional")}</th>
+                          <th className="px-3 py-2 font-normal">{t("userProfile.service")}</th>
+                          <th className="px-3 py-2 font-normal">{t("userProfile.status")}</th>
+                          <th className="px-3 py-2 font-normal">{t("userProfile.proposed")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -719,11 +721,11 @@ export function UserProfileScreen() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Subject</th>
-                    <th className="px-4 py-3 font-normal">Category</th>
-                    <th className="px-4 py-3 font-normal">Priority</th>
-                    <th className="px-4 py-3 font-normal">Status</th>
-                    <th className="px-4 py-3 font-normal">Opened</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.subject")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.category")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.priority")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.status")}</th>
+                    <th className="px-4 py-3 font-normal">{t("userProfile.opened")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -741,7 +743,7 @@ export function UserProfileScreen() {
                   {data.supportTickets.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                        No support tickets.
+                        {t("userProfile.noSupportTickets")}
                       </td>
                     </tr>
                   )}

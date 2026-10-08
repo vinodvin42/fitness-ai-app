@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminRoleDetailResponse, AdminRoleListResponse, AdminRoleName } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -49,6 +50,7 @@ async function fetchRoleDetail(role: string): Promise<AdminRoleDetailResponse> {
  * would imply otherwise.
  */
 export function RolesPermissionsScreen() {
+  const { t } = useTranslation();
   const [selectedRole, setSelectedRole] = useState<AdminRoleName | null>(null);
 
   const { data: roleList, isLoading, isError, error, refetch } = useQuery({
@@ -65,15 +67,15 @@ export function RolesPermissionsScreen() {
   });
 
   return (
-    <AppShell title="Roles & Permissions" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("rolesPermissions.rolesPermissions")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("rolesPermissions.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load roles.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("rolesPermissions.retry")}
             </button>
           </div>
         )}
@@ -97,26 +99,31 @@ export function RolesPermissionsScreen() {
                       .join(" ")}
                   </div>
                   <div className="mt-0.5 text-xs text-text-secondary">{r.description}</div>
-                  <div className="mt-1 text-[11px] text-text-dim">{r.memberCount} member{r.memberCount === 1 ? "" : "s"}</div>
+                  {/* text-secondary, not text-dim: the selected card's own
+                      `bg-accent/10` lightens the background enough that
+                      text-dim lands at 4.4:1 (axe-core, 29 Sep 2026) — the
+                      one place in this console where a tinted surface tips
+                      an otherwise-passing token under AA. */}
+                  <div className="mt-1 text-[11px] text-text-secondary">{r.memberCount} member{r.memberCount === 1 ? "" : "s"}</div>
                 </button>
               ))}
               <NotAvailablePanel
                 keys={roleList.notAvailable}
-                subtitle="This build's RBAC is a fixed role enum + permission matrix, not admin-editable data — see adminRoles.service.ts."
+                subtitle={t("rolesPermissions.thisBuildSRbac")}
               />
             </div>
 
             <div className="space-y-3 lg:col-span-2">
-              {detailLoading && <p className="text-sm text-text-secondary">Loading role detail…</p>}
+              {detailLoading && <p className="text-sm text-text-secondary">{t("rolesPermissions.loadingRoleDetail")}</p>}
               {detail && (
                 <>
                   <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                    <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">Permission matrix</div>
+                    <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("rolesPermissions.permissionMatrix")}</div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
                           <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                            <th className="px-3 py-2 font-normal">Module</th>
+                            <th className="px-3 py-2 font-normal">{t("rolesPermissions.module")}</th>
                             {ACTIONS.map((a) => (
                               <th key={a} className="px-3 py-2 text-center font-normal capitalize">
                                 {a}
@@ -146,14 +153,14 @@ export function RolesPermissionsScreen() {
                       </table>
                     </div>
                     <p className="mt-3 text-[11px] italic text-text-dim">
-                      "Permissions are enforced by backend. UI visibility is supplementary, not authoritative."
+                      {t("rolesPermissions.permissionsAreEnforcedBy")}
                     </p>
                   </div>
 
                   <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                    <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">Members</div>
+                    <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">{t("rolesPermissions.members")}</div>
                     {detail.members.length === 0 ? (
-                      <p className="text-xs text-text-dim">No admin accounts hold this role yet.</p>
+                      <p className="text-xs text-text-dim">{t("rolesPermissions.noAdminAccountsHold")}</p>
                     ) : (
                       <ul className="space-y-1.5">
                         {detail.members.map((m) => (

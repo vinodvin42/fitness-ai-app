@@ -4,10 +4,12 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { SupportScreen } from "./screens/SupportScreen";
-import { TimingsScreen } from "./screens/TimingsScreen";
+import { InviteScreen } from "./screens/InviteScreen";
 import { EquipmentScreen } from "./screens/EquipmentScreen";
-import { AnnouncementsScreen } from "./screens/AnnouncementsScreen";
 import { HelpRequestsScreen } from "./screens/HelpRequestsScreen";
+import { PartnershipScreen } from "./screens/PartnershipScreen";
+import { TimingsScreen } from "./screens/TimingsScreen";
+import { AnnouncementsScreen } from "./screens/AnnouncementsScreen";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -66,6 +68,38 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/invite"
+        element={
+          <RequireAuth>
+            <InviteScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/equipment"
+        element={
+          <RequireAuth>
+            <EquipmentScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/help"
+        element={
+          <RequireAuth>
+            <HelpRequestsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/partnership"
+        element={
+          <RequireAuth>
+            <PartnershipScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/support"
         element={
           <RequireAuth>
@@ -73,16 +107,22 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
-      {(
-        [
-          ["/timings", <TimingsScreen key="t" />],
-          ["/equipment", <EquipmentScreen key="e" />],
-          ["/announcements", <AnnouncementsScreen key="a" />],
-          ["/help-requests", <HelpRequestsScreen key="h" />],
-        ] as const
-      ).map(([path, element]) => (
-        <Route key={path} path={path} element={<RequireAuth>{element}</RequireAuth>} />
-      ))}
+      <Route
+        path="/timings"
+        element={
+          <RequireAuth>
+            <TimingsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/announcements"
+        element={
+          <RequireAuth>
+            <AnnouncementsScreen />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

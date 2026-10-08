@@ -36,7 +36,7 @@ import * as secureStore from "./secureStore";
  * themselves. This guarantees the context survives that gap without
  * needing to solve deep-link ROUTING in the same pass.
  *
- * URL shape recognized: `primefit://join?source=<gym|creator>&code=<code>`
+ * URL shape recognized: `fynrox://join?source=<gym|creator>&code=<code>`
  * (also matches the Expo-dev-client-wrapped equivalent via
  * `Linking.parse()`, which handles both forms transparently). An
  * unrecognized URL/shape is not an error — it's simply not captured,
@@ -59,7 +59,7 @@ import * as secureStore from "./secureStore";
 
 const STORAGE_KEY = "pendingAcquisitionContext";
 
-/** Parses a `primefit://join?source=...&code=...` URL into the raw string persisted/sent to the server — e.g. "gym:ABC123". Returns null for any URL that isn't this shape; never throws on a malformed URL. */
+/** Parses a `fynrox://join?source=...&code=...` URL into the raw string persisted/sent to the server — e.g. "gym:ABC123". Returns null for any URL that isn't this shape; never throws on a malformed URL. */
 export function parseAcquisitionContext(url: string): string | null {
   let parsed: ReturnType<typeof Linking.parse>;
   try {

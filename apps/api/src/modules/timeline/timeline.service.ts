@@ -429,7 +429,7 @@ function buildEvents(data: JourneyData): TimelineEvent[] {
     category: "life",
     evidence: "measured",
     title: "Started your journey",
-    detail: firstWeight != null ? `Baseline weight: ${kg(firstWeight)}` : "Welcome to 23PrimeFit.",
+    detail: firstWeight != null ? `Baseline weight: ${kg(firstWeight)}` : "Welcome to Fynrox.",
     occurredAt: data.user.createdAt,
     source: "Account",
     context: null,

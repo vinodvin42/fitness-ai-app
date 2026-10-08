@@ -74,7 +74,7 @@ export function DownloadDataScreen(_props: Props) {
   const onDownload = async (meta: UserDataExportMeta) => {
     setDownloading(true);
     try {
-      const ok = await downloadDataExport(meta.id, `23primefit-data-${meta.createdAt.slice(0, 10)}.zip`);
+      const ok = await downloadDataExport(meta.id, `fynrox-data-${meta.createdAt.slice(0, 10)}.zip`);
       if (!ok) Alert.alert("Can't open the share sheet", "Sharing isn't available on this device.");
     } catch (err) {
       const expired = (err as { response?: { status?: number } }).response?.status === 410;

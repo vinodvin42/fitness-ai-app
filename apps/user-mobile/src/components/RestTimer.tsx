@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { ProgressRing } from "./ProgressRing";
 import { useWorkoutSettings } from "../api/workoutSettings";
@@ -35,6 +36,7 @@ function formatTime(totalSeconds: number): string {
  * client-side: no rest duration is sent to the API or persisted — see gap §24.
  */
 export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layout = "ring", autoStart = true }: RestTimerProps) {
+  const { t } = useTranslation();
   const { colors: theme } = useTheme();
   const { data: settings } = useWorkoutSettings();
   const defaultSeconds = defaultSecondsProp ?? settings?.restTimerSeconds ?? 60;
@@ -133,7 +135,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
         </Text>
       </ProgressRing>
       <View style={{ flex: 1, gap: 8 }}>
-        <Text style={{ color: colors.textSecondary, ...typography.meta }}>Preset Rest Periods</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.meta }}>{t("restTimer.title")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
           {PRESETS.map((p) => (
             <Pressable
@@ -204,7 +206,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
             <Text style={{ color: colors.textMuted, fontSize: 12 }}>Skip rest</Text>
           </Pressable>
         ) : isComplete ? (
-          <Text style={{ color: colors.success, fontSize: 12 }}>Rest complete!</Text>
+          <Text style={{ color: colors.success, fontSize: 12 }}>{t("restTimer.complete")}</Text>
         ) : null}
       </View>
     </View>

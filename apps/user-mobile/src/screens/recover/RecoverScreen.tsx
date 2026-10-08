@@ -263,7 +263,7 @@ export function RecoverScreen({ navigation }: Props) {
               <Icon name="sparkles" size={16} color={colors.textOnAccent} />
             </View>
             <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 13, letterSpacing: 0.3 }}>
-              23PRIMEFIT RECOVERY INSIGHT
+              FYNROX RECOVERY INSIGHT
             </Text>
           </View>
           <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>{s.insight.text}</Text>
@@ -329,7 +329,7 @@ export function RecoverScreen({ navigation }: Props) {
       />
       <ListRow
         icon="sparkles"
-        title="Chat with 23Prime AI"
+        title="Chat with Fynrox AI"
         subtitle="Training, nutrition and recovery guidance"
         tint={colors.aiAccent}
         tintSoft={colors.aiAccentSoft}

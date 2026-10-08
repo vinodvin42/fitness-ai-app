@@ -26,10 +26,6 @@ export const createOrderSchema = z.object({
   // purposes. Presence/validity checked in the service layer, not here,
   // matching this schema's existing "shape only" scope.
   scheduledAt: z.string().datetime({ message: "scheduledAt must be an ISO 8601 date-time" }).optional(),
-  // Optional, purpose "booking" only: an accepted QuoteRequest whose quoted
-  // price replaces the offering's list price. Only an id — the price is always
-  // read server-side from the quote; there is no client-supplied amount.
-  quoteRequestId: z.string().min(1).max(191).optional(),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 

@@ -300,7 +300,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
             <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.xs }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="sparkles" size={13} color={colors.aiAccent} />
-                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>23PRIMEFIT RECOMMENDATION</Text>
+                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
               </View>
               <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
                 You have no workout reminder switched on. A nudge before your training days makes sessions easier to keep.

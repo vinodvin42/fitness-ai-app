@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminFinancialReportsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -43,6 +44,7 @@ async function fetchReports(): Promise<AdminFinancialReportsResponse> {
  * shape 09.03 Fitness & Nutrition was planned as a follow-up on 09.01.
  */
 export function FinancialReportsScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("pnl");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -51,7 +53,7 @@ export function FinancialReportsScreen() {
   });
 
   return (
-    <AppShell title="Financial Reports" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("financialReports.financialReports")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
@@ -70,13 +72,13 @@ export function FinancialReportsScreen() {
           ))}
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("financialReports.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load financial reports.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("financialReports.retry")}
             </button>
           </div>
         )}
@@ -84,20 +86,20 @@ export function FinancialReportsScreen() {
         {data && tab === "pnl" && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <StatCard label="Revenue" value={money(data.profitAndLoss.revenueCents)} />
-              <StatCard label="Expenses" value={money(data.profitAndLoss.expensesCents)} />
-              <StatCard label="Net Profit" value={money(data.profitAndLoss.netProfitCents)} />
+              <StatCard label={t("financialReports.revenue")} value={money(data.profitAndLoss.revenueCents)} />
+              <StatCard label={t("financialReports.expenses")} value={money(data.profitAndLoss.expensesCents)} />
+              <StatCard label={t("financialReports.netProfit")} value={money(data.profitAndLoss.netProfitCents)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Net Margin" value={data.ratios.netMarginPct === null ? "—" : `${data.ratios.netMarginPct}%`} />
+              <StatCard label={t("financialReports.netMargin")} value={data.ratios.netMarginPct === null ? "—" : `${data.ratios.netMarginPct}%`} />
               <StatCard
-                label="Expense / Revenue"
+                label={t("financialReports.expenseRevenue")}
                 value={data.ratios.expenseToRevenuePct === null ? "—" : `${data.ratios.expenseToRevenuePct}%`}
               />
             </div>
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                Expenses by category
+                {t("financialReports.expensesByCategory")}
               </div>
               <table className="w-full text-left text-sm">
                 <tbody>
@@ -109,7 +111,7 @@ export function FinancialReportsScreen() {
                   ))}
                   {Object.keys(data.profitAndLoss.expensesByCategory).length === 0 && (
                     <tr>
-                      <td className="px-4 py-8 text-center text-text-dim">No expenses recorded.</td>
+                      <td className="px-4 py-8 text-center text-text-dim">{t("financialReports.noExpensesRecorded")}</td>
                     </tr>
                   )}
                 </tbody>
@@ -123,10 +125,10 @@ export function FinancialReportsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Month</th>
-                  <th className="px-4 py-3 font-normal">Inflow</th>
-                  <th className="px-4 py-3 font-normal">Outflow</th>
-                  <th className="px-4 py-3 font-normal">Net</th>
+                  <th className="px-4 py-3 font-normal">{t("financialReports.month")}</th>
+                  <th className="px-4 py-3 font-normal">{t("financialReports.inflow")}</th>
+                  <th className="px-4 py-3 font-normal">{t("financialReports.outflow")}</th>
+                  <th className="px-4 py-3 font-normal">{t("financialReports.net")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,15 +148,15 @@ export function FinancialReportsScreen() {
         {data && tab === "revenue" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Subscriptions" value={money(data.revenue.byPurpose.subscriptionCents)} />
-              <StatCard label="Program Purchases" value={money(data.revenue.byPurpose.programPurchaseCents)} />
+              <StatCard label={t("financialReports.subscriptions")} value={money(data.revenue.byPurpose.subscriptionCents)} />
+              <StatCard label={t("financialReports.programPurchases")} value={money(data.revenue.byPurpose.programPurchaseCents)} />
             </div>
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Plan</th>
-                    <th className="px-4 py-3 font-normal">Revenue</th>
+                    <th className="px-4 py-3 font-normal">{t("financialReports.plan")}</th>
+                    <th className="px-4 py-3 font-normal">{t("financialReports.revenue")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -167,7 +169,7 @@ export function FinancialReportsScreen() {
                   {data.revenue.byPlan.length === 0 && (
                     <tr>
                       <td colSpan={2} className="px-4 py-8 text-center text-text-dim">
-                        No subscription revenue yet.
+                        {t("financialReports.noSubscriptionRevenueYet")}
                       </td>
                     </tr>
                   )}
@@ -179,7 +181,7 @@ export function FinancialReportsScreen() {
 
         {data && tab === "expense" && (
           <div className="space-y-4">
-            <StatCard label="Total Expenses" value={money(data.expense.totalCents)} />
+            <StatCard label={t("financialReports.totalExpenses")} value={money(data.expense.totalCents)} />
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <table className="w-full text-left text-sm">
                 <tbody>
@@ -191,7 +193,7 @@ export function FinancialReportsScreen() {
                   ))}
                   {Object.keys(data.expense.byCategory).length === 0 && (
                     <tr>
-                      <td className="px-4 py-8 text-center text-text-dim">No expenses recorded.</td>
+                      <td className="px-4 py-8 text-center text-text-dim">{t("financialReports.noExpensesRecorded")}</td>
                     </tr>
                   )}
                 </tbody>
@@ -203,7 +205,7 @@ export function FinancialReportsScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="No backing data exists yet for this Figma-spec'd field — see adminFinance.service.ts."
+            subtitle={t("financialReports.noBackingDataExists")}
           />
         )}
       </div>

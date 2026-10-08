@@ -1,4 +1,5 @@
 import React from "react";
+import { r1Flags } from "@fitness-ai-app/config";
 import { Image, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -267,14 +268,17 @@ export function ProgressOverviewScreen({ navigation }: Props) {
           tintSoft={colors.surfaceHigh}
           onPress={() => navigation.navigate("MeasurementHistory")}
         />
-        <ListRow
-          icon="flame"
-          title="Activity Calendar"
-          subtitle="Quiet history and streaks"
-          tint={colors.orange}
-          tintSoft="rgba(251,146,60,0.16)"
-          onPress={() => navigation.navigate("StreakTracker")}
-        />
+        {/* Fynrox R1: streaks/gamification are off by default (handoff §2 #13), hidden behind the flag. */}
+        {r1Flags.GAMIFICATION_ENABLED ? (
+          <ListRow
+            icon="flame"
+            title="Activity Calendar"
+            subtitle="Quiet history and streaks"
+            tint={colors.orange}
+            tintSoft="rgba(251,146,60,0.16)"
+            onPress={() => navigation.navigate("StreakTracker")}
+          />
+        ) : null}
         <ListRow
           icon="check"
           title="Check-In"

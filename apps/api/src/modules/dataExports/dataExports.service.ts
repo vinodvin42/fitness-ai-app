@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { getDecryptedOnboardingProfile } from "../../lib/healthData";
 import { createZip } from "../../lib/zip";
 import { createTextPdf } from "../../lib/simplePdf";
 
@@ -41,7 +42,10 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
 
   const [onboarding, sessions, meals, recovery, measurements, checkIns, recommendations, messages, tickets, consents, subscriptions, water] =
     await Promise.all([
-      prisma.onboardingProfile.findUnique({ where: { userId } }),
+      // Health fields are encrypted at rest: read through the decrypting accessor so the
+      // export holds the user's real declared conditions, never ciphertext (and never the
+      // *Enc storage columns).
+      getDecryptedOnboardingProfile(userId),
       prisma.workoutSession.findMany({
         where: { userId },
         include: {
@@ -145,7 +149,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
   );
 
   const lines: string[] = [
-    "# 23PrimeFit - your data summary",
+    "# Fynrox - your data summary",
     `Generated ${new Date().toISOString()}`,
     "",
     "# Account",

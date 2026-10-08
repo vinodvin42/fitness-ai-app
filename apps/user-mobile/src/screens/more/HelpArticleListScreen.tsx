@@ -46,7 +46,7 @@ export function HelpArticleListScreen({ navigation, route }: Props) {
           ))}
         </GroupCard>
       )}
-      <Text style={{ color: colors.textMuted, ...typography.meta }}>Articles describe how 23PrimeFit works today.</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>Articles describe how Fynrox works today.</Text>
     </ScreenContainer>
   );
 }

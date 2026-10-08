@@ -11,7 +11,6 @@ import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
-import { fetchPartner, PARTNER_KEY } from "../../api/partner";
 import { startWorkoutSession } from "../../api/workoutSessions";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -58,7 +57,6 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
     queryFn: () => fetchWorkoutDetail(workoutId),
   });
   const swaps = useSwaps(workoutId);
-  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, staleTime: 60_000 });
 
   const { order, purchase, isPurchasing, onCheckoutSuccess, onCheckoutDismiss } = useRazorpayPurchase({
     onVerified: () =>
@@ -233,14 +231,6 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
       {workout.program.purchased ? (
         <>
           <Button label="Start Workout" onPress={onStart} loading={isStarting} style={{ marginTop: spacing.sm }} />
-          {partner.data ? (
-            <Button
-              label="Ask my gym"
-              variant="secondary"
-              onPress={() => navigation.navigate("GymHelp", { workoutName: workout.name })}
-              style={{ marginTop: spacing.sm }}
-            />
-          ) : null}
         </>
       ) : (
         <Button

@@ -33,7 +33,7 @@ export function SplashScreen({ navigation }: Props) {
         <View style={styles.mark}>
           <BrandMark size={88} />
         </View>
-        <Text style={styles.logo}>23PrimeFit</Text>
+        <Text style={styles.logo}>Fynrox</Text>
         <Text style={styles.tagline}>Your complete wellness operating system</Text>
       </View>
 

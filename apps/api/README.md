@@ -97,7 +97,7 @@ src/
 ├── app.ts                ← Express app + route wiring
 └── index.ts               ← server entry point
 prisma/schema.prisma      ← Phase 0/1/2/3/4/5/6 data model
-scripts/seed.ts            ← content-seeding stopgap (see roadmap Phase 0) — **22 Aug 2026: no longer the only way to add Program/Exercise/Recipe rows now that Module 05's admin CMS exists**, but still the bootstrap path this repo ships with — seeds 2 Workouts w/ ordered exercises + 4 Recipes w/ macros + 5 SubscriptionPlans (Basic monthly-only; Pro/Elite each monthly + annual — see gap §35), plus (added 20 Aug 2026) one bootstrap `AdminUser` (`admin@23primefit.com` / `ChangeMe123!` by default — override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, and change it after first login regardless, since there's no admin password-reset flow yet)
+scripts/seed.ts            ← content-seeding stopgap (see roadmap Phase 0) — **22 Aug 2026: no longer the only way to add Program/Exercise/Recipe rows now that Module 05's admin CMS exists**, but still the bootstrap path this repo ships with — seeds 2 Workouts w/ ordered exercises + 4 Recipes w/ macros + 5 SubscriptionPlans (Basic monthly-only; Pro/Elite each monthly + annual — see gap §35), plus (added 20 Aug 2026) one bootstrap `AdminUser` (`admin@fynrox.com` / `ChangeMe123!` by default — override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, and change it after first login regardless, since there's no admin password-reset flow yet)
 ```
 
 ## Endpoints (Phase 0/1/2/3/4/5/6)

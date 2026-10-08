@@ -17,6 +17,7 @@ import { remindersRouter } from "./modules/reminders/reminders.routes";
 import { supportRouter } from "./modules/support/support.routes";
 import { referralsRouter } from "./modules/referrals/referrals.routes";
 import { paymentsRouter, razorpayWebhookHandler } from "./modules/payments/payments.routes";
+import { checkoutRouter } from "./modules/checkout/checkout.routes";
 import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
@@ -46,16 +47,19 @@ import { adminAnalyticsRouter } from "./modules/adminAnalytics/adminAnalytics.ro
 import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegrations.routes";
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
+import { payoutRunsRouter } from "./modules/payoutRuns/payoutRuns.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
 import { gymsRouter } from "./modules/gyms/gyms.routes";
 import { gymAuthRouter } from "./modules/gymAuth/gymAuth.routes";
 import { gymMemberRouter } from "./modules/gymMember/gymMember.routes";
 import { gymPortalManageRouter } from "./modules/gymPortalManage/gymPortalManage.routes";
+import { gymPortalRouter } from "./modules/gymPortal/gymPortal.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
 import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
+import { privacyRequestsRouter } from "./modules/privacyRequests/privacyRequests.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
 import { adminActionQueueRouter } from "./modules/adminActionQueue/adminActionQueue.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
@@ -71,6 +75,9 @@ import { dataSharingRouter } from "./modules/dataSharing/dataSharing.routes";
 import { helpRouter } from "./modules/help/help.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
+import { guidanceRequestsRouter } from "./modules/guidanceRequests/guidanceRequests.routes";
+import { deepLinksRouter } from "./modules/deepLinks/deepLinks.routes";
+import { publicApplicationsRouter } from "./modules/publicApplications/publicApplications.routes";
 import { adminSearchRouter } from "./modules/adminSearch/adminSearch.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { notificationPreferencesRouter } from "./modules/notificationPreferences/notificationPreferences.routes";
@@ -85,7 +92,6 @@ import { activitiesRouter } from "./modules/activities/activities.routes";
 import { formAnalysisRouter } from "./modules/formAnalysis/formAnalysis.routes";
 import { nutritionDaysRouter } from "./modules/nutritionDays/nutritionDays.routes";
 import { coachSummariesRouter } from "./modules/coachSummaries/coachSummaries.routes";
-import { quoteRequestsRouter } from "./modules/quoteRequests/quoteRequests.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -114,10 +120,45 @@ export function createApp() {
   // 2026), so by the time this line runs in production, CORS_ORIGINS is
   // guaranteed non-empty. The permissive fallback stays for
   // development/test, where it's genuinely convenient.
+  // ONE cors layer, with its options decided per request.
+  //
+  // The public invite/referral link resolver is the only part of this API
+  // called from the marketing site, which may sit on a different origin
+  // than the API (same-origin on the merged Azure site today; not in local
+  // dev, and not necessarily in future). It needs an open origin; nothing
+  // else does.
+  //
+  // This is deliberately a single middleware rather than a permissive one
+  // mounted alongside the strict one. Two stacked cors() layers both run —
+  // `app.use(path, mw)` does not terminate — so the first sets
+  // Access-Control-Allow-Credentials and the second sets an open
+  // Access-Control-Allow-Origin, producing exactly the open-origin-with-
+  // credentials pair that lets any site make authenticated requests with a
+  // visitor's cookies. Two earlier attempts at this shipped that pair; both
+  // were caught by reading the response headers rather than the code.
+  //
+  // `/public/applications` joined this set on 28 Sep 2026 with the
+  // website's Early Access, partner application and contact forms. Same
+  // reasoning and the same guard rail: it is an anonymous POST that
+  // reads no session, so `credentials: false` means an open origin
+  // cannot ride one. Caught by driving the real form against a local API
+  // on a different port — the browser blocked it exactly as a separate
+  // marketing-site deploy would.
+  const PUBLIC_LINK_PATHS = /^\/links\/(gym|r)\/|^\/public\//;
   app.use(
-    cors({
-      origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : true,
-      credentials: true,
+    cors((req, callback) => {
+      if (PUBLIC_LINK_PATHS.test(req.path)) {
+        // Unauthenticated requests that read no session and return no
+        // personal data. `credentials: false` is the important half:
+        // browsers will not attach cookies or Authorization headers, so
+        // an open origin cannot ride a session.
+        callback(null, { origin: true, credentials: false });
+        return;
+      }
+      callback(null, {
+        origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : true,
+        credentials: true,
+      });
     }),
   );
   // Razorpay's webhook signature (20 Aug 2026, gap §14) is computed over
@@ -161,6 +202,9 @@ export function createApp() {
   app.use("/", supportRouter);
   app.use("/", referralsRouter);
   app.use("/", paymentsRouter);
+  // U-M1 / U-M22 — the checkout quote (price, GST, "Have a code?")
+  // and purchase history with refund status.
+  app.use("/", checkoutRouter);
   // Coupons — consumer validate endpoint (31 Aug 2026). See coupons.service.ts.
   app.use("/", couponsRouter);
   app.use("/", aiRouter);
@@ -284,6 +328,8 @@ export function createApp() {
   // made: configurable per-coach/per-influencer commission) and a missing
   // Coupon/Refund entity (now built). See each module's own doc comment.
   app.use("/", adminSettlementsRouter);
+  // A-M3 — the payout run the settlement rows were waiting on.
+  app.use("/", payoutRunsRouter);
   app.use("/", adminInfluencersRouter);
   app.use("/", gymsRouter);
   // Gym Partner Lite portal (R2 Wave 5, 21 Sep 2026) — apps/gym-portal's own
@@ -293,6 +339,9 @@ export function createApp() {
   // My Gym: member-facing endpoints + gym-staff management (see gymMember / gymPortalManage).
   app.use("/", gymMemberRouter);
   app.use("/", gymPortalManageRouter);
+  // Gym Partner Lite's own surface — equipment profile with
+  // stale/reconfirm, invite QR, partnership status, help requests.
+  app.use("/", gymPortalRouter);
   // Module 07.04 Campaigns & Attribution (20 Sep 2026, R2 Wave 4) — real
   // admin-web reporting over R2 Wave 1's Source/Campaign/Touchpoint schema.
   // See adminAcquisition.service.ts's own doc comment.
@@ -314,6 +363,11 @@ export function createApp() {
   // which is NOT built.
   app.use("/", adminRolesRouter);
   app.use("/", adminPrivacyRouter);
+  // Journey F8 — the tracked subject-rights lifecycle (U-M17 / A-M5).
+  // Sits alongside the existing 12.04 Privacy dashboard rather than
+  // replacing it: that surfaces the historical AuditLog trail, this is
+  // the live queue.
+  app.use("/", privacyRequestsRouter);
   // Module 11 — AI Operations (added 27 Aug 2026) — the scoped-down slice
   // reports/build-plan.html's own 11.01–11.03 entry named as smaller and
   // genuinely buildable: one real, audit-logged on/off switch for AI
@@ -361,6 +415,18 @@ export function createApp() {
   // /professionals/me/offers*) — see professionalOffers.service.ts's own
   // doc comment.
   app.use("/", professionalOffersRouter);
+  // Decision #4 / journey F5 — "Request professional guidance" and
+  // the A-M1 assignment queue that turns a request into an offer.
+  app.use("/", guidanceRequestsRouter);
+  // W-M2 — the invite/referral link resolver the website landings call.
+  // Public by design: these are links handed to people who do not have
+  // an account yet.
+  app.use("/", deepLinksRouter);
+
+  // Spec §8 — the Public Website's Early Access / partner application /
+  // contact forms, and the admin queue that reads them. Unauthenticated
+  // POST, rate-limited inside the router.
+  app.use("/", publicApplicationsRouter);
 
   // Global cross-entity admin search (R1 Wave 6, 22 Sep 2026) — see
   // adminSearch.service.ts's own doc comment for the full scope.
@@ -378,7 +444,7 @@ export function createApp() {
 
   // Wave B (Oct 2026) — training analytics, set edit/delete, routines,
   // workout settings, endurance activities, form-analysis capture, meal-log
-  // edit + nutrition summary/calendar, coach session summaries, coach quotes.
+  // edit + nutrition summary/calendar, coach session summaries.
   app.use("/", trainingAnalyticsRouter);
   app.use("/", workoutSetsRouter);
   app.use("/", routinesRouter);
@@ -387,7 +453,6 @@ export function createApp() {
   app.use("/", formAnalysisRouter);
   app.use("/", nutritionDaysRouter);
   app.use("/", coachSummariesRouter);
-  app.use("/", quoteRequestsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

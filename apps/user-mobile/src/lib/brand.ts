@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 
-/** The app's own brand text. The Figma export says "FynroX"; the product ships as 23PrimeFit. */
-export const BRAND_NAME = "23PrimeFit";
+/** The app's own brand text. Product name: Fynrox. */
+export const BRAND_NAME = "Fynrox";
 
 /**
  * Where "Email Us" sends mail. Build-time EXPO_PUBLIC_SUPPORT_EMAIL wins, then

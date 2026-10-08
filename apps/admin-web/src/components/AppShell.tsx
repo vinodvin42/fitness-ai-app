@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { GlobalSearch } from "./GlobalSearch";
+import { BrandLockup } from "./BrandLockup";
 
 /**
  * The shared shell (docs/admin/02-information-architecture.md §1) — fixed
@@ -199,21 +201,14 @@ export function AppShell({
   /** Contextual sub-panel for a module with more than one screen — see this file's "21 Aug 2026" comment above. */
   subNav?: SubNavItem[];
 }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const { adminUser, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-canvas text-text-primary">
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
-        <div className="flex items-center gap-2 border-b border-border-subtle px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Super Admin</div>
-          </div>
-        </div>
+        <BrandLockup subtitle={t("appShell.superAdmin")} />
 
         <nav className="flex-1 space-y-0.5 px-3 py-4">
           {NAV_ITEMS.map((item) => {
@@ -223,7 +218,7 @@ export function AppShell({
               return (
                 <div
                   key={item.path}
-                  title="Not built yet — see docs/admin/07-open-questions-gaps.md"
+                  title={t("appShell.notBuiltYetSee")}
                   className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-text-dim"
                 >
                   <span className="flex items-center gap-3">
@@ -231,7 +226,7 @@ export function AppShell({
                     {item.label}
                   </span>
                   <span className="rounded bg-surface-raised px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-dim">
-                    Soon
+                    {t("appShell.soon")}
                   </span>
                 </div>
               );
@@ -256,7 +251,7 @@ export function AppShell({
         <div className="border-t border-border-subtle px-4 py-3">
           <div className="flex items-center gap-2 rounded-md bg-surface-raised px-2.5 py-2 text-xs text-accent">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            Audit logging active
+            {t("appShell.auditLoggingActive")}
           </div>
         </div>
       </aside>
@@ -271,7 +266,7 @@ export function AppShell({
           <div className="flex items-center gap-4">
             <GlobalSearch />
             <div className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-secondary">
-              🌐 All regions
+              {t("appShell.allRegions")}
             </div>
             <div className="text-right">
               <div className="text-sm font-medium">{adminUser?.fullName}</div>
@@ -284,7 +279,7 @@ export function AppShell({
               onClick={logout}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-danger hover:text-danger"
             >
-              Sign out
+              {t("appShell.signOut")}
             </button>
           </div>
         </header>

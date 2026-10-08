@@ -11,7 +11,7 @@ import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { BodyText, SummaryCard } from "../../components/GuidanceParts";
 import { fetchBookingSummary } from "../../api/coachSessions";
-import { formatDay, formatQuotePrice } from "../../lib/quoteFormat";
+import { formatDay, formatSessionPrice } from "../../lib/sessionFormat";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -81,7 +81,7 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
               <Icon name="clock" size={14} color={colors.textMuted} />
               <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-                {data.durationMinutes} minutes · {formatQuotePrice(data.priceCents, null)} ·{" "}
+                {data.durationMinutes} minutes · {formatSessionPrice(data.priceCents, null)} ·{" "}
                 {new Date(data.scheduledAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
               </Text>
             </View>
@@ -102,12 +102,12 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
           </SummaryCard>
 
           <Pressable
-            onPress={() => navigation.navigate("RequestQuote", { professionalId: data.professionalId, professionalName: data.professionalFullName })}
+            onPress={() => navigation.navigate("BookingServiceSelection", { professionalId: data.professionalId })}
             accessibilityRole="button"
-            accessibilityLabel="Request Another Session"
+            accessibilityLabel="Book Another Session"
             style={{ height: 52, borderRadius: radius.md, backgroundColor: colors.aiAccent, alignItems: "center", justifyContent: "center" }}
           >
-            <Text style={{ color: "#fff", fontFamily: fonts.displayBold, fontSize: 16 }}>Request Another Session</Text>
+            <Text style={{ color: "#fff", fontFamily: fonts.displayBold, fontSize: 16 }}>Book Another Session</Text>
           </Pressable>
           <Button
             label="Message Professional"

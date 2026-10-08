@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminTaxConfigListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -31,6 +32,7 @@ async function fetchTaxConfigs(): Promise<AdminTaxConfigListResponse> {
  * applied 0% rate.
  */
 export function TaxesScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -56,7 +58,7 @@ export function TaxesScreen() {
   }
 
   return (
-    <AppShell title="Taxes & Compliance" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("taxes.taxesCompliance")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
           This build doesn't encode any tax law — enter your own jurisdiction and rate below. A filing calendar and
@@ -89,20 +91,20 @@ export function TaxesScreen() {
             }}
             className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
           >
-            <div className="text-sm font-medium">Tax Configuration</div>
+            <div className="text-sm font-medium">{t("taxes.taxConfiguration")}</div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Jurisdiction
+                {t("taxes.jurisdiction")}
                 <input
                   required
-                  placeholder="e.g. IN-GST"
+                  placeholder={t("taxes.eGInGst")}
                   value={form.jurisdiction}
                   onChange={(e) => setForm((prev) => ({ ...prev, jurisdiction: e.target.value }))}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Rate (%)
+                {t("taxes.rate2")}
                 <input
                   type="number"
                   min={0}
@@ -121,7 +123,7 @@ export function TaxesScreen() {
                 onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
                 className="h-4 w-4 rounded border-border-subtle"
               />
-              Active
+              {t("taxes.active")}
             </label>
             {saveMutation.isError && (
               <p className="text-xs text-danger">{extractErrorMessage(saveMutation.error, "Couldn't save this configuration.")}</p>
@@ -136,13 +138,13 @@ export function TaxesScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("taxes.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load tax configurations.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("taxes.retry")}
             </button>
           </div>
         )}
@@ -152,29 +154,29 @@ export function TaxesScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Jurisdiction</th>
-                  <th className="px-4 py-3 font-normal">Rate</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Updated by</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("taxes.jurisdiction")}</th>
+                  <th className="px-4 py-3 font-normal">{t("taxes.rate")}</th>
+                  <th className="px-4 py-3 font-normal">{t("taxes.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("taxes.updatedBy")}</th>
+                  <th className="px-4 py-3 font-normal">{t("taxes.actions")}</th>
                 </tr>
               </thead>
               <tbody>
-                {data.taxConfigs.map((t) => (
-                  <tr key={t.id} className="border-b border-border-subtle last:border-0">
-                    <td className="px-4 py-3 font-medium text-text-primary">{t.jurisdiction}</td>
-                    <td className="px-4 py-3 text-text-secondary">{t.ratePercent === null ? "—" : `${t.ratePercent}%`}</td>
+                {data.taxConfigs.map((config) => (
+                  <tr key={config.id} className="border-b border-border-subtle last:border-0">
+                    <td className="px-4 py-3 font-medium text-text-primary">{config.jurisdiction}</td>
+                    <td className="px-4 py-3 text-text-secondary">{config.ratePercent === null ? "—" : `${config.ratePercent}%`}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={t.isActive ? "active" : "inactive"} />
+                      <StatusBadge status={config.isActive ? "active" : "inactive"} />
                     </td>
-                    <td className="px-4 py-3 text-text-secondary">{t.updatedByAdminName}</td>
+                    <td className="px-4 py-3 text-text-secondary">{config.updatedByAdminName}</td>
                     <td className="px-4 py-3">
                       <button
                         type="button"
-                        onClick={() => startEdit(t)}
+                        onClick={() => startEdit(config)}
                         className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                       >
-                        Edit
+                        {t("taxes.edit")}
                       </button>
                     </td>
                   </tr>
@@ -182,7 +184,7 @@ export function TaxesScreen() {
                 {data.taxConfigs.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
-                      No jurisdictions configured yet.
+                      {t("taxes.noJurisdictionsConfiguredYet")}
                     </td>
                   </tr>
                 )}

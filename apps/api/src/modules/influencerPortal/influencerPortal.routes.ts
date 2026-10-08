@@ -61,3 +61,33 @@ influencerPortalRouter.get(
     }
   },
 );
+
+/**
+ * C-M2's commission ledger and the Creator ID / referral tools screen.
+ * Both scoped to the creator id on the verified token, never a
+ * client-supplied one, and neither returns anything about a converting
+ * user (BR-CRT-002).
+ */
+influencerPortalRouter.get(
+  "/influencer-portal/commissions",
+  requireInfluencerAuth,
+  async (req: InfluencerAuthedRequest, res, next) => {
+    try {
+      res.status(200).json(await service.getCommissionLedger(req.influencerId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+influencerPortalRouter.get(
+  "/influencer-portal/referral-tools",
+  requireInfluencerAuth,
+  async (req: InfluencerAuthedRequest, res, next) => {
+    try {
+      res.status(200).json(await service.getReferralTools(req.influencerId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);

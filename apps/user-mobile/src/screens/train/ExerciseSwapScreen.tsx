@@ -150,7 +150,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="sparkles" size={13} color={colors.aiAccent} />
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.6 }}>
-                  23PRIMEFIT RECOMMENDATION
+                  FYNROX RECOMMENDATION
                 </Text>
               </View>
               <Card style={{ borderColor: colors.aiAccent, backgroundColor: colors.surface, gap: spacing.sm }}>
@@ -176,7 +176,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
                       </View>
                     ))}
                 </View>
-                <Button label="Select 23PrimeFit Alternative" variant="secondary" onPress={() => choose(best)} />
+                <Button label="Select Fynrox Alternative" variant="secondary" onPress={() => choose(best)} />
               </Card>
 
               {others.length > 0 ? (

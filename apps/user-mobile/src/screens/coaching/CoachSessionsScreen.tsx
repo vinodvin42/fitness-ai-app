@@ -11,7 +11,7 @@ import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchCoachBookings } from "../../api/coachSessions";
-import { formatQuotePrice } from "../../lib/quoteFormat";
+import { formatSessionPrice } from "../../lib/sessionFormat";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -63,7 +63,7 @@ export function CoachSessionsScreen({ navigation }: Props) {
                 />
               </View>
               <Text style={{ color: colors.textSecondary }}>
-                {b.offeringLabel} · {b.durationMinutes} min · {formatQuotePrice(b.priceCents, null)}
+                {b.offeringLabel} · {b.durationMinutes} min · {formatSessionPrice(b.priceCents, null)}
               </Text>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>
                 {new Date(b.scheduledAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}

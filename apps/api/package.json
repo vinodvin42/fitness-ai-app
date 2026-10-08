@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "prebuild": "npm run build --workspace=@fitness-ai-app/config",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
@@ -16,9 +17,12 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
     "db:backfill-action-items": "tsx scripts/backfillAdminActionItems.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:backfill-health-encryption": "tsx scripts/backfillHealthEncryption.ts",
+    "db:verify-health-encryption": "tsx scripts/verifyHealthEncryptionComplete.ts"
   },
   "dependencies": {
+    "@fitness-ai-app/config": "*",
     "@fitness-ai-app/types": "*",
     "@prisma/client": "^5.20.0",
     "@sentry/node": "^10.71.0",
@@ -28,11 +32,13 @@
     "express": "^4.21.0",
     "express-rate-limit": "^8.6.2",
     "helmet": "^7.1.0",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "nodemailer": "^6.10.1",
     "otplib": "^13.5.0",
     "qrcode": "^1.5.4",
+    "rate-limit-redis": "^4.3.1",
     "razorpay": "2.9.8",
     "zod": "^3.23.8"
   },

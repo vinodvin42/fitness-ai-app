@@ -164,7 +164,7 @@ export function DevicePairingScreen({ navigation, route }: Props) {
       ) : null}
 
       <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
-        Permissions are the data this device may supply to 23PrimeFit. You can change them any time from Connected Devices.
+        Permissions are the data this device may supply to Fynrox. You can change them any time from Connected Devices.
       </Text>
     </RecoverShell>
   );

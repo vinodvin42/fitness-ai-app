@@ -1,8 +1,8 @@
 import axios from "axios";
 import { apiBaseUrl } from "./env";
 
-const ACCESS_TOKEN_KEY = "primefit-creator.accessToken";
-const REFRESH_TOKEN_KEY = "primefit-creator.refreshToken";
+const ACCESS_TOKEN_KEY = "fynrox-creator.accessToken";
+const REFRESH_TOKEN_KEY = "fynrox-creator.refreshToken";
 
 export const apiClient = axios.create({ baseURL: apiBaseUrl });
 

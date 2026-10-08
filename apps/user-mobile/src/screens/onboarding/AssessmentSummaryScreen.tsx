@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { WizardLayout } from "../../components/WizardLayout";
@@ -39,6 +40,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
  * them plainly, every time, regardless of outcome.
  */
 export function AssessmentSummaryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { state, submit } = useOnboardingWizard();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -82,32 +84,39 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
     <WizardLayout
       step={5}
       total={5}
-      caption="Review"
-      title="Review your assessment"
-      subtitle="Check your answers before we build your plan."
+      caption={t("onboarding.summary.step")}
+      title={t("onboarding.summary.title")}
+      subtitle={t("onboarding.summary.subtitle")}
       onBack={() => navigation.goBack()}
       onNext={onConfirm}
       nextLabel="Confirm & Generate Plan"
       nextLoading={isSubmitting}
     >
       <Card>
-        <SummaryRow label="Goals" value={state.goals.length ? state.goals.join(", ") : "None selected"} />
-        <SummaryRow label="Experience level" value={state.trainingLevel ?? "Not set"} />
-        <SummaryRow label="Schedule" value={scheduleValue} />
-        <SummaryRow label="Equipment" value={state.equipmentContext ? (EQUIPMENT_LABELS[state.equipmentContext] ?? state.equipmentContext) : "Not set"} />
-        <SummaryRow label="Diet" value={state.dietType ?? "Not set"} />
-        {state.allergens.length > 0 ? <SummaryRow label="Allergens" value={state.allergens.join(", ")} /> : null}
-        {hasBaselineInfo ? <SummaryRow label="Baseline measurements" value={baselineParts.join(" · ")} /> : null}
+        <SummaryRow label={t("onboarding.summary.goals")} value={state.goals.length ? state.goals.join(", ") : t("onboarding.summary.noneSelected")} />
+        <SummaryRow label={t("onboarding.summary.experience")} value={state.trainingLevel ?? t("onboarding.summary.notSet")} />
+        <SummaryRow label={t("onboarding.summary.schedule")} value={scheduleValue} />
+        <SummaryRow
+          label={t("onboarding.summary.equipment")}
+          value={
+            state.equipmentContext
+              ? (EQUIPMENT_LABELS[state.equipmentContext] ?? state.equipmentContext)
+              : t("onboarding.summary.notSet")
+          }
+        />
+        <SummaryRow label={t("onboarding.summary.diet")} value={state.dietType ?? t("onboarding.summary.notSet")} />
+        {state.allergens.length > 0 ? <SummaryRow label={t("onboarding.summary.allergens")} value={state.allergens.join(", ")} /> : null}
+        {hasBaselineInfo ? <SummaryRow label={t("onboarding.summary.baseline")} value={baselineParts.join(" · ")} /> : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md, borderColor: hasSafetyInfo ? colors.warning : colors.border }}>
-        <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>Safety</Text>
+        <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.xs }}>{t("onboarding.summary.safety")}</Text>
         {hasSafetyInfo ? (
           <>
             {state.medicalConditions.length > 0 ? (
-              <SummaryRow label="Medical conditions" value={state.medicalConditions.join(", ")} />
+              <SummaryRow label={t("onboarding.summary.medicalConditions")} value={state.medicalConditions.join(", ")} />
             ) : null}
-            {state.injuries.length > 0 ? <SummaryRow label="Injuries" value={state.injuries.join(", ")} /> : null}
+            {state.injuries.length > 0 ? <SummaryRow label={t("onboarding.summary.injuries")} value={state.injuries.join(", ")} /> : null}
             <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
               This app doesn't provide medical advice. Your plan will try to avoid unsafe exercises for what you
               reported, but always check with a doctor or physical therapist before starting a new program.
@@ -118,7 +127,7 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
             Health data skipped — your plan will treat your health as unknown and stay cautious.
           </Text>
         ) : (
-          <Text style={{ color: colors.textSecondary, ...typography.body }}>None reported.</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.body }}>{t("onboarding.summary.noneReported")}</Text>
         )}
       </Card>
     </WizardLayout>

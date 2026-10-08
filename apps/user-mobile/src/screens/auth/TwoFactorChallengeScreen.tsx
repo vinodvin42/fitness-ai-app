@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -21,6 +22,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "TwoFactorChallenge">;
  * which kind was typed.
  */
 export function TwoFactorChallengeScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { completeTwoFactorLogin } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +46,14 @@ export function TwoFactorChallengeScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Two-factor authentication</Text>
+        <Text style={styles.title}>{t("auth.twoFactor.title")}</Text>
         <Text style={styles.subtitle}>
-          Enter the 6-digit code from your authenticator app, or one of your recovery codes.
+          {t("auth.twoFactor.subtitle")}
         </Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Code"
+          placeholder={t("auth.twoFactor.code")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           autoCorrect={false}
@@ -62,9 +64,9 @@ export function TwoFactorChallengeScreen({ navigation, route }: Props) {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Button label="Verify" onPress={onSubmit} loading={loading} disabled={!code.trim()} />
+        <Button label={t("auth.twoFactor.submit")} onPress={onSubmit} loading={loading} disabled={!code.trim()} />
         <Button
-          label="Back to Login"
+          label={t("auth.twoFactor.backToLogin")}
           variant="secondary"
           onPress={() => navigation.navigate("Login")}
           style={styles.secondaryButton}

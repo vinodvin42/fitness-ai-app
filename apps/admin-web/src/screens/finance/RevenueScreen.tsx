@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminRevenueResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -34,6 +35,7 @@ async function fetchRevenue(filters: Filters): Promise<AdminRevenueResponse> {
  * Geographic is blocked on.
  */
 export function RevenueScreen() {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<Filters>({ startDate: "", endDate: "" });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -45,11 +47,11 @@ export function RevenueScreen() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <AppShell title="Revenue" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("revenue.revenue")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            From
+            {t("revenue.from")}
             <input
               type="date"
               value={filters.startDate}
@@ -66,16 +68,16 @@ export function RevenueScreen() {
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             />
           </label>
-          <span className="pb-1.5 text-[11px] text-text-dim">Defaults to all-time</span>
+          <span className="pb-1.5 text-[11px] text-text-dim">{t("revenue.defaultsToAllTime")}</span>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("revenue.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load revenue.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("revenue.retry")}
             </button>
           </div>
         )}
@@ -83,12 +85,12 @@ export function RevenueScreen() {
         {data && (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <StatCard label="Total Revenue" value={money(data.totalRevenueCents)} />
-              <StatCard label="Subscriptions" value={money(data.byPurpose.subscriptionCents)} />
-              <StatCard label="Program Purchases" value={money(data.byPurpose.programPurchaseCents)} />
-              <StatCard label="Coach Bookings" value={money(data.byPurpose.bookingCents)} />
+              <StatCard label={t("revenue.totalRevenue")} value={money(data.totalRevenueCents)} />
+              <StatCard label={t("revenue.subscriptions")} value={money(data.byPurpose.subscriptionCents)} />
+              <StatCard label={t("revenue.programPurchases")} value={money(data.byPurpose.programPurchaseCents)} />
+              <StatCard label={t("revenue.coachBookings")} value={money(data.byPurpose.bookingCents)} />
               <StatCard
-                label="Payment Success"
+                label={t("revenue.paymentSuccess")}
                 value={
                   data.statusBreakdown.paid + data.statusBreakdown.failed + data.statusBreakdown.created > 0
                     ? `${Math.round(
@@ -104,15 +106,15 @@ export function RevenueScreen() {
 
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                Plan performance
+                {t("revenue.planPerformance")}
               </div>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Plan</th>
-                    <th className="px-4 py-3 font-normal">Tier</th>
-                    <th className="px-4 py-3 font-normal">Revenue</th>
-                    <th className="px-4 py-3 font-normal">Payments</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.plan")}</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.tier")}</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.revenue")}</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.payments")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -127,7 +129,7 @@ export function RevenueScreen() {
                   {data.byPlan.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
-                        No subscription revenue in this range.
+                        {t("revenue.noSubscriptionRevenueIn")}
                       </td>
                     </tr>
                   )}
@@ -137,13 +139,13 @@ export function RevenueScreen() {
 
             <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
-                Monthly trend
+                {t("revenue.monthlyTrend")}
               </div>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                    <th className="px-4 py-3 font-normal">Month</th>
-                    <th className="px-4 py-3 font-normal">Revenue</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.month")}</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.revenue")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,7 +158,7 @@ export function RevenueScreen() {
                   {data.trend.length === 0 && (
                     <tr>
                       <td colSpan={2} className="px-4 py-8 text-center text-text-dim">
-                        No revenue in this range.
+                        {t("revenue.noRevenueInThis")}
                       </td>
                     </tr>
                   )}
@@ -166,7 +168,7 @@ export function RevenueScreen() {
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="No User.region field exists anywhere in this build — see adminFinance.service.ts."
+              subtitle={t("revenue.noUserRegionField")}
             />
           </>
         )}

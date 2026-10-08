@@ -45,7 +45,7 @@ Same caveat as the admin console's design notes: `get_variable_defs` returned em
 
 ## 6. Consistency with the admin console
 
-Both files share: the same dark-theme-first approach, the same apparent icon library, a similar type-scale hierarchy, and the same "23" + PrimeFit branding. They **diverge** on primary accent color (mobile = blue + purple-for-AI, admin = mint green) and information density (mobile = card-based/spacious, admin = dense tables). Before building a shared component package (see [../07-project-structure.md](../platform/project-structure.md) `packages/ui`), decide whether both apps should converge on one accent color or intentionally keep distinct "consumer" vs. "operator" palettes — see [07-open-questions-gaps.md](07-open-questions-gaps.md).
+Both files share: the same dark-theme-first approach, the same apparent icon library, a similar type-scale hierarchy, and the same "23" + FynroX branding. They **diverge** on primary accent color (mobile = blue + purple-for-AI, admin = mint green) and information density (mobile = card-based/spacious, admin = dense tables). Before building a shared component package (see [../07-project-structure.md](../platform/project-structure.md) `packages/ui`), decide whether both apps should converge on one accent color or intentionally keep distinct "consumer" vs. "operator" palettes — see [07-open-questions-gaps.md](07-open-questions-gaps.md).
 
 ## 7. Gaps (mirrors the admin console's doc 09/04 §6)
 

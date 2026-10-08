@@ -14,6 +14,8 @@
  * in DashboardScreen's own "Marketplace" card instead. See
  * adminDashboard.service.ts's doc comment for the 3 that remain.
  */
+import { useTranslation } from "react-i18next";
+
 const LABELS: Record<string, string> = {
   pendingCoachingRequests: "Pending Coaching Requests",
   expiringCredentials: "Expiring Credentials",
@@ -123,11 +125,12 @@ const DEFAULT_SUBTITLE =
   "These Executive Dashboard metrics depend on the coach marketplace (Phase 5), which isn't built — see docs/coach/06-cross-app-integration.md §2.";
 
 export function NotAvailablePanel({ keys, subtitle = DEFAULT_SUBTITLE }: { keys: string[]; subtitle?: string }) {
+  const { t } = useTranslation();
   if (keys.length === 0) return null;
 
   return (
     <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4">
-      <div className="text-xs uppercase tracking-wide text-text-dim">Not available yet</div>
+      <div className="text-xs uppercase tracking-wide text-text-dim">{t("notAvailablePanel.notAvailableYet")}</div>
       <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>
       <ul className="mt-3 flex flex-wrap gap-2">
         {keys.map((key) => (

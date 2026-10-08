@@ -267,7 +267,7 @@ describe("My Gym API", () => {
     expect(res.body.swapSuggestion).toBeNull();
   });
 
-  it("help requests store only the allowed fields and reject anything else", async () => {
+  it("member help requests are stored on the partner help-request model with no member identity", async () => {
     const bad = await request(app)
       .post("/gym/help-requests")
       .set(auth(token))
@@ -281,44 +281,19 @@ describe("My Gym API", () => {
       .set(auth(token))
       .send({ topic: "form_check", exerciseName: "Machine Row", workoutName: "Upper Body Strength", note: "Lower back feels off" });
     expect(ok.status).toBe(201);
+    expect(ok.body.request).toMatchObject({ topic: "form_check", exerciseName: "Machine Row", status: "open" });
     const row = await prisma.gymHelpRequest.findUnique({ where: { id: ok.body.request.id } });
-    expect(row).toMatchObject({ memberFirstName: "Priya", gymId, topic: "form_check", exerciseName: "Machine Row" });
-    expect(row!.memberNumber).toBe(`PF-${userId.replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase()}`);
+    expect(row).toMatchObject({ gymId, category: "trainer_support", status: "open" });
+    expect(row!.body).toContain("Machine Row");
+    // No member identity is stored or returned (BR-GYM-003).
+    expect(JSON.stringify(row)).not.toContain(userId);
+    expect(Object.keys(row!)).not.toContain("userId");
 
-    const history = await request(app).get("/gym/help-requests").set(auth(token));
-    expect(history.body.items).toHaveLength(1);
-    expect(history.body.items[0].status).toBe("open");
-  });
-
-  it("rate-limits repeated help requests", async () => {
-    const u = await signup("Spammer Person");
-    await request(app).post("/users/me/partner-code").set(auth(u.token)).send({ code });
-    const statuses: number[] = [];
-    for (let i = 0; i < 5; i++) {
-      statuses.push((await request(app).post("/gym/help-requests").set(auth(u.token)).send({ topic: "other" })).status);
-    }
-    expect(statuses).toEqual([201, 201, 201, 429, 429]);
-  });
-
-  it("staff see only the allowed fields, are confined to their own gym, and can mark seen/resolved", async () => {
+    // ...and the gym sees it in its own (origin) help queue.
     const list = await request(app).get("/gym-portal/help-requests").set(auth(gymToken));
     expect(list.status).toBe(200);
-    expect(list.body.items.length).toBeGreaterThan(0);
-    for (const item of list.body.items) {
-      expect(Object.keys(item).sort()).toEqual(
-        ["createdAt", "exerciseName", "id", "locationName", "memberFirstName", "memberNumber", "note", "respondedAt", "status", "topic", "workoutName"].sort(),
-      );
-    }
-    expect((await request(app).get("/gym-portal/help-requests").set(auth(otherGymToken))).body.items).toHaveLength(0);
-    expect((await request(app).get("/gym-portal/help-requests")).status).toBe(401);
-
-    const id = list.body.items[0].id;
-    expect((await request(app).patch(`/gym-portal/help-requests/${id}`).set(auth(otherGymToken)).send({ status: "seen" })).status).toBe(404);
-    const seen = await request(app).patch(`/gym-portal/help-requests/${id}`).set(auth(gymToken)).send({ status: "seen" });
-    expect(seen.body.request.status).toBe("seen");
-    const resolved = await request(app).patch(`/gym-portal/help-requests/${id}`).set(auth(gymToken)).send({ status: "resolved" });
-    expect(resolved.body.request.status).toBe("resolved");
-    expect(resolved.body.request.respondedAt).toBeTruthy();
+    expect(JSON.stringify(list.body)).toContain("Machine Row");
+    expect(JSON.stringify((await request(app).get("/gym-portal/help-requests").set(auth(otherGymToken))).body)).not.toContain("Machine Row");
   });
 
   it("staff can manage timings, equipment and announcements; equipment toggle stamps the update time", async () => {

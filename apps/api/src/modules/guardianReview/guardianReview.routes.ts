@@ -42,7 +42,7 @@ guardianReviewRouter.get("/guardian-review/approve", guardianPublicRateLimit, as
       200,
       "Guardian authorization",
       `<h1>Guardian authorization</h1>
-<p><strong>${esc(found.childName)}</strong> is setting up a 23PrimeFit fitness account and has told us they are under 18.</p>
+<p><strong>${esc(found.childName)}</strong> is setting up a Fynrox fitness account and has told us they are under 18.</p>
 <div class="card"><p>If you approve, they can answer health and fitness questions and receive personalized plans and guidance. If you decline, those features stay off.</p>
 <p>This does not verify identity or establish legal compliance on its own. Only approve if you are this person's parent or legal guardian.</p></div>
 <form method="post" action="/guardian-review/decide"><input type="hidden" name="token" value="${esc(token)}"><button class="ok" type="submit" name="decision" value="approve">Approve</button><button class="no" type="submit" name="decision" value="decline">Decline</button></form>`,

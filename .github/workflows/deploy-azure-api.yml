@@ -91,6 +91,98 @@ jobs:
       - name: Build the API
         run: npm run build --workspace=apps/api
 
+      # Why this exists — the API would not boot in production without it.
+      #
+      # App Service's generated startup script does this, every boot:
+      #
+      #   tar -xzf node_modules.tar.gz -C /node_modules
+      #   mv -f node_modules _del_node_modules
+      #   ln -sfn /node_modules ./node_modules
+      #
+      # It relocates the dependency tree from /home/site/wwwroot to /.
+      # npm workspaces install @fitness-ai-app/config as a RELATIVE
+      # symlink, node_modules/@fitness-ai-app/config -> ../../packages/config,
+      # and tar preserves a symlink as a symlink. Relocated, that link
+      # resolves to /packages/config, which does not exist, so the
+      # container died with
+      #
+      #   Error: Cannot find module '@fitness-ai-app/config'
+      #   Require stack: .../apps/api/dist/lib/referralCode.js
+      #
+      # 90 seconds into every cold start, exit code 1, for three
+      # consecutive deploys. The deploy step itself reported success
+      # throughout, because the package shipped fine — it was the boot
+      # that failed.
+      #
+      # Replacing the link with a real directory makes the tree
+      # relocatable, which is the actual requirement. Reproduced locally
+      # by running those three lines against a copy of the tree: same
+      # MODULE_NOT_FOUND before, resolves after.
+      #
+      # Only packages/* links are materialised. The apps/* ones are
+      # never required at runtime (a grep of apps/api/dist finds exactly
+      # one workspace import, @fitness-ai-app/config) and copying them
+      # would add every other app's source to the package for nothing.
+      - name: Make the dependency tree survive being relocated
+        run: |
+          cd node_modules/@fitness-ai-app
+          for link in *; do
+            [ -L "$link" ] || continue
+            target=$(readlink -f "$link")
+            case "$target" in
+              */packages/*) ;;
+              *) echo "leaving $link -> $target (not a packages/* link)"; continue ;;
+            esac
+            echo "materialising $link from $target"
+            rm "$link"
+            # -L dereferences, so nested links cannot reintroduce the
+            # same problem one level down.
+            cp -RL "$target" "$link"
+            # A nested node_modules would be another relocatable tree
+            # with the same problem, so it goes. Nothing else does:
+            # @fitness-ai-app/types declares main: src/index.ts, so
+            # pruning src/ to save a few kilobytes would ship a package
+            # whose entry point does not exist. It happens to be
+            # harmless today, because nothing requires types at
+            # runtime — and it would turn into this same boot crash the
+            # day somebody exports a value from it.
+            rm -rf "$link/node_modules"
+          done
+
+      # A deploy that ships a tree which cannot boot is worse than a
+      # deploy that fails here, where the log says why.
+      - name: Check the dependency tree can be required after relocation
+        run: |
+          cd node_modules/@fitness-ai-app
+          # Every packages/* entry must now be a real directory whose
+          # declared entry point is present. A deploy that ships a tree
+          # which cannot boot is worse than one that fails here, where
+          # the log says why.
+          for name in config types; do
+            if [ -L "$name" ]; then
+              echo "::error::$name is still a symlink; it will break when App Service relocates node_modules." >&2
+              exit 1
+            fi
+            entry=$(node -e "process.stdout.write(require('./$name/package.json').main || 'index.js')")
+            if [ ! -f "$name/$entry" ]; then
+              echo "::error::$name/$entry is missing — packages/$name was not built before it was copied." >&2
+              exit 1
+            fi
+            echo "$name -> $entry present"
+          done
+
+          # Then resolve for real, the way the relocated container will:
+          # the package copied under a root that is not this repo, with
+          # nothing above it to fall back to. config is the one the
+          # built API actually requires; types is types-only and its
+          # entry is TypeScript, so it is checked for presence above
+          # rather than required here.
+          probe="$RUNNER_TEMP/relocated"
+          rm -rf "$probe"
+          mkdir -p "$probe/node_modules/@fitness-ai-app"
+          cp -R config "$probe/node_modules/@fitness-ai-app/config"
+          ( cd "$probe" && node -e "require('@fitness-ai-app/config'); console.log('requires cleanly from a relocated tree')" )
+
       # OIDC federated-credential login — no client secret stored in
       # GitHub at all. See AZURE-DEPLOY-RUNBOOK.md for the full
       # az ad app / az ad sp / az ad app federated-credential setup this
@@ -102,6 +194,81 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The consoles could not log in at all until this step existed.
+      # `OPTIONS /admin/auth/login` came back with no
+      # Access-Control-Allow-Origin, so the browser cancelled every
+      # request from admin-web and both partner portals before it left
+      # the page. app.ts allows any origin only on /public/* and
+      # /links/* (the marketing site's anonymous endpoints); everything
+      # else is checked against CORS_ORIGINS, and that app setting never
+      # listed the Static Web Apps the consoles are actually served
+      # from. Found by reading a browser Network tab, not the code.
+      #
+      # Reconciled here rather than left as a one-off `az` command
+      # someone runs once and forgets: the deploy already holds
+      # Contributor on the resource group through the OIDC login above,
+      # so the setting can simply be made true on every deploy.
+      #
+      # MERGES, never replaces. Any origin added by hand — a custom
+      # domain, a staging host — survives. To remove one, delete it in
+      # Azure *and* from REQUIRED below, or the next deploy puts it
+      # back.
+      #
+      # Setting an app setting restarts the Web App. That is why this
+      # sits before the deploy rather than after it: the deploy restarts
+      # the app anyway, and the /health gate at the end of this job then
+      # covers both.
+      - name: Make sure CORS_ORIGINS covers the consoles
+        env:
+          WEBAPP: ${{ secrets.AZURE_WEBAPP_NAME }}
+          GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          # Public hostnames, not secrets — they are in the runbook and
+          # in every link to the consoles.
+          REQUIRED="https://purple-sea-0edcdc910.6.azurestaticapps.net
+          https://calm-ground-04d678410.3.azurestaticapps.net"
+
+          current=$(az webapp config appsettings list \
+            --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[?name=='CORS_ORIGINS'].value | [0]" -o tsv 2>/dev/null || true)
+          echo "current CORS_ORIGINS: ${current:-<unset>}"
+
+          # env.ts parses this as a comma-separated list, trimming each
+          # entry and dropping empties — mirror that exactly here.
+          merged=$(
+            {
+              # Trailing newline matters: without it the last existing
+              # origin fuses with the first required one and the result
+              # is a single nonsense entry. Caught by running this
+              # against a non-empty current value.
+              printf '%s\n' "$current" | tr ',' '\n'
+              printf '%s\n' "$REQUIRED"
+            } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$' | awk '!seen[$0]++' | paste -sd,
+          )
+
+          if [ "$merged" = "$current" ]; then
+            echo "already correct, leaving it alone"
+          else
+            echo "updating to: $merged"
+            az webapp config appsettings set \
+              --name "$WEBAPP" --resource-group "$GROUP" \
+              --settings CORS_ORIGINS="$merged" --output none
+          fi
+
+          # Read it back. An `az` command that exits 0 having changed
+          # nothing is the failure mode worth catching here.
+          final=$(az webapp config appsettings list \
+            --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[?name=='CORS_ORIGINS'].value | [0]" -o tsv)
+          echo "CORS_ORIGINS is now: $final"
+          printf '%s\n' "$REQUIRED" | sed 's/^[[:space:]]*//' | while read -r origin; do
+            [ -z "$origin" ] && continue
+            case ",$final," in
+              *",$origin,"*) ;;
+              *) echo "::error::$origin is still missing from CORS_ORIGINS after the update." >&2; exit 1 ;;
+            esac
+          done
 
       # Deploys the repo root as-is (dist/ + node_modules + the generated
       # Prisma client + everything else `npm ci` + the build step above
@@ -122,6 +289,14 @@ jobs:
           # remove any ambiguity about which app is targeted.
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
           package: .
+          # /home is persisted and OneDeploy merges into wwwroot rather
+          # than replacing it, so an oryx-manifest.toml and
+          # node_modules.tar.gz left behind by an earlier build-during-
+          # deploy stay there forever and keep sending every boot down
+          # the "Found tar.gz based node_modules" path above. clean
+          # empties the target first, so what boots is what this run
+          # built and nothing else.
+          clean: true
 
       # Real confirmation, not just "the deploy step exited 0" — same
       # philosophy as ci.yml's own "boot the API and confirm /health
@@ -130,11 +305,18 @@ jobs:
       # ci.yml's local boot does, so this polls for up to ~4 minutes
       # rather than ci.yml's ~15 seconds.
       - name: Confirm the deployed API answers /health
+        id: health
         run: |
           url="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
           ok=""
           for i in $(seq 1 48); do
-            if curl -sf "$url"; then
+            # --max-time bounds each ATTEMPT. Without it this loop's
+            # "~4 minutes" was fiction: a cold start that accepts the TCP
+            # connection and then never answers leaves curl blocked
+            # forever, so the loop never reaches its second iteration.
+            # Seen for real — a deploy sat in this step for 7+ minutes
+            # before it was cancelled by hand.
+            if curl -sf --max-time 15 "$url"; then
               echo
               ok=1
               break
@@ -147,3 +329,50 @@ jobs:
             exit 1
           fi
           echo "Deployed API booted and answered /health successfully."
+
+      # The health gate has always ended by telling a human to go and
+      # read `az webapp log tail`. Nobody can, from a failed CI run that
+      # has already dropped its Azure session — so it never happened, and
+      # a failed deploy left no evidence of WHY the app would not start.
+      # This fetches it while the OIDC login is still good.
+      #
+      # `log tail` streams and never returns, which would hang this job
+      # the way the unbounded curl above used to; `log download` is the
+      # terminating form.
+      - name: Capture the App Service log when health fails
+        if: failure() && steps.health.conclusion == 'failure'
+        env:
+          WEBAPP: ${{ secrets.AZURE_WEBAPP_NAME }}
+          GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          echo "=== app state ==="
+          az webapp show --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "{state:state, availability:availabilityState, https:httpsOnly, linuxFx:siteConfig.linuxFxVersion, alwaysOn:siteConfig.alwaysOn}" \
+            -o yaml || echo "could not read app state"
+
+          echo
+          echo "=== app settings present (names only — never values) ==="
+          az webapp config appsettings list --name "$WEBAPP" --resource-group "$GROUP" \
+            --query "[].name" -o tsv | sort || echo "could not list app settings"
+
+          echo
+          echo "=== container / application log ==="
+          # Best effort throughout: a missing log is not a reason to turn
+          # a health failure into a confusing second failure.
+          az webapp log download --name "$WEBAPP" --resource-group "$GROUP" \
+            --log-file "$RUNNER_TEMP/appsvc.zip" || true
+          if [ -f "$RUNNER_TEMP/appsvc.zip" ]; then
+            mkdir -p "$RUNNER_TEMP/appsvc"
+            unzip -o -q "$RUNNER_TEMP/appsvc.zip" -d "$RUNNER_TEMP/appsvc" || true
+            find "$RUNNER_TEMP/appsvc" -type f \( -name '*.log' -o -name '*.txt' \) \
+              -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -4 | cut -d' ' -f2- |
+            while read -r f; do
+              echo "--- $f"
+              tail -n 150 "$f"
+              echo
+            done
+          else
+            echo "no log archive came back — app-service logging may be off:"
+            echo "  az webapp log config --name <app> --resource-group <rg> \\"
+            echo "    --application-logging filesystem --docker-container-logging filesystem"
+          fi

@@ -21,12 +21,5 @@ export const fmtGymDate = (iso: string) => new Date(iso).toLocaleDateString(unde
 export const fmtGymDateTime = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
-export const GYM_HELP_TOPIC_LABEL = {
-  form_check: "Form check on an exercise",
-  machine_help: "Help with a machine",
-  trainer_available: "Is a trainer available now?",
-  other: "Something else",
-} as const;
-
 export const GYM_PRIVACY_FOOTER =
   "Your gym sees only that you joined and if you're active. It never sees your health, food logs, photos or AI chats.";

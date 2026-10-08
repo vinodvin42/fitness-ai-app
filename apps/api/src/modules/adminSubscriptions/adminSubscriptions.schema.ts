@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MIN_REASON_LENGTH } from "../../lib/highImpactAction";
 
 // Gap §57 (18 Sep 2026) — real admin force-revoke. `reason` is required
 // and meaningful (not just a non-empty string) — mirrors the same
@@ -21,3 +22,14 @@ export const unrevokeSubscriptionSchema = z.object({
 });
 
 export type UnrevokeSubscriptionInput = z.infer<typeof unrevokeSubscriptionSchema>;
+
+/**
+ * U-M4's suspend/reactivate payload. Takes the typed confirmation the
+ * revoke schemas above predate — BR-ADM-005 applies to every action that
+ * removes paid-for access, not only the terminal one.
+ */
+export const highImpactSubscriptionSchema = z.object({
+  reason: z.string().trim().min(MIN_REASON_LENGTH).max(300),
+  confirmation: z.string().trim(),
+});
+export type HighImpactSubscriptionInput = z.infer<typeof highImpactSubscriptionSchema>;

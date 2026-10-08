@@ -68,10 +68,10 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
   );
 
   const purchase = useCallback(
-    async (purpose: PaymentPurpose, referenceId: string, couponCode?: string, scheduledAt?: string, quoteRequestId?: string) => {
+    async (purpose: PaymentPurpose, referenceId: string, couponCode?: string, scheduledAt?: string) => {
       setIsCreatingOrder(true);
       try {
-        const created = await createRazorpayOrder({ purpose, referenceId, couponCode, scheduledAt, quoteRequestId });
+        const created = await createRazorpayOrder({ purpose, referenceId, couponCode, scheduledAt });
         setOrder(created);
       } catch (err) {
         reportError("Couldn't start checkout", extractErrorMessage(err, "Check your connection and try again."));

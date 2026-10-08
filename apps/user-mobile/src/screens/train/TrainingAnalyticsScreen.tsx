@@ -68,7 +68,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
     mutationFn: async () => {
       const entries = await fetchWorkoutHistory();
       if (entries.length === 0) return "empty" as const;
-      await shareCsv("23primefit-workouts.csv", sessionsToCsv(entries));
+      await shareCsv("fynrox-workouts.csv", sessionsToCsv(entries));
       return "ok" as const;
     },
     onSuccess: (r) => r === "empty" && toast.show("No workouts to export yet.", "info"),
@@ -208,7 +208,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
           <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.xs }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name="sparkles" size={13} color={colors.aiAccent} />
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>23PRIMEFIT RECOMMENDATION</Text>
+              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
             </View>
             {data.acwr ? (
               <>

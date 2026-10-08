@@ -597,6 +597,21 @@ export async function createBooking(
     data: { status: "activating" },
   });
 
+  // Spec §11 `relationship.activation_started`. §10 makes ACTIVATING its
+  // own state precisely because it is the window where money has moved
+  // but access has not been granted — the window Error & Recovery §9 is
+  // about. Without this event, that window is invisible in the stream:
+  // you can see activation succeed and see it fail, but not how long it
+  // took or how many are currently sitting in it.
+  for (const relationshipId of relationshipIds) {
+    await trackEvent(
+      userId,
+      "relationship.activation_started",
+      { relationshipId, professionalId: input.professionalId },
+      { ruleId: "BR-COM-011" },
+    );
+  }
+
   const booking = await prisma.booking.create({
     data: {
       userId,
@@ -626,6 +641,17 @@ export async function createBooking(
   // is a harmless over-count, not a fabricated one.
   for (const relationshipId of relationshipIds) {
     await trackEvent(userId, "relationship.activated", { relationshipId, professionalId: input.professionalId, bookingId: booking.id });
+    // Spec §11's `access.granted`, the counterpart to the
+    // `access.revoked` that relationshipLifecycle.service.ts emits on
+    // end/handover. An access ledger with only one side of the pair
+    // cannot answer "who could see this client's data on a given day",
+    // which is the question BR-ACC-006/007 exist to make answerable.
+    await trackEvent(
+      userId,
+      "access.granted",
+      { relationshipId, professionalId: input.professionalId },
+      { ruleId: "BR-ACC-006", metadata: { cause: "relationship_activated" } },
+    );
   }
 
   await recordAudit({

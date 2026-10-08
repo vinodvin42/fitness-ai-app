@@ -368,7 +368,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
       </View>
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
         {mode === "gps"
-          ? "Tracking works only while 23PrimeFit is open on screen. Keep the app open; location is not recorded in the background."
+          ? "Tracking works only while Fynrox is open on screen. Keep the app open; location is not recorded in the background."
           : `${isWeb ? "GPS is not available on web. " : ""}Start the timer, then enter your distance when you finish. Saved as a manual ${label.toLowerCase()}.`}
       </Text>
       {perm === "denied" && phase === "idle" ? (

@@ -149,7 +149,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
           <InfoCard
             tone="accent"
             title="Notifications are off on this device"
-            body="Allow them to get reminders on your device. Tap to review what 23PrimeFit will and won't show."
+            body="Allow them to get reminders on your device. Tap to review what Fynrox will and won't show."
           />
         </Pressable>
       ) : null}

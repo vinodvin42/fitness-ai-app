@@ -4,7 +4,7 @@ import * as SecureStore from "../lib/secureStore";
 
 /**
  * Mirrors apps/user-mobile/src/api/client.ts exactly, keyed under a
- * "primefitcoach.*" prefix instead of "primefit.*" so this app's tokens
+ * "fynroxcoach.*" prefix instead of "fynrox.*" so this app's tokens
  * never collide with the consumer app's if both are ever installed on the
  * same device/simulator — and pointed at the `/professionals/auth/*`
  * refresh endpoint instead of `/auth/refresh`, since `Professional` is a
@@ -13,8 +13,8 @@ import * as SecureStore from "../lib/secureStore";
  * models).
  */
 
-const ACCESS_TOKEN_KEY = "primefitcoach.accessToken";
-const REFRESH_TOKEN_KEY = "primefitcoach.refreshToken";
+const ACCESS_TOKEN_KEY = "fynroxcoach.accessToken";
+const REFRESH_TOKEN_KEY = "fynroxcoach.refreshToken";
 
 // Go-live hardening (4 Sep 2026) — was reading only Constants.expoConfig's
 // static extra.apiBaseUrl (hardcoded to localhost), so a production web

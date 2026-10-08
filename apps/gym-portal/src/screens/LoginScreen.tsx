@@ -1,6 +1,8 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
+import { BrandLockup } from "../components/BrandLockup";
 
 /**
  * Copies apps/admin-web's LoginScreen.tsx shape (plain functional auth, no
@@ -9,6 +11,7 @@ import { extractErrorMessage } from "../lib/apiError";
  * doc comment) against the separate gym-portal login endpoint.
  */
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,20 +34,14 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Gym Partner Portal</div>
-          </div>
+        <div className="mb-6 flex items-center">
+          <BrandLockup subtitle={t("shell.portalName")} />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="email">
-              Contact email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -59,7 +56,7 @@ export function LoginScreen() {
 
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="password">
-              Password
+              {t("login.password")}
             </label>
             <input
               id="password"
@@ -79,12 +76,11 @@ export function LoginScreen() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-accent py-2 text-sm font-medium text-canvas transition-opacity disabled:opacity-60"
           >
-            {isSubmitting ? "Signing in…" : "Sign in"}
+            {isSubmitting ? t("login.submitting") : t("login.submit")}
           </button>
 
           <p className="text-center text-[11px] text-text-dim">
-            No portal access yet, or forgot your password? Contact PrimeFit support — your account manager can set or
-            reset it.
+            {t("login.noAccess")}
           </p>
         </form>
       </div>

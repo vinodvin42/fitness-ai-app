@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Text, View } from "react-native";
 import { Icon } from "./Icon";
 import { InfoCard, StateLayout } from "./StatePanels";
+import { BRAND_NAME } from "../lib/brand";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 interface CameraPermissionDeniedProps {
@@ -29,7 +30,7 @@ export function CameraPermissionDenied({ variant, onRequestPermission, onManual,
           ? "The barcode scanner can't open because camera permission hasn't been granted. No camera capture is active."
           : "Snap a meal needs camera access to take a food photo. You can still log your meal without a camera."
       }
-      footnote={isBarcode ? "You can enable camera access whenever you choose." : "Settings → 23PrimeFit → Camera. You're in control."}
+      footnote={isBarcode ? "You can enable camera access whenever you choose." : `Settings → ${BRAND_NAME} → Camera. You're in control.`}
       onBack={onBack}
       actions={[
         { label: isBarcode ? "Search or enter food manually" : "Log meal manually", onPress: onManual },
@@ -80,7 +81,7 @@ export function CameraPermissionDenied({ variant, onRequestPermission, onManual,
         title={isBarcode ? "Enable scanning in settings" : "If you want to use photos later"}
         body={
           isBarcode
-            ? "Open device settings, allow Camera for 23PrimeFit, then return here to scan. Manual entry remains available."
+            ? `Open device settings, allow Camera for ${BRAND_NAME}, then return here to scan. Manual entry remains available.`
             : "Enable camera access in your device settings, then return to Snap a meal. A photo estimate still needs your review of the food and portion."
         }
       />

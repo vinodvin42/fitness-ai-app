@@ -164,7 +164,7 @@ export function MealPlanScreen({ navigation }: Props) {
   ) : undefined;
 
   return (
-    <ScreenContainer title="Meal Plan" subtitle={planRange ? `23PrimeFit Meal ${planRange}` : undefined} right={regenBadge}>
+    <ScreenContainer title="Meal Plan" subtitle={planRange ? `Fynrox Meal ${planRange}` : undefined} right={regenBadge}>
       {mealPlan?.rationale ? (
         <ReasoningSheet
           visible={showWhy}

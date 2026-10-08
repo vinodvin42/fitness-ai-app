@@ -7,19 +7,54 @@
  * third-party tool.
  */
 @theme {
-  --color-canvas: #0a0d12;
-  --color-surface: #12161c;
-  --color-surface-raised: #161b22;
-  --color-border-subtle: #232a33;
+  /*
+   * Brand palette, 3 Oct 2026. These were a mint accent on a blue-black
+   * canvas, eyeballed from Figma screenshots and matching nothing the
+   * brand actually uses — the consoles still looked like a different
+   * product from the marketing site after it moved to charcoal and gold.
+   *
+   * Charcoal rather than cream, deliberately: these are data tools people
+   * keep open for a shift, and the dashboard's charts and dense tables
+   * read better dark. The brand's gold does work as text here, which it
+   * cannot do on cream — #DA9F3E is 2.12:1 on the site's cream and
+   * 6.16:1 on the lightest surface below, so the consoles get the real
+   * brand gold rather than the darkened derivation the site needs.
+   *
+   * Measured against the lightest surface (--color-surface-raised), the
+   * worst case for light text, by apps/api/tests/designTokenContrast.ts:
+   *   text-primary 13.03   text-dim 5.42   warning 7.60
+   *   text-secondary 8.92  accent   6.16   info    6.99
+   *   danger 5.21
+   */
+  --color-canvas: #1a1a1a;
+  --color-surface: #242424;
+  --color-surface-raised: #2a2a2a;
+  --color-border-subtle: #3d3d3a;
 
-  --color-accent: #12e5a6;
-  --color-danger: #f04438;
-  --color-warning: #f5a623;
-  --color-info: #6b8ff5;
+  --color-accent: #da9f3e;
+  --color-danger: #f2776b;
+  --color-warning: #e8b45c;
+  --color-info: #9db4f0;
 
-  --color-text-primary: #f5f7fa;
-  --color-text-secondary: #9aa4b2;
-  --color-text-dim: #5b6472;
+  --color-text-primary: #f6f4eb;
+  --color-text-secondary: #cfccc0;
+  /*
+   * `text-dim` carries exactly the text a low-vision reader most needs:
+   * table column headers, row timestamps, the "—" that stands in for an
+   * empty field, and every form field's own label.
+   *
+   * It was #5b6472 until 29 Sep 2026, when a WCAG 2.1 AA pass measured
+   * it at 2.89:1 on `surface-raised` against a 4.5:1 requirement, and it
+   * became #7d8590 at 4.64:1. The charcoal repaint carried that fix
+   * across rather than losing it: #a29f95 is 5.42:1 on the new
+   * `surface-raised`.
+   *
+   * Every palette in this repo failed on precisely one token — the
+   * dim/muted one — in the user app, the coach app, the marketing site and
+   * all three of these consoles. All of them were eyeballed; none had been
+   * measured until that pass.
+   */
+  --color-text-dim: #a29f95;
 }
 
 body {

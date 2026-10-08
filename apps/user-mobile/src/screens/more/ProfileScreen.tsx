@@ -112,7 +112,7 @@ export function ProfileScreen({ navigation }: Props) {
       value: partner.data?.gym.name,
       onPress: () => navigation.navigate(partner.data ? "MyGym" : "PartnerCode"),
     },
-    { title: "Purchase history", icon: "file-text", onPress: () => navigation.navigate("SubscriptionHistory") },
+    { title: "Purchase history", icon: "file-text", onPress: () => navigation.navigate("Purchases") },
     { title: "Help & Support", icon: "life-buoy", onPress: () => navigation.navigate("Support") },
   ];
 

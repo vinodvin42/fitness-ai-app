@@ -72,7 +72,7 @@ function quickRepliesFor(lastAssistant: string | undefined): string[] {
 // screen — kept verbatim, not paraphrased, since it's a real safety/
 // liability disclosure, not decorative copy.
 const DISCLAIMER =
-  "23Prime AI provides general fitness and wellness guidance only. Not a substitute for professional medical advice.";
+  "Fynrox AI provides general fitness and wellness guidance only. Not a substitute for professional medical advice.";
 
 const TIER_LABEL = { basic: "Basic", pro: "Pro", elite: "Elite" } as const;
 
@@ -279,7 +279,7 @@ export function AiCoachScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>23Prime AI</Text>
+          <Text style={styles.headerTitle}>Fynrox AI</Text>
         </View>
         <View style={{ padding: spacing.md }}>
           <Card>
@@ -317,7 +317,7 @@ export function AiCoachScreen({ navigation }: Props) {
         flowLabel="AI / Service unavailable"
         flowIcon="cloud-off"
         flowTone="ai"
-        title="23Prime AI is taking a pause"
+        title="Fynrox AI is taking a pause"
         description="We couldn't get an answer right now. This is a temporary service issue, not your plan's usage limit."
         footnote="Your draft stays here. Retrying won't erase it."
         onBack={() => setSendFailure(null)}
@@ -389,7 +389,7 @@ export function AiCoachScreen({ navigation }: Props) {
         <View>
           <View style={styles.headerTitleRow}>
             <View style={styles.onlineDot} />
-            <Text style={styles.headerTitle}>23Prime AI</Text>
+            <Text style={styles.headerTitle}>Fynrox AI</Text>
           </View>
           <Text style={styles.headerSubtitle}>Online · Instant Answers</Text>
         </View>
@@ -451,7 +451,7 @@ export function AiCoachScreen({ navigation }: Props) {
               pendingText ? null : (
                 <View style={{ paddingTop: spacing.lg }}>
                   <Card>
-                    <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hey — I'm 23Prime AI.</Text>
+                    <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Hey — I'm Fynrox AI.</Text>
                     <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
                       Ask me about your training, nutrition, or recovery — I'll ground my answers in your real
                       progress in this app. Try one of the topics above, or just type below.
@@ -531,7 +531,7 @@ export function AiCoachScreen({ navigation }: Props) {
             </Pressable>
             <TextInput
               style={styles.composerInput}
-              placeholder="Ask 23Prime AI anything…"
+              placeholder="Ask Fynrox AI anything…"
               placeholderTextColor={colors.textMuted}
               value={draft}
               onChangeText={setDraft}

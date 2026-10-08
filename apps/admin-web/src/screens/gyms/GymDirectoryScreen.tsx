@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { AdminGymDirectoryResponse, CreateGymInput, GymStatus } from "@fitness-ai-app/types";
@@ -6,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import { GYMS_SUB_NAV } from "./subNav";
 
 const STATUS_FILTERS: { key: GymStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -49,6 +51,7 @@ async function fetchDirectory(status: GymStatus | "all", search: string): Promis
  * admin role simply gets a real 403 surfaced through `extractErrorMessage`.
  */
 export function GymDirectoryScreen() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<GymStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -72,7 +75,7 @@ export function GymDirectoryScreen() {
   const isFormValid = form.name.trim().length > 0 && form.contactName.trim().length > 0 && form.contactEmail.trim().length > 0;
 
   return (
-    <AppShell title="Gym Partners">
+    <AppShell title={t("gymDirectory.gymPartners")} subNav={GYMS_SUB_NAV}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
@@ -95,7 +98,7 @@ export function GymDirectoryScreen() {
           <div className="flex items-center gap-2">
             <input
               type="search"
-              placeholder="Search name, contact, invite code…"
+              placeholder={t("gymDirectory.searchNameContactInvite")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -112,42 +115,40 @@ export function GymDirectoryScreen() {
 
         {showAddForm && (
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="text-xs uppercase tracking-wide text-text-dim">New Gym Partner</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymDirectory.newGymPartner")}</div>
             <p className="mt-1 text-xs text-text-secondary">
-              Starts in <span className="font-medium">Application</span> status — approve it from the row actions once
-              onboarded. Commission % and pricing default to placeholder values you can edit here or later from the
-              gym's own profile.
+              {t("gymDirectory.startsInStatus", { status: t("gymDirectory.application") })}
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <LabeledInput
-                label="Gym name"
+                label={t("gymDirectory.gymName")}
                 value={form.name}
                 onChange={(v) => setForm((f) => ({ ...f, name: v }))}
               />
               <LabeledInput
-                label="Contact name"
+                label={t("gymDirectory.contactName")}
                 value={form.contactName}
                 onChange={(v) => setForm((f) => ({ ...f, contactName: v }))}
               />
               <LabeledInput
-                label="Contact email"
+                label={t("gymDirectory.contactEmail")}
                 type="email"
                 value={form.contactEmail}
                 onChange={(v) => setForm((f) => ({ ...f, contactEmail: v }))}
               />
               <LabeledInput
-                label="Contact phone (optional)"
+                label={t("gymDirectory.contactPhoneOptional")}
                 value={form.contactPhone ?? ""}
                 onChange={(v) => setForm((f) => ({ ...f, contactPhone: v }))}
               />
               <LabeledInput
-                label="Commission %"
+                label={t("gymDirectory.commission")}
                 type="number"
                 value={String(form.commissionPct ?? 15)}
                 onChange={(v) => setForm((f) => ({ ...f, commissionPct: Number(v) || 0 }))}
               />
               <LabeledInput
-                label="Rate per member (cents, 0 = not configured)"
+                label={t("gymDirectory.ratePerMemberCents")}
                 type="number"
                 value={String(form.ratePerMemberCents ?? 0)}
                 onChange={(v) => setForm((f) => ({ ...f, ratePerMemberCents: Number(v) || 0 }))}
@@ -167,13 +168,13 @@ export function GymDirectoryScreen() {
           </div>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("gymDirectory.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load gym partners.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("gymDirectory.retry")}
             </button>
           </div>
         )}
@@ -183,13 +184,13 @@ export function GymDirectoryScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Gym</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Commission</th>
-                  <th className="px-4 py-3 font-normal">Locations</th>
-                  <th className="px-4 py-3 font-normal">Members</th>
-                  <th className="px-4 py-3 font-normal">Invite Code</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.gym")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.commission2")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.locations")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.members")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.inviteCode")}</th>
+                  <th className="px-4 py-3 font-normal">{t("gymDirectory.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,7 +211,7 @@ export function GymDirectoryScreen() {
                     <td className="px-4 py-3 font-mono text-xs text-text-dim">{g.inviteCode}</td>
                     <td className="px-4 py-3">
                       <Link to={`/gyms/${g.id}`} className="text-xs text-accent hover:underline">
-                        View →
+                        {t("gymDirectory.view")}
                       </Link>
                     </td>
                   </tr>
@@ -218,7 +219,7 @@ export function GymDirectoryScreen() {
                 {data.gyms.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No gym partners in this view.
+                      {t("gymDirectory.noGymPartnersIn")}
                     </td>
                   </tr>
                 )}

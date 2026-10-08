@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminExpenseListResponse, ExpenseCategory, ExpenseStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -71,6 +72,7 @@ function formToPayload(form: FormState) {
  * own doc comment for why neither entity is modeled at all yet.
  */
 export function ExpensesScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ category: "", status: "" });
   const [showForm, setShowForm] = useState(false);
@@ -101,25 +103,25 @@ export function ExpensesScreen() {
   });
 
   return (
-    <AppShell title="Expenses & Payouts" subNav={FINANCE_SUB_NAV}>
+    <AppShell title={t("expenses.expensesPayouts")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total" value={money(data.summary.totalCents)} hint={`${data.summary.totalCount} expenses`} />
-            <StatCard label="Pending" value={money(data.summary.pendingCents)} />
-            <StatCard label="Paid" value={money(data.summary.paidCents)} />
+            <StatCard label={t("expenses.total")} value={money(data.summary.totalCents)} hint={`${data.summary.totalCount} expenses`} />
+            <StatCard label={t("expenses.pending")} value={money(data.summary.pendingCents)} />
+            <StatCard label={t("expenses.paid")} value={money(data.summary.paidCents)} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Category
+            {t("expenses.category")}
             <select
               value={filters.category}
               onChange={(e) => setFilter("category", e.target.value as Filters["category"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("expenses.all")}</option>
               {CATEGORY_OPTIONS.map((c) => (
                 <option key={c} value={c}>
                   {CATEGORY_LABELS[c]}
@@ -128,15 +130,15 @@ export function ExpensesScreen() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("expenses.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
+              <option value="">{t("expenses.all")}</option>
+              <option value="pending">{t("expenses.pending")}</option>
+              <option value="paid">{t("expenses.paid")}</option>
             </select>
           </label>
           <button
@@ -156,10 +158,10 @@ export function ExpensesScreen() {
             }}
             className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
           >
-            <div className="text-sm font-medium">Record Expense</div>
+            <div className="text-sm font-medium">{t("expenses.recordExpense")}</div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Category
+                {t("expenses.category")}
                 <select
                   value={form.category}
                   onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value as ExpenseCategory }))}
@@ -173,7 +175,7 @@ export function ExpensesScreen() {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Amount
+                {t("expenses.amount")}
                 <input
                   required
                   type="number"
@@ -186,7 +188,7 @@ export function ExpensesScreen() {
               </label>
             </div>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
-              Description
+              {t("expenses.description")}
               <input
                 required
                 value={form.description}
@@ -196,7 +198,7 @@ export function ExpensesScreen() {
             </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Incurred on
+                {t("expenses.incurredOn")}
                 <input
                   required
                   type="date"
@@ -206,7 +208,7 @@ export function ExpensesScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Notes (optional)
+                {t("expenses.notesOptional")}
                 <input
                   value={form.notes}
                   onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
@@ -227,13 +229,13 @@ export function ExpensesScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("expenses.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load expenses.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("expenses.retry")}
             </button>
           </div>
         )}
@@ -247,13 +249,13 @@ export function ExpensesScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Description</th>
-                  <th className="px-4 py-3 font-normal">Category</th>
-                  <th className="px-4 py-3 font-normal">Amount</th>
-                  <th className="px-4 py-3 font-normal">Incurred</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Recorded by</th>
-                  <th className="px-4 py-3 font-normal">Actions</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.description")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.category")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.amount")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.incurred")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.recordedBy")}</th>
+                  <th className="px-4 py-3 font-normal">{t("expenses.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -280,7 +282,7 @@ export function ExpensesScreen() {
                           disabled={markPaidMutation.isPending}
                           className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
                         >
-                          Mark Paid
+                          {t("expenses.markPaid")}
                         </button>
                       )}
                     </td>
@@ -289,7 +291,7 @@ export function ExpensesScreen() {
                 {data.expenses.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
-                      No expenses match these filters.
+                      {t("expenses.noExpensesMatchThese")}
                     </td>
                   </tr>
                 )}
@@ -301,7 +303,7 @@ export function ExpensesScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="Neither entity exists anywhere in this build yet — see adminFinance.service.ts."
+            subtitle={t("expenses.neitherEntityExistsAnywhere")}
           />
         )}
       </div>

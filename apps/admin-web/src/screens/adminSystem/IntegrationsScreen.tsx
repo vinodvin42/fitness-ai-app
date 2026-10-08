@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { AdminIntegrationDirectoryResponse, AdminIntegrationListItem } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -91,21 +92,22 @@ function IntegrationCard({ integration }: { integration: AdminIntegrationListIte
  * third real screen, so it joins `ADMIN_SYSTEM_SUB_NAV`.
  */
 export function IntegrationsScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-integrations"],
     queryFn: fetchIntegrations,
   });
 
   return (
-    <AppShell title="Integrations" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("integrations.integrations")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("integrations.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load integrations.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("integrations.retry")}
             </button>
           </div>
         )}
@@ -121,7 +123,7 @@ export function IntegrationsScreen() {
         {data && (
           <NotAvailablePanel
             keys={data.notAvailable}
-            subtitle="This is a consumer/admin app, not a developer platform — no admin-issued, third-party-facing API key concept exists anywhere in this build."
+            subtitle={t("integrations.thisIsAConsumer")}
           />
         )}
       </div>

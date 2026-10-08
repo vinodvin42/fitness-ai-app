@@ -2,55 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>23PrimeFit — Train, Fuel, Recover, Coached by AI</title>
+  <title data-i18n="index.pageTitle">Fynrox — Train, Fuel, Recover, Coached by AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="23PrimeFit is a training, nutrition, and recovery app with an AI coach grounded in your real data, plus a marketplace to book real human coaches. Currently in pilot." />
-  <meta name="theme-color" content="#0B0C10" />
-  <meta name="color-scheme" content="dark" />
+  <meta data-i18n-attr="content:index.metaDescription" name="description" content="Fynrox is a training, nutrition, and recovery app with an AI coach grounded in your real data, plus verified human professionals matched to you when you want one. Currently in pilot." />
+  <meta name="theme-color" content="#F6F4EB" />
+  <meta name="color-scheme" content="light" />
 
-  <meta property="og:title" content="23PrimeFit — Train, Fuel, Recover, Coached by AI" />
-  <meta property="og:description" content="Training, nutrition, and recovery tracking with an AI coach grounded in your real data — plus a marketplace to book real human coaches." />
+  <meta data-i18n-attr="content:index.metaOgTitle" property="og:title" content="Fynrox — Train, Fuel, Recover, Coached by AI" />
+  <meta data-i18n-attr="content:index.metaOgDescription" property="og:description" content="Training, nutrition, and recovery tracking with an AI coach grounded in your real data — plus verified human professionals matched to you when you want one." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="/assets/css/fonts.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script>document.documentElement.className += " has-js";</script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
-      <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">23</span>
-        <span class="brand__word">PrimeFit</span>
+      <a class="brand" href="/index.html">
+        <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+        <span class="brand__word">Fynrox</span>
       </a>
-      <nav class="nav" aria-label="Primary">
-        <a class="nav__link" href="index.html" aria-current="page">Home</a>
-        <a class="nav__link" href="features.html">Features</a>
-        <a class="nav__link" href="pricing.html">Pricing</a>
-        <a class="nav__link" href="gyms.html">For Gyms</a>
-        <a class="nav__link" href="creators.html">For Creators</a>
-        <a class="nav__link" href="download.html">Download</a>
-        <!-- Go-live hardening (4 Sep 2026) — this landing page is merged
-             onto the SAME site as the admin console (apps/admin-web),
-             served at /app/, hence the relative link. The coach web
-             console (apps/coach-mobile) briefly lived here too but moved
-             to its own separate site per explicit direction — that link
-             is a real cross-origin URL, not a typo. Regular users get the
-             mobile app via the Download section above, not a web login;
-             see each deploy workflow's own comment for the current
-             hosting split. -->
-        <a class="nav__link" href="/app/">Admin Login</a>
-        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span data-i18n="shell.nav.menu">Menu</span>
+      </button>
+      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">
+        <a class="nav__link" href="/index.html" aria-current="page" data-i18n="shell.nav.home">Home</a>
+        <a class="nav__link" href="/how-it-works.html" data-i18n="shell.nav.howItWorks">How it works</a>
+        <a class="nav__link" href="/programs.html" data-i18n="shell.nav.programs">Programs</a>
+        <a class="nav__link" href="/professional-guidance.html" data-i18n="shell.nav.guidance">Guidance</a>
+        <a class="nav__link" href="/pricing.html" data-i18n="shell.nav.pricing">Pricing</a>
+        <a class="nav__link" href="/gyms.html" data-i18n="shell.nav.forGyms">For Gyms</a>
+        <a class="nav__link" href="/creators.html" data-i18n="shell.nav.forCreators">For Creators</a>
+        <a class="nav__link" href="/professionals.html" data-i18n="shell.nav.forProfessionals">For Professionals</a>
+        <a class="nav__link" href="/learn.html" data-i18n="shell.nav.learn">Learn</a>
+        <a class="btn btn--primary btn--sm" href="/early-access.html" data-i18n="shell.nav.cta">Get early access</a>
       </nav>
     </div>
   </header>
@@ -64,34 +56,41 @@
       <div class="wrap hero__inner">
         <div class="hero__content">
           <p class="eyebrow">
-            <span class="eyebrow__mark">23PRIMEFIT</span>
+            <span class="eyebrow__mark">FYNROX</span>
             <span aria-hidden="true">·</span>
-            <span>Your Complete Wellness Operating System</span>
+            <span data-i18n="index.yourCompleteWellnessOperating">Your Complete Wellness Operating System</span>
           </p>
-          <h1 class="hero__title">
+          <h1 data-i18n="index.trainingNutritionAndRecovery" class="hero__title">
             Training, nutrition, and recovery — with an AI coach that actually knows your data.
           </h1>
-          <p class="hero__subtitle">
+          <p data-i18n="index.logWorkoutsAndMeals" class="hero__subtitle">
             Log workouts and meals, track recovery, and chat with an AI coach grounded in your
             real training history — not generic advice. When you want a human in the loop, book a
-            real coach through the marketplace built right in.
+            verified human professional matched to you when you want one.
           </p>
           <div class="hero__actions">
-            <a class="btn btn--primary btn--lg" href="download.html">Get the app</a>
-            <a class="btn btn--ghost btn--lg" href="features.html">See what's inside</a>
+            <a data-i18n="index.getTheApp" class="btn btn--primary btn--lg" href="/download.html">Get the app</a>
+            <a data-i18n="index.seeWhatsInside" class="btn btn--ghost btn--lg" href="/features.html">See what's inside</a>
           </div>
-          <p class="hero__note">
+          <p data-i18n="index.onboardingItsFirstPilot" class="hero__note">
             Onboarding its first pilot testers now — Android via direct APK, iOS via TestFlight.
           </p>
         </div>
 
         <div class="hero__visual" aria-hidden="true">
+          <div class="hero__media">
+            <img src="/assets/media/hero-poster.jpg" alt="" width="1730" height="1611" fetchpriority="high" />
+            <!-- No src: assets/js/main.js attaches one only on a wide
+                 viewport, with motion allowed and the connection not
+                 metered. Without JavaScript the poster above is the hero. -->
+            <video data-src="/assets/media/hero.mp4" muted loop playsinline preload="none"></video>
+          </div>
           <div class="float-card float-card--chat">
             <div class="float-card__head">
               <span class="dot dot--ai"></span>
-              <span class="float-card__title">23Prime AI</span>
+              <span data-i18n="index.fynroxAi" class="float-card__title">Fynrox AI</span>
             </div>
-            <p class="float-card__body">
+            <p data-i18n="index.niceWorkOnTodays" class="float-card__body">
               Nice work on today's session — I'd add a light row of pulls next time to balance
               out the pressing volume.
             </p>
@@ -99,19 +98,19 @@
 
           <div class="float-card float-card--stat">
             <div class="float-card__head">
-              <span class="float-card__title">Recovery check-in</span>
+              <span data-i18n="index.recoveryCheckIn" class="float-card__title">Recovery check-in</span>
             </div>
             <ul class="meter-list">
               <li class="meter">
-                <span class="meter__label">Sleep</span>
+                <span data-i18n="index.sleep" class="meter__label">Sleep</span>
                 <span class="meter__bar"><i style="width: 82%"></i></span>
               </li>
               <li class="meter">
-                <span class="meter__label">HRV</span>
+                <span data-i18n="index.hrv" class="meter__label">HRV</span>
                 <span class="meter__bar"><i style="width: 64%"></i></span>
               </li>
               <li class="meter">
-                <span class="meter__label">Energy</span>
+                <span data-i18n="index.energy" class="meter__label">Energy</span>
                 <span class="meter__bar"><i style="width: 70%"></i></span>
               </li>
             </ul>
@@ -119,11 +118,11 @@
 
           <div class="float-card float-card--set">
             <div class="float-card__head">
-              <span class="float-card__title">Bench Press</span>
-              <span class="pill pill--set">Set 3/4</span>
+              <span data-i18n="index.benchPress" class="float-card__title">Bench Press</span>
+              <span data-i18n="index.set34" class="pill pill--set">Set 3/4</span>
             </div>
-            <p class="float-card__metric">80<span>kg</span>×&nbsp;8<span>reps</span></p>
-            <span class="float-card__meta">RPE 7 · rest 90s</span>
+            <p class="float-card__metric">80<span data-i18n="index.kg">kg</span>×&nbsp;8<span data-i18n="index.reps">reps</span></p>
+            <span data-i18n="index.rpe7Rest90s" class="float-card__meta">RPE 7 · rest 90s</span>
           </div>
         </div>
       </div>
@@ -134,16 +133,26 @@
          ================================================================== -->
     <section class="features" id="features">
       <div class="wrap">
-        <div>
-          <p class="section-eyebrow">What's actually in the app</p>
-          <h2 class="section-title">Three of six real pieces, working together</h2>
-          <p class="section-subtitle">
-            Every card below describes functionality that's genuinely in the current pilot
-            build, not a roadmap slide.
-          </p>
+        <div class="photo-band reveal">
+          <div class="photo-band__frame">
+            <div class="photo-band__media">
+              <img src="/assets/media/training.jpg" alt="" width="1490" height="1090" loading="lazy" />
+            </div>
+            <span class="photo-band__inset">
+              <img src="/assets/media/detail-chalk.jpg" alt="" width="870" height="680" loading="lazy" />
+            </span>
+          </div>
+          <div>
+            <p data-i18n="index.whatsActuallyInThe" class="section-eyebrow">What's actually in the app</p>
+            <h2 data-i18n="index.threeOfSixReal" class="section-title">Three of six real pieces, working together</h2>
+            <p data-i18n="index.everyCardBelowDescribes" class="section-subtitle">
+              Every card below describes functionality that's genuinely in the current pilot
+              build, not a roadmap slide.
+            </p>
+          </div>
         </div>
 
-        <div class="feature-grid">
+        <div class="feature-grid reveal--stagger">
           <article class="feature-card" data-accent="mint">
             <div class="feature-card__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
@@ -154,8 +163,8 @@
                 <rect x="14.3" y="10.4" width="2.2" height="3.2" rx="0.6"></rect>
               </svg>
             </div>
-            <h3 class="feature-card__title">Structured training, built to progress</h3>
-            <p class="feature-card__body">
+            <h3 data-i18n="index.structuredTrainingBuiltTo" class="feature-card__title">Structured training, built to progress</h3>
+            <p data-i18n="index.followRealTrainingPrograms" class="feature-card__body">
               Follow real training programs backed by a full exercise library — step-by-step
               instructions, muscle-group and equipment filters, and smart alternatives. Every set
               you log (weight, reps, RPE) feeds your workout history and personal records.
@@ -169,12 +178,12 @@
                 <path d="M5 13.5a2 2 0 012-2h10a2 2 0 012 2v3a2 2 0 01-2 2H9.2L6 21v-2.5H7a2 2 0 01-2-2v-3z"></path>
               </svg>
             </div>
-            <h3 class="feature-card__title">An AI coach that knows your data</h3>
-            <p class="feature-card__body">
-              Chat with 23Prime AI from Train, Fuel, or Recover — grounded in your real workouts,
+            <h3 data-i18n="index.anAiCoachThat" class="feature-card__title">An AI coach that knows your data</h3>
+            <p data-i18n="index.chatWithFynroxAi" class="feature-card__body">
+              Chat with Fynrox AI from Train, Fuel, or Recover — grounded in your real workouts,
               nutrition, and progress, not a generic chatbot.
             </p>
-            <span class="feature-card__note">
+            <span data-i18n="index.generalFitnessAndWellness" class="feature-card__note">
               General fitness and wellness guidance only — never a substitute for professional
               medical advice.
             </span>
@@ -189,17 +198,17 @@
                 <path d="M11.7 19c.5-3 2.3-4.5 4.5-4.5s4 1.5 4.5 4.5"></path>
               </svg>
             </div>
-            <h3 class="feature-card__title">A real coach, when you want one</h3>
-            <p class="feature-card__body">
-              Browse verified fitness, nutrition, yoga, and sports coaches, book a session, and
-              message them directly once you're paired — a human layer on top of the AI, not
-              instead of it.
+            <h3 data-i18n="index.aRealCoachWhen" class="feature-card__title">A real coach, when you want one</h3>
+            <p data-i18n-html="index.askForGuidanceAnd" class="feature-card__body">
+              Ask for guidance and Fynrox matches you with one verified fitness, nutrition,
+              yoga, or sports professional — a human layer on top of the AI, not instead of
+              it. <a href="/professional-guidance.html">How guidance works</a>.
             </p>
           </article>
         </div>
 
         <p style="margin-top: var(--space-6)">
-          <a class="btn btn--ghost" href="features.html">See all six features →</a>
+          <a data-i18n="index.seeAllSixFeatures" class="btn btn--ghost" href="/features.html">See all six features →</a>
         </p>
       </div>
     </section>
@@ -209,34 +218,41 @@
          ================================================================== -->
     <section class="content-section content-section--raised">
       <div class="wrap">
-        <div class="content-section__head">
-          <p class="section-eyebrow">Partner with 23PrimeFit</p>
-          <h2 class="section-title">Built for gyms and coaches too, not just solo users</h2>
-          <p class="section-subtitle">
-            Two partner programs run alongside the consumer app — a gym partner program and a
-            creator/influencer partner program, both commission-based and application-based.
-          </p>
+        <div class="photo-band photo-band--flip reveal">
+          <div class="photo-band__frame">
+            <div class="photo-band__media">
+              <img src="/assets/media/coach-group.jpg" alt="" width="1024" height="1536" loading="lazy" />
+            </div>
+          </div>
+          <div class="content-section__head">
+            <p data-i18n="index.partnerWithFynrox" class="section-eyebrow">Partner with Fynrox</p>
+            <h2 data-i18n="index.builtForGymsAnd" class="section-title">Built for gyms and coaches too, not just solo users</h2>
+            <p data-i18n="index.twoPartnerProgramsRun" class="section-subtitle">
+              Two partner programs run alongside the consumer app — a gym partner program and a
+              creator/influencer partner program, both commission-based and application-based.
+            </p>
+          </div>
         </div>
 
-        <div class="step-grid">
+        <div class="step-grid reveal--stagger">
           <article class="step-card">
-            <h3 class="step-card__title">For Gyms</h3>
-            <p class="step-card__body">
+            <h3 data-i18n="index.forGyms" class="step-card__title">For Gyms</h3>
+            <p data-i18n="index.applyToBecomeA" class="step-card__body">
               Apply to become a partner gym, get a real invite code for your members, and track
               their onboarding activity from a dedicated gym portal.
             </p>
             <p style="margin-top: var(--space-4)">
-              <a class="btn btn--ghost btn--sm" href="gyms.html">Learn more →</a>
+              <a data-i18n="index.learnMore" class="btn btn--ghost btn--sm" href="/gyms.html">Learn more →</a>
             </p>
           </article>
           <article class="step-card">
-            <h3 class="step-card__title">For Creators</h3>
-            <p class="step-card__body">
+            <h3 data-i18n="index.forCreators" class="step-card__title">For Creators</h3>
+            <p data-i18n="index.applyToBecomeACreator" class="step-card__body">
               Apply to become a creator partner, get a real referral/discount code for your
               audience, and see your referral activity from a dedicated creator portal.
             </p>
             <p style="margin-top: var(--space-4)">
-              <a class="btn btn--ghost btn--sm" href="creators.html">Learn more →</a>
+              <a data-i18n="index.learnMore" class="btn btn--ghost btn--sm" href="/creators.html">Learn more →</a>
             </p>
           </article>
         </div>
@@ -246,18 +262,18 @@
     <!-- ==================================================================
          DOWNLOAD (condensed — full detail lives on download.html)
          ================================================================== -->
-    <section class="download" id="download">
+    <section class="download reveal" id="download">
       <div class="wrap">
         <div>
-          <p class="section-eyebrow">Get the app</p>
-          <h2 class="section-title">23PrimeFit is in pilot right now</h2>
-          <p class="section-subtitle">
+          <p data-i18n="index.getTheApp" class="section-eyebrow">Get the app</p>
+          <h2 data-i18n="index.fynroxIsInPilot" class="section-title">Fynrox is in pilot right now</h2>
+          <p data-i18n="index.itIsntOnAn" class="section-subtitle">
             It isn't on an app store yet, so the download page walks through exactly how each
             platform gets it.
           </p>
         </div>
         <p style="margin-top: var(--space-6)">
-          <a class="btn btn--primary btn--lg" href="download.html">Go to Download</a>
+          <a data-i18n="index.goToDownload" class="btn btn--primary btn--lg" href="/download.html">Go to Download</a>
         </p>
       </div>
     </section>
@@ -265,10 +281,20 @@
     <!-- ==================================================================
          CTA STRIP
          ================================================================== -->
-    <section class="cta-strip">
+    <section class="cta-strip band-dark">
       <div class="wrap cta-strip__inner">
-        <h2 class="cta-strip__title">Training, nutrition, and recovery — ready when the pilot opens.</h2>
-        <a class="btn btn--primary btn--lg" href="download.html">Jump to download</a>
+        <div class="coach-stack reveal" aria-hidden="true">
+          <div class="coach-stack__main">
+            <img src="/assets/media/coach-group.jpg" alt="" width="1024" height="1536" loading="lazy" />
+          </div>
+          <div class="coach-stack__portrait">
+            <img src="/assets/media/coach-single.jpg" alt="" width="1122" height="1402" loading="lazy" />
+          </div>
+        </div>
+        <div class="cta-strip__text">
+          <h2 data-i18n="index.trainingNutritionAndRecoveryReady" class="cta-strip__title">Training, nutrition, and recovery — ready when the pilot opens.</h2>
+          <a data-i18n="index.jumpToDownload" class="btn btn--primary btn--lg" href="/download.html">Jump to download</a>
+        </div>
       </div>
     </section>
   </main>
@@ -277,43 +303,60 @@
     <div class="wrap footer__inner">
       <div class="footer__brand">
         <span class="brand">
-          <span class="brand__mark" aria-hidden="true">23</span>
-          <span class="brand__word">PrimeFit</span>
+          <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+          <span class="brand__word">Fynrox</span>
         </span>
-        <p class="footer__tagline">
+        <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
           Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
           publicly available.
         </p>
       </div>
-      <nav class="footer__nav" aria-label="Footer">
+      <nav class="footer__nav" aria-label="Footer" data-i18n-attr="aria-label:shell.footer.ariaLabel">
         <div>
-          <p class="footer__col-title">Product</p>
-          <a class="footer__col-link" href="features.html">Features</a>
-          <a class="footer__col-link" href="pricing.html">Pricing</a>
-          <a class="footer__col-link" href="download.html">Download</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.product">Product</p>
+          <a class="footer__col-link" href="/features.html" data-i18n="shell.footer.link.features">Features</a>
+          <a class="footer__col-link" href="/how-it-works.html" data-i18n="shell.footer.link.howItWorks">How it works</a>
+          <a class="footer__col-link" href="/programs.html" data-i18n="shell.footer.link.programs">Programs</a>
+          <a class="footer__col-link" href="/pricing.html" data-i18n="shell.footer.link.pricing">Pricing</a>
+          <a class="footer__col-link" href="/download.html" data-i18n="shell.footer.link.download">Download</a>
         </div>
         <div>
-          <p class="footer__col-title">Partners</p>
-          <a class="footer__col-link" href="gyms.html">For Gyms</a>
-          <a class="footer__col-link" href="creators.html">For Creators</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.partners">Partners</p>
+          <a class="footer__col-link" href="/gyms.html" data-i18n="shell.footer.link.forGyms">For Gyms</a>
+          <a class="footer__col-link" href="/creators.html" data-i18n="shell.footer.link.forCreators">For Creators</a>
+          <a class="footer__col-link" href="/professionals.html" data-i18n="shell.footer.link.forProfessionals">For Professionals</a>
+          <a class="footer__col-link" href="/professional-guidance.html" data-i18n="shell.footer.link.professionalGuidance">Professional Guidance</a>
         </div>
         <div>
-          <p class="footer__col-title">Company</p>
-          <a class="footer__col-link" href="about.html">About</a>
-          <a class="footer__col-link" href="support.html">Support</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.company">Company</p>
+          <a class="footer__col-link" href="/about.html" data-i18n="shell.footer.link.about">About</a>
+          <a class="footer__col-link" href="/learn.html" data-i18n="shell.footer.link.learn">Learn</a>
+          <a class="footer__col-link" href="/faq.html" data-i18n="shell.footer.link.faq">FAQ</a>
+          <a class="footer__col-link" href="/support.html" data-i18n="shell.footer.link.support">Support</a>
+          <a class="footer__col-link" href="/early-access.html" data-i18n="shell.footer.link.earlyAccess">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal</p>
-          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
-          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.legalSafety">Legal & safety</p>
+          <a class="footer__col-link" href="/safety.html" data-i18n="shell.footer.link.safetyPrivacy">Safety &amp; Privacy</a>
+          <a class="footer__col-link" href="/privacy.html" data-i18n="shell.footer.link.privacyPolicy">Privacy Policy</a>
+          <a class="footer__col-link" href="/terms.html" data-i18n="shell.footer.link.termsOfService">Terms of Service</a>
+        </div>
+        <div>
+          <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
+          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
         </div>
       </nav>
     </div>
-    <div class="wrap">
-      <p class="footer__copy">© <span id="year">2026</span> 23PrimeFit. Not a substitute for professional medical advice.</p>
+    <div class="wrap footer__bottom">
+      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> Fynrox. Not a substitute for professional medical advice.</p>
+      <div class="footer__lang-wrap" data-i18n-picker hidden></div>
     </div>
   </footer>
 
-  <script src="assets/js/main.js"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/i18n.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script src="/assets/js/cookie-consent.js"></script>
 </body>
 </html>

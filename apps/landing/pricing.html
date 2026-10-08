@@ -2,46 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Pricing — 23PrimeFit</title>
+  <title data-i18n="pricing.pageTitle">Pricing — Fynrox</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="23PrimeFit's real subscription tiers and prices: Basic (free), Pro, and Elite, billed monthly or annually via Razorpay." />
-  <meta name="theme-color" content="#0B0C10" />
-  <meta name="color-scheme" content="dark" />
+  <meta data-i18n-attr="content:pricing.metaDescription" name="description" content="Fynrox's real subscription tiers and prices: Basic (free), Pro, and Elite, billed monthly or annually via Razorpay." />
+  <meta name="theme-color" content="#F6F4EB" />
+  <meta name="color-scheme" content="light" />
 
-  <meta property="og:title" content="Pricing — 23PrimeFit" />
-  <meta property="og:description" content="Basic, Pro, and Elite plans — real prices, billed via Razorpay." />
+  <meta data-i18n-attr="content:pricing.metaOgTitle" property="og:title" content="Pricing — Fynrox" />
+  <meta data-i18n-attr="content:pricing.metaOgDescription" property="og:description" content="Basic, Pro, and Elite plans — real prices, billed via Razorpay." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="/assets/css/fonts.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script>document.documentElement.className += " has-js";</script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header" id="siteHeader">
     <div class="wrap site-header__inner">
-      <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">23</span>
-        <span class="brand__word">PrimeFit</span>
+      <a class="brand" href="/index.html">
+        <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+        <span class="brand__word">Fynrox</span>
       </a>
-      <nav class="nav" aria-label="Primary">
-        <a class="nav__link" href="index.html">Home</a>
-        <a class="nav__link" href="features.html">Features</a>
-        <a class="nav__link" href="pricing.html" aria-current="page">Pricing</a>
-        <a class="nav__link" href="gyms.html">For Gyms</a>
-        <a class="nav__link" href="creators.html">For Creators</a>
-        <a class="nav__link" href="download.html">Download</a>
-        <a class="nav__link" href="/app/">Admin Login</a>
-        <a class="nav__link" href="https://calm-ground-04d678410.3.azurestaticapps.net/">Coach Login</a>
-        <a class="btn btn--primary btn--sm" href="download.html">Get the app</a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span data-i18n="shell.nav.menu">Menu</span>
+      </button>
+      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">
+        <a class="nav__link" href="/index.html" data-i18n="shell.nav.home">Home</a>
+        <a class="nav__link" href="/how-it-works.html" data-i18n="shell.nav.howItWorks">How it works</a>
+        <a class="nav__link" href="/programs.html" data-i18n="shell.nav.programs">Programs</a>
+        <a class="nav__link" href="/professional-guidance.html" data-i18n="shell.nav.guidance">Guidance</a>
+        <a class="nav__link" href="/pricing.html" aria-current="page" data-i18n="shell.nav.pricing">Pricing</a>
+        <a class="nav__link" href="/gyms.html" data-i18n="shell.nav.forGyms">For Gyms</a>
+        <a class="nav__link" href="/creators.html" data-i18n="shell.nav.forCreators">For Creators</a>
+        <a class="nav__link" href="/professionals.html" data-i18n="shell.nav.forProfessionals">For Professionals</a>
+        <a class="nav__link" href="/learn.html" data-i18n="shell.nav.learn">Learn</a>
+        <a class="btn btn--primary btn--sm" href="/early-access.html" data-i18n="shell.nav.cta">Get early access</a>
       </nav>
     </div>
   </header>
@@ -50,12 +51,12 @@
     <section class="page-hero">
       <div class="wrap page-hero__inner">
         <p class="eyebrow">
-          <span class="eyebrow__mark">PRICING</span>
+          <span data-i18n="pricing.pricing" class="eyebrow__mark">PRICING</span>
           <span aria-hidden="true">·</span>
-          <span>Simple, real numbers</span>
+          <span data-i18n="pricing.simpleRealNumbers">Simple, real numbers</span>
         </p>
-        <h1 class="page-hero__title">Three plans. One app.</h1>
-        <p class="page-hero__subtitle">
+        <h1 data-i18n="pricing.threePlansOneApp" class="page-hero__title">Three plans. One app.</h1>
+        <p data-i18n="pricing.theseAreTheReal" class="page-hero__subtitle">
           These are the real prices configured in the app today, billed monthly or annually
           through Razorpay. Prices are shown in INR (₹), the app's billing currency.
         </p>
@@ -67,52 +68,52 @@
         <div class="pricing-grid">
           <article class="pricing-card">
             <div>
-              <p class="pricing-card__name">Basic</p>
-              <p class="pricing-card__price">Free</p>
+              <p data-i18n="pricing.basic" class="pricing-card__name">Basic</p>
+              <p data-i18n="pricing.free" class="pricing-card__price">Free</p>
             </div>
             <ul class="pricing-card__list">
-              <li>Full training, nutrition, and recovery logging</li>
-              <li>AI coach chat from Train, Fuel, and Recover</li>
-              <li>Progress tracking (PRs, weight trend, streaks, timeline)</li>
-              <li>Book sessions with a human coach through the marketplace</li>
+              <li data-i18n="pricing.fullTrainingNutritionAnd">Full training, nutrition, and recovery logging</li>
+              <li data-i18n="pricing.aiCoachChatFrom">AI coach chat from Train, Fuel, and Recover</li>
+              <li data-i18n="pricing.progressTrackingPrsWeight">Progress tracking (PRs, weight trend, timeline)</li>
+              <li data-i18n="pricing.requestGuidanceFromA">Request guidance from a verified human professional</li>
             </ul>
-            <a class="btn btn--ghost btn--block" href="download.html">Get started free</a>
+            <a data-i18n="pricing.getStartedFree" class="btn btn--ghost btn--block" href="/download.html">Get started free</a>
           </article>
 
           <article class="pricing-card pricing-card--highlight">
-            <span class="pricing-card__badge">Most popular</span>
+            <span data-i18n="pricing.mostPopular" class="pricing-card__badge">Most popular</span>
             <div>
-              <p class="pricing-card__name">Pro</p>
-              <p class="pricing-card__price">₹299<span>/month</span></p>
-              <p class="pricing-card__annual">or ₹2,990/year</p>
+              <p data-i18n="pricing.pro" class="pricing-card__name">Pro</p>
+              <p class="pricing-card__price">₹299<span data-i18n="pricing.month">/month</span></p>
+              <p data-i18n="pricing.or2990Year" class="pricing-card__annual">or ₹2,990/year</p>
             </div>
             <ul class="pricing-card__list">
-              <li>Everything in Basic</li>
-              <li>Same core feature set, at this price point</li>
+              <li data-i18n="pricing.everythingInBasic">Everything in Basic</li>
+              <li data-i18n="pricing.sameCoreFeatureSet">Same core feature set, at this price point</li>
             </ul>
-            <a class="btn btn--primary btn--block" href="download.html">Get the app</a>
+            <a data-i18n="pricing.getTheApp" class="btn btn--primary btn--block" href="/download.html">Get the app</a>
           </article>
 
           <article class="pricing-card">
             <div>
-              <p class="pricing-card__name">Elite</p>
-              <p class="pricing-card__price">₹2,999<span>/month</span></p>
-              <p class="pricing-card__annual">or ₹29,990/year</p>
+              <p data-i18n="pricing.elite" class="pricing-card__name">Elite</p>
+              <p class="pricing-card__price">₹2,999<span data-i18n="pricing.month">/month</span></p>
+              <p data-i18n="pricing.or29990Year" class="pricing-card__annual">or ₹29,990/year</p>
             </div>
             <ul class="pricing-card__list">
-              <li>Everything in Pro</li>
-              <li>Same core feature set, at this price point</li>
+              <li data-i18n="pricing.everythingInPro">Everything in Pro</li>
+              <li data-i18n="pricing.sameCoreFeatureSet">Same core feature set, at this price point</li>
             </ul>
-            <a class="btn btn--ghost btn--block" href="download.html">Get the app</a>
+            <a data-i18n="pricing.getTheApp" class="btn btn--ghost btn--block" href="/download.html">Get the app</a>
           </article>
         </div>
 
-        <div class="note-box">
+        <div data-i18n-html="pricing.basicProAndElite" class="note-box">
           <strong>Honest note on what changes between tiers:</strong> Basic, Pro, and Elite are
           real, separately priced plans you can subscribe to inside the app today. As of this
           writing, the app does not yet gate any specific feature behind a paid tier — every plan
           currently unlocks the same core functionality (training, nutrition, recovery, AI coach,
-          coach marketplace, progress tracking) described on the <a href="features.html" style="color: var(--accent); text-decoration: underline dotted;">Features page</a>.
+          professional guidance, progress tracking) described on the <a href="/features.html" style="color: var(--accent); text-decoration: underline dotted;">Features page</a>.
           We're not going to invent a feature comparison that doesn't exist yet — if you're
           deciding which plan to pick, price is currently the only real difference. Cancel
           any time — cancellation takes effect at the end of your current billing period, not
@@ -123,8 +124,8 @@
 
     <section class="cta-strip">
       <div class="wrap cta-strip__inner">
-        <h2 class="cta-strip__title">Start free, upgrade whenever you're ready.</h2>
-        <a class="btn btn--primary btn--lg" href="download.html">Get the app</a>
+        <h2 data-i18n="pricing.startFreeUpgradeWhenever" class="cta-strip__title">Start free, upgrade whenever you're ready.</h2>
+        <a data-i18n="pricing.getTheApp" class="btn btn--primary btn--lg" href="/download.html">Get the app</a>
       </div>
     </section>
   </main>
@@ -133,43 +134,60 @@
     <div class="wrap footer__inner">
       <div class="footer__brand">
         <span class="brand">
-          <span class="brand__mark" aria-hidden="true">23</span>
-          <span class="brand__word">PrimeFit</span>
+          <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+          <span class="brand__word">Fynrox</span>
         </span>
-        <p class="footer__tagline">
+        <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
           Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
           publicly available.
         </p>
       </div>
-      <nav class="footer__nav" aria-label="Footer">
+      <nav class="footer__nav" aria-label="Footer" data-i18n-attr="aria-label:shell.footer.ariaLabel">
         <div>
-          <p class="footer__col-title">Product</p>
-          <a class="footer__col-link" href="features.html">Features</a>
-          <a class="footer__col-link" href="pricing.html">Pricing</a>
-          <a class="footer__col-link" href="download.html">Download</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.product">Product</p>
+          <a class="footer__col-link" href="/features.html" data-i18n="shell.footer.link.features">Features</a>
+          <a class="footer__col-link" href="/how-it-works.html" data-i18n="shell.footer.link.howItWorks">How it works</a>
+          <a class="footer__col-link" href="/programs.html" data-i18n="shell.footer.link.programs">Programs</a>
+          <a class="footer__col-link" href="/pricing.html" data-i18n="shell.footer.link.pricing">Pricing</a>
+          <a class="footer__col-link" href="/download.html" data-i18n="shell.footer.link.download">Download</a>
         </div>
         <div>
-          <p class="footer__col-title">Partners</p>
-          <a class="footer__col-link" href="gyms.html">For Gyms</a>
-          <a class="footer__col-link" href="creators.html">For Creators</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.partners">Partners</p>
+          <a class="footer__col-link" href="/gyms.html" data-i18n="shell.footer.link.forGyms">For Gyms</a>
+          <a class="footer__col-link" href="/creators.html" data-i18n="shell.footer.link.forCreators">For Creators</a>
+          <a class="footer__col-link" href="/professionals.html" data-i18n="shell.footer.link.forProfessionals">For Professionals</a>
+          <a class="footer__col-link" href="/professional-guidance.html" data-i18n="shell.footer.link.professionalGuidance">Professional Guidance</a>
         </div>
         <div>
-          <p class="footer__col-title">Company</p>
-          <a class="footer__col-link" href="about.html">About</a>
-          <a class="footer__col-link" href="support.html">Support</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.company">Company</p>
+          <a class="footer__col-link" href="/about.html" data-i18n="shell.footer.link.about">About</a>
+          <a class="footer__col-link" href="/learn.html" data-i18n="shell.footer.link.learn">Learn</a>
+          <a class="footer__col-link" href="/faq.html" data-i18n="shell.footer.link.faq">FAQ</a>
+          <a class="footer__col-link" href="/support.html" data-i18n="shell.footer.link.support">Support</a>
+          <a class="footer__col-link" href="/early-access.html" data-i18n="shell.footer.link.earlyAccess">Early access</a>
         </div>
         <div>
-          <p class="footer__col-title">Legal</p>
-          <a class="footer__col-link" href="privacy.html">Privacy Policy</a>
-          <a class="footer__col-link" href="terms.html">Terms of Service</a>
+          <p class="footer__col-title" data-i18n="shell.footer.col.legalSafety">Legal & safety</p>
+          <a class="footer__col-link" href="/safety.html" data-i18n="shell.footer.link.safetyPrivacy">Safety &amp; Privacy</a>
+          <a class="footer__col-link" href="/privacy.html" data-i18n="shell.footer.link.privacyPolicy">Privacy Policy</a>
+          <a class="footer__col-link" href="/terms.html" data-i18n="shell.footer.link.termsOfService">Terms of Service</a>
+        </div>
+        <div>
+          <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
+          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
+          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
         </div>
       </nav>
     </div>
-    <div class="wrap">
-      <p class="footer__copy">© <span id="year">2026</span> 23PrimeFit. Not a substitute for professional medical advice.</p>
+    <div class="wrap footer__bottom">
+      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> Fynrox. Not a substitute for professional medical advice.</p>
+      <div class="footer__lang-wrap" data-i18n-picker hidden></div>
     </div>
   </footer>
 
-  <script src="assets/js/main.js"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/i18n.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script src="/assets/js/cookie-consent.js"></script>
 </body>
 </html>

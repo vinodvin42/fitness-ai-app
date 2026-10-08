@@ -92,7 +92,7 @@ export interface ForgotPasswordResponse {
   emailSent: boolean;
 }
 
-/** `token` is the raw value from a `primefit://reset-password?token=...` deep link (see apps/user-mobile's App.tsx deep-link capture). */
+/** `token` is the raw value from a `fynrox://reset-password?token=...` deep link (see apps/user-mobile's App.tsx deep-link capture). */
 export interface ResetPasswordInput {
   token: string;
   newPassword: string;
@@ -1185,7 +1185,32 @@ export type SubscriptionTier = "basic" | "pro" | "elite";
 // `expired`/`revoked` added 18 Sep 2026 (gap §57) — see
 // apps/api/prisma/schema.prisma's SubscriptionStatus enum doc comment for
 // the full real cancel-at-period-end policy and force-revoke design.
-export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "expired" | "revoked";
+/**
+ * R1 (§10 entitlement): `pending` and `suspended` join the set. EXPIRING
+ * is deliberately NOT here — it is derived on read (see
+ * `SubscriptionDisplayState`) because this codebase has no scheduled
+ * worker to flip a stored flag on the day.
+ */
+export type SubscriptionStatus =
+  | "pending"
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "suspended"
+  | "canceled"
+  | "expired"
+  | "revoked";
+
+/** What a client renders — the stored status, plus the derived `expiring`. */
+export type SubscriptionDisplayState =
+  | "pending"
+  | "active"
+  | "expiring"
+  | "expired"
+  | "suspended"
+  | "revoked"
+  | "canceled"
+  | "past_due";
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
 export type BillingCycle = "monthly" | "annual";
 
@@ -1264,8 +1289,6 @@ export interface CreateRazorpayOrderInput {
   couponCode?: string;
   /** PAY-01 (5 Sep 2026) — required when purpose is "booking": the specific session time being paid for. Ignored otherwise. */
   scheduledAt?: string;
-  /** Booking only: an accepted coach quote whose quoted price is charged instead of the offering's list price (server-validated; never a client amount). */
-  quoteRequestId?: string;
 }
 
 /** What POST /payments/razorpay/orders returns — everything RazorpayCheckoutModal.tsx needs to open a real Razorpay Checkout. */
@@ -1613,7 +1636,16 @@ export type ProfessionalStatus = "active" | "suspended";
  * `CredentialStatus` — see apps/api's schema.prisma comment on this same
  * enum for the full, documented interaction between all three.
  */
-export type ProfessionalLifecycleStatus = "application" | "verification" | "approved" | "available" | "suspended";
+/** R1 (§10 professional account): NEEDS_ACTION / REJECTED / RESTRICTED join. */
+export type ProfessionalLifecycleStatus =
+  | "application"
+  | "verification"
+  | "approved"
+  | "available"
+  | "needs_action"
+  | "rejected"
+  | "restricted"
+  | "suspended";
 /**
  * `Relationship.status` (docs/coach/05-data-model.md §3) — added 21 Aug 2026
  * for apps/admin-web's Module 03/04, the Relationship model itself predates
@@ -1625,7 +1657,20 @@ export type ProfessionalLifecycleStatus = "application" | "verification" | "appr
  * coach review (apps/coach-mobile's Pending Requests screen, see
  * `PendingRelationshipItem` below) — `requested` no longer auto-advances.
  */
-export type RelationshipStatus = "requested" | "accepted" | "awaiting_payment" | "activating" | "active" | "ended";
+/** R1 (§10 professional relationship) — the full transition set. */
+export type RelationshipStatus =
+  | "requested"
+  | "offered"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "awaiting_payment"
+  | "activating"
+  | "activation_failed"
+  | "active"
+  | "changing"
+  | "completed"
+  | "ended";
 
 /** Public shape — never carries passwordHash or the raw kycDocumentData (see professionalAuth.service.ts's toPublicProfessional). */
 export interface Professional {
@@ -1961,7 +2006,7 @@ export interface AvailableProfessionalsResponse {
 /**
  * One row of GET /professionals/me/offers — the coach-facing counterpart to
  * `PendingRelationshipItem` above, backing apps/coach-mobile's "Offers from
- * PrimeFit" section. Deliberately a distinct type/shape from
+ * Fynrox" section. Deliberately a distinct type/shape from
  * PendingRelationshipItem: an offer is a separate row that only creates a
  * Relationship once accepted, not the same entity under a different name.
  */
@@ -3898,7 +3943,21 @@ export interface Paginated<T> {
 // comment for the real-vs-honest-boundary reasoning.
 // ======================================================================
 
-export type PayoutStatus = "pending" | "paid";
+/**
+ * R1 (§10 professional earning): ELIGIBLE -> APPROVED -> PAYOUT_PENDING ->
+ * PAID / PAYOUT_FAILED. `pending` IS the spec's PAYOUT_PENDING, kept
+ * under its original name because every existing row carries it.
+ */
+export type PayoutStatus = "eligible" | "approved" | "pending" | "paid" | "payout_failed";
+
+/** R1 (§10 creator commission). */
+export type CommissionStatus =
+  | "pending_calculation"
+  | "eligible"
+  | "approved"
+  | "paid"
+  | "disputed"
+  | "reversed";
 
 // ---- Coach Settlements (admin 10.06) + coach Earnings ----
 export interface CoachSettlementRow {
@@ -3923,8 +3982,24 @@ export interface AdminSettlementsResponse {
 
 export interface CoachEarningsResponse {
   commissionPct: number;
-  currentMonth: { grossCents: number; commissionCents: number; netCents: number };
+  currentMonth: {
+    grossCents: number;
+    commissionCents: number;
+    netCents: number;
+    /**
+     * True when this figure comes from per-session bookings, which only
+     * exist under the marketplace model decision #4 turns off. Under
+     * controlled assignment it reads zero, and a client must say so
+     * rather than let a professional conclude they earned nothing.
+     */
+    derivedFromBookings: boolean;
+    hasBookingData: boolean;
+  };
   lifetimePaidCents: number;
+  /** Approved or payout-pending, i.e. owed but not yet received. */
+  awaitingPayoutCents: number;
+  /** Non-null when a transfer bounced — usually the payee's own details. */
+  payoutFailure: { count: number; amountCents: number; reason: string | null } | null;
   settlements: Array<{
     id: string;
     periodStart: string;
@@ -3932,12 +4007,23 @@ export interface CoachEarningsResponse {
     commissionPct: number;
     netCents: number;
     status: PayoutStatus;
+    approvedAt: string | null;
     paidAt: string | null;
+    payoutFailureReason: string | null;
   }>;
 }
 
 // ---- Influencers (admin 07) + Payouts (admin 10.07) ----
-export type InfluencerStatus = "active" | "inactive";
+/** R1 (§10 partner lifecycle) — the application states creators lacked. */
+export type InfluencerStatus =
+  | "draft"
+  | "pending_review"
+  | "more_info"
+  | "rejected"
+  | "active"
+  | "inactive"
+  | "suspended"
+  | "ended";
 
 export interface AdminInfluencerListItem {
   id: string;
@@ -4249,7 +4335,14 @@ export interface MealPlan {
 // ratePerMemberCents "not configured" placeholder semantics, and why
 // getMemberActivationSummary is honest-zero rather than fabricated).
 
-export type GymStatus = "application" | "approved" | "suspended";
+/** R1 (§10 partner lifecycle) — MORE_INFO / REJECTED / ENDED join. */
+export type GymStatus =
+  | "application"
+  | "more_info"
+  | "approved"
+  | "rejected"
+  | "suspended"
+  | "ended";
 
 export interface AdminGymLocation {
   id: string;
@@ -4443,7 +4536,16 @@ export type AdminActionItemType =
   | "support_ticket_open"
   | "support_escalation"
   | "relationship_change_pending"
-  | "credential_verification_pending";
+  | "credential_verification_pending"
+  // Added to schema.prisma by the R1 gap work but never mirrored here, so
+  // admin-web's own type filter could not offer them — found while adding
+  // the third. A union that drifts from the Prisma enum silently narrows
+  // every dropdown built from it.
+  | "professional_assignment_pending"
+  | "gym_help_request"
+  // Spec §8 — a gym, creator or professional application from the public
+  // website. Early Access signups deliberately do not queue.
+  | "partner_application_received";
 
 export type AdminActionItemSeverity = "low" | "medium" | "high";
 export type AdminActionItemStatus = "open" | "resolved";
@@ -4968,7 +5070,7 @@ export type AiCoachErrorCode =
   | "ai_coach_disabled";
 
 // ---- Wave B (Oct 2026): Train analytics/routines/settings/endurance/form ---
-// analysis, Fuel gaps, coach session summaries and quotes. Dates are ISO strings.
+// analysis, Fuel gaps, coach session summaries. Dates are ISO strings.
 
 /** GET /training/analytics?range= */
 export type AnalyticsRange = "1w" | "4w" | "8w" | "12w" | "26w" | "52w";
@@ -5262,70 +5364,6 @@ export interface PublishBookingSummaryInput {
   summaryText: string;
 }
 
-/** Quote flow: /coaching/quote-requests*, /professionals/me/quote-requests* */
-export type QuoteRequestStatus = "pending" | "quoted" | "declined" | "accepted" | "expired" | "consumed" | "cancelled";
-export type QuoteServiceType = "fitness" | "nutrition" | "combined";
-export interface QuoteRequest {
-  id: string;
-  professionalId: string;
-  professionalFullName: string | null;
-  clientFullName: string | null;
-  serviceType: QuoteServiceType;
-  message: string;
-  /** Preferred session time the user picked when requesting (ISO), or null. */
-  preferredAt: string | null;
-  status: QuoteRequestStatus;
-  quotedPriceCents: number | null;
-  currency: string | null;
-  quoteNote: string | null;
-  quoteExpiresAt: string | null;
-  respondedAt: string | null;
-  createdAt: string;
-}
-export interface QuoteRequestListResponse {
-  items: QuoteRequest[];
-}
-export interface CreateQuoteRequestInput {
-  professionalId: string;
-  serviceType: QuoteServiceType;
-  message: string;
-  preferredAt?: string;
-}
-/** POST /professionals/me/quote-requests/:id/quote */
-export interface SendQuoteInput {
-  priceCents: number;
-  currency?: string;
-  note?: string;
-  expiresAt: string;
-}
-export interface DeclineQuoteInput {
-  reason?: string;
-}
-/**
- * POST /coaching/quote-requests/:id/accept. Pass handoff.quoteRequestId to
- * POST /payments/razorpay/orders (purpose "booking") and the order charges
- * the quoted price (server-side; within 48h of acceptance).
- */
-export interface AcceptQuoteResponse {
-  quoteRequest: QuoteRequest;
-  handoff: {
-    quoteRequestId: string;
-    professionalId: string;
-    serviceType: QuoteServiceType;
-    quotedPriceCents: number | null;
-    currency: string | null;
-    bookingPurpose: "booking";
-    offerings: Array<{
-      id: string;
-      label: string;
-      serviceType: "fitness" | "nutrition" | null;
-      durationMinutes: number;
-      priceCents: number;
-    }>;
-    quotedPriceApplied: boolean;
-  };
-}
-
 // Under-18 guardian review (onboarding/11) — matches apps/api's
 // guardianReviewSchema and GuardianReview model. `approved` is reserved;
 // nothing sets it yet.
@@ -5423,7 +5461,7 @@ export interface GymMe {
   equipmentUpdatedAt: string | null;
 }
 export type GymHelpTopic = "form_check" | "machine_help" | "trainer_available" | "other";
-export type GymHelpStatus = "open" | "seen" | "resolved";
+export type GymHelpStatus = "open" | "in_progress" | "resolved";
 export interface GymHelpRequestItem {
   id: string;
   topic: GymHelpTopic;
@@ -5465,4 +5503,44 @@ export interface GymTodayWorkout {
   exercises: GymWorkoutExercise[];
   swapSuggestion: GymSwapSuggestion | null;
   swapSuggestions: GymSwapSuggestion[];
+}
+
+// ---------------------------------------------------------------------
+// Public website applications (spec §8) — Early Access, partner
+// applications and contact messages submitted from apps/landing.
+// ---------------------------------------------------------------------
+
+export type PublicApplicationKind = "early_access" | "gym" | "creator" | "professional" | "contact";
+
+export type PublicApplicationStatus = "new" | "in_review" | "contacted" | "converted" | "rejected";
+
+export interface AdminPublicApplicationListItem {
+  id: string;
+  kind: PublicApplicationKind;
+  status: PublicApplicationStatus;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  organisation: string | null;
+  city: string | null;
+  detail: string | null;
+  message: string | null;
+  /** Attribution carried from a gym invite or creator referral landing. */
+  sourceCode: string | null;
+  sourceKind: string | null;
+  /** Contact consent is not carried: a row cannot exist without it. */
+  consentMarketing: boolean;
+  adminNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminPublicApplicationListResponse {
+  items: AdminPublicApplicationListItem[];
+  total: number;
+}
+
+export interface UpdatePublicApplicationInput {
+  status: PublicApplicationStatus;
+  adminNote?: string;
 }

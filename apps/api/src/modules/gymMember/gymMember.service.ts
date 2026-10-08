@@ -3,14 +3,13 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { computeOpenState, DAY_KEYS } from "../../lib/gymHours";
 import { exerciseAvailability, pickAlternative, type EquipmentLike } from "../../lib/gymEquipment";
 import { getNextWorkoutForActivePlan } from "../plans/plans.service";
+import { createHelpRequest as createGymHelpRequest } from "../gymPortal/gymPortal.service";
 import type { CreateHelpRequestInput } from "./gymMember.schema";
 
 /** Same derivation as the Profile screen's member id. */
 export function memberNumberFor(userId: string): string {
   return `PF-${userId.replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase()}`;
 }
-
-export const HELP_REQUEST_LIMIT = { windowMinutes: 10, max: 3 };
 
 async function linkedContext(userId: string) {
   const link = await prisma.userPartnerLink.findUnique({
@@ -102,63 +101,59 @@ export async function getMyGym(userId: string, now = new Date()) {
   };
 }
 
-type HelpRow = {
-  id: string;
-  topic: string;
-  exerciseName: string | null;
-  workoutName: string | null;
-  note: string | null;
-  status: string;
-  createdAt: Date;
-  respondedAt: Date | null;
+const TOPIC_LABEL: Record<string, string> = {
+  form_check: "Form check",
+  machine_help: "Machine help",
+  trainer_available: "Trainer available?",
+  other: "Other",
 };
-function toMemberHelpRequest(r: HelpRow) {
-  return {
-    id: r.id,
-    topic: r.topic,
-    exerciseName: r.exerciseName,
-    workoutName: r.workoutName,
-    note: r.note,
-    status: r.status,
-    createdAt: r.createdAt.toISOString(),
-    respondedAt: r.respondedAt ? r.respondedAt.toISOString() : null,
-  };
-}
+const TOPIC_CATEGORY = {
+  form_check: "trainer_support",
+  machine_help: "equipment",
+  trainer_available: "trainer_support",
+  other: "other",
+} as const;
 
+/**
+ * Member asks for help in the gym. Stored on the partner-portal help-request model
+ * (GymHelpRequest, which by design keeps NO link to the member - BR-GYM-003) via the
+ * gymPortal service, so it shows in the gym's own help queue and the admin action
+ * queue. Only the topic, exercise/workout name and note are carried; no member
+ * identity, health data, food logs, photos or AI chats.
+ */
 export async function createHelpRequest(userId: string, input: CreateHelpRequestInput) {
   const { gym, location } = await linkedContext(userId);
-  const since = new Date(Date.now() - HELP_REQUEST_LIMIT.windowMinutes * 60_000);
-  const recent = await prisma.gymHelpRequest.count({ where: { userId, createdAt: { gte: since } } });
-  if (recent >= HELP_REQUEST_LIMIT.max) {
-    throw new ApiHttpError(
-      429,
-      "too_many_requests",
-      "You have sent a few requests already. Please wait a few minutes before sending another.",
-    );
-  }
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { fullName: true } });
-  const firstName = (user?.fullName ?? "").trim().split(/\s+/)[0] || "Member";
-  // Only these fields are stored: no health data, food logs, photos or AI chats.
-  const row = await prisma.gymHelpRequest.create({
-    data: {
-      userId,
-      gymId: gym.id,
-      locationId: location?.id ?? null,
-      memberFirstName: firstName,
-      memberNumber: memberNumberFor(userId),
+  const parts = [`Member asked for help: ${TOPIC_LABEL[input.topic]}.`];
+  if (input.exerciseName) parts.push(`Exercise: ${input.exerciseName}.`);
+  if (input.workoutName) parts.push(`Workout: ${input.workoutName}.`);
+  if (input.note) parts.push(`Note: ${input.note}`);
+  const row = await createGymHelpRequest(gym.id, {
+    category: TOPIC_CATEGORY[input.topic],
+    subject: `Member help request: ${TOPIC_LABEL[input.topic]}`,
+    body: parts.join(" "),
+    locationId: location?.id ?? null,
+  });
+  return {
+    request: {
+      id: row.id,
       topic: input.topic,
       exerciseName: input.exerciseName ?? null,
       workoutName: input.workoutName ?? null,
       note: input.note ?? null,
+      status: row.status,
+      createdAt: row.createdAt.toISOString(),
+      respondedAt: null,
     },
-  });
-  return { request: toMemberHelpRequest(row) };
+  };
 }
 
+/**
+ * The shared help-request model deliberately stores no member link, so a member's own
+ * request history cannot be listed server-side; clients keep what they just sent.
+ */
 export async function listMyHelpRequests(userId: string) {
   await linkedContext(userId);
-  const rows = await prisma.gymHelpRequest.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 20 });
-  return { items: rows.map(toMemberHelpRequest) };
+  return { items: [] as never[] };
 }
 
 const PHASE_ORDER = { warmup: 0, main: 1, cooldown: 2 } as const;

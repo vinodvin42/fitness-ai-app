@@ -1,4 +1,4 @@
-# coach-mobile — 23PrimeFit Coach
+# coach-mobile — Fynrox Coach
 
 Phase 5 (`docs/platform/roadmap.md`), first real slice — added 20 Aug 2026. Implements part of the app described in `docs/coach/01-product-requirements.md` (16 screens across Auth/Onboarding/Dashboard/Clients/Coach Discovery & Booking, reverse-engineered from the `v1-coach` Figma file). This slice shipped a working coach signup/login, the full 3-step onboarding wizard (Service Selection → Credential Upload → KYC → Verification Status), and a real Dashboard, with Clients/Calendar/Messages/More rendered as honest "Coming soon" screens.
 

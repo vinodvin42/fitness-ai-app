@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminSafetyEscalationListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -29,6 +30,7 @@ async function fetchSafetyEscalations(reviewed: ReviewedFilter): Promise<AdminSa
  * nothing more.
  */
 export function SafetyEscalationsScreen() {
+  const { t } = useTranslation();
   const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("false");
   const queryClient = useQueryClient();
 
@@ -43,13 +45,13 @@ export function SafetyEscalationsScreen() {
   });
 
   return (
-    <AppShell title="Safety Escalations" subNav={SUPPORT_SUB_NAV}>
+    <AppShell title={t("safetyEscalations.safetyEscalations")} subNav={SUPPORT_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total" value={data.counts.total} />
-            <StatCard label="Unreviewed" value={data.counts.unreviewed} />
-            <StatCard label="Reviewed" value={data.counts.reviewed} />
+            <StatCard label={t("safetyEscalations.total")} value={data.counts.total} />
+            <StatCard label={t("safetyEscalations.unreviewed")} value={data.counts.unreviewed} />
+            <StatCard label={t("safetyEscalations.reviewed")} value={data.counts.reviewed} />
           </div>
         )}
 
@@ -63,26 +65,26 @@ export function SafetyEscalationsScreen() {
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("safetyEscalations.status")}
             <select
               value={reviewedFilter}
               onChange={(e) => setReviewedFilter(e.target.value as ReviewedFilter)}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="false">Unreviewed</option>
-              <option value="true">Reviewed</option>
-              <option value="">All</option>
+              <option value="false">{t("safetyEscalations.unreviewed")}</option>
+              <option value="true">{t("safetyEscalations.reviewed")}</option>
+              <option value="">{t("safetyEscalations.all")}</option>
             </select>
           </label>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("safetyEscalations.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load safety escalations.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("safetyEscalations.retry")}
             </button>
           </div>
         )}
@@ -110,20 +112,20 @@ export function SafetyEscalationsScreen() {
 
               <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs text-text-dim">Medical conditions</dt>
+                  <dt className="text-xs text-text-dim">{t("safetyEscalations.medicalConditions")}</dt>
                   <dd className="text-text-secondary">
                     {e.medicalConditions.length > 0 ? e.medicalConditions.join(", ") : "None reported"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-dim">Injuries</dt>
+                  <dt className="text-xs text-text-dim">{t("safetyEscalations.injuries")}</dt>
                   <dd className="text-text-secondary">{e.injuries.length > 0 ? e.injuries.join(", ") : "None reported"}</dd>
                 </div>
               </dl>
 
               {e.reviewedAt ? (
                 <p className="mt-3 text-xs text-text-secondary">
-                  <span className="text-text-dim">Reviewed by </span>
+                  <span className="text-text-dim">{t("safetyEscalations.reviewedBy")}</span>
                   {e.reviewedByAdminName ?? "—"}
                   <span className="text-text-dim"> on {new Date(e.reviewedAt).toLocaleString()}</span>
                 </p>
@@ -135,7 +137,7 @@ export function SafetyEscalationsScreen() {
                     onClick={() => reviewMutation.mutate(e.id)}
                     className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                   >
-                    Mark Reviewed
+                    {t("safetyEscalations.markReviewed")}
                   </button>
                   {reviewMutation.isError && (
                     <p className="mt-2 text-xs text-danger">

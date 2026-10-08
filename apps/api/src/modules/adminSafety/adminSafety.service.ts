@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { ListSafetyEscalationsQuery } from "./adminSafety.schema";
+import { decryptEscalation } from "../../lib/healthData";
 
 /**
  * BR-SAF-004 Safety Escalations (R1 Developer 1, 18 Sep 2026) — Module 08
@@ -46,6 +47,11 @@ type SafetyEscalationRow = {
   userId: string;
   medicalConditions: string[];
   injuries: string[];
+  // §10 — the encrypted columns the read path actually uses. The two
+  // plaintext arrays above stay in the type only until the backfill has
+  // run everywhere and they can be dropped.
+  medicalConditionsEnc: string | null;
+  injuriesEnc: string | null;
   createdAt: Date;
   reviewedAt: Date | null;
   reviewedByAdminId: string | null;
@@ -59,13 +65,17 @@ const SAFETY_ESCALATION_INCLUDE = {
 } as const;
 
 function toListItem(e: SafetyEscalationRow) {
+  // §10 — the escalation carries the same declared conditions as the
+  // profile it came from, so it gets the same encryption and the same
+  // one-accessor read.
+  const health = decryptEscalation(e);
   return {
     id: e.id,
     userId: e.user.id,
     userFullName: e.user.fullName,
     userEmail: e.user.email,
-    medicalConditions: e.medicalConditions,
-    injuries: e.injuries,
+    medicalConditions: health.medicalConditions,
+    injuries: health.injuries,
     createdAt: e.createdAt,
     reviewedAt: e.reviewedAt,
     reviewedByAdminId: e.reviewedByAdminId,

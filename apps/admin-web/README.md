@@ -1,4 +1,4 @@
-# admin-web — PrimeFit Super Admin Console
+# admin-web — Fynrox Super Admin Console
 
 Phase 6 (`docs/platform/roadmap.md`), first real slice — added 20 Aug 2026. Implements the console described in `docs/admin/01-product-requirements.md` (54 screens across 12 modules, reverse-engineered from the `vi-admin` Figma file). This slice shipped **one real screen** — the Executive Dashboard (01.01) — plus a working admin login and the full 12-module sidebar shell, with the other 11 modules rendered as honest "Soon" placeholders rather than hidden or faked.
 
@@ -187,7 +187,7 @@ npm run dev:admin                            # starts Vite on http://localhost:5
 
 # apps/api must also be running (see apps/api/README.md) with a seeded
 # admin account:
-npm run db:seed --workspace=apps/api         # seeds admin@23primefit.com / ChangeMe123!
+npm run db:seed --workspace=apps/api         # seeds admin@fynrox.com / ChangeMe123!
                                               # (override with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)
 ```
 

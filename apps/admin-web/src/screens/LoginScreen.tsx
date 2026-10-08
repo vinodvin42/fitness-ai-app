@@ -1,6 +1,8 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
+import { BrandLockup } from "../components/BrandLockup";
 
 /**
  * Plain functional auth (gap §1 in docs/admin/07-open-questions-gaps.md:
@@ -12,6 +14,7 @@ import { extractErrorMessage } from "../lib/apiError";
  * reset flow yet (see adminAuth.schema.ts's doc comment).
  */
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,20 +37,14 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-canvas">
-            PF
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">PRIMEFIT</div>
-            <div className="text-[10px] uppercase tracking-widest text-text-dim">Super Admin Console</div>
-          </div>
+        <div className="mb-6 flex items-center">
+          <BrandLockup subtitle={t("login.superAdminConsole")} />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="email">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -62,7 +59,7 @@ export function LoginScreen() {
 
           <div>
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="password">
-              Password
+              {t("login.password")}
             </label>
             <input
               id="password"

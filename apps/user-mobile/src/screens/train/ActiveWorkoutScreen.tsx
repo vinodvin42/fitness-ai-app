@@ -12,7 +12,6 @@ import { useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
 import { fetchOnboardingProfile } from "../../api/users";
-import { fetchPartner, PARTNER_KEY } from "../../api/partner";
 import {
   abandonWorkoutSession,
   completeWorkoutSession,
@@ -138,7 +137,6 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   });
 
   // Train 09: client-side exercise swaps (no backend endpoint) layered over the fetched workout.
-  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, staleTime: 60_000 });
   const swaps = useSwaps(workoutId);
   const orderedExercises = useMemo(() => {
     if (!workout) return [];
@@ -570,14 +568,6 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
               style={{ flex: 1, height: 38 }}
             />
           </View>
-          {partner.data && currentExercise ? (
-            <Button
-              label="Ask my gym"
-              variant="secondary"
-              onPress={() => navigation.navigate("GymHelp", { exerciseName: currentExercise.exercise.name, workoutName: workout?.name })}
-              style={{ height: 38 }}
-            />
-          ) : null}
         </View>
 
         {showRestTimer ? (

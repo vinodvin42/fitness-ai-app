@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminCouponListResponse, CouponDiscountType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -43,6 +44,7 @@ function describeDiscount(type: CouponDiscountType, value: number): string {
  * adminCoupons.service.ts.
  */
 export function CouponsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -81,13 +83,13 @@ export function CouponsScreen() {
   });
 
   return (
-    <AppShell title="Coupons" subNav={COMMERCE_SUB_NAV}>
+    <AppShell title={t("coupons.coupons")} subNav={COMMERCE_SUB_NAV}>
       <div className="space-y-4">
         {data && (
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total" value={data.counts.total} />
-            <StatCard label="Active" value={data.counts.active} />
-            <StatCard label="Redemptions" value={data.counts.totalRedemptions} />
+            <StatCard label={t("coupons.total")} value={data.counts.total} />
+            <StatCard label={t("coupons.active")} value={data.counts.active} />
+            <StatCard label={t("coupons.redemptions")} value={data.counts.totalRedemptions} />
           </div>
         )}
 
@@ -111,7 +113,7 @@ export function CouponsScreen() {
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Code
+                {t("coupons.code")}
                 <input
                   required
                   value={form.code}
@@ -120,7 +122,7 @@ export function CouponsScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Description (optional)
+                {t("coupons.descriptionOptional")}
                 <input
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
@@ -128,14 +130,14 @@ export function CouponsScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Type
+                {t("coupons.type")}
                 <select
                   value={form.discountType}
                   onChange={(e) => setForm((p) => ({ ...p, discountType: e.target.value as CouponDiscountType }))}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  <option value="percent">Percent %</option>
-                  <option value="fixed">Fixed amount</option>
+                  <option value="percent">{t("coupons.percent")}</option>
+                  <option value="fixed">{t("coupons.fixedAmount")}</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
@@ -151,7 +153,7 @@ export function CouponsScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Max redemptions (optional)
+                {t("coupons.maxRedemptionsOptional")}
                 <input
                   type="number"
                   min={1}
@@ -161,7 +163,7 @@ export function CouponsScreen() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs text-text-dim">
-                Expires (optional)
+                {t("coupons.expiresOptional")}
                 <input
                   type="date"
                   value={form.expiresAt}
@@ -183,12 +185,12 @@ export function CouponsScreen() {
           </form>
         )}
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("coupons.loading")}</p>}
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load coupons.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("coupons.retry")}
             </button>
           </div>
         )}
@@ -198,12 +200,12 @@ export function CouponsScreen() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                  <th className="px-4 py-3 font-normal">Code</th>
-                  <th className="px-4 py-3 font-normal">Discount</th>
-                  <th className="px-4 py-3 font-normal">Redemptions</th>
-                  <th className="px-4 py-3 font-normal">Expires</th>
-                  <th className="px-4 py-3 font-normal">Status</th>
-                  <th className="px-4 py-3 font-normal">Action</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.code")}</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.discount")}</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.redemptions")}</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.expires")}</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.status")}</th>
+                  <th className="px-4 py-3 font-normal">{t("coupons.action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,7 +241,7 @@ export function CouponsScreen() {
                 {data.coupons.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
-                      No coupons yet.
+                      {t("coupons.noCouponsYet")}
                     </td>
                   </tr>
                 )}

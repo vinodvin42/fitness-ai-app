@@ -9,6 +9,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { CompositeScreenProps, NavigationProp } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MealType } from "@fitness-ai-app/types";
+import { BRAND_NAME } from "../../lib/brand";
 import { Avatar } from "../../components/Avatar";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
@@ -273,7 +274,7 @@ export function TodayScreen({ navigation }: Props) {
     if (score != null) parts.push(`Readiness is ${score}/100 today.`);
     if (nextWorkout?.workout) parts.push(`${nextWorkout.workout.name} fits your plan.`);
     if (parts.length > 0) parts.push(`Aim for your ${DAILY_TARGETS.proteinG}g protein target.`);
-    return parts.length > 0 ? parts.join(" ") : "Ask 23Prime AI for training, nutrition, or recovery guidance grounded in your real progress.";
+    return parts.length > 0 ? parts.join(" ") : `Ask ${BRAND_NAME} AI for training, nutrition, or recovery guidance grounded in your real progress.`;
   }, [score, nextWorkout?.workout]);
 
   // "Matches today's readiness" is only claimed when a real score exists AND the

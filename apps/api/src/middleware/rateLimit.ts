@@ -1,4 +1,6 @@
 import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import { getRedis, isRedisConfigured } from "../lib/redis";
 import { AuthedRequest } from "./auth";
 
 /**
@@ -10,13 +12,38 @@ import { AuthedRequest } from "./auth";
  * authenticated traffic (dashboards, directories) that has no
  * brute-force or cost risk.
  *
- * All three use express-rate-limit's default in-memory store, which is
- * correct for a single-process deployment (this app has no clustering/
- * multi-instance setup anywhere in this build) but resets on restart and
- * doesn't share state across instances — swap in a Redis store
- * (`rate-limit-redis`) before ever running more than one instance behind
- * a load balancer.
+ * **28 Sep 2026 — the Redis store the note below asked for.** Every
+ * limiter here now shares one store factory: Redis when REDIS_URL is
+ * set, the in-memory default otherwise. A single-instance deployment
+ * behaves exactly as before.
+ *
+ * The part that matters is what happens when someone gets this wrong.
+ * An in-memory limiter behind a load balancer gives an attacker
+ * `limit x instanceCount` attempts and NOTHING errors — the limiter is
+ * simply weaker than its configuration claims, silently. So
+ * `assertRateLimitStoreIsSafe()` (lib/redis.ts, called at boot in
+ * index.ts) refuses to start a multi-instance deployment without Redis,
+ * rather than logging a warning nobody reads.
  */
+
+/**
+ * Shared store for every limiter below. Returns `undefined` when Redis
+ * is not configured, which is express-rate-limit's way of saying "use
+ * the default in-memory store" — correct for one instance, and refused
+ * at boot for more than one.
+ *
+ * `sendCommand` is the adapter rate-limit-redis expects; ioredis's own
+ * `call` has the right shape.
+ */
+function sharedStore() {
+  if (!isRedisConfigured()) return undefined;
+  return new RedisStore({
+    sendCommand: (...args: string[]) => getRedis().call(...(args as [string, ...string[]])) as Promise<never>,
+    // Namespaced so the rate limiter cannot collide with anything else
+    // sharing this Redis.
+    prefix: "fynrox:rl:",
+  });
+}
 
 // Login endpoints: the real brute-force target. Keyed by IP (the
 // library's default) — 10 attempts per 15 minutes is generous enough for
@@ -25,6 +52,7 @@ import { AuthedRequest } from "./auth";
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many attempts — try again in a few minutes" } },
@@ -36,6 +64,7 @@ export const authRateLimit = rateLimit({
 export const writeRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many requests — try again in a few minutes" } },
@@ -55,6 +84,7 @@ export const writeRateLimit = rateLimit({
 export const aiCoachRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
@@ -76,6 +106,7 @@ export const aiCoachRateLimit = rateLimit({
 export const twoFactorRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many attempts — try again in a few minutes" } },
@@ -94,6 +125,7 @@ export const twoFactorRateLimit = rateLimit({
 export const barcodeRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
@@ -107,6 +139,7 @@ export const barcodeRateLimit = rateLimit({
 export const guardianSubmitRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req as AuthedRequest).userId ?? "anonymous",
@@ -116,6 +149,7 @@ export const guardianSubmitRateLimit = rateLimit({
 export const guardianPublicRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
+  store: sharedStore(),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many requests — try again in a few minutes" } },

@@ -151,7 +151,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
       <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Icon name="sparkles" size={14} color={colors.aiAccent} />
-          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>23PRIMEFIT RECOMMENDATION</Text>
+          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.label, lineHeight: 19 }}>
           {next

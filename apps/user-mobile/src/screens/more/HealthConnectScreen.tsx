@@ -100,7 +100,7 @@ export function HealthConnectScreen({ navigation }: Props) {
     ]);
 
   return (
-    <ScreenContainer title="Health Connect" subtitle="Choose what 23PrimeFit may read">
+    <ScreenContainer title="Health Connect" subtitle="Choose what Fynrox may read">
       <BackButton onPress={() => navigation.goBack()} />
       <InfoCard
         tone="accent"

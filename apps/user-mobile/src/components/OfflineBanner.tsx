@@ -17,12 +17,14 @@
  * (rare) interactive element might sit under its small footprint.
  */
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 import { colors, fonts, spacing } from "../theme/tokens";
 
 export function OfflineBanner() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [isOffline, setIsOffline] = useState(false);
 
@@ -44,7 +46,7 @@ export function OfflineBanner() {
       pointerEvents="none"
       style={[styles.container, { paddingTop: insets.top + spacing.xs }]}
     >
-      <Text style={styles.text}>No internet connection</Text>
+      <Text style={styles.text}>{t("offline.banner")}</Text>
     </View>
   );
 }

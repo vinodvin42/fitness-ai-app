@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ChangeReasonCategory } from "@fitness-ai-app/types";
@@ -30,6 +31,7 @@ const REASONS: Array<{ value: ChangeReasonCategory; label: string }> = [
  * pre-filtered to this relationship's service type.
  */
 export function ChangeProfessionalScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { relationshipId, professionalFullName, serviceType } = route.params;
 
   const [reason, setReason] = useState<ChangeReasonCategory | null>(null);
@@ -53,9 +55,9 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScreenContainer title="Change Professional">
+    <ScreenContainer title={t("coaching.change.title")}>
       <Card>
-        <Text style={{ color: colors.warning, ...typography.h2 }}>Heads up</Text>
+        <Text style={{ color: colors.warning, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
           Changing your {serviceType} professional doesn't affect any other service relationship you have — only
           your pairing with {professionalFullName} for {serviceType}.
@@ -63,14 +65,14 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary }}>Current professional</Text>
+        <Text style={{ color: colors.textSecondary }}>{t("coaching.change.current")}</Text>
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.xs }}>
           {professionalFullName}
         </Text>
       </Card>
 
       <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-        Why are you changing professionals?
+        {t("coaching.change.why")}
       </Text>
       <View style={{ gap: spacing.xs }}>
         {REASONS.map((r) => (
@@ -92,7 +94,7 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
             marginTop: spacing.sm,
             textAlignVertical: "top",
           }}
-          placeholder="Tell us more (optional)"
+          placeholder={t("coaching.change.tellUsMore")}
           placeholderTextColor={colors.textMuted}
           value={note}
           onChangeText={setNote}

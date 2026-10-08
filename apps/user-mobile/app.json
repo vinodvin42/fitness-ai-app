@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "23PrimeFit",
+    "name": "Fynrox",
     "slug": "23primefit-user-mobile",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
-    "scheme": "primefit",
+    "scheme": "fynrox",
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#0B0C10"
@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "23PrimeFit uses your location while the app is open to track the distance and route of your runs and rides.",
+          "locationWhenInUsePermission": "Fynrox uses your location while the app is open to track the distance and route of your runs and rides.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
@@ -40,21 +40,21 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "23PrimeFit uses Face ID to unlock the app when Biometric Unlock is turned on in Settings."
+          "faceIDPermission": "Fynrox uses Face ID to unlock the app when Biometric Unlock is turned on in Settings."
         }
       ],
       [
         "expo-image-picker",
         {
-          "cameraPermission": "23PrimeFit uses your camera to take a Progress Photo.",
-          "photosPermission": "23PrimeFit uses your photo library so you can upload a Progress Photo.",
+          "cameraPermission": "Fynrox uses your camera to take a Progress Photo.",
+          "photosPermission": "Fynrox uses your photo library so you can upload a Progress Photo.",
           "microphonePermission": false
         }
       ]
     ],
     "extra": {
       "apiBaseUrl": "http://localhost:4000",
-      "supportEmail": "support@23primefit.app",
+      "supportEmail": "support@fynrox.com",
       "eas": {
         "projectId": "7a954e3d-e225-4ed0-8e01-02cbe63f59e4"
       }

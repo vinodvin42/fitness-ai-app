@@ -25,6 +25,8 @@ const STATUS: Record<SubscriptionDetail["status"], { label: string; tone: "succe
   canceled: { label: "CANCELED", tone: "neutral" },
   expired: { label: "EXPIRED", tone: "neutral" },
   revoked: { label: "REVOKED", tone: "neutral" },
+  pending: { label: "PENDING", tone: "warning" },
+  suspended: { label: "SUSPENDED", tone: "warning" },
 };
 
 const DAY = 24 * 60 * 60 * 1000;

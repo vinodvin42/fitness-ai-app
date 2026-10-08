@@ -218,7 +218,7 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
         <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="sparkles" size={14} color={colors.aiAccent} />
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>23PRIMEFIT INSIGHT</Text>
+            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX INSIGHT</Text>
           </View>
           <Text style={{ color: colors.textPrimary, ...typography.label, lineHeight: 19 }}>{insight.text}</Text>
           {showWhy ? <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 18 }}>{insight.why}</Text> : null}

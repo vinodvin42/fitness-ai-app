@@ -39,10 +39,10 @@ export async function sendGuardianReviewEmail(args: { to: string; childName: str
   try {
     await sendEmail({
       to: args.to,
-      subject: "Guardian authorization requested for a 23PrimeFit account",
+      subject: "Guardian authorization requested for a Fynrox account",
       text: `Hello,
 
-${args.childName} is setting up a 23PrimeFit fitness account and told us they are under 18. Before any health questions, fitness profiling or personalized plans run, we need a parent or guardian to review and authorize this.
+${args.childName} is setting up a Fynrox fitness account and told us they are under 18. Before any health questions, fitness profiling or personalized plans run, we need a parent or guardian to review and authorize this.
 
 Review and decide here (single use, valid until ${args.expiresAt.toUTCString()}):
 ${link}

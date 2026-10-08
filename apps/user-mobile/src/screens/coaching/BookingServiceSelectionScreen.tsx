@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -10,8 +11,6 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCoachAvailability, fetchCoachProfile, createBooking } from "../../api/coaching";
-import { fetchQuoteRequest } from "../../api/coachSessions";
-import { formatQuotePrice } from "../../lib/quoteFormat";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -63,7 +62,8 @@ function serviceLabel(serviceType: string | null) {
  * program elsewhere in this app.
  */
 export function BookingServiceSelectionScreen({ navigation, route }: Props) {
-  const { professionalId, quoteRequestId } = route.params;
+  const { t } = useTranslation();
+  const { professionalId } = route.params;
   const queryClient = useQueryClient();
 
   const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
@@ -79,17 +79,6 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     queryKey: ["coaching", "professional", professionalId],
     queryFn: () => fetchCoachProfile(professionalId),
   });
-
-  // Coming from an accepted quote: the server charges the quoted price (it
-  // validates the quote itself; this fetch is display + offering filtering only).
-  const { data: quote } = useQuery({
-    queryKey: ["coaching", "quoteRequests", quoteRequestId],
-    queryFn: () => fetchQuoteRequest(quoteRequestId!),
-    enabled: Boolean(quoteRequestId),
-  });
-  const quoteApplies = Boolean(
-    quoteRequestId && quote && quote.status === "accepted" && quote.professionalId === professionalId && quote.quotedPriceCents,
-  );
 
   const { data: availability, isLoading: availabilityLoading } = useQuery({
     queryKey: ["coaching", "availability", professionalId, selectedDateKey],
@@ -128,16 +117,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     });
   }, []);
 
-  const visibleOfferings = useMemo(() => {
-    const all = profile?.offerings ?? [];
-    if (!quoteApplies || !quote) return all;
-    // A quote is only valid for offerings of its own service type (combined -> null).
-    return all.filter((o) => (o.serviceType ?? "combined") === quote.serviceType);
-  }, [profile, quote, quoteApplies]);
-  const selectedOffering = visibleOfferings.find((o) => o.id === selectedOfferingId) ?? null;
-  const quotedPriceLabel = quoteApplies && quote ? formatQuotePrice(quote.quotedPriceCents, quote.currency) : null;
-  // Effective charge in paise: the quote when applicable, else the offering's own price.
-  const effectivePriceCents = selectedOffering ? (quoteApplies && quote?.quotedPriceCents ? quote.quotedPriceCents : selectedOffering.priceCents) : 0;
+  const selectedOffering = profile?.offerings.find((o) => o.id === selectedOfferingId) ?? null;
 
   const onConfirm = async () => {
     if (!selectedOffering || !selectedTimeIso) return;
@@ -147,7 +127,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     // when priceCents > 0). useRazorpayPurchase's purchase() handles its
     // own errors internally (shows its own Alert on failure), so only the
     // free path below needs its own try/catch.
-    if (effectivePriceCents === 0) {
+    if (selectedOffering.priceCents === 0) {
       setIsBookingFree(true);
       try {
         const booking = await createBooking({
@@ -164,18 +144,12 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       }
       return;
     }
-    purchase(
-      "booking",
-      selectedOffering.id,
-      couponCode.trim() || undefined,
-      selectedTimeIso,
-      quoteApplies ? quoteRequestId : undefined,
-    );
+    purchase("booking", selectedOffering.id, couponCode.trim() || undefined, selectedTimeIso);
   };
 
   if (profileLoading) {
     return (
-      <ScreenContainer title="Book a Session">
+      <ScreenContainer title={t("coaching.booking.selectTitle")}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -183,14 +157,14 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   if (profileError || !profile) {
     return (
-      <ScreenContainer title="Book a Session">
+      <ScreenContainer title={t("coaching.booking.selectTitle")}>
         <ErrorState onRetry={refetchProfile} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title="Book a Session">
+    <ScreenContainer title={t("coaching.booking.selectTitle")}>
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{profile.fullName}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
@@ -199,26 +173,21 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       </Card>
 
       <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>
-        Choose a service
+        {t("coaching.booking.chooseService")}
       </Text>
       <View style={{ gap: spacing.xs }}>
-        {quotedPriceLabel ? (
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>
-            Your accepted quote of {quotedPriceLabel} applies to the service you pick below.
-          </Text>
-        ) : null}
-        {visibleOfferings.map((o) => (
+        {profile.offerings.map((o) => (
           <SelectCard
             key={o.id}
             title={`${o.label ?? serviceLabel(o.serviceType)} · ${o.durationMinutes}min`}
-            subtitle={quotedPriceLabel ?? formatPrice(o.priceCents)}
+            subtitle={formatPrice(o.priceCents)}
             selected={selectedOfferingId === o.id}
             onPress={() => setSelectedOfferingId(o.id)}
           />
         ))}
       </View>
 
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Choose a date</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("coaching.booking.chooseDate")}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: spacing.xs }}>
           {days.map((d) => {
@@ -239,7 +208,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         </View>
       </ScrollView>
 
-      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>Choose a time</Text>
+      <Text style={{ color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs }}>{t("coaching.booking.chooseTime")}</Text>
       {availabilityLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : (
@@ -258,11 +227,11 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {selectedOffering && effectivePriceCents > 0 && paymentsConfigured ? (
+      {selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
         <TextInput
           value={couponCode}
           onChangeText={(v) => setCouponCode(v.toUpperCase())}
-          placeholder="Have a coupon? Enter code"
+          placeholder={t("coaching.booking.couponPlaceholder")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="characters"
           style={{
@@ -279,13 +248,13 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       ) : null}
 
       <Button
-        label={paymentsConfigured || effectivePriceCents === 0 ? "Confirm Booking" : "Coming soon"}
+        label={paymentsConfigured || selectedOffering?.priceCents === 0 ? "Confirm Booking" : "Coming soon"}
         onPress={onConfirm}
         loading={isBookingFree || isPurchasing}
         disabled={
           !selectedOffering ||
           !selectedTimeIso ||
-          (effectivePriceCents > 0 && !paymentsConfigured)
+          (selectedOffering.priceCents > 0 && !paymentsConfigured)
         }
         style={{ marginTop: spacing.lg }}
       />

@@ -20,7 +20,7 @@ Most screens also share: an iOS status bar (time/signal/wifi/battery — a desig
 
 ```mermaid
 flowchart LR
-    Root["23PrimeFit App"]
+    Root["FynroX App"]
 
     Root --> OB["Onboarding & Auth"]
     OB --> OB1["Splash/Welcome"] --> OB2["Login/Register"] --> OB3["OTP Verification"] --> OB4["Setup: About You"] --> OB5["Setup: Goals"] --> OB6["Setup: Training Level"] --> OB7["Setup: Food/Diet"] --> OB8["Setup: Safety/Injuries"]

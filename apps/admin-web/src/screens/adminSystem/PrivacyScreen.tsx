@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { AdminPrivacyDashboardResponse } from "@fitness-ai-app/types";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../components/AppShell";
@@ -36,21 +37,22 @@ async function fetchPrivacy(): Promise<AdminPrivacyDashboardResponse> {
  * deletion entity exists anywhere in this schema.
  */
 export function PrivacyScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-privacy"],
     queryFn: fetchPrivacy,
   });
 
   return (
-    <AppShell title="Privacy & Data Governance" subNav={ADMIN_SYSTEM_SUB_NAV}>
+    <AppShell title={t("privacy.privacyDataGovernance")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("privacy.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the privacy dashboard.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("privacy.retry")}
             </button>
           </div>
         )}
@@ -58,23 +60,23 @@ export function PrivacyScreen() {
         {data && (
           <>
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">DSAR Log</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.dsarLog")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Every self-service data export and account deletion a user has made, from the mobile app's own
                 Security screen — a genuine GDPR-style Data Subject Access Request trail, surfaced console-wide for
                 the first time.
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-2">
-                <StatCard label="Data Exports" value={data.dsarLog.kpis.exports} />
-                <StatCard label="Account Deletions" value={data.dsarLog.kpis.deletions} />
+                <StatCard label={t("privacy.dataExports")} value={data.dsarLog.kpis.exports} />
+                <StatCard label={t("privacy.accountDeletions")} value={data.dsarLog.kpis.deletions} />
               </div>
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">Type</th>
-                      <th className="px-3 py-2 font-normal">User</th>
-                      <th className="px-3 py-2 font-normal">When</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.type")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.user")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.when")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -96,7 +98,7 @@ export function PrivacyScreen() {
                     {data.dsarLog.entries.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-3 py-6 text-center text-text-dim">
-                          No data exports or account deletions yet.
+                          {t("privacy.noDataExportsOr")}
                         </td>
                       </tr>
                     )}
@@ -111,27 +113,27 @@ export function PrivacyScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Sensitive Data Access Log</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.sensitiveDataAccessLog")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Every ADMIN request to view a user's locked sensitive health data — a different, internal
                 access-control record, not a self-service request. Requires supervisor approval and is logged.
               </p>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <StatCard label="Total Requests" value={data.sensitiveAccessLog.kpis.total} />
-                <StatCard label="Pending" value={data.sensitiveAccessLog.kpis.pending} />
-                <StatCard label="Approved" value={data.sensitiveAccessLog.kpis.approved} />
-                <StatCard label="Denied" value={data.sensitiveAccessLog.kpis.denied} />
+                <StatCard label={t("privacy.totalRequests")} value={data.sensitiveAccessLog.kpis.total} />
+                <StatCard label={t("privacy.pending")} value={data.sensitiveAccessLog.kpis.pending} />
+                <StatCard label={t("privacy.approved")} value={data.sensitiveAccessLog.kpis.approved} />
+                <StatCard label={t("privacy.denied")} value={data.sensitiveAccessLog.kpis.denied} />
               </div>
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
-                      <th className="px-3 py-2 font-normal">User</th>
-                      <th className="px-3 py-2 font-normal">Requested By</th>
-                      <th className="px-3 py-2 font-normal">Reason</th>
-                      <th className="px-3 py-2 font-normal">Status</th>
-                      <th className="px-3 py-2 font-normal">Reviewed By</th>
-                      <th className="px-3 py-2 font-normal">Requested</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.user")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.requestedBy")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.reason")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.status")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.reviewedBy")}</th>
+                      <th className="px-3 py-2 font-normal">{t("privacy.requested")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -152,7 +154,7 @@ export function PrivacyScreen() {
                     {data.sensitiveAccessLog.entries.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-3 py-6 text-center text-text-dim">
-                          No sensitive data access requests yet.
+                          {t("privacy.noSensitiveDataAccess")}
                         </td>
                       </tr>
                     )}
@@ -167,7 +169,7 @@ export function PrivacyScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Consent Management</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.consentManagement")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Real, read-only per-user consent state (marketing emails, data analytics, health-data processing) —
                 search for a user to view what they've granted or revoked.
@@ -176,13 +178,13 @@ export function PrivacyScreen() {
                 to="/admin-system/consents"
                 className="mt-3 inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
               >
-                Open Consent Management →
+                {t("privacy.openConsentManagement")}
               </Link>
             </div>
 
             <NotAvailablePanel
               keys={data.notAvailable}
-              subtitle="Data-retention policy needs an entity that doesn't exist anywhere in this schema."
+              subtitle={t("privacy.dataRetentionPolicyNeeds")}
             />
           </>
         )}

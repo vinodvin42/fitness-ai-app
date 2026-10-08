@@ -12,8 +12,8 @@ fitness-ai-app/
 ├── figma-reference/          ← Figma node-ID lookup tables (one per reviewed Figma file)
 ├── apps/
 │   ├── admin-web/            ← the Super Admin Console (vi-admin Figma file, 54 screens)
-│   ├── user-mobile/          ← the 23PrimeFit consumer app (v1-user Figma file, 82 screens)
-│   ├── coach-mobile/         ← the 23PrimeFit coach/professional app (v1-coach Figma file, 16 screens)
+│   ├── user-mobile/          ← the FynroX consumer app (v1-user Figma file, 82 screens)
+│   ├── coach-mobile/         ← the FynroX coach/professional app (v1-coach Figma file, 16 screens)
 │   └── api/                  ← backend API serving ALL THREE apps — see docs/mobile/06-cross-app-integration.md and docs/coach/06-cross-app-integration.md
 └── packages/
     ├── ui/                   ← shared design-system components (see 04-design-system.md, docs/mobile/04-design-system.md, docs/coach/04-design-system.md)

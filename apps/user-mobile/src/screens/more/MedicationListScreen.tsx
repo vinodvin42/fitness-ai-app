@@ -145,7 +145,7 @@ export function MedicationListScreen({ navigation }: Props) {
       )}
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
         Lock-screen alerts are generic unless you turn on Detailed Preview for a reminder. Ask your prescriber or pharmacist about
-        missed doses; 23PrimeFit doesn't recommend dose changes.
+        missed doses; Fynrox doesn't recommend dose changes.
       </Text>
     </ScreenContainer>
   );

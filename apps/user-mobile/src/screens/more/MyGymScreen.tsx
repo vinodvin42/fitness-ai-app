@@ -22,8 +22,8 @@ const card = { backgroundColor: colors.surface, borderRadius: radius.card, borde
 
 /**
  * My Gym (Figma My Gym 01): gym card with a live "Open now" pill, the gym's
- * latest active announcement, timings, equipment availability, and entry points
- * to "Ask my gym for help" and today's gym workout. Everything comes from
+ * latest active announcement, timings, equipment availability, and entry point
+ * to today's gym workout. Everything comes from
  * GET /gym/me; the pill and the holiday card only render when they are true.
  */
 export function MyGymScreen({ navigation }: Props) {
@@ -159,7 +159,6 @@ export function MyGymScreen({ navigation }: Props) {
             </View>
           )}
 
-          <Button label="Ask my gym for help" onPress={() => navigation.navigate("GymHelp", {})} />
           <Button label="See today's gym workout" variant="secondary" onPress={openGymWorkout} />
           <Button label="Partner code" variant="secondary" onPress={() => navigation.navigate("PartnerCode")} />
 

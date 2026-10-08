@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -24,6 +25,7 @@ function whenLabel(iso: string | null): string {
  * "Coming soon" placeholder.
  */
 export function ConversationsListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList>>();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-conversations"],
@@ -33,14 +35,14 @@ export function ConversationsListScreen() {
   });
 
   return (
-    <ScreenContainer title="Messages">
+    <ScreenContainer title={t("messages.title")}>
       {isLoading && <ActivityIndicator color={colors.accent} />}
       {isError && <ErrorState onRetry={() => refetch()} />}
 
       {data && data.conversations.length === 0 && (
         <EmptyState
-          title="No conversations yet"
-          subtitle="When you have an active client, you can message each other here."
+          title={t("messages.emptyTitle")}
+          subtitle={t("messages.emptySubtitle")}
         />
       )}
 

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -47,6 +48,7 @@ function timeLabel(iso: string): string {
  * screen; the other side is always an admin reply.
  */
 export function SupportTicketDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { ticketId } = route.params;
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
@@ -136,7 +138,7 @@ export function SupportTicketDetailScreen({ route, navigation }: Props) {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Reply…"
+            placeholder={t("ticket.reply")}
             placeholderTextColor={colors.textMuted}
             multiline
             style={{
@@ -152,7 +154,7 @@ export function SupportTicketDetailScreen({ route, navigation }: Props) {
             }}
           />
           <Button
-            label="Send"
+            label={t("ticket.send")}
             onPress={() => mutation.mutate()}
             loading={mutation.isPending}
             disabled={!canSend}

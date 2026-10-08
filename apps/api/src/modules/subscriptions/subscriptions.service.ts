@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { grantReferralRewardIfEligible } from "../referrals/referrals.service";
@@ -90,7 +91,56 @@ export async function getSubscriptionForDisplay(userId: string) {
     orderBy: { createdAt: "desc" },
   });
   if (!latest || latest.status === "canceled") return null;
-  return maybeExpireLapsed(latest as SubscriptionWithPlan);
+  const settled = await maybeExpireLapsed(latest as SubscriptionWithPlan);
+  return { ...settled, displayState: deriveDisplayState(settled) };
+}
+
+/**
+ * U-M4 — "Subscription states: pending, suspended, expiring, expired,
+ * revoked; cancel and reactivate".
+ *
+ * `pending`, `suspended`, `expired` and `revoked` are real stored
+ * statuses. `expiring` is derived here instead, because it is a
+ * time-window state ("7 days before end", spec §10) and this codebase
+ * has no scheduled worker to flip it on the day — see
+ * `maybeExpireLapsed`'s own comment for why that constraint is real.
+ * Storing it would leave it wrong for every subscription nobody happened
+ * to read during the window; deriving it is correct for every read.
+ *
+ * Returned as a separate `displayState` rather than overwriting
+ * `status`, so a client can still see the stored truth and nothing
+ * downstream mistakes a derived label for a persisted transition.
+ */
+export const EXPIRING_WINDOW_DAYS = 7;
+
+export type SubscriptionDisplayState =
+  | "pending"
+  | "active"
+  | "expiring"
+  | "expired"
+  | "suspended"
+  | "revoked"
+  | "canceled"
+  | "past_due";
+
+function deriveDisplayState(s: { status: string; renewsAt: Date | null; cancelAtPeriodEnd: boolean }): SubscriptionDisplayState {
+  if (s.status === "pending") return "pending";
+  if (s.status === "suspended") return "suspended";
+  if (s.status === "revoked") return "revoked";
+  if (s.status === "expired") return "expired";
+  if (s.status === "canceled") return "canceled";
+  if (s.status === "past_due") return "past_due";
+
+  // active or trialing from here.
+  if (s.renewsAt) {
+    const daysLeft = (s.renewsAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+    // Only an ending subscription is "expiring". One that renews is
+    // simply active, and telling a paying user their access is about to
+    // end when it is about to renew is the kind of wrong that generates
+    // a cancellation.
+    if (s.cancelAtPeriodEnd && daysLeft >= 0 && daysLeft <= EXPIRING_WINDOW_DAYS) return "expiring";
+  }
+  return "active";
 }
 
 /**
@@ -412,4 +462,92 @@ export async function unrevokeSubscription(actorAdminId: string, subscriptionId:
   });
 
   return restored;
+}
+
+
+/**
+ * U-M4's suspend — a chargeback or an admin hold. Reversible, unlike
+ * `revoke`, and kept as a separate action for exactly that reason: an
+ * admin reaching for "stop this access now, pending investigation"
+ * should not have to use the irreversible one and hope.
+ *
+ * High-impact under BR-ADM-005: it removes paid-for access.
+ */
+export async function suspendSubscription(
+  actorAdminId: string,
+  subscriptionId: string,
+  input: { reason?: string | null; confirmation?: string | null },
+) {
+  const reason = assertHighImpactConfirmed(input);
+
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing) throw new ApiHttpError(404, "subscription_not_found", "Subscription not found");
+  if (existing.status !== "active" && existing.status !== "trialing" && existing.status !== "past_due") {
+    throw new ApiHttpError(409, "not_suspendable", `A ${existing.status} subscription cannot be suspended`);
+  }
+
+  // Conditional updateMany, not a bare update — the same claim-once
+  // discipline every other status flip in this file uses, so two
+  // concurrent suspends cannot both "win".
+  const claimed = await prisma.subscription.updateMany({
+    where: { id: subscriptionId, status: existing.status },
+    data: { status: "suspended" },
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "already_changed", "This subscription changed while you were acting on it");
+  }
+
+  await recordAudit({
+    actorAdminId,
+    action: "subscription.suspended",
+    entityType: "Subscription",
+    entityId: subscriptionId,
+    ruleId: "BR-COM-011",
+    stateBefore: { status: existing.status },
+    stateAfter: { status: "suspended" },
+    metadata: { reason },
+  });
+
+  return prisma.subscription.findUnique({ where: { id: subscriptionId }, include: { plan: true } });
+}
+
+/** The reverse — §10's SUSPENDED -> ACTIVE on "resolved". */
+export async function reactivateSubscription(
+  actorAdminId: string,
+  subscriptionId: string,
+  input: { reason?: string | null; confirmation?: string | null },
+) {
+  const reason = assertHighImpactConfirmed(input);
+
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing) throw new ApiHttpError(404, "subscription_not_found", "Subscription not found");
+  if (existing.status !== "suspended") {
+    throw new ApiHttpError(409, "not_suspended", "Only a suspended subscription can be reactivated");
+  }
+
+  // An expired term must not come back as active just because the hold
+  // was lifted — restore to what is actually true now.
+  const lapsed = existing.renewsAt != null && existing.renewsAt.getTime() < Date.now();
+  const restored = lapsed ? "expired" : "active";
+
+  const claimed = await prisma.subscription.updateMany({
+    where: { id: subscriptionId, status: "suspended" },
+    data: { status: restored },
+  });
+  if (claimed.count === 0) {
+    throw new ApiHttpError(409, "already_changed", "This subscription changed while you were acting on it");
+  }
+
+  await recordAudit({
+    actorAdminId,
+    action: "subscription.reactivated",
+    entityType: "Subscription",
+    entityId: subscriptionId,
+    ruleId: "BR-COM-011",
+    stateBefore: { status: "suspended" },
+    stateAfter: { status: restored },
+    metadata: { reason, restoredStatus: restored },
+  });
+
+  return prisma.subscription.findUnique({ where: { id: subscriptionId }, include: { plan: true } });
 }

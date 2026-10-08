@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { AdminActionItemListResponse, AdminDashboardStats } from "@fitness-ai-app/types";
@@ -43,6 +44,7 @@ async function fetchOpenActionItems(): Promise<AdminActionItemListResponse> {
  * actually lives.
  */
 export function DashboardScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: fetchDashboardStats,
@@ -54,8 +56,8 @@ export function DashboardScreen() {
   });
 
   return (
-    <AppShell title="Executive Dashboard" subNav={DASHBOARD_SUB_NAV}>
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("dashboard.executiveDashboard")} subNav={DASHBOARD_SUB_NAV}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("dashboard.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
@@ -66,15 +68,15 @@ export function DashboardScreen() {
       {data && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Total Users" value={data.kpis.totalUsers} />
-            <StatCard label="Active Users (30d)" value={data.kpis.activeUsers30d} hint="Trained, logged a meal, or logged a measurement" />
-            <StatCard label="Paid Users" value={data.kpis.activePaidUsers} />
-            <StatCard label="New Users (30d)" value={data.kpis.newUsersLast30d} />
+            <StatCard label={t("dashboard.totalUsers")} value={data.kpis.totalUsers} />
+            <StatCard label={t("dashboard.activeUsers30d")} value={data.kpis.activeUsers30d} hint="Trained, logged a meal, or logged a measurement" />
+            <StatCard label={t("dashboard.paidUsers")} value={data.kpis.activePaidUsers} />
+            <StatCard label={t("dashboard.newUsers30d")} value={data.kpis.newUsersLast30d} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
-              <div className="text-xs uppercase tracking-wide text-text-dim">User Growth — last 6 months</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.userGrowthLast6")}</div>
               <div className="mt-3 h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.userGrowth}>
@@ -91,21 +93,21 @@ export function DashboardScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Paid Conversion Funnel</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.paidConversionFunnel")}</div>
               <div className="mt-3 space-y-2 text-sm">
-                <FunnelRow label="Free / Registered" value={data.conversionFunnel.freeRegistered} />
-                <FunnelRow label="Trial Users" value={data.conversionFunnel.trialUsers} />
-                <FunnelRow label="Converted Paid" value={data.conversionFunnel.convertedPaid} highlight />
+                <FunnelRow label={t("dashboard.freeRegistered")} value={data.conversionFunnel.freeRegistered} />
+                <FunnelRow label={t("dashboard.trialUsers")} value={data.conversionFunnel.trialUsers} />
+                <FunnelRow label={t("dashboard.convertedPaid")} value={data.conversionFunnel.convertedPaid} highlight />
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Subscriptions by Tier</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.subscriptionsByTier")}</div>
               <div className="mt-3 space-y-2 text-sm">
                 {data.subscriptionsByTier.length === 0 && (
-                  <p className="text-text-dim">No active subscriptions yet.</p>
+                  <p className="text-text-dim">{t("dashboard.noActiveSubscriptionsYet")}</p>
                 )}
                 {data.subscriptionsByTier.map((row) => (
                   <div key={row.tier} className="flex items-center justify-between">
@@ -117,14 +119,14 @@ export function DashboardScreen() {
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Revenue</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.revenue")}</div>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary">Total paid (all-time)</span>
+                  <span className="text-text-secondary">{t("dashboard.totalPaidAllTime")}</span>
                   <span className="font-medium">₹{(data.revenue.totalPaidCents / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary">Failed payments</span>
+                  <span className="text-text-secondary">{t("dashboard.failedPayments")}</span>
                   <span className="font-medium text-danger">{data.revenue.failedPayments}</span>
                 </div>
               </div>
@@ -136,30 +138,30 @@ export function DashboardScreen() {
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
               <div className="flex items-center justify-between">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Requires Attention</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.requiresAttention")}</div>
                 <Link to="/action-required" className="text-xs text-accent hover:underline">
-                  View queue →
+                  {t("dashboard.viewQueue")}
                 </Link>
               </div>
               <div className="mt-3 space-y-2 text-sm">
-                {actionItems.isLoading && <p className="text-text-dim">Loading…</p>}
-                {actionItems.isError && <p className="text-danger">Couldn't load the action queue.</p>}
+                {actionItems.isLoading && <p className="text-text-dim">{t("dashboard.loading")}</p>}
+                {actionItems.isError && <p className="text-danger">{t("dashboard.couldnTLoadThe")}</p>}
                 {actionItems.data && (
                   <>
                     <AttentionRow
-                      label="Open action items"
+                      label={t("dashboard.openActionItems")}
                       count={actionItems.data.items.length}
                     />
                     <AttentionRow
-                      label="High severity"
+                      label={t("dashboard.highSeverity")}
                       count={actionItems.data.items.filter((i) => i.severity === "high").length}
                     />
                     <AttentionRow
-                      label="Medium severity"
+                      label={t("dashboard.mediumSeverity")}
                       count={actionItems.data.items.filter((i) => i.severity === "medium").length}
                     />
                     <AttentionRow
-                      label="Low severity"
+                      label={t("dashboard.lowSeverity")}
                       count={actionItems.data.items.filter((i) => i.severity === "low").length}
                     />
                   </>
@@ -169,30 +171,30 @@ export function DashboardScreen() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Active Professionals" value={data.marketplaceStatus.activeProfessionals} />
+            <StatCard label={t("dashboard.activeProfessionals")} value={data.marketplaceStatus.activeProfessionals} />
             <StatCard
-              label="Pending Professional Applications"
+              label={t("dashboard.pendingProfessionalApplications")}
               value={data.marketplaceStatus.pendingProfessionalApplications}
             />
             <StatCard
-              label="Active Coaching Relationships"
+              label={t("dashboard.activeCoachingRelationships")}
               value={data.marketplaceStatus.activeCoachingRelationships}
             />
             <StatCard
-              label="Unassigned Users Pool"
+              label={t("dashboard.unassignedUsersPool")}
               value={data.marketplaceStatus.unassignedUsersPool}
               hint="Users with no active coaching relationship"
             />
           </div>
 
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="text-xs uppercase tracking-wide text-text-dim">Recent Signups</div>
+            <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.recentSignups")}</div>
             <table className="mt-3 w-full text-left text-sm">
               <thead>
                 <tr className="text-xs uppercase tracking-wide text-text-dim">
-                  <th className="pb-2 font-normal">Name</th>
-                  <th className="pb-2 font-normal">Email</th>
-                  <th className="pb-2 font-normal">Joined</th>
+                  <th className="pb-2 font-normal">{t("dashboard.name")}</th>
+                  <th className="pb-2 font-normal">{t("dashboard.email")}</th>
+                  <th className="pb-2 font-normal">{t("dashboard.joined")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -206,7 +208,7 @@ export function DashboardScreen() {
                 {data.recentSignups.length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-4 text-center text-text-dim">
-                      No signups yet.
+                      {t("dashboard.noSignupsYet")}
                     </td>
                   </tr>
                 )}

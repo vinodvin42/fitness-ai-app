@@ -34,7 +34,7 @@ type Row = {
 };
 
 export const HEALTH_DISCLAIMER =
-  "23PrimeFit provides general wellness and fitness guidance, not medical diagnosis or treatment. AI-generated insights are for information and planning only and should not replace advice from a qualified healthcare professional.";
+  "Fynrox provides general wellness and fitness guidance, not medical diagnosis or treatment. AI-generated insights are for information and planning only and should not replace advice from a qualified healthcare professional.";
 
 export async function getBodyComposition(userId: string) {
   const [rows, profile, scales] = await Promise.all([

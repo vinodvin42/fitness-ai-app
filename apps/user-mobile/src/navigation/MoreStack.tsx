@@ -1,7 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { NavigatorScreenParams } from "@react-navigation/native";
-import type { BookingConfirmation, ConsentType, HelpArticleCategory, Medication, ProfessionalServiceType, QuoteServiceType, Reminder, SupportTicketCategory, TimelineEvent } from "@fitness-ai-app/types";
+import type { BookingConfirmation, ConsentType, HelpArticleCategory, Medication, ProfessionalServiceType, Reminder, SupportTicketCategory, TimelineEvent } from "@fitness-ai-app/types";
 import { MoreScreen } from "../screens/more/MoreScreen";
 import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
@@ -33,6 +33,9 @@ import { HelpArticleListScreen } from "../screens/more/HelpArticleListScreen";
 import { HelpArticleScreen } from "../screens/more/HelpArticleScreen";
 import { ReferralScreen } from "../screens/more/ReferralScreen";
 import { ProfessionalRelationshipScreen } from "../screens/coaching/ProfessionalRelationshipScreen";
+import { RequestGuidanceScreen } from "../screens/coaching/RequestGuidanceScreen";
+import { CheckoutScreen } from "../screens/more/CheckoutScreen";
+import { PurchaseHistoryScreen } from "../screens/more/PurchaseHistoryScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
 import { BookingServiceSelectionScreen } from "../screens/coaching/BookingServiceSelectionScreen";
@@ -48,9 +51,6 @@ import { MedicineDueScreen } from "../screens/more/MedicineDueScreen";
 import { MedicineOccurrenceScreen } from "../screens/more/MedicineOccurrenceScreen";
 import { CoachSessionsScreen } from "../screens/coaching/CoachSessionsScreen";
 import { SessionSummaryScreen } from "../screens/coaching/SessionSummaryScreen";
-import { QuotesScreen } from "../screens/coaching/QuotesScreen";
-import { QuoteDetailScreen } from "../screens/coaching/QuoteDetailScreen";
-import { RequestQuoteScreen } from "../screens/coaching/RequestQuoteScreen";
 import { MyPlanScreen } from "../screens/more/MyPlanScreen";
 import { MeasurementUnitsScreen } from "../screens/more/MeasurementUnitsScreen";
 import { AppearanceScreen } from "../screens/more/AppearanceScreen";
@@ -58,7 +58,6 @@ import { AppleHealthDevicesScreen } from "../screens/more/AppleHealthDevicesScre
 import { PartnerCodeScreen } from "../screens/more/PartnerCodeScreen";
 import { PartnerCodeProblemsScreen } from "../screens/more/PartnerCodeProblemsScreen";
 import { MyGymScreen } from "../screens/more/MyGymScreen";
-import { GymHelpScreen, type GymHelpParams } from "../screens/more/GymHelpScreen";
 import { SavedRecipesScreen } from "../screens/more/SavedRecipesScreen";
 import { MyGoalsScreen } from "../screens/more/MyGoalsScreen";
 
@@ -110,6 +109,12 @@ import { MyGoalsScreen } from "../screens/more/MyGoalsScreen";
 // searchable single-select pattern as §L's Language Selection, saving to
 // the new `User.countryCode` field — see CountrySelectionScreen.tsx.
 export type MoreStackParamList = {
+  /** U-M5 / U-M7 — the controlled-assignment request flow. */
+  RequestGuidance: undefined;
+  /** U-M1 — checkout, with the price and GST line served by the API. */
+  Checkout: { purpose: "subscription" | "program_purchase"; referenceId: string };
+  /** U-M22 — purchase history with refund status. */
+  Purchases: undefined;
   MoreHub: undefined;
   Profile: undefined;
   EditProfile: undefined;
@@ -128,9 +133,10 @@ export type MoreStackParamList = {
   PartnerCode: undefined;
   PartnerCodeProblems: { reason?: "not_found" | "expired" | "already_linked"; code?: string } | undefined;
   MyGym: undefined;
-  GymHelp: GymHelpParams;
   SavedRecipes: undefined;
   MyGoals: undefined;
+  // Origin (Fynrox) name for the same nested ProgressStack; both ids stay registered for existing deep links.
+  ProgressTab: NavigatorScreenParams<ProgressStackParamList> | undefined;
   SubscriptionHistory: undefined;
   // U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — "activation_failed"
   // is a genuinely distinct, recoverable state: the payment WAS captured,
@@ -164,7 +170,7 @@ export type MoreStackParamList = {
   ProfessionalRelationship: undefined;
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
-  BookingServiceSelection: { professionalId: string; quoteRequestId?: string };
+  BookingServiceSelection: { professionalId: string };
   BookingConfirmation: { booking: BookingConfirmation };
   MyProfessionalTeam: undefined;
   ChangeProfessional: { relationshipId: string; professionalFullName: string; serviceType: ProfessionalServiceType };
@@ -178,9 +184,6 @@ export type MoreStackParamList = {
   // Wave B (Oct 2026): Human Coach 04-09.
   CoachSessions: undefined;
   SessionSummary: { bookingId: string };
-  Quotes: undefined;
-  QuoteDetail: { quoteId: string };
-  RequestQuote: { professionalId: string; professionalName?: string; serviceType?: QuoteServiceType; message?: string };
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -194,6 +197,7 @@ export function MoreStack() {
       <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="ProgressSection" component={ProgressStack} />
+      <Stack.Screen name="ProgressTab" component={ProgressStack} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="MyPlan" component={MyPlanScreen} />
       <Stack.Screen name="MeasurementUnits" component={MeasurementUnitsScreen} />
@@ -202,7 +206,6 @@ export function MoreStack() {
       <Stack.Screen name="PartnerCode" component={PartnerCodeScreen} />
       <Stack.Screen name="PartnerCodeProblems" component={PartnerCodeProblemsScreen} />
       <Stack.Screen name="MyGym" component={MyGymScreen} />
-      <Stack.Screen name="GymHelp" component={GymHelpScreen} />
       <Stack.Screen name="SavedRecipes" component={SavedRecipesScreen} />
       <Stack.Screen name="MyGoals" component={MyGoalsScreen} />
       <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} />
@@ -228,6 +231,9 @@ export function MoreStack() {
       <Stack.Screen name="SupportTicketDetail" component={SupportTicketDetailScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="ProfessionalRelationship" component={ProfessionalRelationshipScreen} />
+      <Stack.Screen name="RequestGuidance" component={RequestGuidanceScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="Purchases" component={PurchaseHistoryScreen} />
       <Stack.Screen name="CoachDiscovery" component={CoachDiscoveryScreen} />
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />
       <Stack.Screen name="BookingServiceSelection" component={BookingServiceSelectionScreen} />
@@ -243,9 +249,6 @@ export function MoreStack() {
       <Stack.Screen name="MedicineOccurrence" component={MedicineOccurrenceScreen} />
       <Stack.Screen name="CoachSessions" component={CoachSessionsScreen} />
       <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} />
-      <Stack.Screen name="Quotes" component={QuotesScreen} />
-      <Stack.Screen name="QuoteDetail" component={QuoteDetailScreen} />
-      <Stack.Screen name="RequestQuote" component={RequestQuoteScreen} />
     </Stack.Navigator>
   );
 }

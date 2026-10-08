@@ -5,9 +5,7 @@ import {
   createEquipmentSchema,
   createTimingSchema,
   idParamSchema,
-  listHelpRequestsQuerySchema,
   updateEquipmentSchema,
-  updateHelpRequestSchema,
   updateTimingSchema,
 } from "./gymPortalManage.schema";
 import * as service from "./gymPortalManage.service";
@@ -56,11 +54,3 @@ gymPortalManageRouter.post("/gym-portal/announcements", requireGymAuth, wrap(asy
 })));
 gymPortalManageRouter.delete("/gym-portal/announcements/:id", requireGymAuth, wrap(async (req) => ({ body: await service.deleteAnnouncement(gid(req), pid(req)) })));
 
-gymPortalManageRouter.get("/gym-portal/help-requests", requireGymAuth, wrap(async (req) => {
-  const q = listHelpRequestsQuerySchema.parse(req.query);
-  return { body: { items: await service.listHelpRequests(gid(req), q.status) } };
-}));
-gymPortalManageRouter.patch("/gym-portal/help-requests/:id", requireGymAuth, wrap(async (req) => {
-  const input = updateHelpRequestSchema.parse(req.body);
-  return { body: { request: await service.updateHelpRequestStatus(gid(req), pid(req), input.status) } };
-}));

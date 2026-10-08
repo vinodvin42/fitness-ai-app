@@ -1,7 +1,11 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/favicon.svg", "/robots.txt"]
+    "rewrite": "/404.html",
+    "exclude": [
+      "/assets/*",
+      "/favicon.svg",
+      "/robots.txt"
+    ]
   },
   "routes": [
     {
@@ -9,6 +13,14 @@
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
       }
+    },
+    {
+      "route": "/gym/*",
+      "rewrite": "/gym-invite.html"
+    },
+    {
+      "route": "/r/*",
+      "rewrite": "/referral.html"
     }
   ],
   "globalHeaders": {
@@ -18,6 +30,15 @@
   },
   "mimeTypes": {
     ".svg": "image/svg+xml",
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".woff2": "font/woff2",
+    ".mp4": "video/mp4",
+    ".jpg": "image/jpeg"
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/404.html",
+      "statusCode": 404
+    }
   }
 }

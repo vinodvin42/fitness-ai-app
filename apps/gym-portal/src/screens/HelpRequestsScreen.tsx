@@ -1,96 +1,235 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/AppShell";
+import { StatusBadge } from "../components/StatusBadge";
 import { apiClient } from "../lib/api";
+import { extractErrorMessage } from "../lib/apiError";
 
 interface HelpRequest {
   id: string;
-  memberFirstName: string;
-  memberNumber: string;
-  topic: "form_check" | "machine_help" | "trainer_available" | "other";
-  exerciseName: string | null;
-  workoutName: string | null;
-  note: string | null;
-  status: "open" | "seen" | "resolved";
+  category: string;
+  subject: string;
+  body: string;
+  gymReference: string | null;
+  status: string;
+  resolutionNote: string | null;
   createdAt: string;
-  respondedAt: string | null;
+  resolvedAt: string | null;
+  location: { id: string; name: string } | null;
 }
 
-const TOPIC: Record<HelpRequest["topic"], string> = {
-  form_check: "Form check",
-  machine_help: "Help with a machine",
-  trainer_available: "Trainer available now?",
-  other: "Something else",
-};
-const FILTERS = ["open", "seen", "resolved"] as const;
+interface GymLocation {
+  id: string;
+  name: string;
+}
+
+const CATEGORIES = [
+  { value: "trainer_support", label: "Trainer support" },
+  { value: "equipment", label: "Equipment" },
+  { value: "member_onboarding", label: "Member onboarding" },
+  { value: "billing", label: "Billing" },
+  { value: "other", label: "Something else" },
+];
 
 /**
- * Help requests from members, showing only what the member chose to send: first
- * name, member number, topic, exercise/workout name and note. No health data,
- * food logs, photos or AI chats ever reach this inbox.
+ * Trainer help requests + request detail, which the handoff lists among
+ * the portal's complete-as-designed screens. DESIGN-PENDING here.
+ *
+ * BR-GYM-003 shapes the form: there is no member picker and no member
+ * field. A gym describing a situation writes its own free-text reference
+ * ("the 6am group") if it wants one. Offering a member selector would
+ * make the gym expect member-level answers back, which this product
+ * cannot and must not give them.
  */
 export function HelpRequestsScreen() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<(typeof FILTERS)[number]>("open");
-  const key = ["gym-portal-help-requests", status];
-  const { data, isLoading } = useQuery({
-    queryKey: key,
-    queryFn: () => apiClient.get<{ items: HelpRequest[] }>("/gym-portal/help-requests", { params: { status } }).then((r) => r.data.items),
-    refetchInterval: 30_000,
+  const [category, setCategory] = useState("trainer_support");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [gymReference, setGymReference] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const requests = useQuery({
+    queryKey: ["gymHelpRequests"],
+    queryFn: async () => (await apiClient.get<HelpRequest[]>("/gym-portal/help-requests")).data,
   });
-  const update = useMutation({
-    mutationFn: (v: { id: string; status: "seen" | "resolved" }) => apiClient.patch(`/gym-portal/help-requests/${v.id}`, { status: v.status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gym-portal-help-requests"] }),
+  const locations = useQuery({
+    queryKey: ["gymLocations"],
+    queryFn: async () => (await apiClient.get<GymLocation[]>("/gym-portal/locations")).data,
   });
+
+  const create = useMutation({
+    mutationFn: () =>
+      apiClient.post("/gym-portal/help-requests", {
+        category,
+        subject,
+        body,
+        locationId: locationId || undefined,
+        gymReference: gymReference.trim() || undefined,
+      }),
+    onSuccess: () => {
+      setSubject("");
+      setBody("");
+      setGymReference("");
+      queryClient.invalidateQueries({ queryKey: ["gymHelpRequests"] });
+    },
+  });
+
+  const rows = requests.data ?? [];
 
   return (
-    <AppShell title="Help requests">
-      <div className="max-w-2xl space-y-4">
-        <div className="flex gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setStatus(f)}
-              className={`rounded-full px-3 py-1 text-xs capitalize ${status === f ? "bg-accent/15 font-medium text-accent" : "text-text-secondary hover:bg-surface-raised"}`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
+    <AppShell title={t("nav.help")}>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-text-primary">{t("help.yourRequests")}</h2>
+          {requests.isLoading ? (
+            <p className="text-sm text-text-dim">Loading…</p>
+          ) : requests.isError ? (
+            <p className="text-sm text-danger">
+              {extractErrorMessage(requests.error, "Couldn't load your requests.")}
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-text-dim">
+              {t("help.empty")}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((r) => (
+                <article key={r.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(expanded === r.id ? null : r.id)}
+                        className="text-left text-sm font-medium text-text-primary hover:text-accent"
+                      >
+                        {r.subject}
+                      </button>
+                      <p className="mt-0.5 text-xs text-text-dim">
+                        {CATEGORIES.find((c) => c.value === r.category)?.label ?? r.category}
+                        {r.location ? ` · ${r.location.name}` : ""}
+                        {r.gymReference ? ` · ${r.gymReference}` : ""}
+                        {` · ${new Date(r.createdAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <StatusBadge status={r.status} />
+                  </div>
 
-        <div className="rounded-lg border border-border-subtle bg-surface">
-          {isLoading && <p className="p-4 text-sm text-text-secondary">Loading…</p>}
-          {data?.length === 0 && <p className="p-4 text-sm text-text-secondary">No {status} requests.</p>}
-          {data?.map((r) => (
-            <div key={r.id} className="space-y-1 border-b border-border-subtle px-4 py-3 last:border-b-0">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-medium">
-                  {r.memberFirstName} <span className="font-mono text-xs text-text-dim">{r.memberNumber}</span>
-                </div>
-                <div className="text-[11px] text-text-dim">{new Date(r.createdAt).toLocaleString()}</div>
-              </div>
-              <div className="text-sm text-text-secondary">
-                {TOPIC[r.topic]}
-                {r.exerciseName ? ` · ${r.exerciseName}` : ""}
-                {r.workoutName ? ` (${r.workoutName})` : ""}
-              </div>
-              {r.note && <div className="rounded-md bg-canvas px-3 py-2 text-xs text-text-secondary">{r.note}</div>}
-              {r.status !== "resolved" && (
-                <div className="flex gap-3 pt-1">
-                  {r.status === "open" && (
-                    <button type="button" onClick={() => update.mutate({ id: r.id, status: "seen" })} className="text-xs text-accent hover:underline">
-                      Mark seen
-                    </button>
-                  )}
-                  <button type="button" onClick={() => update.mutate({ id: r.id, status: "resolved" })} className="text-xs text-accent hover:underline">
-                    Mark resolved
-                  </button>
-                </div>
-              )}
+                  {expanded === r.id ? (
+                    <div className="mt-3 border-t border-border-subtle pt-3">
+                      <p className="whitespace-pre-wrap text-sm text-text-secondary">{r.body}</p>
+                      {r.resolutionNote ? (
+                        <div className="mt-3 rounded-md bg-accent/10 px-3 py-2">
+                          <p className="text-xs font-medium text-accent">{t("help.replied")}</p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{r.resolutionNote}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-border-subtle bg-surface p-5">
+          <h2 className="text-sm font-semibold text-text-primary">{t("help.ask")}</h2>
+
+          {create.isError ? (
+            <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
+              {extractErrorMessage(create.error, "Couldn't send your request.")}
+            </p>
+          ) : null}
+
+          <label className="mt-4 block text-xs text-text-dim" htmlFor="help-category">
+            {t("help.about")}
+          </label>
+          <select
+            id="help-category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+
+          {(locations.data ?? []).length > 1 ? (
+            <>
+              <label className="mt-4 block text-xs text-text-dim" htmlFor="help-location">
+                {t("help.location")}
+              </label>
+              <select
+                id="help-location"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
+              >
+                <option value="">{t("help.allLocations")}</option>
+                {locations.data!.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
+
+          <label className="mt-4 block text-xs text-text-dim" htmlFor="help-subject">
+            Subject
+          </label>
+          <input
+            id="help-subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            maxLength={200}
+            className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
+          />
+
+          <label className="mt-4 block text-xs text-text-dim" htmlFor="help-body">
+            {t("help.need")}
+          </label>
+          <textarea
+            id="help-body"
+            rows={5}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            maxLength={4000}
+            className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
+          />
+
+          <label className="mt-4 block text-xs text-text-dim" htmlFor="help-ref">
+            {t("help.reference")}
+          </label>
+          <input
+            id="help-ref"
+            value={gymReference}
+            onChange={(e) => setGymReference(e.target.value)}
+            maxLength={200}
+            placeholder={t("help.referencePlaceholder")}
+            className="mt-1 w-full rounded-md border border-border-subtle bg-canvas px-3 py-2 text-sm text-text-primary"
+          />
+          {/* Said out loud, because a gym will otherwise assume they can
+              name a member and get member-level answers back. */}
+          <p className="mt-1 text-[11px] text-text-dim">
+            {t("help.referenceNote")}
+          </p>
+
+          <button
+            type="button"
+            disabled={create.isPending || subject.trim().length < 3 || body.trim().length < 10}
+            onClick={() => create.mutate()}
+            className="mt-5 w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-canvas disabled:opacity-40"
+          >
+            {t("help.send")}
+          </button>
+        </section>
       </div>
     </AppShell>
   );

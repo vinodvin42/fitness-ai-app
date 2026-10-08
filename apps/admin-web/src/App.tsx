@@ -1,7 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
+import { PayoutRunsScreen } from "./screens/finance/PayoutRunsScreen";
+import { PrivacyRequestsScreen } from "./screens/adminSystem/PrivacyRequestsScreen";
+import { GymHelpRequestsScreen } from "./screens/gyms/GymHelpRequestsScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { ActionRequiredScreen } from "./screens/dashboard/ActionRequiredScreen";
 import { ProfessionalDirectoryScreen } from "./screens/professionals/ProfessionalDirectoryScreen";
@@ -10,6 +14,7 @@ import { CredentialVerificationScreen } from "./screens/professionals/Credential
 import { RelationshipDirectoryScreen } from "./screens/relationships/RelationshipDirectoryScreen";
 import { RelationshipDetailScreen } from "./screens/relationships/RelationshipDetailScreen";
 import { ChangeRequestQueueScreen } from "./screens/relationships/ChangeRequestQueueScreen";
+import { AssignmentQueueScreen } from "./screens/relationships/AssignmentQueueScreen";
 import { UserDirectoryScreen } from "./screens/users/UserDirectoryScreen";
 import { UserProfileScreen } from "./screens/users/UserProfileScreen";
 import { AdminUsersScreen } from "./screens/adminSystem/AdminUsersScreen";
@@ -35,6 +40,7 @@ import { ReferralsScreen } from "./screens/growth/ReferralsScreen";
 import { InfluencersScreen } from "./screens/growth/InfluencersScreen";
 import { CampaignDirectoryScreen } from "./screens/acquisition/CampaignDirectoryScreen";
 import { AcquisitionReportScreen } from "./screens/acquisition/AcquisitionReportScreen";
+import { ApplicationsScreen } from "./screens/acquisition/ApplicationsScreen";
 import { UserAnalyticsScreen } from "./screens/analytics/UserAnalyticsScreen";
 import { EngagementScreen } from "./screens/analytics/EngagementScreen";
 import { FitnessNutritionScreen } from "./screens/analytics/FitnessNutritionScreen";
@@ -58,12 +64,13 @@ const queryClient = new QueryClient({
 });
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
+  const { t } = useTranslation();
   const { adminUser, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-text-secondary">
-        Loading…
+        {t("app.loading")}
       </div>
     );
   }
@@ -85,12 +92,13 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
  * isLoading/adminUser check in the opposite direction.
  */
 function RedirectIfAuthed({ children }: { children: React.ReactElement }) {
+  const { t } = useTranslation();
   const { adminUser, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-text-secondary">
-        Loading…
+        {t("app.loading")}
       </div>
     );
   }
@@ -188,6 +196,17 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* A-M1. Declared before "/relationships/:id" so the literal path
+          wins — the same ordering caution the directory route above
+          already documents. */}
+      <Route
+        path="/relationships/assignment-queue"
+        element={
+          <RequireAuth>
+            <AssignmentQueueScreen />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/relationships/:id"
         element={
@@ -252,6 +271,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PrivacyScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin-system/privacy-requests"
+        element={
+          <RequireAuth>
+            <PrivacyRequestsScreen />
           </RequireAuth>
         }
       />
@@ -452,6 +479,19 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* Spec §8 (28 Sep 2026) — the queue behind the public website's
+          Early Access, partner application and contact forms. Under
+          Growth for the same reason Campaigns is: these are leads and
+          partner applications, not accounts, and the API gates both
+          endpoints on the `growth` permission to match. */}
+      <Route
+        path="/growth/applications"
+        element={
+          <RequireAuth>
+            <ApplicationsScreen />
+          </RequireAuth>
+        }
+      />
       {/* Module 09 — Analytics: 09.01 User Analytics (added 25 Aug 2026,
           gained a real AI tab + compare toggle 26 Aug) + 09.02 Engagement
           + 09.03 Fitness & Nutrition (both added 26 Aug 2026) + 09.06 Unit
@@ -561,6 +601,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/finance/payout-runs"
+        element={
+          <RequireAuth>
+            <PayoutRunsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/finance/invoices"
         element={
           <RequireAuth>
@@ -613,6 +661,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <GymDirectoryScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/gyms/help-requests"
+        element={
+          <RequireAuth>
+            <GymHelpRequestsScreen />
           </RequireAuth>
         }
       />

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -19,19 +20,37 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
  * have an obvious place to land without another MainTabs.tsx rewrite.
  */
 export function MoreScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>();
 
   return (
-    <ScreenContainer title="More">
+    <ScreenContainer title={t("more.title")}>
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <MenuRow
-          label="Availability & Capacity"
-          subtitle="Your lifecycle status and how many clients you can take on"
+          label={t("more.availability.label")}
+          subtitle={t("more.availability.subtitle")}
           onPress={() => navigation.navigate("AvailabilityCapacity")}
         />
+        {/* P6 (28 Sep 2026) — the earnings surface. The handoff lists
+            earnings, payout pending/paid/failed and earnings history
+            among this app's complete-as-designed screens; none of them
+            existed, which meant a professional had no way to see what
+            they had been paid. */}
         <MenuRow
-          label="Form reviews"
-          subtitle="Review exercise clips submitted by your clients"
+          label={t("more.earnings.label")}
+          subtitle={t("more.earnings.subtitle")}
+          onPress={() => navigation.navigate("Earnings")}
+        />
+        {/* P-M7 — the offers list. Today only ever showed live offers, so
+            a declined or expired one simply vanished. */}
+        <MenuRow
+          label={t("more.offers.label")}
+          subtitle={t("more.offers.subtitle")}
+          onPress={() => navigation.navigate("Offers")}
+        />
+        <MenuRow
+          label={t("more.formReviews.label")}
+          subtitle={t("more.formReviews.subtitle")}
           onPress={() => navigation.navigate("FormReviews")}
         />
       </Card>

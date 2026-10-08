@@ -7,7 +7,7 @@ const LINE_H = 14;
 const MAX_CHARS = 92;
 
 function esc(s: string): string {
-  return s.replace(/[^\x20-\x7e\xa0-\xff]/g, "?").replace(/([\()])/g, "\$1");
+  return s.replace(/[^\x20-\x7e\xa0-\xff]/g, "?").replace(/([\\()])/g, "\\$1");
 }
 
 function wrap(line: string): string[] {

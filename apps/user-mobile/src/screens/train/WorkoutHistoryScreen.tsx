@@ -429,7 +429,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
         <Card style={{ borderColor: colors.warning, backgroundColor: colors.warningSoft, gap: spacing.xs }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="sparkles" size={13} color={colors.warning} />
-            <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>23PRIMEFIT RECOMMENDATION</Text>
+            <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
           </View>
           <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
             {stats.consistency !== null && stats.consistency < 70

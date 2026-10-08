@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -56,6 +57,7 @@ const LIFECYCLE_TONES: Record<string, { bg: string; fg: string }> = {
  * logic, just surfacing data that endpoint already returns.
  */
 export function AvailabilityScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const [draftCapacity, setDraftCapacity] = useState<string>("");
@@ -96,24 +98,27 @@ export function AvailabilityScreen() {
     if (!summary) return null;
     switch (summary.lifecycleStatus) {
       case "application":
-        return "You haven't submitted a service credential yet — do that from onboarding to start verification.";
+        return t("availabilityStatus.stage.application");
       case "verification":
-        return "An admin is reviewing your identity check and service credential(s). You'll move to Approved once both clear.";
+        return t("availabilityStatus.stage.verification");
       case "approved":
         return totalCredentials > 0
-          ? `You're approved, but not yet open for new clients — this needs at least one verified service credential (currently ${verifiedCount} of ${totalCredentials} verified). You'll open automatically as soon as one clears.`
-          : "You're approved, but not yet open for new clients — this needs at least one verified service credential. You'll open automatically as soon as one clears.";
+          ? t("availabilityStatus.stage.approvedWithCredentials", {
+              verified: verifiedCount,
+              total: totalCredentials,
+            })
+          : t("availabilityStatus.stage.approved");
       case "available":
-        return "You're open for new clients — clients can be matched to you up to your capacity below.";
+        return t("availabilityStatus.stage.available");
       case "suspended":
-        return "Your account is suspended. Contact support to resolve this before you can accept new clients.";
+        return t("availabilityStatus.stage.suspended");
       default:
         return null;
     }
   })();
 
   return (
-    <ScreenContainer title="Availability & Capacity">
+    <ScreenContainer title={t("availability.title")}>
       <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
         ‹ More
       </Text>
@@ -130,7 +135,7 @@ export function AvailabilityScreen() {
         <View style={{ gap: spacing.md, marginTop: spacing.sm }}>
           <Card>
             <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Lifecycle Status
+              {t("availabilityStatus.lifecycle")}
             </Text>
             <View
               style={{
@@ -159,14 +164,14 @@ export function AvailabilityScreen() {
             )}
             {summary.status === "suspended" && summary.lifecycleStatus !== "suspended" && (
               <Text style={{ color: colors.danger, marginTop: spacing.sm, fontSize: 13 }}>
-                Your account is suspended, which overrides the lifecycle stage above — you can't accept new clients right now.
+                {t("availabilityStatus.suspendedOverride")}
               </Text>
             )}
           </Card>
 
           <Card>
             <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Active Clients
+              {t("availabilityStatus.activeClients")}
             </Text>
             <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>
               {summary.activeClients} of {summary.maxActiveClients}
@@ -182,7 +187,7 @@ export function AvailabilityScreen() {
 
           <Card>
             <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Maximum Active Clients
+              {t("availabilityStatus.maxActiveClients")}
             </Text>
             <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, fontSize: 13 }}>
               The cap on how many clients can be active with you at once ({MIN_CAPACITY}–{MAX_CAPACITY}).
@@ -226,7 +231,7 @@ export function AvailabilityScreen() {
             )}
 
             <Button
-              label="Save"
+              label={t("common.save")}
               onPress={() => saveMutation.mutate(parsedCapacity)}
               loading={saveMutation.isPending}
               disabled={!isDirty || saveMutation.isPending}

@@ -1,4 +1,4 @@
-# Privacy Policy — PrimeFit
+# Privacy Policy — Fynrox
 
 **Draft — 25 Aug 2026. This is a starting point written for launch speed, not a finished legal document. Have a lawyer review it before real users see it, especially the health-data and data-retention sections below. Replace every `[bracketed]` placeholder before publishing.**
 
@@ -6,7 +6,7 @@ Effective date: [DATE] · Last updated: [DATE]
 
 ## 1. Who we are
 
-PrimeFit ("we," "us," "our") operates the PrimeFit fitness coaching app and website (the "Service"). This policy explains what we collect, why, and what choices you have. Contact us at [SUPPORT EMAIL] with any questions.
+Fynrox ("we," "us," "our") operates the Fynrox fitness coaching app and website (the "Service"). This policy explains what we collect, why, and what choices you have. Contact us at [SUPPORT EMAIL] with any questions.
 
 [COMPANY LEGAL NAME], a [ENTITY TYPE] registered in [JURISDICTION], operates the Service.
 

@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
@@ -43,6 +44,7 @@ async function fetchMemberActivationSummary(id: string): Promise<AdminGymMemberA
  * "₹0.00/member" as if it were a real negotiated rate.
  */
 export function GymProfileScreen() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [locationForm, setLocationForm] = useState<AddGymLocationInput>({ name: "", address: "", equipment: "" });
   const [showLocationForm, setShowLocationForm] = useState(false);
@@ -120,14 +122,14 @@ export function GymProfileScreen() {
   const isLocationFormValid = locationForm.name.trim().length > 0 && locationForm.address.trim().length > 0;
 
   return (
-    <AppShell title="Gym Profile">
-      {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+    <AppShell title={t("gymProfile.gymProfile")}>
+      {isLoading && <p className="text-sm text-text-secondary">{t("gymProfile.loading")}</p>}
 
       {isError && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           {extractErrorMessage(error, "Couldn't load this gym.")}
           <button type="button" onClick={() => refetch()} className="ml-3 underline">
-            Retry
+            {t("gymProfile.retry")}
           </button>
         </div>
       )}
@@ -145,11 +147,11 @@ export function GymProfileScreen() {
               </div>
               {data.gym.contactPhone && <div className="text-xs text-text-dim">{data.gym.contactPhone}</div>}
               <div className="mt-2 text-xs text-text-dim">
-                Invite code: <span className="font-mono">{data.gym.inviteCode}</span>
+                {t("gymProfile.inviteCodeIs", { code: data.gym.inviteCode })}
               </div>
             </div>
             <Link to="/gyms" className="text-xs text-text-secondary hover:text-text-primary">
-              ← Back to Directory
+              {t("gymProfile.backToDirectory")}
             </Link>
           </div>
 
@@ -160,7 +162,7 @@ export function GymProfileScreen() {
           <div className="flex flex-wrap gap-4">
             {data.gym.status !== "approved" && (
               <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">Approve Partner</div>
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.approvePartner")}</div>
                 <p className="mt-1 text-xs text-text-secondary">
                   Moves this gym from {data.gym.status} to Approved — the normal partner-onboarding path.
                 </p>
@@ -181,8 +183,8 @@ export function GymProfileScreen() {
             {data.gym.status === "approved" && (
               <div className="flex-1">
                 <ReasonGatedAction
-                  title="Suspend Partner"
-                  description="Suspends this gym partner — reversible later by approving again. Requires a real reason on record."
+                  title={t("gymProfile.suspendPartner")}
+                  description={t("gymProfile.suspendsThisGymPartner")}
                   actionLabel={suspendMutation.isPending ? "Suspending…" : "Suspend"}
                   isPending={suspendMutation.isPending}
                   isError={suspendMutation.isError}
@@ -197,11 +199,11 @@ export function GymProfileScreen() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Commercial terms */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Commercial Terms</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.commercialTerms")}</div>
               {draft && (
                 <div className="mt-3 space-y-3">
                   <label className="block">
-                    <div className="text-[11px] text-text-dim">Commission %</div>
+                    <div className="text-[11px] text-text-dim">{t("gymProfile.commission")}</div>
                     <input
                       type="number"
                       min={0}
@@ -214,7 +216,7 @@ export function GymProfileScreen() {
                     />
                   </label>
                   <label className="block">
-                    <div className="text-[11px] text-text-dim">Pricing model</div>
+                    <div className="text-[11px] text-text-dim">{t("gymProfile.pricingModel")}</div>
                     <input
                       type="text"
                       value={draft.pricingModel}
@@ -227,7 +229,7 @@ export function GymProfileScreen() {
                       Rate per member (cents)
                       {!data.gym.ratePerMemberConfigured && (
                         <span className="ml-1.5 rounded bg-surface-raised px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-warning">
-                          Not configured
+                          {t("gymProfile.notConfigured")}
                         </span>
                       )}
                     </div>
@@ -241,7 +243,7 @@ export function GymProfileScreen() {
                       className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                     />
                     <p className="mt-1 text-[11px] text-text-dim">
-                      0 means this gym's per-member rate has never been set — a real placeholder, not a free rate.
+                      {t("gymProfile.n0MeansThisGym")}
                     </p>
                   </label>
                   <button
@@ -258,7 +260,7 @@ export function GymProfileScreen() {
                     </p>
                   )}
                   {commercialMutation.isSuccess && !commercialMutation.isPending && (
-                    <p className="text-xs text-accent">Commercial terms updated.</p>
+                    <p className="text-xs text-accent">{t("gymProfile.commercialTermsUpdated")}</p>
                   )}
                 </div>
               )}
@@ -268,13 +270,13 @@ export function GymProfileScreen() {
                 getMemberActivationSummary()'s own doc comment for why it's
                 always zero today (User.gymId resolution is later-wave work). */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Member Activation Summary</div>
-              {isSummaryLoading && <p className="mt-3 text-sm text-text-secondary">Loading…</p>}
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.memberActivationSummary")}</div>
+              {isSummaryLoading && <p className="mt-3 text-sm text-text-secondary">{t("gymProfile.loading")}</p>}
               {summary && (
                 <dl className="mt-3 space-y-2 text-sm">
-                  <Row label="Members" value={summary.memberCount} />
-                  <Row label="Onboarding completed" value={summary.onboardingCompletedCount} />
-                  <Row label="First workout completed" value={summary.firstWorkoutCompletedCount} />
+                  <Row label={t("gymProfile.members")} value={summary.memberCount} />
+                  <Row label={t("gymProfile.onboardingCompleted")} value={summary.onboardingCompletedCount} />
+                  <Row label={t("gymProfile.firstWorkoutCompleted")} value={summary.firstWorkoutCompletedCount} />
                 </dl>
               )}
               <p className="mt-3 text-[11px] text-text-dim">
@@ -290,7 +292,7 @@ export function GymProfileScreen() {
               gyms.service.ts#setGymPortalPassword's own doc comment. */}
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
             <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-wide text-text-dim">Gym Portal Access</div>
+              <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.gymPortalAccess")}</div>
               <button
                 type="button"
                 onClick={() => setShowPortalPasswordForm((v) => !v)}
@@ -308,7 +310,7 @@ export function GymProfileScreen() {
             {showPortalPasswordForm && (
               <form onSubmit={onSubmitPortalPassword} className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="block">
-                  <div className="text-[11px] text-text-dim">New portal password (min. 8 characters)</div>
+                  <div className="text-[11px] text-text-dim">{t("gymProfile.newPortalPasswordMin")}</div>
                   <input
                     type="password"
                     value={portalPassword}
@@ -335,7 +337,7 @@ export function GymProfileScreen() {
             )}
             {portalPasswordMutation.isSuccess && !portalPasswordMutation.isPending && (
               <p className="mt-2 text-xs text-accent">
-                Portal password set — share it with the gym's contact through a secure channel (never over email).
+                {t("gymProfile.portalPasswordSetShare")}
               </p>
             )}
           </div>
@@ -356,7 +358,7 @@ export function GymProfileScreen() {
             {showLocationForm && (
               <div className="mt-3 grid grid-cols-1 gap-3 rounded-md border border-border-subtle bg-surface-raised p-3 sm:grid-cols-2">
                 <label className="block">
-                  <div className="text-[11px] text-text-dim">Location name</div>
+                  <div className="text-[11px] text-text-dim">{t("gymProfile.locationName")}</div>
                   <input
                     type="text"
                     value={locationForm.name}
@@ -365,7 +367,7 @@ export function GymProfileScreen() {
                   />
                 </label>
                 <label className="block">
-                  <div className="text-[11px] text-text-dim">Address</div>
+                  <div className="text-[11px] text-text-dim">{t("gymProfile.address")}</div>
                   <input
                     type="text"
                     value={locationForm.address}
@@ -374,7 +376,7 @@ export function GymProfileScreen() {
                   />
                 </label>
                 <label className="block sm:col-span-2">
-                  <div className="text-[11px] text-text-dim">Equipment (optional)</div>
+                  <div className="text-[11px] text-text-dim">{t("gymProfile.equipmentOptional")}</div>
                   <textarea
                     value={locationForm.equipment ?? ""}
                     onChange={(e) => setLocationForm((f) => ({ ...f, equipment: e.target.value }))}
@@ -408,7 +410,7 @@ export function GymProfileScreen() {
                   {l.equipment && <div className="mt-1 text-xs text-text-dim">{l.equipment}</div>}
                 </div>
               ))}
-              {data.gym.locations.length === 0 && <p className="text-sm text-text-dim">No locations added yet.</p>}
+              {data.gym.locations.length === 0 && <p className="text-sm text-text-dim">{t("gymProfile.noLocationsAddedYet")}</p>}
             </div>
           </div>
         </div>

@@ -1,16 +1,16 @@
-# PrimeFit / 23PrimeFit — Product Documentation
+# FynroX / FynroX — Product Documentation
 
 **Status:** Phase 0 in progress — backend + mobile app scaffold built, planning complete for all three apps
 **Sources of truth:**
 - [Figma — vi-admin](https://www.figma.com/design/QFkdCAZdSnuM9slK5lkvf8/vi-admin?node-id=0-1) (Super Admin Console, 54 screens)
-- [Figma — v1-user](https://www.figma.com/design/goXnXRimiQom0cq8p8Mvtj/v1-user?node-id=9-2) (23PrimeFit consumer mobile app, 82 screens)
-- [Figma — v1-coach](https://www.figma.com/design/rWjLV3qEnwuEy6Avuo7ggT/v1-coach?node-id=0-1) (23PrimeFit coach/professional app, 16 screens)
+- [Figma — v1-user](https://www.figma.com/design/goXnXRimiQom0cq8p8Mvtj/v1-user?node-id=9-2) (FynroX consumer mobile app, 82 screens)
+- [Figma — v1-coach](https://www.figma.com/design/rWjLV3qEnwuEy6Avuo7ggT/v1-coach?node-id=0-1) (FynroX coach/professional app, 16 screens)
 
 **Last reviewed:** 17 Aug 2026 · **Code scaffold started:** 18 Aug 2026
 
 ## What this is
 
-PrimeFit / 23PrimeFit is a global fitness & nutrition coaching marketplace that connects end users with verified fitness/nutrition professionals, sells subscriptions and coaching programs, runs an influencer/referral growth engine, and layers AI-powered features (workout generation, diet-log vision, health scoring, voice coaching) on top. Three Figma files were reviewed screen-by-screen before any code was written: the internal Super Admin back-office console, the consumer-facing mobile app end users use day to day, and the coach-facing app professionals use to run their practice. Per the mobile-first priority below, `apps/api` (backend) and `apps/user-mobile` now have real, typechecked Phase 0 code — see their READMEs for setup. `apps/admin-web` and `apps/coach-mobile` are still documentation-only, by design (see the roadmap).
+FynroX / FynroX is a global fitness & nutrition coaching marketplace that connects end users with verified fitness/nutrition professionals, sells subscriptions and coaching programs, runs an influencer/referral growth engine, and layers AI-powered features (workout generation, diet-log vision, health scoring, voice coaching) on top. Three Figma files were reviewed screen-by-screen before any code was written: the internal Super Admin back-office console, the consumer-facing mobile app end users use day to day, and the coach-facing app professionals use to run their practice. Per the mobile-first priority below, `apps/api` (backend) and `apps/user-mobile` now have real, typechecked Phase 0 code — see their READMEs for setup. `apps/admin-web` and `apps/coach-mobile` are still documentation-only, by design (see the roadmap).
 
 **Start here if you only read one thing:** [docs/coach/06-cross-app-integration.md](docs/coach/06-cross-app-integration.md) §2 — the three files were designed somewhat independently and the "find/book a coach" journey exists twice, inconsistently, between the consumer and coach apps. That needs a product decision before any of the three apps' backend work starts.
 

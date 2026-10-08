@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -35,6 +36,13 @@ const TYPE_OPTIONS: AdminActionItemType[] = [
   "support_escalation",
   "relationship_change_pending",
   "credential_verification_pending",
+  // The three types the Prisma enum gained during the R1 gap work. The
+  // first two were live and emitting but absent from this list, so an
+  // admin could not filter to them — a hand-maintained copy of an enum
+  // narrows silently every time the enum grows.
+  "professional_assignment_pending",
+  "gym_help_request",
+  "partner_application_received",
 ];
 
 function typeLabel(type: string): string {
@@ -100,6 +108,19 @@ function getDrillThrough(item: AdminActionItem): { label: string; to: string; ex
       return { label: "Open change queue", to: "/relationships/change-queue", exact: false };
     case "Refund":
       return { label: "Open refunds", to: "/commerce/refunds", exact: false };
+    case "public_application": {
+      // Spec §8 — a gym, creator or professional application from the
+      // public website. No per-row detail route: every field a submission
+      // carries is already on the queue's own row, so this links to the
+      // list filtered to that form rather than to a page that would only
+      // repeat it.
+      const kind = typeof meta.kind === "string" ? meta.kind : null;
+      return {
+        label: "Open applications",
+        to: kind ? `/growth/applications?kind=${encodeURIComponent(kind)}` : "/growth/applications",
+        exact: false,
+      };
+    }
     default:
       return null;
   }
@@ -162,6 +183,7 @@ async function fetchAdminDirectory(): Promise<AdminAccountDirectoryResponse> {
  * "does not have edit access" error if they try.
  */
 export function ActionRequiredScreen() {
+  const { t } = useTranslation();
   const { adminUser: viewer } = useAuth();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<Filters>({ type: "", severity: "", status: "open", assignedToAdminId: "" });
@@ -229,7 +251,7 @@ export function ActionRequiredScreen() {
   }, [data]);
 
   return (
-    <AppShell title="Action Required" subNav={DASHBOARD_SUB_NAV}>
+    <AppShell title={t("actionRequired.actionRequired")} subNav={DASHBOARD_SUB_NAV}>
       <div className="space-y-4">
         <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
           The unified exception queue (`AdminActionItem`) every real source in this build funnels into — see
@@ -239,22 +261,22 @@ export function ActionRequiredScreen() {
 
         {data && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Matching this filter" value={counts.total} />
-            <StatCard label="High severity" value={counts.high} />
-            <StatCard label="Medium severity" value={counts.medium} />
-            <StatCard label="Low severity" value={counts.low} />
+            <StatCard label={t("actionRequired.matchingThisFilter")} value={counts.total} />
+            <StatCard label={t("actionRequired.highSeverity")} value={counts.high} />
+            <StatCard label={t("actionRequired.mediumSeverity")} value={counts.medium} />
+            <StatCard label={t("actionRequired.lowSeverity")} value={counts.low} />
           </div>
         )}
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Type
+            {t("actionRequired.type")}
             <select
               value={filters.type}
               onChange={(e) => setFilter("type", e.target.value as Filters["type"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
+              <option value="">{t("actionRequired.all")}</option>
               {TYPE_OPTIONS.map((t) => (
                 <option key={t} value={t}>
                   {typeLabel(t)}
@@ -264,41 +286,41 @@ export function ActionRequiredScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Severity
+            {t("actionRequired.severity")}
             <select
               value={filters.severity}
               onChange={(e) => setFilter("severity", e.target.value as Filters["severity"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="">All</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="">{t("actionRequired.all")}</option>
+              <option value="high">{t("actionRequired.high")}</option>
+              <option value="medium">{t("actionRequired.medium")}</option>
+              <option value="low">{t("actionRequired.low")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Status
+            {t("actionRequired.status")}
             <select
               value={filters.status}
               onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="open">Open</option>
-              <option value="resolved">Resolved</option>
-              <option value="">All</option>
+              <option value="open">{t("actionRequired.open")}</option>
+              <option value="resolved">{t("actionRequired.resolved")}</option>
+              <option value="">{t("actionRequired.all")}</option>
             </select>
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Assigned to
+            {t("actionRequired.assignedToLabel")}
             {adminDirectory.data ? (
               <select
                 value={filters.assignedToAdminId}
                 onChange={(e) => setFilter("assignedToAdminId", e.target.value)}
                 className="w-48 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               >
-                <option value="">Anyone</option>
+                <option value="">{t("actionRequired.anyone")}</option>
                 {adminDirectory.data.adminUsers.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.fullName}
@@ -307,7 +329,7 @@ export function ActionRequiredScreen() {
               </select>
             ) : (
               <input
-                placeholder="Admin id…"
+                placeholder={t("actionRequired.adminId")}
                 value={filters.assignedToAdminId}
                 onChange={(e) => setFilter("assignedToAdminId", e.target.value)}
                 className="w-48 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
@@ -316,14 +338,14 @@ export function ActionRequiredScreen() {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Sort by
+            {t("actionRequired.sortBy")}
             <select
               value={sortKey}
               onChange={(e) => setSortKey(e.target.value as SortKey)}
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="severity">Severity</option>
-              <option value="createdAt">Newest first</option>
+              <option value="severity">{t("actionRequired.severity")}</option>
+              <option value="createdAt">{t("actionRequired.newestFirst")}</option>
             </select>
           </label>
 
@@ -332,24 +354,24 @@ export function ActionRequiredScreen() {
             onClick={() => refetch()}
             className="ml-auto rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-accent hover:text-accent"
           >
-            Refresh
+            {t("actionRequired.refresh")}
           </button>
         </div>
 
-        {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
+        {isLoading && <p className="text-sm text-text-secondary">{t("actionRequired.loading")}</p>}
 
         {isError && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
             {extractErrorMessage(error, "Couldn't load the action queue.")}
             <button type="button" onClick={() => refetch()} className="ml-3 underline">
-              Retry
+              {t("actionRequired.retry")}
             </button>
           </div>
         )}
 
         {data && sortedItems.length === 0 && (
           <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-8 text-center text-sm text-text-dim">
-            No action items match these filters.
+            {t("actionRequired.noActionItemsMatch")}
           </div>
         )}
 
@@ -378,7 +400,7 @@ export function ActionRequiredScreen() {
                   <div className="mt-1 text-xs text-text-dim">
                     {item.entityType} ·{" "}
                     {drillThrough ? (
-                      <Link to={drillThrough.to} className="text-accent hover:underline">
+                      <Link to={drillThrough.to} className="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent">
                         {drillThrough.exact ? drillThrough.label : `${drillThrough.label} (no per-item detail route yet)`}
                       </Link>
                     ) : (
@@ -403,12 +425,14 @@ export function ActionRequiredScreen() {
               )}
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                {/* Interpolated rather than wrapped around a styled <span>:
+                    word order moves between languages, so a name pinned
+                    mid-sentence lands wherever the English happened to put
+                    it. */}
                 {item.assignedToAdminId ? (
-                  <span>
-                    Assigned to <span className="font-medium text-text-primary">{assignedName}</span>
-                  </span>
+                  <span>{t("actionRequired.assignedToName", { name: assignedName })}</span>
                 ) : (
-                  <span className="text-text-dim">Unassigned</span>
+                  <span className="text-text-dim">{t("actionRequired.unassigned")}</span>
                 )}
                 {item.status === "resolved" && (
                   <span>
@@ -420,7 +444,7 @@ export function ActionRequiredScreen() {
 
               {item.status === "resolved" && item.resolutionNote && (
                 <p className="mt-2 text-xs text-text-secondary">
-                  <span className="text-text-dim">Resolution note: </span>
+                  <span className="text-text-dim">{t("actionRequired.resolutionNote")}</span>
                   {item.resolutionNote}
                 </p>
               )}
@@ -434,16 +458,23 @@ export function ActionRequiredScreen() {
                       onClick={() => viewer && assignMutation.mutate({ id: item.id, adminId: viewer.id })}
                       className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
                     >
-                      Assign to me
+                      {t("actionRequired.assignToMe")}
                     </button>
 
                     {adminDirectory.data ? (
                       <select
+                        // axe-core, 29 Sep 2026: `select-name`, critical, on every
+                        // open row. The visible "Assign to…" placeholder option is
+                        // not a name — a screen reader announced only "combo box",
+                        // with nothing to say which item it assigns. Named per row
+                        // rather than generically, because a queue renders many of
+                        // these and "Assign to" on all of them is barely better.
+                        aria-label={`Assign "${typeLabel(item.type)}" to an admin`}
                         value={assignSelection[item.id] ?? ""}
                         onChange={(e) => setAssignSelection((prev) => ({ ...prev, [item.id]: e.target.value }))}
                         className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
                       >
-                        <option value="">Assign to…</option>
+                        <option value="">{t("actionRequired.assignTo")}</option>
                         {adminDirectory.data.adminUsers.map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.fullName}
@@ -452,7 +483,10 @@ export function ActionRequiredScreen() {
                       </select>
                     ) : (
                       <input
-                        placeholder="Admin id…"
+                        // Same finding: a placeholder is not an accessible name,
+                        // and it disappears the moment anything is typed.
+                        aria-label={`Assign "${typeLabel(item.type)}" to an admin by id`}
+                        placeholder={t("actionRequired.adminId")}
                         value={assignSelection[item.id] ?? ""}
                         onChange={(e) => setAssignSelection((prev) => ({ ...prev, [item.id]: e.target.value }))}
                         className="w-40 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
@@ -464,7 +498,7 @@ export function ActionRequiredScreen() {
                       onClick={() => assignMutation.mutate({ id: item.id, adminId: assignSelection[item.id] })}
                       className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary disabled:opacity-40"
                     >
-                      Assign
+                      {t("actionRequired.assign")}
                     </button>
                   </div>
                   {assignMutation.isError && (
@@ -474,9 +508,9 @@ export function ActionRequiredScreen() {
                   )}
 
                   <ReasonGatedAction
-                    title="Resolve"
-                    description="Record why this item is resolved — the same reason+confirmation discipline BR-ADM-005 requires everywhere else in this console."
-                    actionLabel="Resolve"
+                    title={t("actionRequired.resolve")}
+                    description={t("actionRequired.recordWhyThisItem")}
+                    actionLabel={t("actionRequired.resolve")}
                     tone="warning"
                     isPending={resolveMutation.isPending}
                     isError={resolveMutation.isError}

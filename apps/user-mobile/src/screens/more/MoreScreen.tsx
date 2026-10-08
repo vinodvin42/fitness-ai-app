@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ interface MoreRow {
  * (GET /subscriptions/plans), not hardcoded tier names.
  */
 export function MoreScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans, staleTime: 5 * 60_000 });
   const tabs = () => navigation.getParent<NavigationProp<MainTabsParamList>>();
@@ -50,7 +52,7 @@ export function MoreScreen({ navigation }: Props) {
 
   const primary: MoreRow[] = [
     { label: "My Schedule", icon: "calendar", tint: colors.accent, badge: "Today", onPress: () => tabs()?.navigate("Today", { screen: "Schedule" }) },
-    { label: "Progress", icon: "trending-up", tint: colors.success, onPress: () => navigation.navigate("ProgressSection") },
+    { label: t("more.rows.progress.label"), icon: "trending-up", tint: colors.success, onPress: () => navigation.navigate("ProgressSection") },
     {
       label: "Body Composition",
       icon: "scale",
@@ -58,23 +60,25 @@ export function MoreScreen({ navigation }: Props) {
       onPress: () => navigation.navigate("ProgressSection", { screen: "BodyComposition" }),
     },
     { label: "Your Lifetime", icon: "trophy", tint: colors.accent, badge: "New", onPress: () => navigation.navigate("TimelineOverview") },
-    { label: "Professional Guidance", icon: "message", tint: colors.success, onPress: () => navigation.navigate("CoachDiscovery", undefined) },
+    { label: "Professional Guidance", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
     { label: "Add Reminder", icon: "bell", tint: colors.aiAccent, onPress: () => navigation.navigate("ReminderForm", {}) },
     { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace" }) },
   ];
 
   const secondary: MoreRow[] = [
-    { label: "Reminders", icon: "clock", tint: colors.cyan, onPress: () => navigation.navigate("Reminders") },
+    { label: t("more.rows.reminders.label"), icon: "clock", tint: colors.cyan, onPress: () => navigation.navigate("Reminders") },
     { label: "Medicine", icon: "pill", tint: colors.pink, onPress: () => navigation.navigate("MedicationList") },
-    { label: "Subscription", icon: "zap", tint: colors.warning, onPress: () => navigation.navigate("Subscription") },
-    { label: "Refer & Invite", icon: "sparkles", tint: colors.pink, onPress: () => navigation.navigate("Referral") },
-    { label: "Settings", icon: "settings", tint: colors.textSecondary, onPress: () => navigation.navigate("SettingsHub") },
+    { label: t("more.rows.subscription.label"), icon: "zap", tint: colors.warning, onPress: () => navigation.navigate("Subscription") },
+    // Origin (Fynrox R1, U-M22): receipts and refund status.
+    { label: t("more.rows.purchases.label"), icon: "calendar", tint: colors.cyan, onPress: () => navigation.navigate("Purchases") },
+    { label: t("more.rows.referral.label"), icon: "sparkles", tint: colors.pink, onPress: () => navigation.navigate("Referral") },
+    { label: t("more.rows.settings.label"), icon: "settings", tint: colors.textSecondary, onPress: () => navigation.navigate("SettingsHub") },
     { label: "Support", icon: "info", tint: colors.cyan, onPress: () => navigation.navigate("Support") },
   ];
 
   return (
     <ScreenContainer
-      title="More"
+      title={t("more.title")}
       subtitle={`${BRAND_NAME} App Settings & Features`}
       right={
         <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open profile">
@@ -114,7 +118,7 @@ export function MoreScreen({ navigation }: Props) {
         {BRAND_NAME} Version {Constants.expoConfig?.version ?? "—"}
       </Text>
       <Pressable onPress={logout} accessibilityRole="button" accessibilityLabel="Log out of account" style={{ alignSelf: "center", padding: spacing.sm }}>
-        <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 15 }}>Log Out of Account</Text>
+        <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 15 }}>{t("more.logOut")}</Text>
       </Pressable>
     </ScreenContainer>
   );

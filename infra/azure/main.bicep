@@ -31,10 +31,10 @@
 @description('Azure region for every resource this template creates. Static Web Apps (provisioned separately, see the runbook) support a much smaller region list than this does — that only matters for those, not for this file.')
 param location string = 'centralindia'
 
-@description('Short prefix used to build every resource name below (e.g. "primefit" -> primefit-plan, primefit-api-<suffix>, primefit-pg-<suffix>). Lowercase letters/numbers/hyphens only — some derived names feed into globally-unique DNS labels.')
+@description('Short prefix used to build every resource name below (e.g. "fynrox" -> fynrox-plan, fynrox-api-<suffix>, fynrox-pg-<suffix>). Lowercase letters/numbers/hyphens only — some derived names feed into globally-unique DNS labels.')
 @minLength(3)
 @maxLength(20)
-param namePrefix string = 'primefit'
+param namePrefix string = 'fynrox'
 
 @description('Postgres admin username. Must NOT be a reserved name — see modules/postgres.bicep.')
 param postgresAdminUsername string = 'primefitadmin'

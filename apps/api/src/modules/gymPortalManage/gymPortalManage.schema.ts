@@ -42,9 +42,4 @@ export const createAnnouncementSchema = z.object({
   expiresAt: z.coerce.date().nullable().optional(),
 });
 
-export const listHelpRequestsQuerySchema = z.object({
-  status: z.enum(["open", "seen", "resolved"]).optional(),
-});
-export const updateHelpRequestSchema = z.object({ status: z.enum(["seen", "resolved"]) });
-
 export const idParamSchema = z.object({ id: z.string().min(1).max(191) });
