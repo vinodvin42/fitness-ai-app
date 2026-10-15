@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNumText: { color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 12 },
+  stepNumText: { color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 13 },
   stepTitle: { color: colors.textPrimary, ...typography.label },
   stepBody: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
   stat: {

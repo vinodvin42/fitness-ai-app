@@ -123,7 +123,7 @@ export function TimelineReportScreen({ navigation }: Props) {
               ~ Estimated
             </Text>
           </View>
-          <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 16 }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18 }}>
             Measured = entered by you or synced from a device. Estimated = derived from your logs. {data.disclaimer}
           </Text>
 

@@ -77,7 +77,7 @@ function ContactCard({
       <Icon name={icon} size={20} color={tint} />
       <View style={{ gap: 2 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>{title}</Text>
-        <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }} numberOfLines={2}>
+        <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }} numberOfLines={2}>
           {subtitle}
         </Text>
       </View>
@@ -136,7 +136,7 @@ export function SupportScreen({ navigation }: Props) {
                   style={{ padding: 14, gap: 3 }}
                 >
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{a.title}</Text>
-                  <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 16 }} numberOfLines={2}>
+                  <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 18 }} numberOfLines={2}>
                     {a.snippet}
                   </Text>
                 </Pressable>
@@ -212,7 +212,7 @@ export function SupportScreen({ navigation }: Props) {
                     <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }} numberOfLines={1}>
                       #{ticket.id.slice(0, 4).toUpperCase()} {ticket.subject}
                     </Text>
-                    <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Created {timeAgo(ticket.createdAt)}</Text>
+                    <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Created {timeAgo(ticket.createdAt)}</Text>
                   </View>
                   <Pill label={STATUS_LABEL[ticket.status]} tone={STATUS_TONE[ticket.status]} />
                 </Pressable>

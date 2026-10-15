@@ -60,7 +60,7 @@ export function MoreScreen({ navigation }: Props) {
       onPress: () => navigation.navigate("ProgressSection", { screen: "BodyComposition" }),
     },
     { label: "Your Lifetime", icon: "trophy", tint: colors.accent, badge: "New", onPress: () => navigation.navigate("TimelineOverview") },
-    { label: "Professional Guidance", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
+    { label: "Coach", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
     { label: "Add Reminder", icon: "bell", tint: colors.aiAccent, onPress: () => navigation.navigate("ReminderForm", {}) },
     { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace" }) },
   ];
@@ -89,7 +89,7 @@ export function MoreScreen({ navigation }: Props) {
       <Pressable
         onPress={() => navigation.navigate("Subscription")}
         accessibilityRole="button"
-        accessibilityLabel={`${bannerTitle}. Access advanced bio-analytics and custom coaching.`}
+        accessibilityLabel={`${bannerTitle}. See deeper progress reports and get more help from coaches.`}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -106,7 +106,7 @@ export function MoreScreen({ navigation }: Props) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{bannerTitle}</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>Access advanced bio-analytics & custom coaching.</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>See deeper progress reports and get more help from coaches.</Text>
         </View>
         <Icon name="chevron-right" size={18} color={colors.textPrimary} />
       </Pressable>
@@ -149,7 +149,7 @@ function RowGroup({ rows }: { rows: MoreRow[] }) {
           <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h3, fontFamily: fonts.bodySemi }}>{r.label}</Text>
           {r.badge ? (
             <View style={{ backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ color: colors.aiAccent, fontSize: 11 }}>{r.badge}</Text>
+              <Text style={{ color: colors.aiAccent, fontSize: 13 }}>{r.badge}</Text>
             </View>
           ) : null}
           <Icon name="chevron-right" size={18} color={colors.textMuted} />

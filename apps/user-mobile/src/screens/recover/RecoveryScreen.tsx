@@ -180,7 +180,7 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
             onChange={(v) => setMindfulForm((p) => ({ ...p, durationMinutes: v }))}
           />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t("recover.mindfulness.typeOptional")}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>{t("recover.mindfulness.typeOptional")}</Text>
             <TextInput
               value={mindfulForm.type}
               onChangeText={(v) => setMindfulForm((p) => ({ ...p, type: v }))}
@@ -261,7 +261,7 @@ function LabeledInput({
 }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 13 }}>
         {label} <Text style={{ color: colors.textMuted }}>({unit})</Text>
       </Text>
       <TextInput
@@ -279,7 +279,7 @@ function LabeledInput({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <View>
-      <Text style={{ color: colors.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5 }}>
         {label}
       </Text>
       <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, marginTop: 2 }}>{value}</Text>

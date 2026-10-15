@@ -6,6 +6,7 @@ import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
 import { LANGUAGES } from "../../lib/languages";
+import { TRANSLATED_LANGUAGES } from "../../i18n";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -13,22 +14,28 @@ import { RecoverShell } from "../recover/parts";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "LanguageSelection">;
 
+/** Only languages the app can actually show (see TRANSLATED_LANGUAGES). */
+const AVAILABLE = LANGUAGES.filter((l) => (TRANSLATED_LANGUAGES as readonly string[]).includes(l.code));
+
 /**
- * Choose Your Language (Figma Profile & Settings 07): search, a two-column
- * grid of the ten supported languages with a radio, and Save. The choice is
- * saved to `User.languagePreference`. Real translation is not built, so the
- * screen says plainly that app text stays English for now.
+ * Choose Your Language (Figma Profile & Settings 07): a two-column grid of
+ * languages with a radio, and Save. The choice is saved to
+ * `User.languagePreference`. Only languages with real translations are
+ * listed (English today) — the other nine the API accepts would all render
+ * English, so offering them changed nothing. Search appears once the list
+ * is long enough to need it.
  */
 export function LanguageSelectionScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
   const { colors: theme } = useTheme();
   const saved = user?.languagePreference ?? "en";
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(saved);
+  // A saved language with no translation (picked on an older build) starts on English, so Save can fix it.
+  const [selected, setSelected] = useState(AVAILABLE.some((l) => l.code === saved) ? saved : "en");
   const [isSaving, setIsSaving] = useState(false);
 
   const q = query.trim().toLowerCase();
-  const filtered = LANGUAGES.filter((l) => !q || l.english.toLowerCase().includes(q) || l.native.toLowerCase().includes(q));
+  const filtered = AVAILABLE.filter((l) => !q || l.english.toLowerCase().includes(q) || l.native.toLowerCase().includes(q));
 
   const onSave = async () => {
     setIsSaving(true);
@@ -49,28 +56,30 @@ export function LanguageSelectionScreen({ navigation }: Props) {
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 4 }}>Pick the language you prefer to use</Text>
       </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.sm,
-          backgroundColor: colors.surface,
-          borderRadius: radius.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          paddingHorizontal: spacing.md,
-        }}
-      >
-        <Icon name="search" size={16} color={colors.textMuted} />
-        <TextInput
-          style={{ flex: 1, minHeight: 44, color: colors.textPrimary, fontFamily: fonts.body, fontSize: 14 }}
-          placeholder="Search languages..."
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-          accessibilityLabel="Search languages"
-        />
-      </View>
+      {AVAILABLE.length > 6 ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: spacing.md,
+          }}
+        >
+          <Icon name="search" size={16} color={colors.textMuted} />
+          <TextInput
+            style={{ flex: 1, minHeight: 44, color: colors.textPrimary, fontFamily: fonts.body, fontSize: 14 }}
+            placeholder="Search languages..."
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            accessibilityLabel="Search languages"
+          />
+        </View>
+      ) : null}
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }} accessibilityRole="radiogroup">
         {filtered.map((l) => {
@@ -99,7 +108,7 @@ export function LanguageSelectionScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 17 }} numberOfLines={1}>
                   {l.native}
                 </Text>
-                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{l.english}</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{l.english}</Text>
               </View>
               <View
                 style={{
@@ -122,7 +131,7 @@ export function LanguageSelectionScreen({ navigation }: Props) {
       {filtered.length === 0 ? <Text style={{ color: colors.textSecondary }}>No languages match "{query}".</Text> : null}
 
       <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18 }}>
-        App text is English for now; your choice is saved for when translations ship.
+        More languages will appear here when they are ready.
       </Text>
 
       <Button label="Save" onPress={onSave} loading={isSaving} disabled={selected === saved} />

@@ -187,7 +187,7 @@ export function NotificationsScreen({ navigation }: Props) {
             accessibilityLabel="Mark all notifications as read"
             hitSlop={8}
           >
-            <Text style={{ color: theme.accent, ...typography.label, fontSize: 12 }}>
+            <Text style={{ color: theme.accent, ...typography.label, fontSize: 13 }}>
               {readAll.isPending ? "Marking..." : "Mark all read"}
             </Text>
           </Pressable>
@@ -243,7 +243,7 @@ export function NotificationsScreen({ navigation }: Props) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>{n.title}</Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 2 }} numberOfLines={2}>
+                      <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 2 }} numberOfLines={2}>
                         {n.body}
                       </Text>
                       <Text style={{ color: colors.textMuted, ...typography.caption, marginTop: 4 }}>{stamp(n.createdAt)}</Text>

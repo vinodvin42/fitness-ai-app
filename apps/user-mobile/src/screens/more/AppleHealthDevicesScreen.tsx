@@ -46,7 +46,7 @@ function DeviceSummary({ device }: { device: ConnectedDevice }) {
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 14 }}>{device.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: st.color }} />
-            <Text style={{ color: st.color, ...typography.meta, fontSize: 11 }}>
+            <Text style={{ color: st.color, ...typography.meta, fontSize: 13 }}>
               {st.label} · {device.lastSyncAt ? `Synced ${timeAgo(device.lastSyncAt)}` : "Never synced"}
             </Text>
           </View>
@@ -56,7 +56,7 @@ function DeviceSummary({ device }: { device: ConnectedDevice }) {
         <Text style={{ color: colors.textMuted, ...typography.meta }}>Battery Level</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Icon name="battery" size={14} color={colors.success} />
-          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
             {device.batteryPct == null ? "Not reported" : `${device.batteryPct}%`}
           </Text>
         </View>

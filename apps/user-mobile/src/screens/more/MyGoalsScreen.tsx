@@ -90,7 +90,7 @@ export function MyGoalsScreen({ navigation }: Props) {
               paddingVertical: 10,
             }}
           >
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Target weight ({lb ? "lb" : "kg"}), optional</Text>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Target weight ({lb ? "lb" : "kg"}), optional</Text>
             <TextInput
               value={target}
               onChangeText={setTarget}

@@ -150,7 +150,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
                 <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.sm }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Icon name="sparkles" size={13} color={colors.aiAccent} />
-                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX INSIGHT</Text>
+                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX INSIGHT</Text>
                   </View>
                   <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>{insight}</Text>
                   <Pressable
@@ -158,7 +158,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
                     accessibilityRole="button"
                     style={{ alignSelf: "flex-start", backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 10, paddingVertical: 5 }}
                   >
-                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Schedule Recovery</Text>
+                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Schedule Recovery</Text>
                   </Pressable>
                 </Card>
               ) : null}

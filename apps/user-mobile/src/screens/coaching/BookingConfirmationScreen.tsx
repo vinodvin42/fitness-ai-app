@@ -6,6 +6,7 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "BookingConfirmation">;
@@ -20,8 +21,8 @@ function formatDateTime(iso: string) {
   });
 }
 
-function formatPrice(cents: number) {
-  return `₹${(cents / 100).toFixed(2)}`;
+function formatPrice(paise: number) {
+  return formatRupees(paise);
 }
 
 /**

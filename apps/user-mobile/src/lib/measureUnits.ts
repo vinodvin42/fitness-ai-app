@@ -64,6 +64,17 @@ export const ozToMl = (oz: number) => oz * ML_PER_OZ;
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Body weight a person can type (stored in kg). Anything outside is clamped/rejected. */
+export const WEIGHT_RANGE_KG = { min: 20, max: 300 } as const;
+/** Body height a person can type (stored in cm). Anything outside is clamped/rejected. */
+export const HEIGHT_RANGE_CM = { min: 90, max: 250 } as const;
+
+/** 175 (cm) -> { ft: 5, inch: 9 }. */
+export function cmToFeetInches(cm: number): { ft: number; inch: number } {
+  const totalIn = Math.round(cmToIn(cm));
+  return { ft: Math.floor(totalIn / 12), inch: totalIn % 12 };
+}
+
 /** 175 (cm) -> `5'9"`. */
 export function formatFeetInches(cm: number): string {
   const totalIn = Math.round(cmToIn(cm));

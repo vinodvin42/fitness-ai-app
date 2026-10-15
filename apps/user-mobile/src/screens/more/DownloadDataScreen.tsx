@@ -35,8 +35,8 @@ function formatExpiry(iso: string): string {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.md }}>
-      <Text style={{ flex: 1, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12 }}>{value}</Text>
+      <Text style={{ flex: 1, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text>
     </View>
   );
 }
@@ -49,7 +49,7 @@ function Tag({ label, tone }: { label: string; tone: "success" | "warning" | "ne
   }[tone];
   return (
     <View style={{ alignSelf: "flex-start", backgroundColor: palette.bg, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4 }}>
-      <Text style={{ color: palette.fg, fontFamily: fonts.bodyBold, fontSize: 10 }}>{label}</Text>
+      <Text style={{ color: palette.fg, fontFamily: fonts.bodyBold, fontSize: 13 }}>{label}</Text>
     </View>
   );
 }
@@ -121,7 +121,7 @@ export function DownloadDataScreen(_props: Props) {
           ) : null}
 
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md }}>
-            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 17 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18 }}>
               Only you can download this. Professionals, gyms and partners never get a copy.
             </Text>
           </View>

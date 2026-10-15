@@ -11,12 +11,13 @@ import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchCoachProfile } from "../../api/coaching";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachProfileDetail">;
 
-function formatPrice(cents: number) {
-  return `₹${(cents / 100).toFixed(2)}`;
+function formatPrice(paise: number) {
+  return formatRupees(paise);
 }
 
 function serviceLabel(serviceType: string | null) {

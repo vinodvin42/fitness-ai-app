@@ -14,6 +14,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } from "../../api/subscriptions";
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatRupees } from "../../lib/money";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -29,10 +30,11 @@ const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string 
 
 function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billingCycle"]) {
   if (priceCents === 0) return "Free";
-  return `₹${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : billingCycle === "quarterly" ? "3 mo" : "mo"}`;
+  // Plan prices already include GST (D3) — said here so the checkout total is no surprise.
+  return `${formatRupees(priceCents)} / ${billingCycle === "annual" ? "yr" : billingCycle === "quarterly" ? "3 mo" : "mo"} incl. GST`;
 }
 
-/** D8: e.g. "₹349.00 / mo from 1 Dec 2026" when a new price is scheduled. */
+/** D8: e.g. "₹349 / mo incl. GST from 1 Dec 2026" when a new price is scheduled. */
 function formatUpcoming(plan: SubscriptionPlan): string | null {
   if (!plan.upcomingPrice) return null;
   const date = new Date(plan.upcomingPrice.effectiveFrom).toLocaleDateString("en-IN", {
@@ -355,6 +357,9 @@ export function SubscriptionScreen({ navigation, route }: Props) {
 
       <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
         <Text style={{ color: colors.textSecondary }}>{current ? "Change plan" : "Choose a plan"}</Text>
+        {/* Paid plans are still listed with their prices, but without a
+            dead button: one plain line says why they can't be bought yet. */}
+        {!paymentsConfigured ? <Text style={{ color: colors.warning, ...typography.meta }}>{t("checkout.paymentsUnavailable")}</Text> : null}
         {(plans ?? [])
           .filter((plan) => plan.id !== current?.planId)
           // Basic (free) has no annual variant — a billing-cycle choice is
@@ -395,19 +400,14 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                       <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{formatUpcoming(plan)}</Text>
                     ) : null}
                   </View>
-                  <Button
-                    label={
-                      !paymentsConfigured && plan.priceCents > 0
-                        ? t("subscription.comingSoon")
-                        : current
-                          ? t("subscription.switch")
-                          : t("subscription.choose")
-                    }
-                    onPress={() => onSubscribe(plan)}
-                    loading={pendingPlanId === plan.id}
-                    disabled={!paymentsConfigured && plan.priceCents > 0}
-                    style={{ paddingHorizontal: spacing.md, height: 40 }}
-                  />
+                  {!paymentsConfigured && plan.priceCents > 0 ? null : (
+                    <Button
+                      label={current ? t("subscription.switch") : t("subscription.choose")}
+                      onPress={() => onSubscribe(plan)}
+                      loading={pendingPlanId === plan.id}
+                      style={{ paddingHorizontal: spacing.md, height: 44 }}
+                    />
+                  )}
                 </View>
               </Card>
             );

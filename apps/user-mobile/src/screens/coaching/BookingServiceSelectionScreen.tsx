@@ -14,6 +14,7 @@ import { fetchCoachAvailability, fetchCoachProfile, createBooking } from "../../
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "BookingServiceSelection">;
@@ -33,8 +34,8 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function formatPrice(cents: number) {
-  return `₹${(cents / 100).toFixed(2)}`;
+function formatPrice(paise: number) {
+  return formatRupees(paise);
 }
 
 function serviceLabel(serviceType: string | null) {
@@ -251,17 +252,19 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         />
       ) : null}
 
-      <Button
-        label={paymentsConfigured || selectedOffering?.priceCents === 0 ? "Confirm Booking" : "Coming soon"}
-        onPress={onConfirm}
-        loading={isBookingFree || isPurchasing}
-        disabled={
-          !selectedOffering ||
-          !selectedTimeIso ||
-          (selectedOffering.priceCents > 0 && !paymentsConfigured)
-        }
-        style={{ marginTop: spacing.lg }}
-      />
+      {/* A paid session can't be bought while online payment is off: say so
+          plainly instead of showing a button that does nothing. */}
+      {selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
+        <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.lg }}>{t("checkout.paymentsUnavailable")}</Text>
+      ) : (
+        <Button
+          label="Confirm booking"
+          onPress={onConfirm}
+          loading={isBookingFree || isPurchasing}
+          disabled={!selectedOffering || !selectedTimeIso}
+          style={{ marginTop: spacing.lg }}
+        />
+      )}
 
       <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
     </ScreenContainer>

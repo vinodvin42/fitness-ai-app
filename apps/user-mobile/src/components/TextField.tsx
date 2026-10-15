@@ -45,7 +45,7 @@ export function TextField({ label, error, helper, secure, containerStyle, onFocu
             setFocused(false);
             onBlur?.(e);
           }}
-          style={{ flex: 1, minHeight: 48, color: colors.textPrimary, fontFamily: fonts.body, fontSize: 15 }}
+          style={{ flex: 1, minHeight: 48, color: colors.textPrimary, fontFamily: fonts.body, fontSize: 16 }}
         />
         {secure ? (
           <Pressable

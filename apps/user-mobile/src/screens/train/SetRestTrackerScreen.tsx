@@ -197,7 +197,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                 paddingVertical: spacing.md,
               }}
             >
-              <Text style={{ color: colors.textMuted, fontSize: 11, letterSpacing: 0.6 }}>{f.label}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 13, letterSpacing: 0.6 }}>{f.label}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
                 <TextInput
                   style={{ color: colors.textPrimary, fontSize: 38, fontFamily: fonts.display, textAlign: "center", minWidth: 70, padding: 0, marginVertical: 4 }}
@@ -210,7 +210,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                 />
                 {f.unit ? <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{f.unit}</Text> : null}
               </View>
-              <Text style={{ color: colors.textMuted, fontSize: 11 }}>{f.last ?? " "}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>{f.last ?? " "}</Text>
             </View>
           ))}
         </View>
@@ -239,12 +239,12 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
               }}
             >
               <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: t.on ? theme.accent : colors.surfaceHigh }} />
-              <Text style={{ color: t.on ? colors.textPrimary : colors.textSecondary, fontSize: 12 }}>{t.label}</Text>
+              <Text style={{ color: t.on ? colors.textPrimary : colors.textSecondary, fontSize: 13 }}>{t.label}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 13 }}>Select RPE (Rating of Perceived Exertion)</Text>
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 13 }}>How hard was it? (1–10)</Text>
         <View style={{ flexDirection: "row", gap: 5 }}>
           {RPE_SCALE.map((n) => {
             const selected = rpe === n;
@@ -253,7 +253,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                 key={n}
                 onPress={() => setRpe(selected ? undefined : n)}
                 accessibilityRole="button"
-                accessibilityLabel={`RPE ${n} of 10`}
+                accessibilityLabel={`Effort ${n} of 10`}
                 accessibilityState={{ selected }}
                 style={{
                   flex: 1,
@@ -264,7 +264,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                   backgroundColor: selected ? rpeColor(n) : rpeBg(n),
                 }}
               >
-                <Text style={{ color: selected ? "#0B0B0F" : rpeColor(n), fontFamily: fonts.bodyBold, fontSize: 12 }}>{n}</Text>
+                <Text style={{ color: selected ? "#0B0B0F" : rpeColor(n), fontFamily: fonts.bodyBold, fontSize: 13 }}>{n}</Text>
               </Pressable>
             );
           })}
@@ -299,24 +299,24 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 13 }}>Set History (Today)</Text>
         <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
           {exerciseSetLogs.length === 0 ? (
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>No sets logged for this exercise yet.</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>No sets logged for this exercise yet.</Text>
           ) : (
             <>
               <View style={{ flexDirection: "row", paddingBottom: 6 }}>
-                {["SET", "WEIGHT", "REPS", "RPE", ""].map((h, i) => (
-                  <Text key={i} style={{ flex: i === 4 ? 0.6 : 1, color: colors.textMuted, fontSize: 10 }}>
+                {["SET", "WEIGHT", "REPS", "EFFORT", ""].map((h, i) => (
+                  <Text key={i} style={{ flex: i === 4 ? 0.6 : 1, color: colors.textMuted, fontSize: 13 }}>
                     {h}
                   </Text>
                 ))}
               </View>
               {exerciseSetLogs.map((s) => (
                 <View key={s.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 6 }}>
-                  <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12 }}>{s.setNumber}</Text>
-                  <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 12 }}>
+                  <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>{s.setNumber}</Text>
+                  <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 13 }}>
                     {s.weightKg != null ? `${kgToDisplay(s.weightKg, weightUnit)} ${weightUnit}` : "—"}
                   </Text>
-                  <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 12 }}>{s.reps}</Text>
-                  <Text style={{ flex: 1, color: s.rpe ? rpeColor(s.rpe) : colors.textMuted, fontSize: 12 }}>{s.rpe ? `RPE ${s.rpe}` : "—"}</Text>
+                  <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 13 }}>{s.reps}</Text>
+                  <Text style={{ flex: 1, color: s.rpe ? rpeColor(s.rpe) : colors.textMuted, fontSize: 13 }}>{s.rpe ? `${s.rpe}/10` : "—"}</Text>
                   <Pressable
                     onPress={() => setEditingSet(s)}
                     accessibilityRole="button"
@@ -324,7 +324,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                     hitSlop={8}
                     style={{ flex: 0.6 }}
                   >
-                    <Text style={{ color: theme.accent, fontSize: 12 }}>Edit</Text>
+                    <Text style={{ color: theme.accent, fontSize: 13 }}>Edit</Text>
                   </Pressable>
                 </View>
               ))}
@@ -333,7 +333,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                   {exerciseSetLogs
                     .filter((s) => s.isWarmup || s.isDropSet || s.note)
                     .map((s) => (
-                      <Text key={s.id} style={{ color: colors.textMuted, fontSize: 11 }}>
+                      <Text key={s.id} style={{ color: colors.textMuted, fontSize: 13 }}>
                         Set {s.setNumber}: {[s.isWarmup ? "warm-up" : null, s.isDropSet ? "drop set" : null].filter(Boolean).join(", ")}
                         {s.note ? `${s.isWarmup || s.isDropSet ? " · " : ""}“${s.note}”` : ""}
                       </Text>

@@ -87,7 +87,7 @@ export function MyGymScreen({ navigation }: Props) {
                 gap: 4,
               }}
             >
-              <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 12 }}>
+              <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                 {gym.announcement.kind === "holiday" ? "Holiday update" : "Gym notice"}
               </Text>
               {gym.announcement.title !== (gym.announcement.kind === "holiday" ? "Holiday update" : "Gym notice") ? (

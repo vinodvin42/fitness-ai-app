@@ -11,6 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { Icon, type IconName } from "../../components/Icon";
 import { fetchProgramProgress } from "../../api/programPurchases";
 import { useMeasureUnits } from "../../lib/measureUnits";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -27,7 +28,7 @@ function SummaryRow({ label, value, delta, tone }: { label: string; value: strin
       </View>
       {delta ? (
         <View style={{ backgroundColor: good ? colors.successSoft : colors.accentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 4 }}>
-          <Text style={{ color: good ? colors.success : colors.accent, fontFamily: fonts.bodyBold, fontSize: 11 }}>{delta}</Text>
+          <Text style={{ color: good ? colors.success : colors.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{delta}</Text>
         </View>
       ) : null}
     </View>
@@ -102,7 +103,10 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
   const lost = weightDelta !== null && weightDelta < 0 ? Math.abs(weightDelta) : null;
   const signed = (n: number, unit: string) => `${n > 0 ? "+" : n < 0 ? "-" : ""}${Math.abs(n)}${unit}`;
   const next = progress.nextProgram;
-  const openCoaches = () => parent?.navigate("More", { screen: "CoachDiscovery", params: { serviceType: "fitness" } });
+  const openCoaches = () =>
+    COACH_BROWSING_ENABLED
+      ? parent?.navigate("More", { screen: "CoachDiscovery", params: { serviceType: "fitness" } })
+      : parent?.navigate("More", { screen: "RequestGuidance" });
 
   return (
     <ScreenContainer title="Program Complete">
@@ -151,7 +155,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
       <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Icon name="sparkles" size={14} color={colors.aiAccent} />
-          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
+          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.label, lineHeight: 19 }}>
           {next
@@ -161,11 +165,11 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           {next ? (
             <Pressable onPress={() => navigation.navigate("ProgramDetail", { programId: next.id })} accessibilityRole="button" style={{ backgroundColor: colors.aiAccent, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8 }}>
-              <Text style={{ color: colors.background, fontFamily: fonts.bodyBold, fontSize: 12 }}>View Program</Text>
+              <Text style={{ color: colors.background, fontFamily: fonts.bodyBold, fontSize: 13 }}>View Program</Text>
             </Pressable>
           ) : null}
           <Pressable onPress={openCoaches} accessibilityRole="button" style={{ backgroundColor: colors.surfaceHigh, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8 }}>
-            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12 }}>Explore Coaches</Text>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>Find a coach</Text>
           </Pressable>
         </View>
       </View>

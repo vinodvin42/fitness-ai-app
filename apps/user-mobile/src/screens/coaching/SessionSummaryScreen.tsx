@@ -68,13 +68,13 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View style={{ backgroundColor: state.bg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 }}>
-                <Text style={{ color: state.fg, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>{state.label}</Text>
+                <Text style={{ color: state.fg, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>{state.label}</Text>
               </View>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>{formatDay(data.scheduledAt)}</Text>
             </View>
             <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{data.professionalFullName}</Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>
-              {data.serviceType === "nutrition" ? "Nutrition Professional" : data.serviceType === "fitness" ? "Fitness Professional" : "Professional"}
+              {data.serviceType === "nutrition" ? "Nutrition coach" : data.serviceType === "fitness" ? "Fitness coach" : "Coach"}
             </Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>Service · {data.offeringLabel}</Text>
             <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.xs }} />
@@ -87,7 +87,7 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Professional Notes</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Coach's notes</Text>
           <SummaryCard>
             {data.summaryText ? (
               <>
@@ -97,7 +97,7 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
                 ) : null}
               </>
             ) : (
-              <BodyText>Your professional hasn't published notes for this session yet. Check back after the session.</BodyText>
+              <BodyText>Your coach hasn't added notes for this session yet. Check back after the session.</BodyText>
             )}
           </SummaryCard>
 
@@ -110,7 +110,7 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
             <Text style={{ color: "#fff", fontFamily: fonts.displayBold, fontSize: 16 }}>Book Another Session</Text>
           </Pressable>
           <Button
-            label="Message Professional"
+            label="Message coach"
             variant="secondary"
             onPress={() => navigation.navigate("MessageThread", { professionalId: data.professionalId, fullName: data.professionalFullName })}
           />

@@ -14,7 +14,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchRelationshipStatus } from "../../api/coaching";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
-import { r1Flags } from "@fitness-ai-app/config";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "ProfessionalRelationship">;
 
@@ -100,6 +100,10 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
     );
   }
 
+  // Browsing when it is switched on; otherwise the request the FynroX team matches.
+  const findCoach = () =>
+    COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance");
+
   const inFlight = data.relationships.filter((r) => r.status !== "active");
   const active = data.relationships.filter((r) => r.status === "active");
 
@@ -109,12 +113,8 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
         <EmptyState
           title={t("coaching.relationship.emptyTitle")}
           subtitle={t("coaching.relationship.emptySubtitle")}
-          actionLabel={r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED ? "Find a Professional" : "Request guidance"}
-          onAction={() =>
-            r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
-              ? navigation.navigate("CoachDiscovery", undefined)
-              : navigation.navigate("RequestGuidance")
-          }
+          actionLabel={t("coaching.team.findCoach")}
+          onAction={findCoach}
         />
       ) : (
         <View style={{ gap: spacing.md }}>
@@ -125,9 +125,11 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                 <RelationshipStatusCard
                   key={r.relationshipId}
                   item={r}
+                  // Always offered once the coach has accepted — not tied to
+                  // the browsing flag, or a hire stalled halfway with no way
+                  // to pay. The API refuses the payment itself if it must.
                   onContinuePayment={
-                    (r.status === "accepted" || r.status === "awaiting_payment") &&
-                    r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
+                    r.status === "accepted" || r.status === "awaiting_payment"
                       ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })
                       : undefined
                   }
@@ -143,7 +145,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                 <Text style={{ color: colors.success, ...typography.label }}>{t("coaching.relationship.step.active")}</Text>
               </View>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
-                You have {active.length} active professional relationship{active.length === 1 ? "" : "s"}
+                {active.length === 1 ? "You have 1 coach working with you" : `You have ${active.length} coaches working with you`}
               </Text>
               <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
                 {active.map((r) => `${r.professionalFullName} (${t(serviceLabelKey(r.serviceType))})`).join(" · ")}
@@ -166,13 +168,9 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
           it is working, tested code, and whether to retire it is the
           product team's call, not this change's. */}
       <Button
-        label={r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED ? "Find a Professional" : "Request professional guidance"}
+        label={t("coaching.team.findCoach")}
         variant="secondary"
-        onPress={() =>
-          r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED
-            ? navigation.navigate("CoachDiscovery", undefined)
-            : navigation.navigate("RequestGuidance")
-        }
+        onPress={findCoach}
         style={{ marginTop: spacing.lg }}
       />
     </ScreenContainer>

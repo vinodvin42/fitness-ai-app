@@ -184,7 +184,7 @@ function MessageBubble({ body, createdAt, mine }: { body: string; createdAt: str
       <Text
         style={{
           color: mine ? "rgba(4,18,14,0.6)" : colors.textMuted,
-          fontSize: 10,
+          fontSize: 13,
           marginTop: 2,
           textAlign: "right",
         }}

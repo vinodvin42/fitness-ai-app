@@ -538,7 +538,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           <TakeRow
             icon="pencil"
             title="Enter it manually"
-            subtitle="Type the name and macros yourself"
+            subtitle="Type the name, protein, carbs and fat yourself"
             onPress={() => {
               setName(query.trim());
               setShowDetails(true);
@@ -627,7 +627,7 @@ export function LogMealScreen({ route, navigation }: Props) {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Manual Macro Entry</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Enter protein, carbs and fat</Text>
           <Pressable
             onPress={() => onSubmit(false)}
             disabled={!canSubmit || isSubmitting}
@@ -648,7 +648,7 @@ export function LogMealScreen({ route, navigation }: Props) {
         </View>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>
           {typedCalories === null
-            ? `Calories are worked out from your macros (4 / 4 / 9 kcal per g): ${macroCalories} kcal.`
+            ? `Calories are worked out from the protein, carbs and fat you typed: ${macroCalories} kcal.`
             : `Using your exact ${typedCalories} kcal.`}
         </Text>
 
@@ -674,7 +674,7 @@ export function LogMealScreen({ route, navigation }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Calories (optional — otherwise derived from macros)"
+              placeholder="Calories (optional — we work it out for you)"
               placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               value={calories}

@@ -13,6 +13,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchProgramDetail } from "../../api/programs";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
+import { formatRupees } from "../../lib/money";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -115,7 +116,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
             ) : program.purchased ? (
               <Pill label={t("workout.programDetail.purchased")} tone="success" icon="check" />
             ) : (
-              <Pill label={`₹${(program.priceCents / 100).toFixed(0)}`} tone="accent" />
+              <Pill label={formatRupees(program.priceCents)} tone="accent" />
             )}
           </View>
         </View>
@@ -130,7 +131,7 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
           <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
             {paymentsConfigured
               ? `One-time purchase — unlocks every workout in ${program.name}.`
-              : "Purchases aren't open yet during this pilot — check back soon."}
+              : "Online payment isn't switched on yet, so this program can't be bought right now."}
           </Text>
           {paymentsConfigured ? (
             <TextInput
@@ -151,13 +152,14 @@ export function ProgramDetailScreen({ route, navigation }: Props) {
               }}
             />
           ) : null}
-          <Button
-            label={paymentsConfigured ? `Purchase — ₹${(program.priceCents / 100).toFixed(2)}` : "Coming soon"}
-            onPress={onPurchase}
-            loading={isPurchasing}
-            disabled={!paymentsConfigured}
-            style={{ marginTop: spacing.md }}
-          />
+          {paymentsConfigured ? (
+            <Button
+              label={`Buy — ${formatRupees(program.priceCents)}`}
+              onPress={onPurchase}
+              loading={isPurchasing}
+              style={{ marginTop: spacing.md }}
+            />
+          ) : null}
         </Card>
       ) : null}
 

@@ -57,7 +57,7 @@ export function SwipeToDismiss({ onDismiss, children, dismissLabel = "Dismiss" }
         pointerEvents="none"
         style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.dangerSoft, alignItems: "flex-end", justifyContent: "center", paddingRight: 24 }}
       >
-        <Text style={{ color: colors.danger, fontSize: 12 }}>Dismiss</Text>
+        <Text style={{ color: colors.danger, fontSize: 13 }}>Dismiss</Text>
       </View>
       <Animated.View style={{ transform: [{ translateX: x }] }} {...responder.panHandlers}>
         {children}

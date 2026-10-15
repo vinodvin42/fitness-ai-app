@@ -171,7 +171,7 @@ export function NutritionCalendarScreen(_props: Props) {
         <View style={{ flexDirection: "row" }}>
           {WEEKDAY_LABELS.map((label, i) => (
             <View key={i} style={{ flex: 1, alignItems: "center", paddingVertical: spacing.xs }}>
-              <Text style={{ color: colors.textMuted, ...typography.label, fontSize: 12 }}>{label}</Text>
+              <Text style={{ color: colors.textMuted, ...typography.label, fontSize: 13 }}>{label}</Text>
             </View>
           ))}
         </View>
@@ -428,7 +428,7 @@ function MealEditSheet({ meal, onClose }: { meal: DayMeal | null; onClose: () =>
       return;
     }
     if ([cal, p, c, f].some((n) => !Number.isFinite(n) || n < 0)) {
-      setError("Calories and macros must be zero or more.");
+      setError("Calories, protein, carbs and fat must be zero or more.");
       return;
     }
     const input: UpdateMealLogInput = {};

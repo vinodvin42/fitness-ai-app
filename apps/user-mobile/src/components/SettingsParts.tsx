@@ -7,7 +7,7 @@ import { useTheme } from "../theme/ThemeProvider";
 /** Small uppercase-ish section heading above a settings group (Figma Settings frames). */
 export function SectionLabel({ text, style }: { text: string; style?: ViewStyle }) {
   return (
-    <Text style={[{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.3, marginTop: spacing.sm }, style as object]}>
+    <Text style={[{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.3, marginTop: spacing.sm }, style as object]}>
       {text}
     </Text>
   );
@@ -50,7 +50,7 @@ export function ToggleRow({ title, subtitle, value, onValueChange, disabled, ico
       {icon ? <Icon name={icon} size={18} color={iconTint ?? theme.accent} /> : null}
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
-        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11, lineHeight: 15 }}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 18 }}>{subtitle}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -83,7 +83,7 @@ export function ValueRow({ title, subtitle, value, onPress }: ValueRowProps) {
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
-        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>{subtitle}</Text> : null}
       </View>
       {value ? <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text> : null}
     </Pressable>

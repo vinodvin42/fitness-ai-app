@@ -70,13 +70,15 @@ export function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { ...typography.caption, marginTop: -2 },
+        // Labels at 13 (were 11) for small budget phones; the bar is 4px
+        // taller so a 13px label still clears the bottom edge under its icon.
+        tabBarLabelStyle: { ...typography.caption, fontSize: 13, letterSpacing: 0, marginTop: -2 },
         tabBarItemStyle: { paddingTop: 8 },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 66,
+          height: 70,
           paddingBottom: 10,
         },
         tabBarIcon: ({ color, focused }) => (

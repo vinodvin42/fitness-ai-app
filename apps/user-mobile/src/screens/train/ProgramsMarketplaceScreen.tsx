@@ -10,6 +10,7 @@ import { Icon } from "../../components/Icon";
 import { fetchPrograms } from "../../api/programs";
 import { fetchMyPrograms } from "../../api/programPurchases";
 import { fetchNextWorkout } from "../../api/plans";
+import { formatRupees } from "../../lib/money";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -26,7 +27,7 @@ const LEVEL_LABEL: Record<(typeof LEVELS)[number], string> = {
 const TYPE_LABELS: Record<ProgramType, string> = { fitness: "Fitness", nutrition: "Nutrition", combined: "Combined" };
 
 function formatPrice(priceCents: number): string {
-  return priceCents === 0 ? "Free" : `₹${Math.round(priceCents / 100).toLocaleString("en-IN")}`;
+  return formatRupees(priceCents, { free: "Free" });
 }
 
 /** Small outlined filter chip used by the two filter rows (Figma Train 02). */
@@ -47,7 +48,7 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
         backgroundColor: selected ? theme.accent : colors.surface,
       }}
     >
-      <Text style={{ color: selected ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+      <Text style={{ color: selected ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
         {label}
       </Text>
     </Pressable>
@@ -66,7 +67,7 @@ function Tag({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "a
         paddingVertical: 2,
       }}
     >
-      <Text style={{ color: tone === "accent" ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 10 }}>{label}</Text>
+      <Text style={{ color: tone === "accent" ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{label}</Text>
     </View>
   );
 }
@@ -168,7 +169,7 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
             </View>
           )}
           <View style={{ padding: spacing.md }}>
-            <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>RECOMMENDED FOR YOU</Text>
+            <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>RECOMMENDED FOR YOU</Text>
             <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: 4 }}>{featured.name}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
               {featured.durationWeeks} weeks
@@ -214,17 +215,17 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
                 <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                   <Text style={{ color: p.priceCents === 0 ? colors.success : theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                     {formatPrice(p.priceCents)}
-                    {p.priceCents > 0 ? <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}> /program</Text> : null}
+                    {p.priceCents > 0 ? <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}> /program</Text> : null}
                   </Text>
                   {p.level ? <Tag label={LEVEL_LABEL[p.level]} /> : null}
                 </View>
-                {p.isAiOnly ? <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 11 }}>Personalized</Text> : null}
+                {p.isAiOnly ? <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Personalized</Text> : null}
                 {progress != null ? (
                   <View style={{ gap: 3 }}>
                     <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: "hidden" }}>
                       <View style={{ height: "100%", width: `${progress}%`, backgroundColor: theme.accent }} />
                     </View>
-                    <Text style={{ color: theme.accent, fontSize: 10 }}>{progress}% completed</Text>
+                    <Text style={{ color: theme.accent, fontSize: 13 }}>{progress}% completed</Text>
                   </View>
                 ) : null}
                 <View
@@ -238,7 +239,7 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>View Program</Text>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>View Program</Text>
                 </View>
               </Pressable>
             );
@@ -260,7 +261,7 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
           }}
         >
           <Icon name="sparkles" size={16} color={colors.aiAccent} />
-          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 12 }}>
+          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 13 }}>
             {plan.programName} is the program your current plan is built on.
           </Text>
         </View>

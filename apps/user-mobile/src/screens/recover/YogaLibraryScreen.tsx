@@ -91,7 +91,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: on ? colors.accent : colors.textSecondary, ...typography.label, fontSize: 12 }}>{f}</Text>
+              <Text style={{ color: on ? colors.accent : colors.textSecondary, ...typography.label, fontSize: 13 }}>{f}</Text>
             </Pressable>
           );
         })}
@@ -154,7 +154,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
       ))}
       {shown.length === 0 ? <Text style={{ color: colors.textMuted, ...typography.meta }}>Nothing matches that search.</Text> : null}
 
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{WELLNESS_NOTE}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{WELLNESS_NOTE}</Text>
     </RecoverShell>
   );
 }

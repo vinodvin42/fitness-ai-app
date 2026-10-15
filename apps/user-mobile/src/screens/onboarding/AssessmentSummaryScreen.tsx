@@ -8,6 +8,7 @@ import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "AssessmentSummary">;
 
@@ -82,8 +83,7 @@ export function AssessmentSummaryScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={5}
-      total={5}
+      {...onboardingStep("AssessmentSummary")}
       caption={t("onboarding.summary.step")}
       title={t("onboarding.summary.title")}
       subtitle={t("onboarding.summary.subtitle")}

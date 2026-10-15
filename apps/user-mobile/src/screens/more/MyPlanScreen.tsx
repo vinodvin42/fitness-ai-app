@@ -9,6 +9,7 @@ import { Pill } from "../../components/Pill";
 import { useAuth } from "../../context/AuthContext";
 import { cancelSubscription, fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatRupees } from "../../lib/money";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -37,7 +38,7 @@ function price(sub: SubscriptionDetail) {
   const cents = sub.priceCents ?? sub.plan.priceCents;
   if (cents === 0) return "Free";
   const period = sub.plan.billingCycle === "annual" ? "year" : sub.plan.billingCycle === "quarterly" ? "3 months" : "month";
-  return `₹${(cents / 100).toFixed(2)} / ${period}`;
+  return `${formatRupees(cents)} / ${period} incl. GST`;
 }
 
 /**
@@ -105,7 +106,7 @@ export function MyPlanScreen({ navigation }: Props) {
 
   const stat = (label: string, value: string) => (
     <View style={{ flex: 1, gap: 2 }}>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{label}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{label}</Text>
       <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
@@ -141,8 +142,8 @@ export function MyPlanScreen({ navigation }: Props) {
             {progress != null ? (
               <View style={{ gap: 6 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Remaining</Text>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Remaining</Text>
+                  <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                     {daysLeft} day{daysLeft === 1 ? "" : "s"}
                   </Text>
                 </View>

@@ -41,7 +41,7 @@ function NumberBadge({ n }: { n: number }) {
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: colors.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>{n}</Text>
+      <Text style={{ color: colors.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>{n}</Text>
     </View>
   );
 }
@@ -95,12 +95,12 @@ export function RoutineDetailScreen({ navigation, route }: Props) {
               ["Pace", routine.pace],
             ].map(([k, v]) => (
               <Panel key={k} style={{ flex: 1, padding: spacing.sm + 2, gap: 2 }}>
-                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 10 }}>{k}</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{k}</Text>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{v}</Text>
               </Panel>
             ))}
           </View>
-          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 12 }}>{routine.description}</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>{routine.description}</Text>
           <Panel>
             <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 13 }}>What you&apos;ll need</Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>{routine.needs}</Text>
@@ -116,14 +116,14 @@ export function RoutineDetailScreen({ navigation, route }: Props) {
               <NumberBadge n={i + 1} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{s.title}</Text>
-                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
                   {Math.round(s.seconds / 60)} min{s.note ? ` · ${s.note}` : ""}
                 </Text>
               </View>
             </View>
             <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>{s.instruction}</Text>
             {s.easier ? (
-              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Easier option: {s.easier}</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Easier option: {s.easier}</Text>
             ) : null}
           </Panel>
         ))
@@ -134,9 +134,9 @@ export function RoutineDetailScreen({ navigation, route }: Props) {
               <NumberBadge n={i + 1} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{s.title}</Text>
-                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{s.summary}</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{s.summary}</Text>
               </View>
-              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{Math.round(s.seconds / 60)} min</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{Math.round(s.seconds / 60)} min</Text>
             </View>
           ))}
         </Panel>

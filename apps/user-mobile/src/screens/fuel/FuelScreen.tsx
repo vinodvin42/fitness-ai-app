@@ -341,7 +341,7 @@ function MacroBar({ label, value, target, color }: { label: string; value: numbe
   return (
     <View>
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 5 }}>
-        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>{label}</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>{label}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
           {value}/{target}g
         </Text>

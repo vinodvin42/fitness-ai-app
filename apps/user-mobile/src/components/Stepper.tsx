@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   },
   unit: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: fonts.body,
   },
 });

@@ -281,7 +281,7 @@ export function SecurityScreen({ navigation, route }: Props) {
 
   const rowStyle = { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 } as const;
   const rowTitle = { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 } as const;
-  const rowSub = { color: colors.textSecondary, ...typography.meta, fontSize: 11 } as const;
+  const rowSub = { color: colors.textSecondary, ...typography.meta, fontSize: 13 } as const;
   const iconTile = (icon: "lock" | "shield-check", tint: string, soft: string) => (
     <View style={{ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: soft, alignItems: "center", justifyContent: "center" }}>
       <Icon name={icon} size={18} color={tint} />
@@ -494,7 +494,7 @@ export function SecurityScreen({ navigation, route }: Props) {
                 {session.current ? (
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
                 ) : (
-                  <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 12 }}>Sign out</Text>
+                  <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 13 }}>Sign out</Text>
                 )}
               </Pressable>
             );

@@ -243,7 +243,7 @@ export function ScheduleScreen({ navigation }: Props) {
         <View style={{ gap: spacing.md }}>
           {items.map((it) => (
             <View key={it.key} style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
-              <Text style={{ width: 62, color: colors.textSecondary, fontSize: 12, paddingTop: 14, textAlign: "left" }}>{it.timeLabel}</Text>
+              <Text style={{ width: 62, color: colors.textSecondary, fontSize: 13, paddingTop: 14, textAlign: "left" }}>{it.timeLabel}</Text>
               <Pressable
                 onPress={it.onPress}
                 disabled={!it.onPress}
@@ -264,10 +264,10 @@ export function ScheduleScreen({ navigation }: Props) {
                     {it.title}
                   </Text>
                   <View style={{ backgroundColor: TAG_STYLE[it.tag].bg, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: TAG_STYLE[it.tag].fg, fontSize: 10 }}>{it.tag}</Text>
+                    <Text style={{ color: TAG_STYLE[it.tag].fg, fontSize: 13 }}>{it.tag}</Text>
                   </View>
                 </View>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
                   {it.subtitle}
                 </Text>
               </Pressable>

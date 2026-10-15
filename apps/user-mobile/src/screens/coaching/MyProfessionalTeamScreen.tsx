@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchMyTeam } from "../../api/coaching";
 import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "MyProfessionalTeam">;
 
@@ -63,7 +64,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
           title={t("coaching.team.emptyTitle")}
           subtitle={t("coaching.team.emptySubtitle")}
           actionLabel={t("coaching.team.findCoach")}
-          onAction={() => navigation.navigate("CoachDiscovery", undefined)}
+          onAction={() => (COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance"))}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>

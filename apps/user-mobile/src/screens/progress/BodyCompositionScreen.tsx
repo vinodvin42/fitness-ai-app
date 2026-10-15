@@ -157,7 +157,7 @@ export function BodyCompositionScreen({ navigation }: Props) {
                     </View>
                   ) : null}
                 </View>
-                <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 16 }}>
+                <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18 }}>
                   Blue: body fat % (measured). Violet: lean mass (estimated from weight and body fat). Each line is scaled to its own range, so
                   compare direction, not height. Estimates vary and are not a clinical measurement.
                 </Text>

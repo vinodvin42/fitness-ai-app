@@ -7,16 +7,17 @@ import { OptionRow } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "FoodDiet">;
 
 // Figma "01 Onboarding / 07". dietType is a free string server-side.
 const DIET_TYPES = [
-  { value: "Vegetarian", subtitle: "Plant-based with dairy & eggs" },
-  { value: "Vegan", subtitle: "Strictly plant-based only" },
-  { value: "Non-Vegetarian", subtitle: "No restrictions on animal protein" },
-  { value: "Eggetarian", subtitle: "Vegetarian including eggs" },
-  { value: "Pescatarian", subtitle: "Vegetarian including seafood" },
+  { value: "Vegetarian", subtitle: "No meat, fish or eggs (milk is fine)" },
+  { value: "Vegan", subtitle: "No meat, fish, eggs or milk" },
+  { value: "Non-Vegetarian", subtitle: "Eats meat, fish and eggs" },
+  { value: "Eggetarian", subtitle: "Vegetarian + eggs" },
+  { value: "Pescatarian", subtitle: "Vegetarian + fish and seafood" },
   { value: "Jain", subtitle: "No meat, eggs or root vegetables" },
 ];
 const ALLERGENS = ["Dairy", "Nuts", "Gluten", "Soy", "Eggs", "Shellfish", "Wheat", "Sesame", "None"];
@@ -37,8 +38,7 @@ export function FoodDietScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={4}
-      total={5}
+      {...onboardingStep("FoodDiet")}
       title="Food Preferences"
       subtitle="Choose your diet type and any allergies we should avoid."
       onBack={() => navigation.goBack()}
@@ -63,7 +63,7 @@ export function FoodDietScreen({ navigation }: Props) {
 
       <View style={{ marginTop: spacing.md }}>
         <Text style={{ ...typography.h3, fontSize: 15, color: colors.textPrimary }}>Any food allergies?</Text>
-        <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.sm }}>
+        <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.sm }}>
           Select one or more allergens. Choose None if you have no allergies.
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>

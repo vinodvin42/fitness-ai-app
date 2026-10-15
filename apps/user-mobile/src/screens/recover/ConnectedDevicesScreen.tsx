@@ -60,7 +60,7 @@ export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{device.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: st.color }} />
-            <Text style={{ color: st.color, ...typography.meta, fontSize: 11 }}>{st.label}</Text>
+            <Text style={{ color: st.color, ...typography.meta, fontSize: 13 }}>{st.label}</Text>
           </View>
         </View>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
@@ -69,19 +69,19 @@ export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Icon name="battery" size={12} color={colors.textMuted} />
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
               {device.batteryPct == null ? "Not reported" : `${device.batteryPct}%`}
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
             <Icon name="refresh-cw" size={12} color={colors.textMuted} />
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }} numberOfLines={1}>
               {device.lastSyncAt ? `Synced ${timeAgo(device.lastSyncAt)}` : "Never synced"}
             </Text>
           </View>
         </View>
         {device.lastError ? (
-          <Text style={{ color: colors.danger, ...typography.meta, fontSize: 11 }}>Last error: {device.lastError}</Text>
+          <Text style={{ color: colors.danger, ...typography.meta, fontSize: 13 }}>Last error: {device.lastError}</Text>
         ) : null}
       </View>
       <CircleButton icon="refresh-cw" onPress={onSync} label={`Sync ${device.name}`} tint={colors.accent} />

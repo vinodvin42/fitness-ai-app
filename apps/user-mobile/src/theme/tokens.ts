@@ -107,16 +107,22 @@ export const fonts = {
   monoSemi: "JetBrainsMono_600SemiBold",
 } as const;
 
+/**
+ * 15 Oct 2026 — easier reading for the many members on small, budget
+ * Android phones: body text is 16 and nothing in the scale is under 13
+ * (meta was 12 and caption 11). Screens that hard-coded 9-12px were raised
+ * to 13 in the same pass, so a token can't be undercut inline.
+ */
 export const typography = {
   display: { fontFamily: fonts.display, fontSize: 34, letterSpacing: -0.5 },
   metricLarge: { fontFamily: fonts.mono, fontSize: 40, letterSpacing: -1 },
   h1: { fontFamily: fonts.displayBold, fontSize: 26, letterSpacing: -0.4 },
   h2: { fontFamily: fonts.displayBold, fontSize: 18, letterSpacing: -0.2 },
   h3: { fontFamily: fonts.displaySemi, fontSize: 15 },
-  body: { fontFamily: fonts.body, fontSize: 15 },
+  body: { fontFamily: fonts.body, fontSize: 16 },
   label: { fontFamily: fonts.bodySemi, fontSize: 13 },
-  meta: { fontFamily: fonts.body, fontSize: 12 },
-  caption: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.3 },
+  meta: { fontFamily: fonts.body, fontSize: 13 },
+  caption: { fontFamily: fonts.bodyMedium, fontSize: 13, letterSpacing: 0.3 },
 };
 
 /**

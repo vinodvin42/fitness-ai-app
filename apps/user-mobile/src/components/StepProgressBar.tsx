@@ -37,6 +37,6 @@ const styles = StyleSheet.create({
   track: { height: 3, borderRadius: 999, backgroundColor: colors.border, overflow: "hidden" },
   fill: { height: "100%", borderRadius: 999 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },
-  label: { fontSize: 11, fontFamily: fonts.bodySemi },
-  brand: { color: colors.textPrimary, fontSize: 11, fontFamily: fonts.bodySemi },
+  label: { fontSize: 13, fontFamily: fonts.bodySemi },
+  brand: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bodySemi },
 });

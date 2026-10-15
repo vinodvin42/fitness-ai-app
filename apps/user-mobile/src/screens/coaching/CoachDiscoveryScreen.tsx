@@ -14,6 +14,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { discoverCoaches } from "../../api/coaching";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachDiscovery">;
@@ -22,8 +23,8 @@ type ServiceFilter = ProfessionalServiceType | "combined" | "all";
 
 const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
   { value: "all", label: "All" },
-  { value: "fitness", label: "Fitness Coach" },
-  { value: "nutrition", label: "Nutrition Professional" },
+  { value: "fitness", label: "Fitness coach" },
+  { value: "nutrition", label: "Nutrition coach" },
   { value: "combined", label: "Fitness + Nutrition" },
 ];
 
@@ -31,7 +32,7 @@ const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
 // which is added on top at checkout (Package 4).
 function formatPrice(cents: number | null) {
   if (cents == null) return "Not bookable yet";
-  return `From ₹${(cents / 100).toFixed(2)} + GST`;
+  return `From ${formatRupees(cents)} + GST`;
 }
 
 /**
@@ -85,7 +86,7 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const items = useMemo(() => data?.items ?? [], [data]);
 
   return (
-    <ScreenContainer title={t("coaching.title")}>
+    <ScreenContainer title={t("coaching.team.findCoach")}>
       <SearchBar value={search} onChangeText={setSearch} placeholder={t("coaching.discovery.search")} />
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>

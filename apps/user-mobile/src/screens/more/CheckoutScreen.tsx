@@ -11,6 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { useRazorpayPurchase } from "../../lib/useRazorpayPurchase";
 import { fetchCheckoutQuote, type CheckoutMethodId } from "../../api/checkout";
+import { formatRupees } from "../../lib/money";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -71,7 +72,7 @@ export function CheckoutScreen({ route, navigation }: Props) {
   }
 
   const q = quote.data;
-  const money = (cents: number) => `₹${(cents / 100).toFixed(2)}`;
+  const money = (paise: number) => formatRupees(paise);
 
   // U-M2. Shown in place of the pay button rather than as an overlay:
   // the one thing a user must not do while a charge is in flight is tap
@@ -173,14 +174,13 @@ export function CheckoutScreen({ route, navigation }: Props) {
             </View>
           </View>
         </Card>
-      ) : (
+      ) : q.canPay ? (
         <Button
           label={t("checkout.pay", { amount: money(q.totalCents) })}
           onPress={() => purchase.purchase(purpose, referenceId, q.couponCode ?? undefined)}
-          disabled={!q.canPay}
           style={{ marginTop: spacing.lg }}
         />
-      )}
+      ) : null}
 
       <RazorpayCheckoutModal
         order={purchase.order}

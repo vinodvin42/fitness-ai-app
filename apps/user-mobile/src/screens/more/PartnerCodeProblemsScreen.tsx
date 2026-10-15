@@ -55,7 +55,7 @@ export function PartnerCodeProblemsScreen({ navigation, route }: Props) {
               gap: 6,
             }}
           >
-            <Text style={{ color: c.tone, fontFamily: fonts.bodySemi, fontSize: 11 }}>{c.tag}</Text>
+            <Text style={{ color: c.tone, fontFamily: fonts.bodySemi, fontSize: 13 }}>{c.tag}</Text>
             <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{c.body(c.reason === reason ? code : undefined)}</Text>
           </View>
         ))}

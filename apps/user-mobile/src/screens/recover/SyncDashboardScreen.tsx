@@ -239,7 +239,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
         </Card>
       )}
       {devices.length > 0 ? (
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
           Sync All Now opens the manual import: this build can&apos;t pull from devices automatically, so you enter what each
           device shows. The ring is the share of devices that synced successfully in the last 24 hours.
         </Text>
@@ -259,7 +259,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
                 <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dot }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{item.label}</Text>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }} numberOfLines={1}>
                     {streamSub(item)}
                   </Text>
                 </View>

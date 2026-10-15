@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topChipText: { color: colors.textPrimary, fontSize: 12, fontFamily: fonts.bodySemi },
+  topChipText: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bodySemi },
   threadContent: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm, gap: spacing.sm },
   bubbleRow: { maxWidth: "88%", flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
   bubbleRowUser: { alignSelf: "flex-end" },
@@ -662,8 +662,8 @@ const styles = StyleSheet.create({
   bubbleTextUser: { color: colors.textOnAccent, fontSize: 15, lineHeight: 21 },
   bubbleTextAssistant: { color: colors.textPrimary, fontSize: 15, lineHeight: 21 },
   whyLink: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.xs, alignSelf: "flex-start" },
-  whyText: { color: colors.aiAccent, fontSize: 12, fontFamily: fonts.bodySemi },
-  timeLabel: { ...typography.meta, fontSize: 11, color: colors.textMuted, marginTop: 4 },
+  whyText: { color: colors.aiAccent, fontSize: 13, fontFamily: fonts.bodySemi },
+  timeLabel: { ...typography.meta, fontSize: 13, color: colors.textMuted, marginTop: 4 },
   quickScroll: { flexGrow: 0 },
   quickRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.xs },
   quickChip: {
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quickChipText: { fontSize: 12, fontFamily: fonts.bodySemi },
+  quickChipText: { fontSize: 13, fontFamily: fonts.bodySemi },
   disclaimer: {
     color: colors.textMuted,
     ...typography.meta,

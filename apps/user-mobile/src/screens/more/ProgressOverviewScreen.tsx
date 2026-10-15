@@ -169,7 +169,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textMuted, ...typography.caption }}>{t.label}</Text>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>
                   {units.len(t.change.latest!.value)}
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{units.lenUnit}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{units.lenUnit}</Text>
                 </Text>
                 {t.change.delta != null ? (
                   <Text style={{ color: colors.accent, ...typography.caption }}>

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { AiCoachUsage, SubscriptionPlan } from "@fitness-ai-app/types";
 import { fetchPlans } from "../api/subscriptions";
 import { InfoCard, StateLayout } from "./StatePanels";
+import { formatRupees } from "../lib/money";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 const TIER_LABEL: Record<AiCoachUsage["tier"], string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
@@ -16,7 +17,7 @@ interface AiLimitReachedProps {
 }
 
 function monthlyLabel(plan: SubscriptionPlan) {
-  return `₹${(plan.priceCents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}/month`;
+  return `${formatRupees(plan.priceCents)}/month incl. GST`;
 }
 
 /**
@@ -90,7 +91,7 @@ export function AiLimitReached({ usage, onUpgrade, onKeepTracking, onBack }: AiL
       <InfoCard
         tone="accent"
         title="Programs are separate purchases"
-        body="Every program is individually paid, not included as a subscription entitlement. Professional coaching also requires its own accepted quote and payment."
+        body="Programs are bought one at a time — they aren't part of any plan. A coach is also paid for separately, once they accept you."
       />
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
         You can still enter meals, workouts and recovery logs manually on {tierName}.

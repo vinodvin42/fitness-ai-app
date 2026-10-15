@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   rowDense: { paddingVertical: 11, minHeight: 48 },
   rowTitle: { fontSize: 14, fontFamily: fonts.bodySemi },
-  rowSubtitle: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
+  rowSubtitle: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
   well: {
     width: 32,
     height: 32,
@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
   },
   rail: { width: 3, borderRadius: 2, backgroundColor: colors.surfaceHigh },
   levelTitle: { ...typography.h3, fontSize: 15, color: colors.textPrimary },
-  levelTag: { fontSize: 11, fontFamily: fonts.bodyMedium },
-  levelDesc: { fontSize: 12, fontFamily: fonts.body, color: colors.textSecondary },
+  levelTag: { fontSize: 13, fontFamily: fonts.bodyMedium },
+  levelDesc: { fontSize: 13, fontFamily: fonts.body, color: colors.textSecondary },
 });

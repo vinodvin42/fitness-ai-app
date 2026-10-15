@@ -98,14 +98,15 @@ function SmallAction({ label, onPress, primary }: { label: string; onPress: () =
         backgroundColor: primary ? colors.aiAccentSoft : colors.surfaceRaised,
       }}
     >
-      <Text style={{ color: primary ? colors.aiAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: primary ? colors.aiAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
 }
 
 /**
  * Train dashboard (Figma Train 01 "Training dashboard", and the shell for
- * Train 02's Programs tab). Tabs: Today / Programs / Classes / History.
+ * Train 02's Programs tab). Tabs: Today / Programs / History (Classes is
+ * hidden until classes exist).
  *
  * Real data only: the recommendation + "Today's workout" cards come from the
  * user's active plan (`GET /plans/current/next-workout`), the readiness score
@@ -218,12 +219,13 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
       <View style={{ flexDirection: "row", gap: 8 }} accessibilityRole="tablist">
         <TabPill label="Today" selected={tab === "today"} onPress={() => setTab("today")} />
         <TabPill label="Programs" selected={tab === "programs"} onPress={() => setTab("programs")} />
-        <TabPill label="Classes" selected={tab === "classes"} onPress={() => setTab("classes")} />
         <TabPill label="History" selected={false} onPress={() => navigation.navigate("WorkoutHistory")} />
       </View>
 
       {tab === "programs" ? <ProgramsCatalog navigation={navigation as unknown as NativeStackNavigationProp<TrainStackParamList>} /> : null}
 
+      {/* The Classes tab is not shown (classes don't exist yet); this state is
+          kept only so the feature can be switched back on in one place. */}
       {tab === "classes" ? (
         <EmptyState
           title="Classes are coming soon"
@@ -288,7 +290,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                   gap: spacing.sm,
                 }}
               >
-                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>
+                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
                   ✦ {BRAND_NAME.toUpperCase()} RECOMMENDATION
                 </Text>
                 <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
@@ -313,10 +315,10 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                 }}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>TODAY'S WORKOUT</Text>
+                  <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>TODAY'S WORKOUT</Text>
                   {nextWorkout.data?.plan.programName ? (
                     <View style={{ borderRadius: 6, borderWidth: 1, borderColor: colors.aiBorder, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ color: colors.aiAccent, fontSize: 10, fontFamily: fonts.bodySemi }} numberOfLines={1}>
+                      <Text style={{ color: colors.aiAccent, fontSize: 13, fontFamily: fonts.bodySemi }} numberOfLines={1}>
                         {nextWorkout.data.plan.programName}
                       </Text>
                     </View>
@@ -333,7 +335,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                     <View key={r.phase} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.color }} />
                       <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>{r.label}</Text>
-                      <Text style={{ color: colors.textMuted, fontSize: 12 }}>{phaseCounts[r.phase]} ex</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 13 }}>{phaseCounts[r.phase]} ex</Text>
                     </View>
                   ))}
                 </View>
@@ -407,7 +409,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
                       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: q.tint }} />
-                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{q.meta}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 13 }}>{q.meta}</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -449,13 +451,13 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                       accessibilityLabel={`Continue ${m.program.name}`}
                       style={{ backgroundColor: theme.accent, borderRadius: radius.sm, paddingHorizontal: 16, paddingVertical: 8 }}
                     >
-                      <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 12 }}>Continue</Text>
+                      <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 13 }}>Continue</Text>
                     </Pressable>
                   </View>
                   <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: "hidden", marginTop: spacing.sm }}>
                     <View style={{ height: "100%", width: `${pct}%`, backgroundColor: theme.accent }} />
                   </View>
-                  <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>{pct}% completed</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 4 }}>{pct}% completed</Text>
                 </View>
               );
             })
@@ -482,7 +484,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                 }}
               >
                 <Icon name={t.icon} size={14} color={colors.textSecondary} />
-                <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{t.label}</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{t.label}</Text>
               </Pressable>
             ))}
           </View>

@@ -274,8 +274,8 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
               &ldquo;{current.instruction}&rdquo;
             </Text>
           </Card>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{routine.safetyBody}</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11, textAlign: "center" }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{routine.safetyBody}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13, textAlign: "center" }}>
             You can pause or finish whenever you need.
           </Text>
           {controls}
@@ -294,8 +294,8 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
       <View style={{ gap: 4 }}>
         <ProgressBar progress={pos / total} />
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(pos)} elapsed</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(total - pos)} remaining</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(pos)} elapsed</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(total - pos)} remaining</Text>
         </View>
       </View>
       <PracticeArt height={150} icon={routine.kind === "mobility" ? "activity" : "flower"} />
@@ -312,7 +312,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>{current.title}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>{current.instruction}</Text>
         {current.easier ? (
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Easier option: {current.easier}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Easier option: {current.easier}</Text>
         ) : null}
       </Card>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 24 }}>
@@ -342,10 +342,10 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
           <Icon name="chevron-right" size={14} color={colors.accent} />
         </Pressable>
       </View>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 12 }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
         {next ? `Up next: ${next.title} · ${Math.round(next.seconds / 60)} min` : "Last one - then you're done."}
       </Text>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
         Stay within a comfortable range. Stop if you feel pain.
       </Text>
       {controls}

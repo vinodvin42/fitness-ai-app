@@ -90,7 +90,7 @@ export function BeforeAfterSlider({ before, after, height = 280 }: { before: Sli
           justifyContent: "center",
         }}
       >
-        <Text style={{ color: "#09090b", fontSize: 12 }}>{"‹ ›"}</Text>
+        <Text style={{ color: "#09090b", fontSize: 13 }}>{"‹ ›"}</Text>
       </View>
 
       <View pointerEvents="none" style={{ position: "absolute", top: spacing.sm, left: spacing.sm }}>

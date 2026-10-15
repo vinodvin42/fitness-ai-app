@@ -6,6 +6,7 @@ import { LevelCard } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { spacing } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "TrainingLevel">;
 
@@ -13,10 +14,10 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, "TrainingLevel">;
 // intermediate | advanced, so "Athlete" is sent as "advanced" (the card
 // choice itself is kept locally in `fitnessLevelChoice`).
 const LEVELS = [
-  { choice: "beginner", value: "beginner", title: "Beginner", tag: "1-2 training sessions / week", description: "Just starting out on wellness roadmap" },
-  { choice: "intermediate", value: "intermediate", title: "Intermediate", tag: "3-4 training sessions / week", description: "Active habits formed, comfortable standard" },
-  { choice: "advanced", value: "advanced", title: "Advanced", tag: "5-6 training sessions / week", description: "Consistent intense performance metrics" },
-  { choice: "athlete", value: "advanced", title: "Athlete", tag: "Daily progressive overload", description: "Competitive levels and high workloads" },
+  { choice: "beginner", value: "beginner", title: "Beginner", tag: "1-2 training sessions / week", description: "New to exercise, or starting again" },
+  { choice: "intermediate", value: "intermediate", title: "Intermediate", tag: "3-4 training sessions / week", description: "You exercise regularly and know the basics" },
+  { choice: "advanced", value: "advanced", title: "Advanced", tag: "5-6 training sessions / week", description: "You train hard on most days" },
+  { choice: "athlete", value: "advanced", title: "Athlete", tag: "Trains every day", description: "You compete in a sport or train like an athlete" },
 ] as const;
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Training Level" — restyled to Figma onboarding 06. */
@@ -28,10 +29,9 @@ export function TrainingLevelScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={3}
-      total={5}
+      {...onboardingStep("TrainingLevel")}
       title="Your current fitness level"
-      subtitle="Determines initial workout volume and recovery ratios"
+      subtitle="This sets how much you train at first and how much rest you get between workouts."
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("Equipment");

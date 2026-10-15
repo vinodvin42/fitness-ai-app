@@ -7,6 +7,7 @@ import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { spacing } from "../../theme/tokens";
 import { GOAL_OPTIONS as GOALS } from "../../lib/goalOptions";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Goals">;
 
@@ -16,8 +17,7 @@ export function GoalsScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={2}
-      total={5}
+      {...onboardingStep("Goals")}
       title="What are your goals?"
       subtitle="Select all that apply to fine-tune your tracking dashboards."
       onBack={() => navigation.goBack()}

@@ -245,7 +245,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
                   backgroundColor: i === safeIdx ? colors.accentSoft : colors.surface,
                 }}
               >
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 12 }}>{t}</Text>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 13 }}>{t}</Text>
               </Pressable>
             ))}
             <Pressable

@@ -149,7 +149,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
               accessibilityLabel={`${p} seconds`}
               style={presetStyle(presetActive(p), theme.accent)}
             >
-              <Text style={{ color: presetActive(p) ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{p}s</Text>
+              <Text style={{ color: presetActive(p) ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{p}s</Text>
             </Pressable>
           ))}
           <Pressable
@@ -159,7 +159,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
             accessibilityLabel="Custom rest"
             style={presetStyle(customOpen, theme.accent)}
           >
-            <Text style={{ color: customOpen ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>Custom</Text>
+            <Text style={{ color: customOpen ? theme.accent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>Custom</Text>
           </Pressable>
         </View>
         {customOpen ? (
@@ -203,10 +203,10 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
             accessibilityRole="button"
             accessibilityLabel="Skip rest"
           >
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>Skip rest</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Skip rest</Text>
           </Pressable>
         ) : isComplete ? (
-          <Text style={{ color: colors.success, fontSize: 12 }}>{t("restTimer.complete")}</Text>
+          <Text style={{ color: colors.success, fontSize: 13 }}>{t("restTimer.complete")}</Text>
         ) : null}
       </View>
     </View>
@@ -239,7 +239,7 @@ function MiniButton({ label, onPress, emphasis }: { label: string; onPress: () =
         backgroundColor: emphasis ? colors.aiAccentSoft : colors.surfaceRaised,
       }}
     >
-      <Text style={{ color: emphasis ? colors.aiAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: emphasis ? colors.aiAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
 }

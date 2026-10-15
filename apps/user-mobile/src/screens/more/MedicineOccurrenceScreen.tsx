@@ -226,7 +226,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
       </View>
 
       <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 6 }}>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.8 }}>USER-ENTERED REMINDER</Text>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.8 }}>USER-ENTERED REMINDER</Text>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{med.name}</Text>
         {med.dosage ? <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 13 }}>{med.dosage}</Text> : null}
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
@@ -239,7 +239,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
 
       <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 4 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.8 }}>LOCK-SCREEN PREVIEW</Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.8 }}>LOCK-SCREEN PREVIEW</Text>
           <Icon name="lock" size={14} color={colors.textMuted} />
         </View>
         <Text accessibilityLabel={`Lock-screen preview title: ${lock.title}`} style={{ color: colors.textPrimary, ...typography.h3 }}>{lock.title}</Text>

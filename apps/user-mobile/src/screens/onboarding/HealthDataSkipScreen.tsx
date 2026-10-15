@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, "HealthDataSkip">;
 function StarterRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Text style={{ width: 92, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 12 }}>{label}</Text>
+      <Text style={{ width: 92, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13 }}>{label}</Text>
       <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
@@ -76,7 +76,7 @@ export function HealthDataSkipScreen({ navigation }: Props) {
         </View>
         <StarterRow label="Ease in" value="Comfortable, easy movement" />
         <StarterRow label="Take a pause" value="Gentle guided breathing" />
-        <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 12, lineHeight: 17 }}>
+        <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13, lineHeight: 18 }}>
           Choose your own pace. Rest or stop at any time; there's no target to push through.
         </Text>
       </View>

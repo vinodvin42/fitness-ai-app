@@ -9,6 +9,7 @@ import { Pill } from "../../components/Pill";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchPurchaseHistory, type PurchaseRecord } from "../../api/checkout";
+import { formatRupees } from "../../lib/money";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -42,7 +43,7 @@ const REFUND_TONE: Record<string, "accent" | "success" | "warning" | "danger"> =
 const PURPOSE_LABEL: Record<string, string> = {
   subscription: "Premium",
   program_purchase: "Programme",
-  booking: "Professional session",
+  booking: "Coach session",
 };
 
 export function PurchaseHistoryScreen(_props: Props) {
@@ -89,7 +90,7 @@ export function PurchaseHistoryScreen(_props: Props) {
 
 function PurchaseCard({ purchase }: { purchase: PurchaseRecord }) {
   const { t } = useTranslation();
-  const money = (cents: number) => `₹${(cents / 100).toFixed(2)}`;
+  const money = (paise: number) => formatRupees(paise);
   const refundTone = purchase.refund ? REFUND_TONE[purchase.refund.status] : null;
 
   return (

@@ -17,7 +17,7 @@ export function GroupHeader({ children, upper = true }: { children: string; uppe
       style={{
         color: colors.textMuted,
         fontFamily: fonts.bodySemi,
-        fontSize: 11,
+        fontSize: 13,
         letterSpacing: 0.8,
         marginTop: spacing.xs,
       }}
@@ -87,7 +87,7 @@ export function SettingRow({ icon, title, subtitle, value, right, onPress, tint,
       ) : (
         <>
           {value ? (
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 12, maxWidth: 150 }} numberOfLines={1}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13, maxWidth: 150 }} numberOfLines={1}>
               {value}
             </Text>
           ) : null}
@@ -195,7 +195,7 @@ export function UnitToggle<T extends string>({
               backgroundColor: selected ? theme.accent : "transparent",
             }}
           >
-            <Text style={{ color: selected ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+            <Text style={{ color: selected ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
               {o.label}
             </Text>
           </Pressable>

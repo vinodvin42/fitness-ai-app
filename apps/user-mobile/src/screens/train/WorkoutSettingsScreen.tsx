@@ -209,7 +209,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
                       backgroundColor: on ? theme.accent : colors.surfaceHigh,
                     }}
                   >
-                    <Text style={{ color: on ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+                    <Text style={{ color: on ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                       {e.label}
                     </Text>
                   </Pressable>

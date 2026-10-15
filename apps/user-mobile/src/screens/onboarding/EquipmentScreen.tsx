@@ -6,6 +6,9 @@ import { SelectCard } from "../../components/SelectCard";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { spacing } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
+
+const STEP = onboardingStep("Equipment");
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Equipment">;
 
@@ -30,18 +33,16 @@ export function EquipmentScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={3}
-      total={5}
-      progress={0.7}
-      caption="Optional · Equipment"
+      {...STEP}
+      caption={`Step ${STEP.step} of ${STEP.total} · Optional`}
       title="What do you have access to?"
-      subtitle="This helps us steer clear of programs that need equipment you don't have."
+      subtitle="This helps us steer clear of programs that need equipment you don't have. Not sure? You can skip this."
       onBack={() => navigation.goBack()}
       onNext={() => {
         markScreenReached("FoodDiet");
         navigation.navigate("FoodDiet");
       }}
-      nextDisabled={!state.equipmentContext}
+      nextLabel={state.equipmentContext ? "Continue" : "Skip for now"}
     >
       <View style={{ gap: spacing.sm }}>
         {EQUIPMENT_OPTIONS.map((option) => (

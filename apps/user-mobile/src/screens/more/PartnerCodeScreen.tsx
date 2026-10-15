@@ -84,7 +84,7 @@ export function PartnerCodeScreen({ navigation }: Props) {
       }}
     >
       <Text style={{ color: colors.textMuted, ...typography.meta }}>{label}</Text>
-      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{value}</Text>
+      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
 

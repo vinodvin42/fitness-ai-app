@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   content: { ...column, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: layout.screenPadding, gap: spacing.sm },
   mark: { marginBottom: spacing.md },
   signInLink: { alignItems: "center", paddingVertical: spacing.sm },
-  signInText: { ...typography.body, fontSize: 12, color: colors.textSecondary },
+  signInText: { ...typography.body, fontSize: 13, color: colors.textSecondary },
   signInAccent: { color: colors.accent, fontWeight: "600" },
   logo: { ...typography.display, color: colors.textPrimary },
   tagline: { ...typography.body, color: colors.textSecondary, textAlign: "center" },

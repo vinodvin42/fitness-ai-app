@@ -164,7 +164,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
           </View>
         </Card>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>{BREATHING_SAFETY}</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{WELLNESS_NOTE}</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{WELLNESS_NOTE}</Text>
         <ActionButton label="Begin" icon="play" onPress={start} style={{ height: 50 }} />
       </RecoverShell>
     );
@@ -208,8 +208,8 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
     >
       <View style={{ gap: 4 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(elapsed)} elapsed</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(totalSeconds - elapsed)} remaining</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(elapsed)} elapsed</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(totalSeconds - elapsed)} remaining</Text>
         </View>
         <ProgressBar progress={elapsed / totalSeconds} />
       </View>
@@ -240,13 +240,13 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
             {paused ? "Paused" : PHASE_TEXT[current.label]}
           </Text>
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 40 }}>{left}</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }}>seconds remaining</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>seconds remaining</Text>
         </View>
       </View>
 
       <View style={{ alignItems: "center", gap: 4 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{pattern.cues[current.label]}</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", fontSize: 12 }}>
+        <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", fontSize: 13 }}>
           Sit comfortably and let your shoulders relax. Follow the circle only if the pace feels easy.
         </Text>
       </View>
@@ -267,14 +267,14 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
         {pattern.phases.map((p, i) => (
           <React.Fragment key={`${p.label}-${i}`}>
             {i > 0 ? <Icon name="chevron-right" size={14} color={colors.accent} /> : null}
-            <Text style={{ color: i === idx ? colors.textPrimary : colors.textSecondary, ...typography.meta, fontSize: 12 }}>
+            <Text style={{ color: i === idx ? colors.textPrimary : colors.textSecondary, ...typography.meta, fontSize: 13 }}>
               {p.label} · {p.seconds} sec
             </Text>
           </React.Fragment>
         ))}
       </View>
 
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{BREATHING_SAFETY}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{BREATHING_SAFETY}</Text>
 
       {speakable ? (
         <Pressable

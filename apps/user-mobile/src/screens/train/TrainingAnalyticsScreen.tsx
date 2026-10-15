@@ -33,9 +33,9 @@ const RANGES: Array<{ value: AnalyticsRange; label: string; long: string }> = [
 ];
 
 const ACWR_COPY: Record<AcwrStatus, string> = {
-  low: "Your recent load is below your longer-term average. Fine for a deload; build back gradually if you want to progress.",
-  optimal: "Your recent load is in line with what you have been doing. A good zone to keep progressing in.",
-  high: "Your recent load is well above your longer-term average. Consider an easier session or extra recovery.",
+  low: "You trained less this week than usual. Fine for an easy week; build back slowly if you want to progress.",
+  optimal: "You trained about as much as usual this week. A good place to keep making progress.",
+  high: "You trained a lot more this week than usual. Think about an easier session or extra rest.",
 };
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -90,7 +90,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
           accessibilityLabel="Export workout data as CSV"
           style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6, opacity: exportData.isPending ? 0.5 : 1 }}
         >
-          <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>Export Data</Text>
+          <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>Export Data</Text>
         </Pressable>
       }
     >
@@ -107,7 +107,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
               accessibilityLabel={r.long}
               style={{ flex: 1, alignItems: "center", paddingVertical: spacing.sm, borderRadius: radius.sm, backgroundColor: on ? colors.surfaceHigh : "transparent" }}
             >
-              <Text style={{ color: on ? colors.textPrimary : colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 12 }}>{r.label}</Text>
+              <Text style={{ color: on ? colors.textPrimary : colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13 }}>{r.label}</Text>
             </Pressable>
           );
         })}
@@ -124,16 +124,16 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
       ) : data.totalSessions === 0 && data.consistency.completedThisWeek === 0 ? (
         <EmptyState
           title="No training data yet"
-          subtitle="Complete a workout and your volume, consistency and muscle balance will show up here."
+          subtitle="Finish a workout and how much you lifted, how often you trained and which muscles you worked will show up here."
           actionLabel="Browse programs"
           onAction={() => navigation.navigate("ProgramsMarketplace")}
         />
       ) : (
         <>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Weekly Volume Trend ({unit})</Text>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Weight lifted each week ({unit})</Text>
             {change !== null ? (
-              <Text style={{ color: change >= 0 ? colors.success : colors.danger, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+              <Text style={{ color: change >= 0 ? colors.success : colors.danger, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                 {change >= 0 ? "+" : ""}
                 {change}% vs previous {rangeLong.replace("last ", "")}
               </Text>
@@ -171,7 +171,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <Text style={{ color: colors.success, fontFamily: fonts.displayBold, fontSize: 28 }}>{data.consistency.percent}%</Text>
                   <View style={{ backgroundColor: colors.successSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: colors.success, fontFamily: fonts.bodySemi, fontSize: 10 }}>
+                    <Text style={{ color: colors.success, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                       {data.consistency.completedThisWeek} of {data.consistency.plannedPerWeek} workouts completed
                     </Text>
                   </View>
@@ -191,8 +191,8 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
               data.muscleDistribution.map((m) => (
                 <View key={m.muscleGroup} style={{ gap: 6 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 12 }}>{cap(m.muscleGroup)}</Text>
-                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12 }}>{Math.round(m.percent)}%</Text>
+                    <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>{cap(m.muscleGroup)}</Text>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>{Math.round(m.percent)}%</Text>
                   </View>
                   <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.surfaceHigh }}>
                     <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.accent, width: `${(m.percent / maxMuscle) * 100}%` }} />
@@ -208,15 +208,15 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
           <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.xs }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name="sparkles" size={13} color={colors.aiAccent} />
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
+              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
             </View>
             {data.acwr ? (
               <>
                 <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
-                  Load balance {data.acwr.ratio.toFixed(2)} ({data.acwr.status}). {ACWR_COPY[data.acwr.status]}
+                  {ACWR_COPY[data.acwr.status]}
                 </Text>
                 <Text style={{ color: colors.textMuted, ...typography.meta }}>
-                  Acute load {Math.round(data.acwr.acuteLoad)} vs chronic {Math.round(data.acwr.chronicLoad)}. A general guide, not medical advice.
+                  Compares your last week of training with the weeks before. A general guide, not medical advice.
                 </Text>
               </>
             ) : (

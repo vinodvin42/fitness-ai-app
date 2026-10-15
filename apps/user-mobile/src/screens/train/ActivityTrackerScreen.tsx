@@ -361,7 +361,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
               backgroundColor: mode !== "gps" ? colors.warning : live.accuracy != null && live.accuracy > 20 ? colors.warning : colors.success,
             }}
           />
-          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 10 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
             {mode === "gps" ? gpsBadge : "Manual tracking"}
           </Text>
         </View>
@@ -409,7 +409,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
       <View style={{ backgroundColor: panel, borderColor: panelBorder, borderWidth: 1, borderRadius: radius.md, padding: spacing.md - 2, gap: 8 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={{ color: colors.textMuted, ...typography.meta }}>Wearable Live HR</Text>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 11 }}>Not connected</Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13 }}>Not connected</Text>
         </View>
         <View style={{ flexDirection: "row", gap: 4 }}>
           {[0, 1, 2, 3, 4].map((i) => (
@@ -456,7 +456,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
           style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.aiSurface, borderRadius: radius.md, paddingVertical: 11 }}
         >
           <Icon name="mic" size={14} color={colors.aiAccent} />
-          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyMedium, fontSize: 12 }}>
+          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyMedium, fontSize: 13 }}>
             Audio coaching prompts are not available yet
           </Text>
         </Pressable>

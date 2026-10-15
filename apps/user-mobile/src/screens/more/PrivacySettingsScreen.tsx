@@ -123,7 +123,7 @@ export function PrivacySettingsScreen({ navigation }: Props) {
         <ErrorState onRetry={() => sharing.refetch()} />
       ) : (sharing.data ?? []).length === 0 ? (
         <>
-          <SectionLabel text="What your professionals can see" />
+          <SectionLabel text="What your coaches can see" />
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
             <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>
               You don't have an active professional yet. When you do, you'll choose here what they can see.
@@ -213,7 +213,7 @@ export function PrivacySettingsScreen({ navigation }: Props) {
       >
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={{ color: colors.danger, fontFamily: fonts.bodyBold, fontSize: 14 }}>Delete account</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11, lineHeight: 15 }}>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 18 }}>
             Permanently deletes your account and data. This can't be undone.
           </Text>
         </View>

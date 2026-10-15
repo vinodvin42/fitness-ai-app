@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchConversations } from "../../api/coachMessages";
 import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Conversations">;
 
@@ -56,7 +57,7 @@ export function ConversationsScreen({ navigation }: Props) {
           title={t("coaching.messages.emptyTitle")}
           subtitle={t("coaching.messages.emptySubtitle")}
           actionLabel={t("coaching.team.findCoach")}
-          onAction={() => navigation.navigate("CoachDiscovery", undefined)}
+          onAction={() => (COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance"))}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>
@@ -75,7 +76,7 @@ export function ConversationsScreen({ navigation }: Props) {
                   </Text>
                 </View>
                 <View style={{ alignItems: "flex-end", gap: 4 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>{whenLabel(c.lastMessageAt)}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>{whenLabel(c.lastMessageAt)}</Text>
                   {c.unreadCount > 0 ? (
                     <View
                       style={{
@@ -87,7 +88,7 @@ export function ConversationsScreen({ navigation }: Props) {
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: fonts.bodyBold }}>{c.unreadCount}</Text>
+                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: fonts.bodyBold }}>{c.unreadCount}</Text>
                     </View>
                   ) : null}
                 </View>

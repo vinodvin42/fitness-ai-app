@@ -148,7 +148,7 @@ function MessageBubble({ message, mine }: { message: CoachMessageItem; mine: boo
       <Text
         style={{
           color: mine ? "rgba(255,255,255,0.7)" : colors.textMuted,
-          fontSize: 10,
+          fontSize: 13,
           marginTop: 2,
           textAlign: "right",
         }}
