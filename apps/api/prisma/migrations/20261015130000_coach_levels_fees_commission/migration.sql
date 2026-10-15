@@ -129,6 +129,7 @@ ALTER TABLE "professional_service_offerings" DROP COLUMN "priceCents";
 -- 9. Booking payments remember the fee and GST split.
 ALTER TABLE "payments" ADD COLUMN "feeCents" INTEGER;
 ALTER TABLE "payments" ADD COLUMN "taxCents" INTEGER;
+ALTER TABLE "payments" ADD COLUMN "coachLevelId" TEXT;
 UPDATE "payments" SET "feeCents" = "amountCents" + COALESCE("discountCents", 0), "taxCents" = 0
 WHERE "purpose" = 'booking';
 

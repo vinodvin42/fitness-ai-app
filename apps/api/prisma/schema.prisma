@@ -2148,12 +2148,14 @@ model Payment {
   // above is the ALREADY-discounted amount actually charged.
   couponCode              String?
   discountCents           Int?
-  // Package 4 — for a coach booking, the coach fee and the GST on top of it
-  // at the moment the order was created (before any coupon). The booking
-  // copies these, so the coach is paid on the fee the user actually saw.
+  // Package 4 — for a coach booking: the coach fee before GST and before
+  // any coupon (the coach is paid on the full fee; FynroX pays for
+  // coupons), the GST inside the amount actually charged, and the coach's
+  // level when the order was created. The booking copies all three.
   // Null for subscriptions and programs.
   feeCents                Int?
   taxCents                Int?
+  coachLevelId            String?
   // PAY-01, added 5 Sep 2026 — only set (and only meaningful) when purpose
   // is "booking". Subscription/program purchases resolve their whole
   // referenceId (a SubscriptionPlan/Program id) at activation time with

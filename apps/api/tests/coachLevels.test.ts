@@ -100,6 +100,9 @@ describe("Coach levels, fees and commission (Package 4)", () => {
     await prisma.relationship.deleteMany({ where: { professionalId } });
     await prisma.professionalServiceOffering.deleteMany({ where: { professionalId } });
     await prisma.professional.deleteMany({ where: { id: professionalId } });
+    // createService gives every placed coach an offering for the new
+    // service (seeded demo coaches too), so clear those before the service.
+    if (serviceId) await prisma.professionalServiceOffering.deleteMany({ where: { serviceId } });
     if (serviceId) await prisma.coachService.deleteMany({ where: { id: serviceId } });
     if (levelId) await prisma.coachLevel.deleteMany({ where: { id: levelId } });
     await prisma.user.deleteMany({ where: { id: userId } });

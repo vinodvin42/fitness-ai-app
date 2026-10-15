@@ -102,8 +102,9 @@ async function resolveAmountCents(
   // after this resolves, without a second DB round trip to re-fetch the
   // offering it just validated.
   booking?: { professionalId: string; serviceType: "fitness" | "nutrition" | null };
-  // Package 4 — a coach booking's fee and the GST added on top of it.
-  split?: { feeCents: number; taxCents: number };
+  // Package 4 — a coach booking's fee, the GST added on top of it, the GST
+  // rate and the coach's level at this moment.
+  split?: { feeCents: number; taxCents: number; gstPercent: number; coachLevelId: string };
 }> {
   if (input.purpose === "subscription") {
     // Today's price: apply any scheduled change that is now due (D8).
@@ -156,7 +157,7 @@ async function resolveAmountCents(
       amountCents: price.totalCents,
       description: `${offering.label} with ${professional.fullName} (incl. ${price.gstPercent}% GST)`,
       booking: { professionalId: offering.professionalId, serviceType: offering.serviceType as "fitness" | "nutrition" | null },
-      split: { feeCents: price.feeCents, taxCents: price.gstCents },
+      split: { feeCents: price.feeCents, taxCents: price.gstCents, gstPercent: price.gstPercent, coachLevelId: price.coachLevelId },
     };
   }
 
@@ -223,6 +224,14 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     discountCents = result.discountCents;
   }
 
+  // Package 4 — a coupon comes off the GST-inclusive total, so the GST
+  // recorded is the GST inside what the user actually pays. The coach fee
+  // stays the full fee (FynroX pays for the coupon, blueprint 4.5).
+  let taxCents = split?.taxCents ?? null;
+  if (split && discountCents) {
+    taxCents = amountCents - Math.round(amountCents / (1 + split.gstPercent / 100));
+  }
+
   // D4 — through the adapter, so which gateway takes the money is a
   // config value rather than an import in this file.
   const order = await paymentProvider.createOrder({
@@ -243,9 +252,10 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       status: "created",
       couponCode,
       discountCents,
-      // Package 4 — the coach fee and GST before any coupon (bookings only).
+      // Package 4 — bookings only: full coach fee, GST charged, coach level.
       feeCents: split?.feeCents ?? null,
-      taxCents: split?.taxCents ?? null,
+      taxCents,
+      coachLevelId: split?.coachLevelId ?? null,
       // PAY-01 — null for subscription/program_purchase, the specific slot
       // for booking (already validated in resolveAmountCents above).
       scheduledAt: input.purpose === "booking" ? new Date(input.scheduledAt!) : null,
@@ -309,9 +319,10 @@ interface PaymentRecord {
   // the plan price the subscriber locks in (Package 3).
   amountCents: number;
   discountCents: number | null;
-  // Package 4 — the coach fee and GST split for a booking payment.
+  // Package 4 — the coach fee, GST and coach level for a booking payment.
   feeCents: number | null;
   taxCents: number | null;
+  coachLevelId: string | null;
   // PAY-01 — only set (and only read) when purpose is "booking". See its
   // own comment on the Payment model in schema.prisma.
   scheduledAt: Date | null;
@@ -422,7 +433,7 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
             // coupon, so the coach is paid on the full fee (blueprint 4.5).
             paidPrice:
               payment.feeCents !== null
-                ? { feeCents: payment.feeCents, gstCents: payment.taxCents ?? 0 }
+                ? { feeCents: payment.feeCents, gstCents: payment.taxCents ?? 0, coachLevelId: payment.coachLevelId }
                 : undefined,
           },
         );

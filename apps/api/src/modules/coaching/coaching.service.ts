@@ -533,7 +533,10 @@ export async function createBooking(
   // `paidPrice` (Package 4): the fee and GST the user actually paid for,
   // copied from the Payment, so the booking records what was charged even
   // if FynroX changed the fee between checkout and payment capture.
-  opts: { verifiedPayment?: boolean; paidPrice?: { feeCents: number; gstCents: number } } = {},
+  opts: {
+    verifiedPayment?: boolean;
+    paidPrice?: { feeCents: number; gstCents: number; coachLevelId?: string | null };
+  } = {},
 ) {
   const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: input.offeringId } });
   const o = offering as {
@@ -586,11 +589,16 @@ export async function createBooking(
   // a paid booking keeps exactly what was paid.
   let price: Pick<BookingPrice, "feeCents" | "gstCents"> & { coachLevelId: string | null };
   if (opts.verifiedPayment && opts.paidPrice) {
-    const level = (await prisma.professional.findUnique({
-      where: { id: input.professionalId },
-      select: { coachLevelId: true },
-    })) as { coachLevelId: string | null } | null;
-    price = { ...opts.paidPrice, coachLevelId: level?.coachLevelId ?? null };
+    // The level recorded at checkout, else (older payments) the current one.
+    let coachLevelId = opts.paidPrice.coachLevelId ?? null;
+    if (!coachLevelId) {
+      const level = (await prisma.professional.findUnique({
+        where: { id: input.professionalId },
+        select: { coachLevelId: true },
+      })) as { coachLevelId: string | null } | null;
+      coachLevelId = level?.coachLevelId ?? null;
+    }
+    price = { feeCents: opts.paidPrice.feeCents, gstCents: opts.paidPrice.gstCents, coachLevelId };
   } else {
     price = await priceOffering({ id: o.id, serviceId: o.serviceId, professionalId: o.professionalId });
   }

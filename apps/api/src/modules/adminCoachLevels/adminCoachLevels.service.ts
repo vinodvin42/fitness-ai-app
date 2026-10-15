@@ -3,7 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionPctFor, defaultCommissionPct, feesInForce } from "../../lib/coachFees";
 import { activeGstPercent } from "../../lib/gst";
-import { parseEffectiveFrom } from "../../lib/indiaTime";
+import { indiaDate, parseEffectiveFrom } from "../../lib/indiaTime";
 import type {
   AssignCoachLevelInput,
   CreateLevelInput,
@@ -33,6 +33,8 @@ const PAST_GRACE_MS = 60 * 1000;
 function startDate(value: string | undefined): Date {
   const now = new Date();
   if (!value) return now;
+  // Today's date (India time) means "from now".
+  if (value === indiaDate(now)) return now;
   const date = parseEffectiveFrom(value);
   if (date.getTime() < now.getTime() - PAST_GRACE_MS) {
     throw new ApiHttpError(422, "start_in_past", "The start date can't be in the past");
@@ -158,12 +160,27 @@ export async function getCoachPricing() {
 
 // ---- Levels ---------------------------------------------------------------
 
+async function createLevelRow(input: CreateLevelInput) {
+  // `rank` is unique; two levels created at the same moment can pick the
+  // same next rank, so retry a couple of times on a rank clash.
+  for (let attempt = 0; ; attempt += 1) {
+    const top = (await prisma.coachLevel.findFirst({ orderBy: { rank: "desc" }, select: { rank: true } })) as { rank: number } | null;
+    try {
+      return await prisma.coachLevel.create({
+        data: { name: input.name, description: input.description ?? null, rank: (top?.rank ?? 0) + 1 },
+      });
+    } catch (err) {
+      const e = err as { code?: string; meta?: { target?: string[] | string } };
+      const target = Array.isArray(e.meta?.target) ? e.meta?.target.join(",") : String(e.meta?.target ?? "");
+      if (e.code === "P2002" && target.includes("rank") && attempt < 3) continue;
+      throw err;
+    }
+  }
+}
+
 export async function createLevel(adminId: string, input: CreateLevelInput) {
-  const top = (await prisma.coachLevel.findFirst({ orderBy: { rank: "desc" }, select: { rank: true } })) as { rank: number } | null;
   try {
-    const level = await prisma.coachLevel.create({
-      data: { name: input.name, description: input.description ?? null, rank: (top?.rank ?? 0) + 1 },
-    });
+    const level = await createLevelRow(input);
     await recordAudit({
       actorAdminId: adminId,
       action: "coach_level.created",
@@ -253,15 +270,35 @@ export async function updateService(adminId: string, serviceId: string, input: U
     },
   });
   // Coach offerings mirror the service (bookings already made keep their
-  // own copied duration).
+  // own copied duration). Switching off turns every offering off;
+  // switching back on only turns on coaches still verified for it.
   await prisma.professionalServiceOffering.updateMany({
     where: { serviceId },
     data: {
       label: service.label,
       durationMinutes: service.durationMinutes,
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.isActive === false ? { isActive: false } : {}),
     },
   });
+  if (input.isActive === true) {
+    const offerings = (await prisma.professionalServiceOffering.findMany({
+      where: { serviceId },
+      select: { id: true, professional: { select: { credentials: { select: { serviceType: true, status: true } } } } },
+    })) as Array<{ id: string; professional: { credentials: Array<{ serviceType: string; status: string }> } }>;
+    const eligible = offerings
+      .filter((o) => {
+        const verified = new Set(o.professional.credentials.filter((c) => c.status === "verified").map((c) => c.serviceType));
+        return before.serviceType ? verified.has(before.serviceType) : verified.has("fitness") && verified.has("nutrition");
+      })
+      .map((o) => o.id);
+    if (eligible.length > 0) {
+      await prisma.professionalServiceOffering.updateMany({ where: { id: { in: eligible } }, data: { isActive: true } });
+    }
+    const placed = (await prisma.professional.findMany({ where: { coachLevelId: { not: null } }, select: { id: true } })) as Array<{
+      id: string;
+    }>;
+    for (const c of placed) await syncCoachOfferings(c.id);
+  }
   await recordAudit({
     actorAdminId: adminId,
     action: "coach_service.updated",
@@ -428,34 +465,40 @@ export async function assignCoachLevel(adminId: string, professionalId: string, 
  * combined one when both are verified. Never removes or reprices anything
  * (prices come from the level fee). Safe to call any time.
  */
-export async function syncCoachOfferings(professionalId: string) {
-  const professional = (await prisma.professional.findUnique({
-    where: { id: professionalId },
-    select: { coachLevelId: true, credentials: { select: { serviceType: true, status: true } } },
-  })) as { coachLevelId: string | null; credentials: Array<{ serviceType: string; status: string }> } | null;
-  if (!professional?.coachLevelId) return 0;
-  const verified = new Set(professional.credentials.filter((c) => c.status === "verified").map((c) => c.serviceType));
-  if (verified.size === 0) return 0;
-  const [services, existing] = await Promise.all([
-    prisma.coachService.findMany({ where: { isActive: true } }),
-    prisma.professionalServiceOffering.findMany({ where: { professionalId }, select: { serviceId: true } }),
-  ]);
-  const have = new Set((existing as Array<{ serviceId: string }>).map((o) => o.serviceId));
-  let created = 0;
-  for (const s of services as ServiceRow[]) {
-    const canDeliver = s.serviceType ? verified.has(s.serviceType) : verified.has("fitness") && verified.has("nutrition");
-    if (!canDeliver || have.has(s.id)) continue;
-    await prisma.professionalServiceOffering.create({
-      data: {
-        professionalId,
-        serviceId: s.id,
-        serviceType: s.serviceType as "fitness" | "nutrition" | null,
-        label: s.label,
-        durationMinutes: s.durationMinutes,
-        isActive: true,
-      },
-    });
-    created += 1;
-  }
-  return created;
+export async function syncCoachOfferings(professionalId: string): Promise<number> {
+  // One transaction with the coach's row locked, so two syncs running at
+  // once (placing a coach while a credential is verified) can't both
+  // create the same offering.
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "professionals" WHERE "id" = ${professionalId} FOR UPDATE`;
+    const professional = (await tx.professional.findUnique({
+      where: { id: professionalId },
+      select: { coachLevelId: true, credentials: { select: { serviceType: true, status: true } } },
+    })) as { coachLevelId: string | null; credentials: Array<{ serviceType: string; status: string }> } | null;
+    if (!professional?.coachLevelId) return 0;
+    const verified = new Set(professional.credentials.filter((c) => c.status === "verified").map((c) => c.serviceType));
+    if (verified.size === 0) return 0;
+    const [services, existing] = await Promise.all([
+      tx.coachService.findMany({ where: { isActive: true } }),
+      tx.professionalServiceOffering.findMany({ where: { professionalId }, select: { serviceId: true } }),
+    ]);
+    const have = new Set((existing as Array<{ serviceId: string }>).map((o) => o.serviceId));
+    let created = 0;
+    for (const s of services as ServiceRow[]) {
+      const canDeliver = s.serviceType ? verified.has(s.serviceType) : verified.has("fitness") && verified.has("nutrition");
+      if (!canDeliver || have.has(s.id)) continue;
+      await tx.professionalServiceOffering.create({
+        data: {
+          professionalId,
+          serviceId: s.id,
+          serviceType: s.serviceType as "fitness" | "nutrition" | null,
+          label: s.label,
+          durationMinutes: s.durationMinutes,
+          isActive: true,
+        },
+      });
+      created += 1;
+    }
+    return created;
+  });
 }

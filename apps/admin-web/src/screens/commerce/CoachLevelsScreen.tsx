@@ -32,6 +32,11 @@ function dateText(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
+/** Today's date in India (YYYY-MM-DD) — the earliest start date the API accepts. */
+function todayIndia(): string {
+  return new Date(Date.now() + 330 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 function typeLabel(t: ProfessionalServiceType | null): string {
   return t === "fitness" ? "Fitness" : t === "nutrition" ? "Nutrition" : "Fitness + nutrition";
 }
@@ -146,13 +151,13 @@ export function CoachLevelsScreen() {
                     </p>
                     <div className="flex flex-wrap items-end gap-3">
                       <label className="flex flex-col gap-1 text-xs text-text-dim">
-                        Fee before GST (₹)
+                        Fee before GST (₹, 0 = free session)
                         <input className={INPUT} type="number" min={0} step="1" value={panel.price}
                           onChange={(e) => setPanel({ ...panel, price: e.target.value })} />
                       </label>
                       <label className="flex flex-col gap-1 text-xs text-text-dim">
                         Starts (blank = now)
-                        <input className={INPUT} type="date" value={panel.effectiveFrom}
+                        <input className={INPUT} type="date" min={todayIndia()} value={panel.effectiveFrom}
                           onChange={(e) => setPanel({ ...panel, effectiveFrom: e.target.value })} />
                       </label>
                     </div>
@@ -169,7 +174,7 @@ export function CoachLevelsScreen() {
                       </label>
                       <label className="flex flex-col gap-1 text-xs text-text-dim">
                         Starts (blank = now)
-                        <input className={INPUT} type="date" value={panel.effectiveFrom}
+                        <input className={INPUT} type="date" min={todayIndia()} value={panel.effectiveFrom}
                           onChange={(e) => setPanel({ ...panel, effectiveFrom: e.target.value })} />
                       </label>
                     </div>
@@ -188,7 +193,7 @@ export function CoachLevelsScreen() {
                       </label>
                       <label className="flex flex-col gap-1 text-xs text-text-dim">
                         Starts (blank = now)
-                        <input className={INPUT} type="date" value={panel.effectiveFrom}
+                        <input className={INPUT} type="date" min={todayIndia()} value={panel.effectiveFrom}
                           onChange={(e) => setPanel({ ...panel, effectiveFrom: e.target.value })} />
                       </label>
                     </div>
@@ -253,7 +258,13 @@ export function CoachLevelsScreen() {
                 {save.error && <p className="text-xs text-danger">{extractErrorMessage(save.error, "Couldn't save.")}</p>}
                 <div className="flex gap-2">
                   <button type="button" className={BUTTON}
-                    disabled={save.isPending || ("reason" in panel && !reasonOk(panel.reason))}
+                    disabled={
+                      save.isPending ||
+                      ("reason" in panel && !reasonOk(panel.reason)) ||
+                      // A blank fee is not "free": type 0 for a free session.
+                      (panel.kind === "fee" && panel.price.trim() === "") ||
+                      (panel.kind === "defaultCommission" && panel.pct.trim() === "")
+                    }
                     onClick={() => save.mutate(panel)}>
                     {save.isPending ? "Saving…" : "Save"}
                   </button>

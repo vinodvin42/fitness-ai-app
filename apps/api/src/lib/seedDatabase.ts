@@ -421,7 +421,9 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
         return prisma.professionalServiceOffering.upsert({
           where: { id },
           create: { id, professionalId: coach.id, ...offeringData, isActive: true },
-          update: { ...offeringData, isActive: true },
+          // Created once; a re-seed never re-enables or relabels an
+          // offering the Super Admin has changed (Package 4).
+          update: {},
         });
       }),
     );
