@@ -4,11 +4,10 @@ import { encryptStringList, readHealthList } from "../../lib/fieldCrypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ageFromDateOfBirth, parseDateOnly } from "../../lib/age";
-import { assertGuardianCleared } from "../../lib/guardianGate";
+import { assertAdultAge } from "../../lib/adultGate";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { issueGuardianToken, sendGuardianReviewEmail } from "../guardianReview/guardianReview.service";
 import { hashPassword, verifyPassword } from "../../lib/password";
 import { hashRefreshToken } from "../../lib/jwt";
 import {
@@ -27,7 +26,6 @@ import {
   DisableTwoFactorInput,
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
-  GuardianReviewInput,
   OnboardingProfileInput,
   UpdateConsentInput,
   UpdateProfileInput,
@@ -143,6 +141,8 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // of OnboardingProfile.age keeps working.
   const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
   if (dateOfBirth) rest.age = ageFromDateOfBirth(dateOfBirth);
+  // FynroX is for adults 18+ only — there is no guardian flow (lib/adultGate.ts).
+  assertAdultAge({ dateOfBirth, age: rest.age });
   // "None" / "Prefer not to say" are answers, not reportable conditions (they must not raise a safety escalation).
   // Skipped health data: store nothing for medical/injuries (never trust
   // lists sent alongside the skip flag) and record WHEN it was skipped so
@@ -152,9 +152,6 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
     : rawConditions.filter((c) => !["none", "prefer not to say"].includes(c.trim().toLowerCase()));
   const injuries = healthDataSkipped ? [] : rawInjuries;
   rest.allergens = rest.allergens.filter((a) => a.trim().toLowerCase() !== "none");
-  // Gate: no health questions / profiling are accepted while a minor's
-  // guardian authorization is unverified (see lib/guardianGate.ts).
-  await assertGuardianCleared(userId, { dateOfBirth });
 
   // Spec §10: health data is stored encrypted. The two plaintext columns
   // are written as empty from here on — they exist only so the backfill
@@ -377,6 +374,7 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
 
   const { dateOfBirth: dobInput, ...fields } = input;
   const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
+  assertAdultAge({ dateOfBirth, age: fields.age });
   const profile = await prisma.onboardingProfile.update({
     where: { userId },
     data: { ...fields, ...(dateOfBirth ? { dateOfBirth, age: ageFromDateOfBirth(dateOfBirth) } : {}) },
@@ -811,72 +809,3 @@ export async function updateConsent(userId: string, input: UpdateConsentInput) {
   return { type: consent.type, granted: consent.granted, updatedAt: consent.updatedAt };
 }
 
-
-/**
- * Under-18 guardian review (onboarding/11). Stores the guardian's email,
- * issues a fresh single-use approval token (any previous token is
- * invalidated) and emails the link — see modules/guardianReview. Calling
- * this again while pending/declined is "resend" (same email) or "change
- * email" (new email). An already-approved review is returned unchanged.
- */
-export async function submitGuardianReview(userId: string, input: GuardianReviewInput) {
-  const user = await getUserById(userId);
-  const existing = await prisma.guardianReview.findUnique({ where: { userId } });
-  if (existing?.status === "approved") return toGuardianReviewDTO(existing);
-
-  const { token, tokenHash, expiresAt } = issueGuardianToken();
-  const review = await prisma.guardianReview.upsert({
-    where: { userId },
-    create: { userId, guardianEmail: input.guardianEmail, guardianName: input.guardianName, relationship: input.relationship, tokenHash, tokenExpiresAt: expiresAt, lastSentAt: new Date() },
-    update: {
-      guardianEmail: input.guardianEmail,
-      ...(input.guardianName ? { guardianName: input.guardianName } : {}),
-      ...(input.relationship ? { relationship: input.relationship } : {}),
-      status: "pending",
-      tokenHash,
-      tokenExpiresAt: expiresAt,
-      lastSentAt: new Date(),
-      decidedAt: null,
-    },
-  });
-
-  await recordAudit({
-    actorId: userId,
-    action: "user.guardian_review_submitted",
-    entityType: "GuardianReview",
-    entityId: userId,
-    metadata: { resend: !!existing },
-  });
-
-  await sendGuardianReviewEmail({ to: input.guardianEmail, childName: user.fullName, token, expiresAt });
-
-  return toGuardianReviewDTO(review);
-}
-
-/** Returns null when no review was ever submitted. */
-export async function getGuardianReview(userId: string) {
-  const review = await prisma.guardianReview.findUnique({ where: { userId } });
-  return review ? toGuardianReviewDTO(review) : null;
-}
-
-function toGuardianReviewDTO(r: {
-  guardianName: string | null;
-  guardianEmail: string;
-  relationship: string | null;
-  status: string;
-  createdAt: Date;
-  tokenExpiresAt: Date | null;
-  lastSentAt: Date | null;
-  decidedAt: Date | null;
-}) {
-  return {
-    guardianEmail: r.guardianEmail,
-    ...(r.guardianName ? { guardianName: r.guardianName } : {}),
-    ...(r.relationship ? { relationship: r.relationship } : {}),
-    status: r.status,
-    createdAt: r.createdAt.toISOString(),
-    expiresAt: r.tokenExpiresAt ? r.tokenExpiresAt.toISOString() : null,
-    lastSentAt: r.lastSentAt ? r.lastSentAt.toISOString() : null,
-    decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
-  };
-}

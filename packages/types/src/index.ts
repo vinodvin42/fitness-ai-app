@@ -5364,26 +5364,6 @@ export interface PublishBookingSummaryInput {
   summaryText: string;
 }
 
-// Under-18 guardian review (onboarding/11) — matches apps/api's
-// guardianReviewSchema and GuardianReview model. `approved` is reserved;
-// nothing sets it yet.
-export type GuardianRelationship = "parent" | "legal_guardian" | "other";
-export interface GuardianReviewInput {
-  guardianEmail: string;
-  /** Legacy (first build) — no longer collected by the app, still accepted by the API. */
-  guardianName?: string;
-  relationship?: GuardianRelationship;
-}
-/** `approved`/`declined` are set only by the guardian via the emailed link (apps/api /guardian-review/approve). */
-export interface GuardianReview extends GuardianReviewInput {
-  status: "pending" | "approved" | "declined";
-  createdAt: string;
-  /** When the emailed approval link expires (null once no live token exists). */
-  expiresAt?: string | null;
-  lastSentAt?: string | null;
-  decidedAt?: string | null;
-}
-
 // ---- Profile & Settings row 2 (Security / Data & Privacy / Help / Export) ----
 
 /** GET/PATCH /coaching/professionals/:id/sharing and items of GET /coaching/sharing */

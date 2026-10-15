@@ -164,17 +164,12 @@ function buildSelectionPrompt(profile: {
     : "not specified — no equipment self-report on file, so don't assume either way";
 
   // Conservative paths: (a) the user skipped health data ("Continue without
-  // health data") — safety context is UNKNOWN, not "none"; (b) a minor.
+  // health data") — safety context is UNKNOWN, not "none". (FynroX is 18+ only.)
   // Prompt-level caution only; NOT a clinical screen and not a hard filter.
   const cautionNotes: string[] = [];
   if (profile.healthDataSkipped) {
     cautionNotes.push(
       "IMPORTANT: this user chose NOT to share medical/injury information, so their safety context is UNKNOWN (not 'none'). Prefer a lower-intensity, beginner-friendly, generally-safe program and avoid anything high-impact or maximal-effort.",
-    );
-  }
-  if (profile.age != null && profile.age < 18) {
-    cautionNotes.push(
-      "IMPORTANT: this user is under 18. Choose an age-appropriate, moderate-intensity program; avoid aggressive weight-loss, extreme calorie deficit, maximal-load or very-high-intensity programs.",
     );
   }
 

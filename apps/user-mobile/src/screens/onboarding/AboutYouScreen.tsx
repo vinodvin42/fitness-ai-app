@@ -19,7 +19,7 @@ const GENDERS = [
 
 const KG_PER_LB = 0.45359237;
 const CM_PER_IN = 2.54;
-const MIN_AGE = 13;
+const MIN_AGE = 18; // FynroX is for adults 18+ only
 
 const round = (n: number, dp: number) => Math.round(n * 10 ** dp) / 10 ** dp;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -68,12 +68,7 @@ export function AboutYouScreen({ navigation }: Props) {
       title="About You"
       subtitle="Tell us about yourself for personalized recommendations."
       onNext={() => {
-        // Under 18 (from the date of birth): the guardian gate comes first
-        // (Figma 11). The resume target stays AboutYou until it is cleared.
-        if (age != null && age < 18) {
-          navigation.navigate("GuardianReview");
-          return;
-        }
+        // FynroX is 18+ only: the Next button stays disabled under MIN_AGE.
         markScreenReached("Schedule");
         navigation.navigate("Schedule");
       }}
@@ -94,7 +89,7 @@ export function AboutYouScreen({ navigation }: Props) {
       <DateOfBirthCard
         value={state.dateOfBirth}
         onChange={(dateOfBirth) => update({ dateOfBirth, age: ageFromDob(dateOfBirth) ?? undefined })}
-        error={tooYoung ? `You need to be at least ${MIN_AGE} to use this app.` : null}
+        error={tooYoung ? `FynroX is for adults ${MIN_AGE} and over.` : null}
       />
 
       <MeasureCard

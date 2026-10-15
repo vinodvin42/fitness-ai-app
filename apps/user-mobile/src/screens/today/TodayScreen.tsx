@@ -21,7 +21,7 @@ import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nut
 import { fetchCurrentMealPlan } from "../../api/mealPlans";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
 import { fetchNextWorkout } from "../../api/plans";
-import { fetchGuardianReview, fetchOnboardingProfile } from "../../api/users";
+import { fetchOnboardingProfile } from "../../api/users";
 import { fetchReadiness } from "../../api/recovery";
 import { fetchNotifications } from "../../api/notifications";
 import { fetchMeasurements } from "../../api/progress";
@@ -92,7 +92,6 @@ function sorenessLabel(v: number | null | undefined): string {
  */
 export function TodayScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const { data: guardianReview } = useQuery({ queryKey: ["users", "guardian-review"], queryFn: fetchGuardianReview, staleTime: 60_000 });
   const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
   const net = useNetInfo();
@@ -358,21 +357,6 @@ export function TodayScreen({ navigation }: Props) {
           gap: 16,
         }}
       >
-        {guardianReview && guardianReview.status !== "approved" ? (
-          <View
-            accessibilityRole="alert"
-            style={{ backgroundColor: colors.surface, borderColor: colors.warning, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 4 }}
-          >
-            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>
-              {guardianReview.status === "declined" ? "Guardian declined authorization" : "Guardian authorization pending"}
-            </Text>
-            <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>
-              {guardianReview.status === "declined"
-                ? "Personalized plans, health questions and analysis stay off. Contact support if this was a mistake."
-                : "Personalized plans, health questions and analysis stay off until your guardian approves the request we emailed them."}
-            </Text>
-          </View>
-        ) : null}
 
         {/* Header: avatar, greeting, round search + bell */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

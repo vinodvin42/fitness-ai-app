@@ -116,7 +116,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
       </View>
       <View style={[styles.note, { backgroundColor: theme.accentSoft }]}>
         <Icon name="info" size={14} color={theme.accent} />
-        <Text style={styles.noteText}>Users under 18 need a parent/guardian review and consent before proceeding.</Text>
+        <Text style={styles.noteText}>FynroX is for adults 18 and over.</Text>
       </View>
       {error ? (
         <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, fontFamily: fonts.body }}>

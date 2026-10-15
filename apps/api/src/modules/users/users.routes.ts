@@ -1,14 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { guardianSubmitRateLimit, twoFactorRateLimit } from "../../middleware/rateLimit";
+import { twoFactorRateLimit } from "../../middleware/rateLimit";
 import {
   changePasswordSchema,
   deleteAccountSchema,
   disableTwoFactorSchema,
   editOnboardingProfileSchema,
   enableTwoFactorSchema,
-  guardianReviewSchema,
   onboardingProfileSchema,
   updateConsentSchema,
   updateProfileSchema,
@@ -203,20 +202,3 @@ usersRouter.patch("/me/consents", requireAuth, async (req: AuthedRequest, res, n
   }
 });
 
-// Under-18 guardian review (onboarding/11) — see users.service.ts.
-usersRouter.post("/me/guardian-review", requireAuth, guardianSubmitRateLimit, async (req: AuthedRequest, res, next) => {
-  try {
-    const input = guardianReviewSchema.parse(req.body);
-    res.status(201).json({ guardianReview: await usersService.submitGuardianReview(req.userId!, input) });
-  } catch (err) {
-    next(err);
-  }
-});
-
-usersRouter.get("/me/guardian-review", requireAuth, async (req: AuthedRequest, res, next) => {
-  try {
-    res.json({ guardianReview: await usersService.getGuardianReview(req.userId!) });
-  } catch (err) {
-    next(err);
-  }
-});

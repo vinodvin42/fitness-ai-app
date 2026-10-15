@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { requireGuardianCleared } from "../../middleware/guardianGate";
+import { requireAdult } from "../../middleware/adultGate";
 import { decideRecommendationSchema } from "./plans.schema";
 import * as plansService from "./plans.service";
 
@@ -17,7 +17,7 @@ export const plansRouter = Router();
 // decideRecommendation() with decidedByRole: "professional" rather than
 // duplicating this router's logic.
 
-plansRouter.post("/plans/generate", requireAuth, requireGuardianCleared, writeRateLimit, async (req: AuthedRequest, res, next) => {
+plansRouter.post("/plans/generate", requireAuth, requireAdult, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     res.status(201).json(await plansService.generatePlan(req.userId!));
   } catch (err) {
@@ -25,7 +25,7 @@ plansRouter.post("/plans/generate", requireAuth, requireGuardianCleared, writeRa
   }
 });
 
-plansRouter.post("/plans/:id/retry", requireAuth, requireGuardianCleared, writeRateLimit, async (req: AuthedRequest, res, next) => {
+plansRouter.post("/plans/:id/retry", requireAuth, requireAdult, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await plansService.retryPlanGeneration(req.userId!, req.params.id));
   } catch (err) {
@@ -59,7 +59,7 @@ plansRouter.get("/plans", requireAuth, async (req: AuthedRequest, res, next) => 
   }
 });
 
-plansRouter.post("/recommendations/generate", requireAuth, requireGuardianCleared, writeRateLimit, async (req: AuthedRequest, res, next) => {
+plansRouter.post("/recommendations/generate", requireAuth, requireAdult, writeRateLimit, async (req: AuthedRequest, res, next) => {
   try {
     res.status(201).json(await plansService.generateRecommendation(req.userId!));
   } catch (err) {
