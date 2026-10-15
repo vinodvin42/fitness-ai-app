@@ -47,7 +47,7 @@ describe("Parked payments: subscriptions, program purchases, bookings, Razorpay"
     paidProgramId = `test-program-paid-${suffix}`;
 
     await prisma.subscriptionPlan.create({
-      data: { id: paidPlanId, tier: "pro", name: "Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
+      data: { id: paidPlanId, tier: "grow", name: "Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
     });
     await prisma.subscriptionPlan.create({
       data: { id: freePlanId, tier: "basic", name: "Test Basic Plan", priceCents: 0, billingCycle: "monthly", isActive: true },

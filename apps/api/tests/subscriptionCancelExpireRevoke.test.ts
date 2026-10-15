@@ -23,7 +23,7 @@ describe("Subscription cancel-at-period-end, lazy expiry, and admin force-revoke
     const plan = await prisma.subscriptionPlan.create({
       data: {
         id: `test-plan-${suffix}`,
-        tier: "pro",
+        tier: "grow",
         name: "Gap 57 Test Plan",
         priceCents: 0,
         billingCycle: "monthly",

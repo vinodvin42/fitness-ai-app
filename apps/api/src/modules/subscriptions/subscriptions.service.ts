@@ -3,6 +3,7 @@ import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { grantReferralRewardIfEligible } from "../referrals/referrals.service";
+import { applyDuePlanPriceChanges, upcomingPrices } from "../../lib/planPricing";
 import { SubscribeInput } from "./subscriptions.schema";
 
 /**
@@ -23,14 +24,23 @@ import { SubscribeInput } from "./subscriptions.schema";
  * already on it keeps their existing `Subscription` row untouched.
  */
 
-export function listPlans() {
-  return prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { priceCents: "asc" } });
+/**
+ * Active plans with today's price, plus the next scheduled price where one
+ * exists (`upcomingPrice`, e.g. Grow ₹349 from 1 Dec) so the app can show it.
+ */
+export async function listPlans() {
+  await applyDuePlanPriceChanges();
+  const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { priceCents: "asc" } });
+  const upcoming = await upcomingPrices(plans.map((p) => p.id));
+  return plans.map((p) => ({ ...p, upcomingPrice: upcoming.get(p.id) ?? null }));
 }
 
-function renewalDateFor(billingCycle: "monthly" | "annual"): Date {
+function renewalDateFor(billingCycle: "monthly" | "quarterly" | "annual"): Date {
   const next = new Date();
   if (billingCycle === "annual") {
     next.setFullYear(next.getFullYear() + 1);
+  } else if (billingCycle === "quarterly") {
+    next.setMonth(next.getMonth() + 3);
   } else {
     next.setMonth(next.getMonth() + 1);
   }
@@ -184,6 +194,7 @@ type SubscriptionWithPlan = {
   revokedAt: Date | null;
   revokedReason: string | null;
   createdAt: Date;
+  priceCents?: number | null;
   plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
 };
 
@@ -228,7 +239,10 @@ async function maybeExpireLapsed(subscription: SubscriptionWithPlan): Promise<Su
 export async function subscribe(
   userId: string,
   input: SubscribeInput,
-  opts: { verifiedPayment?: boolean } = {},
+  // `paidPriceCents`: what the user actually paid for this period (set by
+  // payments.service.ts on activation). Locked on the subscription so a
+  // later price change never touches a period that is already paid.
+  opts: { verifiedPayment?: boolean; paidPriceCents?: number } = {},
 ) {
   const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.planId } });
   if (!plan) {
@@ -253,6 +267,7 @@ export async function subscribe(
       planId: plan.id,
       status: "active",
       renewsAt: renewalDateFor(plan.billingCycle),
+      priceCents: opts.paidPriceCents ?? plan.priceCents,
     },
     include: { plan: true },
   });

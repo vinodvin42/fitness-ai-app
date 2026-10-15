@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { applyDuePlanPriceChanges } from "../../lib/planPricing";
 import { r1Flags } from "@fitness-ai-app/config";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { validateCoupon } from "../coupons/coupons.service";
@@ -92,6 +93,7 @@ export async function getCheckoutQuote(
   const currency = "INR";
 
   if (input.purpose === "subscription") {
+    await applyDuePlanPriceChanges();
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.referenceId } });
     if (!plan || !plan.isActive) {
       throw new ApiHttpError(404, "plan_not_found", "That plan isn't available");

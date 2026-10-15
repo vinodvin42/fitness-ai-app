@@ -125,7 +125,7 @@ export type MoreStackParamList = {
   // Progress is no longer a tab (Figma bar has Recover instead); its stack nests here.
   ProgressSection: NavigatorScreenParams<ProgressStackParamList> | undefined;
   // Profile & Settings (Figma section 11): `billingCycle` pre-selects the Monthly/Annual toggle (My plan -> Change billing period).
-  Subscription: { billingCycle?: "monthly" | "annual" } | undefined;
+  Subscription: { billingCycle?: "monthly" | "quarterly" | "annual" } | undefined;
   MyPlan: undefined;
   MeasurementUnits: undefined;
   Appearance: undefined;

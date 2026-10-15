@@ -59,7 +59,7 @@ describe("Creator commission ledger (spec §10, acceptance test 15)", () => {
     await prisma.subscriptionPlan.create({
       data: {
         id: planId,
-        tier: "pro",
+        tier: "grow",
         name: "Commission Fixture Plan",
         priceCents: amountCents,
         billingCycle: "monthly",

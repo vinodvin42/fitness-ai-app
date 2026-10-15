@@ -1,6 +1,7 @@
 import { createNotification } from "../notifications/notifications.service";
 import crypto from "node:crypto";
 import { prisma } from "../../db/prisma";
+import { applyDuePlanPriceChanges } from "../../lib/planPricing";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -102,8 +103,10 @@ async function resolveAmountCents(
   booking?: { professionalId: string; serviceType: "fitness" | "nutrition" | null };
 }> {
   if (input.purpose === "subscription") {
+    // Today's price: apply any scheduled change that is now due (D8).
+    await applyDuePlanPriceChanges();
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.referenceId } });
-    if (!plan) throw new ApiHttpError(404, "plan_not_found", "Subscription plan not found");
+    if (!plan || !plan.isActive) throw new ApiHttpError(404, "plan_not_found", "Subscription plan not found");
     if (plan.priceCents === 0) {
       throw new ApiHttpError(400, "plan_is_free", "This plan is free — subscribe directly, no payment needed");
     }
@@ -376,7 +379,7 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
 
   try {
     if (payment.purpose === "subscription") {
-      await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true });
+      await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true, paidPriceCents: payment.amountCents });
     } else if (payment.purpose === "booking") {
       const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: payment.referenceId } });
       if (!offering) {

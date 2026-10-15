@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
 import * as adminPlansService from "./adminPlans.service";
-import { createPlanSchema, listPlansQuerySchema, updatePlanSchema } from "./adminPlans.schema";
+import { createPlanSchema, listPlansQuerySchema, schedulePriceChangeSchema, updatePlanSchema } from "./adminPlans.schema";
 
 export const adminPlansRouter = Router();
 
@@ -71,6 +71,37 @@ adminPlansRouter.post(
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const plan = await adminPlansService.reactivatePlan(req.adminUserId as string, req.params.id);
+      res.status(200).json({ plan });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Scheduled price changes (decisions D8/D18). Applies directly for the
+// Super Admin; anyone else's call becomes an approval request.
+adminPlansRouter.post(
+  "/admin/plans/:id/price-changes",
+  requireAdminAuth,
+  requirePermission("commerce", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = schedulePriceChangeSchema.parse(req.body);
+      const plan = await adminPlansService.schedulePriceChange(req.adminUserId as string, req.params.id, input);
+      res.status(201).json({ plan });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminPlansRouter.post(
+  "/admin/plans/:id/price-changes/:changeId/cancel",
+  requireAdminAuth,
+  requirePermission("commerce", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const plan = await adminPlansService.cancelPriceChange(req.adminUserId as string, req.params.id, req.params.changeId);
       res.status(200).json({ plan });
     } catch (err) {
       next(err);

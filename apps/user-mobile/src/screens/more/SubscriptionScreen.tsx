@@ -19,17 +19,24 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Subscription">;
 
-const TIER_LABEL: Record<SubscriptionPlan["tier"], string> = { basic: "Basic", pro: "Pro", elite: "Elite" };
-const TIER_ICON: Record<SubscriptionPlan["tier"], IconName> = { basic: "zap", pro: "trophy", elite: "sparkles" };
+const TIER_LABEL: Record<SubscriptionPlan["tier"], string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
+const TIER_ICON: Record<SubscriptionPlan["tier"], IconName> = { basic: "zap", grow: "trophy", prime: "sparkles" };
 const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string }> = {
   basic: { color: colors.textSecondary, soft: colors.surfaceHigh },
-  pro: { color: colors.accent, soft: colors.accentSoft },
-  elite: { color: colors.aiAccent, soft: colors.aiAccentSoft },
+  grow: { color: colors.accent, soft: colors.accentSoft },
+  prime: { color: colors.aiAccent, soft: colors.aiAccentSoft },
 };
 
 function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billingCycle"]) {
   if (priceCents === 0) return "Free";
-  return `₹${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : "mo"}`;
+  return `₹${(priceCents / 100).toFixed(2)} / ${billingCycle === "annual" ? "yr" : billingCycle === "quarterly" ? "3 mo" : "mo"}`;
+}
+
+/** D8: e.g. "₹349.00 / mo from 1 Dec 2026" when a new price is scheduled. */
+function formatUpcoming(plan: SubscriptionPlan): string | null {
+  if (!plan.upcomingPrice) return null;
+  const date = new Date(plan.upcomingPrice.effectiveFrom).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return `${formatPrice(plan.upcomingPrice.priceCents, plan.billingCycle)} from ${date}`;
 }
 
 /**
@@ -296,7 +303,8 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                       <Pill label={entitlement.label} tone={entitlement.tone} icon={entitlement.icon} />
                     </View>
                     <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                      {formatPrice(current.plan.priceCents, current.plan.billingCycle)}
+                      {/* What this subscriber actually pays, locked until renewal (D8). */}
+                      {formatPrice(current.priceCents ?? current.plan.priceCents, current.plan.billingCycle)}
                       {current.renewsAt ? ` · renews ${new Date(current.renewsAt).toLocaleDateString()}` : ""}
                     </Text>
                   </View>
@@ -331,6 +339,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
         <Chip label={t("subscription.monthly")} selected={billingCycle === "monthly"} onPress={() => setBillingCycle("monthly")} />
+        <Chip label={t("subscription.quarterly")} selected={billingCycle === "quarterly"} onPress={() => setBillingCycle("quarterly")} />
         <Chip label={t("subscription.annual")} selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
       </View>
 
@@ -348,7 +357,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
             return (
               <Card
                 key={plan.id}
-                style={plan.tier === "pro" ? { borderColor: colors.accent } : undefined}
+                style={plan.tier === "grow" ? { borderColor: colors.accent } : undefined}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                   <View
@@ -366,12 +375,15 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{TIER_LABEL[plan.tier]}</Text>
-                      {plan.tier === "pro" ? <Pill label={t("subscription.popular")} tone="accent" /> : null}
+                      {plan.tier === "grow" ? <Pill label={t("subscription.popular")} tone="accent" /> : null}
                       {savings != null ? <Pill label={t("subscription.save", { percent: savings })} tone="success" /> : null}
                     </View>
                     <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
                       {formatPrice(plan.priceCents, plan.billingCycle)}
                     </Text>
+                    {formatUpcoming(plan) ? (
+                      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{formatUpcoming(plan)}</Text>
+                    ) : null}
                   </View>
                   <Button
                     label={
@@ -431,13 +443,15 @@ export function SubscriptionScreen({ navigation, route }: Props) {
 // `label` became `key` on 29 Sep 2026: the copy lives in the catalogue
 // (`subscription.features.*`) and this array carries only which tiers
 // include what, which is the actual product decision.
-const COMPARISON_FEATURES: Array<{ key: string; basic: boolean; pro: boolean; elite: boolean }> = [
-  { key: "tracking", basic: true, pro: true, elite: true },
-  { key: "progress", basic: true, pro: true, elite: true },
-  { key: "aiCoach", basic: false, pro: true, elite: true },
-  { key: "recovery", basic: false, pro: true, elite: true },
-  { key: "humanCoaching", basic: false, pro: false, elite: true },
-  { key: "prioritySupport", basic: false, pro: false, elite: true },
+// D13: requesting a coach works on every plan (the coach's fee is paid
+// separately), so humanCoaching is ticked for all three.
+const COMPARISON_FEATURES: Array<{ key: string; basic: boolean; grow: boolean; prime: boolean }> = [
+  { key: "tracking", basic: true, grow: true, prime: true },
+  { key: "progress", basic: true, grow: true, prime: true },
+  { key: "aiCoach", basic: false, grow: true, prime: true },
+  { key: "recovery", basic: false, grow: true, prime: true },
+  { key: "humanCoaching", basic: true, grow: true, prime: true },
+  { key: "prioritySupport", basic: false, grow: false, prime: true },
 ];
 
 /**
@@ -456,8 +470,8 @@ function FeatureComparison() {
       <View style={{ flexDirection: "row", marginBottom: spacing.xs }}>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 2 }}>{t("subscription.feature")}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Basic</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Pro</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Elite</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Grow</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Prime</Text>
       </View>
       {COMPARISON_FEATURES.map((f) => (
         <View
@@ -472,8 +486,8 @@ function FeatureComparison() {
         >
           <Text style={{ color: colors.textSecondary, flex: 2 }}>{t(`subscription.features.${f.key}`)}</Text>
           {cell(f.basic)}
-          {cell(f.pro)}
-          {cell(f.elite)}
+          {cell(f.grow)}
+          {cell(f.prime)}
         </View>
       ))}
     </Card>

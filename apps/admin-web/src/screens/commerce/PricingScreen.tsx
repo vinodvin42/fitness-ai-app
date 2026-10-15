@@ -10,9 +10,19 @@ import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
 
-const TIER_LABELS: Record<SubscriptionTier, string> = { basic: "Basic", pro: "Pro", elite: "Elite" };
-const TIER_OPTIONS: SubscriptionTier[] = ["basic", "pro", "elite"];
-const CYCLE_LABELS: Record<BillingCycle, string> = { monthly: "Monthly", annual: "Annual" };
+const TIER_LABELS: Record<SubscriptionTier, string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
+const TIER_OPTIONS: SubscriptionTier[] = ["basic", "grow", "prime"];
+const CYCLE_LABELS: Record<BillingCycle, string> = { monthly: "Monthly", quarterly: "Every 3 months", annual: "Annual" };
+
+function dateText(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+}
+
+interface ScheduleForm {
+  priceDisplay: string;
+  effectiveFrom: string;
+  reason: string;
+}
 
 function money(cents: number): string {
   return `₹${(cents / 100).toFixed(2)}`;
@@ -78,6 +88,9 @@ export function PricingScreen() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // D8: price changes on plans people have bought are scheduled, not edited.
+  const [schedulingPlan, setSchedulingPlan] = useState<AdminPlanListItem | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleForm>({ priceDisplay: "", effectiveFrom: "", reason: "" });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-plans", filters],
@@ -122,6 +135,31 @@ export function PricingScreen() {
     onSuccess: invalidateAll,
   });
 
+  const scheduleMutation = useMutation({
+    mutationFn: (planId: string) =>
+      apiClient.post(`/admin/plans/${planId}/price-changes`, {
+        priceCents: Math.round(Number(schedule.priceDisplay || "0") * 100),
+        effectiveFrom: schedule.effectiveFrom,
+        reason: schedule.reason.trim() || undefined,
+      }),
+    onSuccess: () => {
+      invalidateAll();
+      setSchedulingPlan(null);
+    },
+  });
+
+  const cancelChangeMutation = useMutation({
+    mutationFn: ({ planId, changeId }: { planId: string; changeId: string }) =>
+      apiClient.post(`/admin/plans/${planId}/price-changes/${changeId}/cancel`),
+    onSuccess: invalidateAll,
+  });
+
+  function startSchedule(p: AdminPlanListItem) {
+    setSchedulingPlan(p);
+    setSchedule({ priceDisplay: (p.priceCents / 100).toFixed(2), effectiveFrom: "", reason: "" });
+    scheduleMutation.reset();
+  }
+
   function startEdit(p: AdminPlanListItem) {
     setEditingId(p.id);
     setForm({ name: p.name, tier: p.tier, billingCycle: p.billingCycle, priceDisplay: (p.priceCents / 100).toFixed(2) });
@@ -136,7 +174,7 @@ export function PricingScreen() {
 
   const savePending = createMutation.isPending || updateMutation.isPending;
   const saveError = createMutation.error ?? updateMutation.error;
-  const toggleError = archiveMutation.error ?? reactivateMutation.error;
+  const toggleError = archiveMutation.error ?? reactivateMutation.error ?? cancelChangeMutation.error;
 
   return (
     <AppShell title={t("pricing.pricing")} subNav={COMMERCE_SUB_NAV}>
@@ -175,6 +213,7 @@ export function PricingScreen() {
             >
               <option value="">{t("pricing.all")}</option>
               <option value="monthly">{t("pricing.monthly")}</option>
+              <option value="quarterly">Every 3 months</option>
               <option value="annual">{t("pricing.annual")}</option>
             </select>
           </label>
@@ -258,6 +297,7 @@ export function PricingScreen() {
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
                   <option value="monthly">{t("pricing.monthly")}</option>
+                  <option value="quarterly">Every 3 months</option>
                   <option value="annual">{t("pricing.annual")}</option>
                 </select>
               </label>
@@ -281,6 +321,74 @@ export function PricingScreen() {
               className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
             >
               {savePending ? "Saving…" : editingId ? "Save Changes" : "Create Plan"}
+            </button>
+          </form>
+        )}
+
+        {schedulingPlan && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              scheduleMutation.mutate(schedulingPlan.id);
+            }}
+            className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">
+                Schedule a new price · {schedulingPlan.name} ({CYCLE_LABELS[schedulingPlan.billingCycle]})
+              </div>
+              <button type="button" onClick={() => setSchedulingPlan(null)} className="text-xs text-text-dim hover:text-text-primary">
+                {t("pricing.cancel")}
+              </button>
+            </div>
+            <p className="text-xs text-text-secondary">
+              Today {money(schedulingPlan.priceCents)}. From the start date, new purchases and renewals pay the new price;
+              people who already paid keep their price until their next renewal. A price increase on a plan with subscribers
+              needs at least 30 days' notice, and current subscribers are told in the app.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                New price (₹)
+                <input
+                  required
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={schedule.priceDisplay}
+                  onChange={(e) => setSchedule((prev) => ({ ...prev, priceDisplay: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                Starts on
+                <input
+                  required
+                  type="date"
+                  value={schedule.effectiveFrom}
+                  onChange={(e) => setSchedule((prev) => ({ ...prev, effectiveFrom: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                Reason (saved to the audit log)
+                <input
+                  required
+                  minLength={10}
+                  value={schedule.reason}
+                  onChange={(e) => setSchedule((prev) => ({ ...prev, reason: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+            </div>
+            {scheduleMutation.error && (
+              <p className="text-xs text-danger">{extractErrorMessage(scheduleMutation.error, "Couldn't schedule this price.")}</p>
+            )}
+            <button
+              type="submit"
+              disabled={scheduleMutation.isPending}
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+            >
+              {scheduleMutation.isPending ? "Saving…" : "Schedule price"}
             </button>
           </form>
         )}
@@ -318,7 +426,21 @@ export function PricingScreen() {
                   <tr key={p.id} className="border-b border-border-subtle last:border-0">
                     <td className="px-4 py-3 font-medium text-text-primary">{p.name}</td>
                     <td className="px-4 py-3 text-text-secondary">{TIER_LABELS[p.tier]}</td>
-                    <td className="px-4 py-3 text-text-secondary">{money(p.priceCents)}</td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {money(p.priceCents)}
+                      {(p.scheduledPriceChanges ?? []).map((c) => (
+                        <div key={c.id} className="mt-1 text-xs text-accent">
+                          → {money(c.priceCents)} from {dateText(c.effectiveFrom)}{" "}
+                          <button
+                            type="button"
+                            onClick={() => cancelChangeMutation.mutate({ planId: p.id, changeId: c.id })}
+                            className="text-text-dim underline hover:text-danger"
+                          >
+                            cancel
+                          </button>
+                        </div>
+                      ))}
+                    </td>
                     <td className="px-4 py-3 text-text-secondary">{CYCLE_LABELS[p.billingCycle]}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={p.isActive ? "active" : "archived"} />
@@ -333,6 +455,13 @@ export function PricingScreen() {
                           className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                         >
                           {t("pricing.edit")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startSchedule(p)}
+                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                        >
+                          New price
                         </button>
                         {p.isActive ? (
                           <button

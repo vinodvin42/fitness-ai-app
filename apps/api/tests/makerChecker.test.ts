@@ -41,7 +41,7 @@ describe("Maker-checker approvals (D21)", () => {
 
   async function createPlan(priceCents = 29900) {
     const plan = await prisma.subscriptionPlan.create({
-      data: { name: `MC plan ${uniqueSuffix()}`, tier: "pro", billingCycle: "monthly", priceCents, isActive: false },
+      data: { name: `MC plan ${uniqueSuffix()}`, tier: "grow", billingCycle: "monthly", priceCents, isActive: false },
     });
     planIds.push(plan.id);
     return plan;

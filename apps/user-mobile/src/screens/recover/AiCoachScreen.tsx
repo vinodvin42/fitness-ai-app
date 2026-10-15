@@ -74,7 +74,7 @@ function quickRepliesFor(lastAssistant: string | undefined): string[] {
 const DISCLAIMER =
   "Fynrox AI provides general fitness and wellness guidance only. Not a substitute for professional medical advice.";
 
-const TIER_LABEL = { basic: "Basic", pro: "Pro", elite: "Elite" } as const;
+const TIER_LABEL = { basic: "Basic", grow: "Grow", prime: "Prime" } as const;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });

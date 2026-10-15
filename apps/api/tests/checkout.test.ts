@@ -37,7 +37,7 @@ describe("Checkout quote and purchase history (U-M1, U-M22, D3)", () => {
     await prisma.subscriptionPlan.create({
       data: {
         id: planId,
-        tier: "pro",
+        tier: "grow",
         name: "Fynrox Premium",
         priceCents: PRICE_CENTS,
         billingCycle: "monthly",

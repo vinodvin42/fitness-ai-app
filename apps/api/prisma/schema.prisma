@@ -111,14 +111,19 @@ enum MealType {
   snack
 }
 
+// FynroX plans (decision D13, Oct 2026): Basic (free), Grow, Prime. The
+// tiers were renamed from basic/pro/elite in migration
+// 20261015120000_plans_grow_prime_price_schedule.
 enum SubscriptionTier {
   basic
-  pro
-  elite
+  grow
+  prime
 }
 
+// Users can pay monthly, every 3 months or yearly.
 enum BillingCycle {
   monthly
+  quarterly
   annual
 }
 
@@ -2018,8 +2023,45 @@ model SubscriptionPlan {
   updatedAt    DateTime         @updatedAt
 
   subscriptions Subscription[]
+  priceChanges  PlanPriceChange[]
 
   @@map("subscription_plans")
+}
+
+enum PlanPriceChangeStatus {
+  scheduled
+  applied
+  cancelled
+}
+
+// Scheduled plan price changes (decisions D8/D18, Oct 2026). Only the
+// Super Admin sets prices (anyone else's change is an approval request).
+// A change takes effect on `effectiveFrom`: from then on new purchases and
+// renewals pay `priceCents`; anyone already paid keeps their locked
+// Subscription.priceCents until their next renewal. A price increase on a
+// plan with subscribers needs at least 30 days' notice, and current
+// subscribers get an in-app notice when it is scheduled.
+// SubscriptionPlan.priceCents is always the price in force today: due
+// changes are applied by lib/planPricing.ts before any price is read.
+model PlanPriceChange {
+  id               String                @id @default(uuid())
+  planId           String
+  plan             SubscriptionPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  priceCents       Int
+  previousCents    Int
+  effectiveFrom    DateTime
+  status           PlanPriceChangeStatus @default(scheduled)
+  reason           String?
+  createdByAdminId String?
+  noticeSentAt     DateTime?
+  appliedAt        DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([planId, status, effectiveFrom])
+  @@index([status, effectiveFrom])
+  @@map("plan_price_changes")
 }
 
 model Subscription {
@@ -2047,6 +2089,11 @@ model Subscription {
   // DB) and is what the admin console's audit trail entry echoes.
   revokedAt     DateTime?
   revokedReason String?
+
+  // The price this subscriber paid for the current period (paise), locked
+  // at payment time. A later plan price change never alters it; the next
+  // renewal is charged at the plan's price on that day (decision D8).
+  priceCents Int?
 
   @@index([userId])
   @@map("subscriptions")

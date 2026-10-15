@@ -1181,7 +1181,8 @@ export interface CheckInStatus {
 // Corresponds to the admin console's Plan/Subscription entities — one
 // shared table, not duplicated between apps (docs/mobile/05-data-model.md §2).
 
-export type SubscriptionTier = "basic" | "pro" | "elite";
+/** FynroX plans (D13): Basic (free), Grow, Prime. */
+export type SubscriptionTier = "basic" | "grow" | "prime";
 // `expired`/`revoked` added 18 Sep 2026 (gap §57) — see
 // apps/api/prisma/schema.prisma's SubscriptionStatus enum doc comment for
 // the full real cancel-at-period-end policy and force-revoke design.
@@ -1212,14 +1213,17 @@ export type SubscriptionDisplayState =
   | "canceled"
   | "past_due";
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
-export type BillingCycle = "monthly" | "annual";
+export type BillingCycle = "monthly" | "quarterly" | "annual";
 
 export interface SubscriptionPlan {
   id: string;
   tier: SubscriptionTier;
   name: string;
+  /** Today's price, in paise. */
   priceCents: number;
   billingCycle: BillingCycle;
+  /** Next scheduled price (D8), e.g. Grow ₹349 from 1 Dec; null when none. Only on GET /subscriptions/plans. */
+  upcomingPrice?: { priceCents: number; effectiveFrom: string } | null;
 }
 
 export interface Subscription {
@@ -1234,6 +1238,8 @@ export interface Subscription {
   /** Gap §57 — only ever set by the admin force-revoke action. */
   revokedAt: string | null;
   revokedReason: string | null;
+  /** What this subscriber paid for the current period (paise), locked until renewal (D8). */
+  priceCents?: number | null;
 }
 
 /**
@@ -2660,7 +2666,7 @@ export interface AdminChangeRequestResponse {
 // real backing mechanism, so unlike Modules 03/04 there's no input type
 // here for a state-changing action.
 
-export type MembershipTier = "basic" | "pro" | "elite" | "free";
+export type MembershipTier = "basic" | "grow" | "prime" | "free";
 /** "referral" if a `Referral` row exists with this user as referee, else "organic" — see adminUsers.service.ts. No richer acquisition-channel taxonomy is tracked anywhere in this schema. */
 export type UserAcquisitionChannel = "referral" | "organic";
 /** Mirrors `ProfessionalStatus`/`AdminUserStatus` exactly — account-operations only, added 26 Aug 2026. Not a moderation/trust-and-safety taxonomy (no "banned" state) — see `User.status`'s own schema comment. */
@@ -3541,8 +3547,33 @@ export interface AdminPlanListItem {
   isActive: boolean;
   /** Real, all-time Subscription row count on this plan (every status, not just currently-active). */
   subscriberCount: number;
+  /** Upcoming price changes (D8), earliest first. */
+  scheduledPriceChanges: AdminPlanPriceChange[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** A scheduled plan price change (D8/D18). */
+export interface AdminPlanPriceChange {
+  id: string;
+  priceCents: number;
+  previousCents: number;
+  effectiveFrom: string;
+  status: "scheduled" | "applied" | "cancelled";
+  reason: string | null;
+  /** When current subscribers were told (null if the plan had none). */
+  noticeSentAt: string | null;
+  appliedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+/** POST /admin/plans/:id/price-changes */
+export interface ScheduleAdminPlanPriceChangeInput {
+  priceCents: number;
+  /** YYYY-MM-DD (India time) or an ISO timestamp. */
+  effectiveFrom: string;
+  reason?: string;
 }
 
 export interface AdminPlanDirectoryResponse {
@@ -5114,7 +5145,7 @@ export interface MedicationAdherence {
   adherencePct: number | null;
 }
 
-export type AiCoachTier = "basic" | "pro" | "elite";
+export type AiCoachTier = "basic" | "grow" | "prime";
 
 /** GET /ai-coach/usage */
 export interface AiCoachUsage {

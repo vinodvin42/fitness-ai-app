@@ -60,7 +60,7 @@ describe("BR-ADM-005 / acceptance test 16 — high-impact admin actions", () => 
     await prisma.subscriptionPlan.create({
       data: {
         id: planId,
-        tier: "pro",
+        tier: "grow",
         name: "High Impact Fixture Plan",
         priceCents: AMOUNT_CENTS,
         billingCycle: "monthly",

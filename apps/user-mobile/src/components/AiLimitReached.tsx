@@ -6,7 +6,7 @@ import { fetchPlans } from "../api/subscriptions";
 import { InfoCard, StateLayout } from "./StatePanels";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
-const TIER_LABEL: Record<AiCoachUsage["tier"], string> = { basic: "Basic", pro: "Pro", elite: "Elite" };
+const TIER_LABEL: Record<AiCoachUsage["tier"], string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
 
 interface AiLimitReachedProps {
   usage: AiCoachUsage | undefined;

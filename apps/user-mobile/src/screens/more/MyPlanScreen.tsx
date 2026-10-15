@@ -33,15 +33,18 @@ const DAY = 24 * 60 * 60 * 1000;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 function price(sub: SubscriptionDetail) {
-  if (sub.plan.priceCents === 0) return "Free";
-  return `₹${(sub.plan.priceCents / 100).toFixed(2)} / ${sub.plan.billingCycle === "annual" ? "year" : "month"}`;
+  // What this subscriber pays, locked until renewal (D8); falls back to the plan price.
+  const cents = sub.priceCents ?? sub.plan.priceCents;
+  if (cents === 0) return "Free";
+  const period = sub.plan.billingCycle === "annual" ? "year" : sub.plan.billingCycle === "quarterly" ? "3 months" : "month";
+  return `₹${(cents / 100).toFixed(2)} / ${period}`;
 }
 
 /**
  * My plan (Figma Profile & Settings 03): a restyled entry point over the real
  * subscription (the same queries and cancel-at-period-end action as the
  * Subscription screen, which still owns plan switching and checkout). Plans
- * are the app's real Basic / Pro / Elite lineup. Payments are one-time
+ * are the app's real Basic / Grow / Prime lineup. Payments are one-time
  * Razorpay orders, so there is no auto-renewal: the Figma toggle is replaced
  * by an honest "Renews manually" row. "Change billing period" shows only when
  * the current tier has a plan with the other billing cycle.

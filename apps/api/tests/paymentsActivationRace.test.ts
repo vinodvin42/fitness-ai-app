@@ -63,7 +63,7 @@ describe("Payment activation race: concurrent /verify + webhook must not double-
 
     planId = `test-plan-race-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Race Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Race Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
     });
 
     providerOrderId = `order_race_${suffix}`;

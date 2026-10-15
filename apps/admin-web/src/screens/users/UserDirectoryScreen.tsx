@@ -12,8 +12,8 @@ import { extractErrorMessage } from "../../lib/apiError";
 const MEMBERSHIP_LABELS: Record<MembershipTier, string> = {
   free: "Free",
   basic: "Basic",
-  pro: "Pro",
-  elite: "Elite",
+  grow: "Grow",
+  prime: "Prime",
 };
 
 const CHANNEL_LABELS: Record<string, string> = { referral: "Referral", organic: "Organic" };
@@ -137,8 +137,8 @@ export function UserDirectoryScreen() {
               <option value="">{t("userDirectory.all")}</option>
               <option value="free">{t("userDirectory.free")}</option>
               <option value="basic">{t("userDirectory.basic")}</option>
-              <option value="pro">{t("userDirectory.pro")}</option>
-              <option value="elite">{t("userDirectory.elite")}</option>
+              <option value="grow">{t("userDirectory.grow")}</option>
+              <option value="prime">{t("userDirectory.prime")}</option>
             </select>
           </label>
 
