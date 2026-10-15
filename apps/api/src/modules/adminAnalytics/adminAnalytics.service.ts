@@ -800,7 +800,7 @@ export async function getUnitEconomics(query: GetUserAnalyticsQuery) {
  * 09.04 Business Analytics (docs/admin/03-screen-inventory.md), added 31 Aug
  * 2026 — the sub-module that stayed blocked on a take-rate/commission
  * decision after every other Analytics screen shipped. That decision is now
- * made (configurable per-coach `Professional.commissionPct`, see
+ * made (versioned CommissionRate, copied onto each Booking — see
  * adminSettlements.service.ts), so the marketplace's real economics are
  * computable for the first time: GMV (delivered booking value), the
  * platform's commission take, coach net earnings, and revenue split by
@@ -816,7 +816,7 @@ export async function getBusinessAnalytics() {
   const [bookings, subscriptionPayments, programPayments, activeCoaches, settlements] = await Promise.all([
     prisma.booking.findMany({
       where: { status: "confirmed", scheduledAt: { lte: now } },
-      select: { priceCents: true, professional: { select: { commissionPct: true } } },
+      select: { priceCents: true, commissionPct: true },
     }),
     prisma.payment.aggregate({
       where: { purpose: "subscription", status: "paid" },
@@ -832,12 +832,13 @@ export async function getBusinessAnalytics() {
     prisma.coachSettlement.aggregate({ where: { status: "paid" }, _sum: { netCents: true } }),
   ]);
 
-  const bookingRows = bookings as Array<{ priceCents: number; professional: { commissionPct: number } }>;
+  // Each booking at the commission rate it was made at (Package 4).
+  const bookingRows = bookings as Array<{ priceCents: number; commissionPct: number }>;
   let gmvCents = 0;
   let platformCommissionCents = 0;
   for (const b of bookingRows) {
     gmvCents += b.priceCents;
-    platformCommissionCents += Math.round((b.priceCents * b.professional.commissionPct) / 100);
+    platformCommissionCents += Math.round((b.priceCents * b.commissionPct) / 100);
   }
   const coachEarningsCents = gmvCents - platformCommissionCents;
 

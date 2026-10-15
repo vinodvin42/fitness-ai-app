@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { formatRupees, indiaDate, indiaMidnightOnOrAfter, parseEffectiveFrom } from "../../lib/indiaTime";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import {
@@ -182,30 +183,6 @@ export async function reactivatePlan(actorAdminId: string, id: string) {
   await prisma.subscriptionPlan.update({ where: { id }, data: { isActive: true } });
   await recordAudit({ actorAdminId, action: "plan.reactivate", entityType: "SubscriptionPlan", entityId: id });
   return toPlanListItem(await getPlanOrThrow(id));
-}
-
-const IST_OFFSET_MS = 330 * 60 * 1000;
-
-/** The first midnight in India at or after `date`. */
-function indiaMidnightOnOrAfter(date: Date): Date {
-  const local = new Date(date.getTime() + IST_OFFSET_MS);
-  const midnightLocal = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
-  const midnight = midnightLocal - IST_OFFSET_MS;
-  return new Date(midnight >= date.getTime() ? midnight : midnight + 24 * 60 * 60 * 1000);
-}
-
-/** `YYYY-MM-DD` of a moment, in India time. */
-function indiaDate(date: Date): string {
-  return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-/** `YYYY-MM-DD` means midnight India time on that date; anything else is a full timestamp. */
-function parseEffectiveFrom(value: string): Date {
-  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00+05:30` : value);
-}
-
-function formatRupees(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
 /**

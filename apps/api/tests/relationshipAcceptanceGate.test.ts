@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { prisma, uniqueEmail, uniqueSuffix } from "./helpers";
+import { prisma, uniqueEmail, uniqueSuffix, createPricedOffering } from "./helpers";
 import { hashPassword } from "../src/lib/password";
 import { generateUniqueReferralCode } from "../src/lib/referralCode";
 import { env } from "../src/config/env";
@@ -26,6 +26,7 @@ describe("Relationship acceptance gate: createOrder refuses a booking-purpose or
   let userId: string;
   let professionalId: string;
   let offeringId: string;
+  let pricing: Awaited<ReturnType<typeof createPricedOffering>> | undefined;
   let previousKeyId: string | undefined;
   let previousKeySecret: string | undefined;
 
@@ -56,17 +57,14 @@ describe("Relationship acceptance gate: createOrder refuses a booking-purpose or
     });
     professionalId = professional.id;
 
-    const offering = await prisma.professionalServiceOffering.create({
-      data: {
-        professionalId,
-        serviceType: "fitness",
-        label: "Test Paid Session",
-        durationMinutes: 60,
-        priceCents: 1800,
-        isActive: true,
-      },
+    // Package 4: the price comes from the coach's level fee.
+    pricing = await createPricedOffering(professionalId, {
+      serviceType: "fitness",
+      feeCents: 1800,
+      durationMinutes: 60,
+      label: "Test Paid Session",
     });
-    offeringId = offering.id;
+    offeringId = pricing.offering.id;
   });
 
   afterEach(async () => {
@@ -79,6 +77,7 @@ describe("Relationship acceptance gate: createOrder refuses a booking-purpose or
     env.RAZORPAY_KEY_SECRET = previousKeySecret;
 
     await prisma.professionalServiceOffering.deleteMany({ where: { professionalId } });
+    await pricing?.cleanup();
     await prisma.professional.deleteMany({ where: { id: professionalId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.$disconnect();

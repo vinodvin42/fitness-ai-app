@@ -13,6 +13,8 @@
 export const COMMERCE_SUB_NAV = [
   { label: "Payments", path: "/commerce" },
   { label: "Pricing", path: "/commerce/plans" },
+  // Package 4 — coach levels, fees and FynroX commission.
+  { label: "Coach levels", path: "/commerce/coach-levels" },
   { label: "Coupons", path: "/commerce/coupons" },
   { label: "Refunds", path: "/commerce/refunds" },
 ];

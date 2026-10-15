@@ -1035,7 +1035,6 @@ export const en = {
     month: "Month",
     noDeliveredCoachingBookings: "No delivered coaching bookings in this month.",
     retry: "Retry",
-    save: "Save",
     settle: "Settle",
     action: "Action",
     bookings: "Bookings",

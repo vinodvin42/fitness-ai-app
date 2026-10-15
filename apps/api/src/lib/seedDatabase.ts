@@ -303,10 +303,47 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // environment. Password is a fixed dev-only value, same convention as
   // the admin bootstrap account below — not meant for anything beyond
   // local dev/demo.
-  // Offering priceCents below are INR paise too (5 Sep 2026, PAY-02 —
-  // same ×100 fix as the subscription plans above: e.g. Alex's old 1800
-  // "$18.00" becomes ₹1,800, a realistic per-session Indian coaching
-  // price rather than an artifact of the currency mismatch).
+  // Package 4 (Oct 2026): offerings carry no price. Each points at a
+  // CoachService, and the price is the fee for the coach's level (seeded
+  // above, in INR paise, before GST).
+  // Package 4 — coach levels, services, fees (before GST) and FynroX's
+  // default commission. Same rows the migration creates; upserts never
+  // overwrite what the Super Admin has changed since.
+  const coachLevels = [
+    { id: "level-1", name: "Level 1", rank: 1, description: "Verified coach" },
+    { id: "level-2", name: "Level 2", rank: 2, description: "Experienced coach" },
+    { id: "level-3", name: "Level 3", rank: 3, description: "Senior coach" },
+  ];
+  for (const l of coachLevels) {
+    await prisma.coachLevel.upsert({ where: { id: l.id }, create: l, update: {} });
+  }
+  const coachServices = [
+    { id: "service-fitness-session", key: "fitness-session", label: "Fitness Coaching", serviceType: "fitness" as const, durationMinutes: 45 },
+    { id: "service-nutrition-session", key: "nutrition-session", label: "Nutrition Session", serviceType: "nutrition" as const, durationMinutes: 30 },
+    { id: "service-combined-session", key: "combined-session", label: "Combined Session", serviceType: null, durationMinutes: 60 },
+  ];
+  for (const sv of coachServices) {
+    await prisma.coachService.upsert({ where: { id: sv.id }, create: sv, update: {} });
+  }
+  const startingFees: Array<[string, string, number]> = [
+    ["level-1", "fitness", 180000], ["level-1", "nutrition", 120000], ["level-1", "combined", 250000],
+    ["level-2", "fitness", 200000], ["level-2", "nutrition", 150000], ["level-2", "combined", 300000],
+    ["level-3", "fitness", 250000], ["level-3", "nutrition", 180000], ["level-3", "combined", 380000],
+  ];
+  for (const [levelId, kind, priceCents] of startingFees) {
+    const id = `fee-l${levelId.slice(-1)}-${kind}`;
+    await prisma.coachLevelFee.upsert({
+      where: { id },
+      create: { id, levelId, serviceId: `service-${kind}-session`, priceCents, effectiveFrom: new Date("2020-01-01T00:00:00.000Z"), reason: "Starting fee" },
+      update: {},
+    });
+  }
+  await prisma.commissionRate.upsert({
+    where: { id: "commission-default-start" },
+    create: { id: "commission-default-start", professionalId: null, pct: 20, effectiveFrom: new Date("2020-01-01T00:00:00.000Z"), reason: "Starting default" },
+    update: {},
+  });
+
   const coachPasswordHash = await bcrypt.hash("Coach123!", 12);
   const coaches = [
     {
@@ -316,9 +353,10 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       bio: "Strength & conditioning coach focused on sustainable progressive overload for lifters at any stage.",
       specializationTags: ["Strength Training", "HIIT"],
       yearsExperience: 6,
+      coachLevelId: "level-1",
       services: ["fitness"] as const,
       offerings: [
-        { id: "offer-alex-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 180000 },
+        { id: "offer-alex-fitness", serviceId: "service-fitness-session", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45 },
       ],
     },
     {
@@ -328,9 +366,10 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       bio: "Registered nutrition coach specializing in sustainable weight management and sports nutrition.",
       specializationTags: ["Weight Management", "Sports Nutrition"],
       yearsExperience: 4,
+      coachLevelId: "level-1",
       services: ["nutrition"] as const,
       offerings: [
-        { id: "offer-priya-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 120000 },
+        { id: "offer-priya-nutrition", serviceId: "service-nutrition-session", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30 },
       ],
     },
     {
@@ -340,20 +379,22 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       bio: "Dual-certified fitness and nutrition coach helping clients train and eat as one connected plan.",
       specializationTags: ["Strength Training", "Nutrition Coaching", "Injury Recovery"],
       yearsExperience: 8,
+      coachLevelId: "level-2",
       services: ["fitness", "nutrition"] as const,
       offerings: [
-        { id: "offer-jordan-fitness", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45, priceCents: 200000 },
-        { id: "offer-jordan-nutrition", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30, priceCents: 150000 },
-        { id: "offer-jordan-combined", serviceType: null, label: "Combined Session", durationMinutes: 60, priceCents: 300000 },
+        { id: "offer-jordan-fitness", serviceId: "service-fitness-session", serviceType: "fitness" as const, label: "Fitness Coaching", durationMinutes: 45 },
+        { id: "offer-jordan-nutrition", serviceId: "service-nutrition-session", serviceType: "nutrition" as const, label: "Nutrition Session", durationMinutes: 30 },
+        { id: "offer-jordan-combined", serviceId: "service-combined-session", serviceType: null, label: "Combined Session", durationMinutes: 60 },
       ],
     },
   ];
 
   for (const coach of coaches) {
-    const { services, offerings, ...coachData } = coach;
+    // coachLevelId only on create: a re-seed never undoes the Super Admin's placement.
+    const { services, offerings, coachLevelId, ...coachData } = coach;
     await prisma.professional.upsert({
       where: { id: coach.id },
-      create: { ...coachData, passwordHash: coachPasswordHash, status: "active" },
+      create: { ...coachData, coachLevelId, passwordHash: coachPasswordHash, status: "active" },
       // Deliberately does not overwrite passwordHash on re-seed, same
       // reasoning as the admin bootstrap account below.
       update: { ...coachData, status: "active" },

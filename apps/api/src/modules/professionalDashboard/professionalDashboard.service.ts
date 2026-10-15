@@ -1,4 +1,7 @@
 import { prisma } from "../../db/prisma";
+import { ApiHttpError } from "../../middleware/errorHandler";
+import { commissionCents as commissionOn, commissionPctFor, feesInForce } from "../../lib/coachFees";
+import { activeGstPercent } from "../../lib/gst";
 import { createActionItem } from "../../lib/adminActionQueue";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -204,11 +207,11 @@ export async function getEarnings(professionalId: string) {
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  const [professional, monthBookings, settlements] = await Promise.all([
-    prisma.professional.findUnique({ where: { id: professionalId }, select: { commissionPct: true } }),
+  const [rates, monthBookings, settlements] = await Promise.all([
+    commissionPctFor([professionalId]),
     prisma.booking.findMany({
       where: { professionalId, status: "confirmed", scheduledAt: { gte: monthStart, lt: now } },
-      select: { priceCents: true },
+      select: { priceCents: true, commissionPct: true },
     }),
     prisma.coachSettlement.findMany({
       where: { professionalId },
@@ -217,9 +220,12 @@ export async function getEarnings(professionalId: string) {
     }),
   ]);
 
-  const commissionPct = (professional as { commissionPct: number } | null)?.commissionPct ?? 20;
-  const monthGrossCents = (monthBookings as { priceCents: number }[]).reduce((sum, b) => sum + b.priceCents, 0);
-  const monthCommissionCents = Math.round((monthGrossCents * commissionPct) / 100);
+  // The rate FynroX applies to this coach's new bookings today (read-only
+  // for the coach). Each booking keeps the rate it was made at.
+  const commissionPct = rates.get(professionalId) as number;
+  const monthRows = monthBookings as Array<{ priceCents: number; commissionPct: number }>;
+  const monthGrossCents = monthRows.reduce((sum, b) => sum + b.priceCents, 0);
+  const monthCommissionCents = monthRows.reduce((sum, b) => sum + commissionOn(b.priceCents, b.commissionPct), 0);
 
   const history = settlements as SettlementHistoryRow[];
   const lifetimePaidCents = history
@@ -273,5 +279,58 @@ export async function getEarnings(professionalId: string) {
       paidAt: s.paidAt,
       payoutFailureReason: s.payoutFailureReason,
     })),
+  };
+}
+
+/**
+ * The coach's own level, fees and FynroX commission — read-only (blueprint
+ * 4.3, Package 4: coaches can't change their level or fees). Fees are
+ * before GST; GST is added on top for the client. Upcoming fee changes for
+ * the coach's level are shown with their start date.
+ */
+export async function getMyLevel(professionalId: string) {
+  const now = new Date();
+  const professional = (await prisma.professional.findUnique({
+    where: { id: professionalId },
+    select: {
+      coachLevel: { select: { id: true, name: true, rank: true, description: true } },
+      serviceOfferings: { where: { isActive: true }, select: { serviceId: true, label: true, durationMinutes: true, serviceType: true } },
+    },
+  })) as {
+    coachLevel: { id: string; name: string; rank: number; description: string | null } | null;
+    serviceOfferings: Array<{ serviceId: string; label: string; durationMinutes: number; serviceType: string | null }>;
+  } | null;
+  if (!professional) throw new ApiHttpError(404, "professional_not_found", "Coach not found");
+
+  const [rates, gstPercent] = await Promise.all([commissionPctFor([professionalId], now), activeGstPercent()]);
+  const level = professional.coachLevel;
+  if (!level) {
+    return { level: null, gstPercent, commissionPct: rates.get(professionalId) as number, fees: [] };
+  }
+  const serviceIds = professional.serviceOfferings.map((o) => o.serviceId);
+  const [current, upcoming] = await Promise.all([
+    feesInForce(serviceIds.map((serviceId) => ({ levelId: level.id, serviceId })), now),
+    prisma.coachLevelFee.findMany({
+      where: { levelId: level.id, serviceId: { in: serviceIds }, cancelledAt: null, effectiveFrom: { gt: now } },
+      orderBy: { effectiveFrom: "asc" },
+      select: { serviceId: true, priceCents: true, effectiveFrom: true },
+    }),
+  ]);
+  return {
+    level: { name: level.name, rank: level.rank, description: level.description },
+    gstPercent,
+    commissionPct: rates.get(professionalId) as number,
+    fees: professional.serviceOfferings.map((o) => {
+      const next = (upcoming as Array<{ serviceId: string; priceCents: number; effectiveFrom: Date }>).find(
+        (u) => u.serviceId === o.serviceId,
+      );
+      return {
+        label: o.label,
+        serviceType: o.serviceType,
+        durationMinutes: o.durationMinutes,
+        priceCents: current.get(`${level.id}:${o.serviceId}`) ?? null,
+        upcoming: next ? { priceCents: next.priceCents, effectiveFrom: next.effectiveFrom } : null,
+      };
+    }),
   };
 }

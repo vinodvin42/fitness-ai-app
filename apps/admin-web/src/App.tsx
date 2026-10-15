@@ -32,6 +32,7 @@ import { ReviewQueueScreen } from "./screens/programs/ReviewQueueScreen";
 import { PaymentsDirectoryScreen } from "./screens/commerce/PaymentsDirectoryScreen";
 import { TransactionDetailScreen } from "./screens/commerce/TransactionDetailScreen";
 import { PricingScreen } from "./screens/commerce/PricingScreen";
+import { CoachLevelsScreen } from "./screens/commerce/CoachLevelsScreen";
 import { CouponsScreen } from "./screens/commerce/CouponsScreen";
 import { RefundsScreen } from "./screens/commerce/RefundsScreen";
 import { SupportTicketsScreen } from "./screens/support/SupportTicketsScreen";
@@ -378,6 +379,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PricingScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/commerce/coach-levels"
+        element={
+          <RequireAuth>
+            <CoachLevelsScreen />
           </RequireAuth>
         }
       />

@@ -14,6 +14,8 @@ export type ListSettlementsQuery = z.infer<typeof listSettlementsQuerySchema>;
 
 export const setCommissionSchema = z.object({
   commissionPct: z.number().int().min(0).max(100),
+  // Package 4 — kept with the versioned rate row.
+  reason: z.string().trim().min(3).max(500).optional(),
 });
 export type SetCommissionInput = z.infer<typeof setCommissionSchema>;
 

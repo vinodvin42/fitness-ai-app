@@ -30,3 +30,16 @@ professionalDashboardRouter.get(
     }
   },
 );
+
+// Package 4 — the coach's level, fees and commission (read-only).
+professionalDashboardRouter.get(
+  "/professionals/me/level",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.status(200).json(await professionalDashboardService.getMyLevel(req.professionalId as string));
+    } catch (err) {
+      next(err);
+    }
+  },
+);

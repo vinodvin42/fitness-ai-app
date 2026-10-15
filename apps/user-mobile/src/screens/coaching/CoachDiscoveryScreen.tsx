@@ -27,9 +27,11 @@ const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
   { value: "combined", label: "Fitness + Nutrition" },
 ];
 
+// Coach fees are set by FynroX per coach level and shown before GST,
+// which is added on top at checkout (Package 4).
 function formatPrice(cents: number | null) {
-  if (cents == null) return "Price varies";
-  return `From ₹${(cents / 100).toFixed(2)}`;
+  if (cents == null) return "Not bookable yet";
+  return `From ₹${(cents / 100).toFixed(2)} + GST`;
 }
 
 /**
@@ -144,6 +146,7 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
                     ))}
                   </View>
                   <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+                    {coach.level ? `${coach.level.name} · ` : ""}
                     {coach.yearsExperience != null ? `${coach.yearsExperience} yrs` : "Experience n/a"}
                     {" · "}
                     {formatPrice(coach.startingPriceCents)}

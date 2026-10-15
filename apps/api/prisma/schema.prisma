@@ -2148,6 +2148,12 @@ model Payment {
   // above is the ALREADY-discounted amount actually charged.
   couponCode              String?
   discountCents           Int?
+  // Package 4 — for a coach booking, the coach fee and the GST on top of it
+  // at the moment the order was created (before any coupon). The booking
+  // copies these, so the coach is paid on the fee the user actually saw.
+  // Null for subscriptions and programs.
+  feeCents                Int?
+  taxCents                Int?
   // PAY-01, added 5 Sep 2026 — only set (and only meaningful) when purpose
   // is "booking". Subscription/program purchases resolve their whole
   // referenceId (a SubscriptionPlan/Program id) at activation time with
@@ -2530,11 +2536,14 @@ model Professional {
   specializationTags String[]                    @default([])
   yearsExperience    Int?
   status             ProfessionalStatus          @default(active)
-  // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
-  // take on this coach's booking value, admin-editable (Module 03 Profile /
-  // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
-  // model's doc comment for how it's applied.
-  commissionPct      Int                         @default(20)
+  // Coach level (Package 4, Oct 2026): FynroX places each coach in a level,
+  // and the level's fee for each service is what users pay. Coaches can't
+  // change it. Null until an admin assigns one; a coach without a level
+  // can't be booked. FynroX's commission is no longer a column here — it is
+  // the versioned CommissionRate table (default rate + optional per-coach
+  // override), copied onto each Booking when it is made.
+  coachLevelId       String?
+  coachLevel         CoachLevel?                 @relation(fields: [coachLevelId], references: [id], onDelete: SetNull)
   // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
   // service, unlike ProfessionalCredential below. Same base64-in-Postgres
   // storage precedent as ProgressPhoto.imageData (no object storage exists
@@ -2595,7 +2604,10 @@ model Professional {
   // above (offers proposed FOR this professional by someone else).
   offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
   dataSharing      ProfessionalDataSharing[]
+  // Package 4 — per-coach commission overrides (see CommissionRate).
+  commissionRates  CommissionRate[]
 
+  @@index([coachLevelId])
   @@map("professionals")
 }
 
@@ -2747,14 +2759,21 @@ model Relationship {
 // credentials and relationships are always genuinely single-service;
 // "combined" only ever describes what one priced session bundles, never
 // what a professional is verified for or a relationship tracks.
+//
+// Package 4 (Oct 2026): an offering no longer carries its own price. It
+// points at a FynroX `CoachService`, and the price is the fee FynroX set
+// for the coach's level and that service (see lib/coachFees.ts). `label`,
+// `durationMinutes` and `serviceType` mirror the service (kept in sync by
+// adminCoachLevels.service.ts) so existing readers keep working.
 model ProfessionalServiceOffering {
   id              String                   @id @default(uuid())
   professionalId  String
   professional    Professional             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         CoachService             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   serviceType     ProfessionalServiceType?
   label           String
   durationMinutes Int
-  priceCents      Int
   isActive        Boolean                  @default(true)
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
@@ -2762,6 +2781,7 @@ model ProfessionalServiceOffering {
   bookings Booking[]
 
   @@index([professionalId])
+  @@index([serviceId])
   @@map("professional_service_offerings")
 }
 
@@ -2794,7 +2814,16 @@ model Booking {
   offering           ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
   scheduledAt        DateTime
   durationMinutes    Int
+  // The coach fee for this session, before GST (Package 4). Copied from the
+  // level fee when the booking is made and never recomputed.
   priceCents         Int
+  // GST added on top of the fee (18%), copied at booking time.
+  gstCents           Int                         @default(0)
+  // FynroX's commission on this booking, copied from the rate in force when
+  // it was made — a later rate change never touches it (Package 4).
+  commissionPct      Int
+  // The coach's level when the booking was made (history only, no FK).
+  coachLevelId       String?
   status             BookingStatus               @default(confirmed)
   // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
   summaryText        String?                     @db.Text
@@ -4809,4 +4838,88 @@ enum PublicApplicationStatus {
   contacted
   converted
   rejected
+}
+
+// ---- Coach levels and fees (Package 4, Oct 2026) ------------------------
+// FynroX sets every coach price (blueprint 4.3): each coach sits in a level,
+// and FynroX sets a fee per level per service. Coaches can't change either.
+
+model CoachLevel {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  // 1 = entry level; higher = more senior. Unique so levels sort cleanly.
+  rank        Int      @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fees          CoachLevelFee[]
+  professionals Professional[]
+
+  @@map("coach_levels")
+}
+
+// A service FynroX sells through its coaches ("Fitness coaching, 45 min").
+// `serviceType: null` = a combined fitness + nutrition session, same
+// convention as ProfessionalServiceOffering.
+model CoachService {
+  id              String                   @id @default(uuid())
+  key             String                   @unique
+  label           String
+  serviceType     ProfessionalServiceType?
+  durationMinutes Int
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  fees      CoachLevelFee[]
+  offerings ProfessionalServiceOffering[]
+
+  @@map("coach_services")
+}
+
+// The fee for one level and one service. Rows are never edited: a new fee
+// is a new row with its own start date, so the history stays intact. The
+// fee in force at a moment is the newest non-cancelled row whose
+// `effectiveFrom` has passed. A fee change only reaches new bookings,
+// because every Booking copies its fee when it is made.
+model CoachLevelFee {
+  id               String       @id @default(uuid())
+  levelId          String
+  level            CoachLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  serviceId        String
+  service          CoachService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  priceCents       Int
+  effectiveFrom    DateTime
+  // Only a fee that hasn't started yet can be cancelled.
+  cancelledAt      DateTime?
+  reason           String?
+  createdByAdminId String?
+  createdAt        DateTime     @default(now())
+
+  @@index([levelId, serviceId, effectiveFrom])
+  @@map("coach_level_fees")
+}
+
+// FynroX's commission on coach fees, versioned (blueprint section 7:
+// "commission_rate (versioned)"). `professionalId: null` rows are the
+// default for every coach; a row with a professionalId overrides it for
+// that coach (`pct: null` on an override = "back to the default from this
+// date"). Rows are never edited; the rate in force is the newest
+// non-cancelled row whose `effectiveFrom` has passed. Each Booking copies
+// the rate when it is made, so past bookings and settlements never change.
+model CommissionRate {
+  id               String        @id @default(uuid())
+  professionalId   String?
+  professional     Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  pct              Int?
+  effectiveFrom    DateTime
+  cancelledAt      DateTime?
+  reason           String?
+  createdByAdminId String?
+  createdAt        DateTime      @default(now())
+
+  @@index([professionalId, effectiveFrom])
+  @@map("commission_rates")
 }

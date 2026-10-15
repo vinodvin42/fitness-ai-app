@@ -2,6 +2,7 @@ import { createNotification } from "../notifications/notifications.service";
 import crypto from "node:crypto";
 import { prisma } from "../../db/prisma";
 import { applyDuePlanPriceChanges } from "../../lib/planPricing";
+import { priceOffering } from "../../lib/coachFees";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -101,6 +102,8 @@ async function resolveAmountCents(
   // after this resolves, without a second DB round trip to re-fetch the
   // offering it just validated.
   booking?: { professionalId: string; serviceType: "fitness" | "nutrition" | null };
+  // Package 4 — a coach booking's fee and the GST added on top of it.
+  split?: { feeCents: number; taxCents: number };
 }> {
   if (input.purpose === "subscription") {
     // Today's price: apply any scheduled change that is now due (D8).
@@ -122,7 +125,9 @@ async function resolveAmountCents(
     if (!offering || !offering.isActive) {
       throw new ApiHttpError(404, "offering_not_found", "This coaching service could not be found");
     }
-    if (offering.priceCents === 0) {
+    // Package 4: the coach's level fee in force now, with GST on top.
+    const price = await priceOffering({ id: offering.id, serviceId: offering.serviceId, professionalId: offering.professionalId });
+    if (price.feeCents === 0) {
       throw new ApiHttpError(400, "offering_is_free", "This session is free — book directly, no payment needed");
     }
     const professional = await prisma.professional.findUnique({
@@ -148,9 +153,10 @@ async function resolveAmountCents(
       throw new ApiHttpError(409, "slot_unavailable", "This time is no longer available — pick another slot");
     }
     return {
-      amountCents: offering.priceCents,
-      description: `${offering.label} with ${professional.fullName}`,
+      amountCents: price.totalCents,
+      description: `${offering.label} with ${professional.fullName} (incl. ${price.gstPercent}% GST)`,
       booking: { professionalId: offering.professionalId, serviceType: offering.serviceType as "fitness" | "nutrition" | null },
+      split: { feeCents: price.feeCents, taxCents: price.gstCents },
     };
   }
 
@@ -171,7 +177,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     );
   }
 
-  const { amountCents: listAmountCents, description, booking } = await resolveAmountCents(input);
+  const { amountCents: listAmountCents, description, booking, split } = await resolveAmountCents(input);
 
   // 16 Sep 2026 (gap §56) — claim the real Relationship row(s) up front and
   // refuse to go any further if the coach hasn't accepted the request yet.
@@ -237,6 +243,9 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       status: "created",
       couponCode,
       discountCents,
+      // Package 4 — the coach fee and GST before any coupon (bookings only).
+      feeCents: split?.feeCents ?? null,
+      taxCents: split?.taxCents ?? null,
       // PAY-01 — null for subscription/program_purchase, the specific slot
       // for booking (already validated in resolveAmountCents above).
       scheduledAt: input.purpose === "booking" ? new Date(input.scheduledAt!) : null,
@@ -300,6 +309,9 @@ interface PaymentRecord {
   // the plan price the subscriber locks in (Package 3).
   amountCents: number;
   discountCents: number | null;
+  // Package 4 — the coach fee and GST split for a booking payment.
+  feeCents: number | null;
+  taxCents: number | null;
   // PAY-01 — only set (and only read) when purpose is "booking". See its
   // own comment on the Payment model in schema.prisma.
   scheduledAt: Date | null;
@@ -404,7 +416,15 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         booking = await createBooking(
           payment.userId,
           { professionalId: offering.professionalId, offeringId: offering.id, scheduledAt: payment.scheduledAt!.toISOString() },
-          { verifiedPayment: true },
+          {
+            verifiedPayment: true,
+            // The fee the user was quoted. By default FynroX pays for any
+            // coupon, so the coach is paid on the full fee (blueprint 4.5).
+            paidPrice:
+              payment.feeCents !== null
+                ? { feeCents: payment.feeCents, gstCents: payment.taxCents ?? 0 }
+                : undefined,
+          },
         );
       } catch (err) {
         // Money has already been captured by Razorpay by this point (status

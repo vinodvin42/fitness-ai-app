@@ -55,7 +55,15 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
         <Row label={t("coaching.booking.service")} value={booking.offeringLabel} />
         <Row label={t("coaching.booking.dateTime")} value={formatDateTime(booking.scheduledAt)} />
         <Row label={t("coaching.booking.duration")} value={`${booking.durationMinutes} min`} />
-        <Row label={t("coaching.booking.amount")} value={formatPrice(booking.priceCents)} last />
+        <Row
+          label={t("coaching.booking.amount")}
+          value={
+            booking.gstCents > 0
+              ? `${formatPrice(booking.priceCents + booking.gstCents)} (incl. ${formatPrice(booking.gstCents)} GST)`
+              : formatPrice(booking.priceCents)
+          }
+          last
+        />
       </Card>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>

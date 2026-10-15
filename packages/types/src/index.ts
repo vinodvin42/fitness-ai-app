@@ -1894,8 +1894,18 @@ export interface CoachDiscoveryItem {
   specializationTags: string[];
   yearsExperience: number | null;
   verifiedServices: ProfessionalServiceType[];
-  /** Cheapest active offering's priceCents, or null if this coach has no active offerings yet. */
+  /** Lowest fee (before GST) among this coach's bookable offerings, or null if none can be booked yet. */
   startingPriceCents: number | null;
+  /** GST added on top of coach fees (Package 4). */
+  gstPercent: number;
+  /** The coach's FynroX level, or null if not placed yet. */
+  level: CoachLevelSummary | null;
+}
+
+/** A coach's FynroX level as users see it (Package 4). */
+export interface CoachLevelSummary {
+  name: string;
+  rank: number;
 }
 
 /** The shape returned by GET /coaching/professionals. */
@@ -1911,7 +1921,12 @@ export interface CoachServiceOffering {
   serviceType: ProfessionalServiceType | null;
   label: string;
   durationMinutes: number;
+  /** The fee FynroX set for the coach's level, before GST. */
   priceCents: number;
+  /** GST added on top. */
+  gstCents: number;
+  /** What the user pays: fee + GST. */
+  totalCents: number;
 }
 
 /** The shape returned by GET /coaching/professionals/:id. */
@@ -1923,6 +1938,9 @@ export interface CoachProfileDetail {
   yearsExperience: number | null;
   verifiedServices: ProfessionalServiceType[];
   totalClients: number;
+  level: CoachLevelSummary | null;
+  gstPercent: number;
+  /** Only offerings that can be booked (a fee is set for the coach's level). */
   offerings: CoachServiceOffering[];
   notAvailable: string[];
 }
@@ -1955,7 +1973,10 @@ export interface BookingConfirmation {
   offeringLabel: string;
   scheduledAt: string;
   durationMinutes: number;
+  /** Coach fee before GST. */
   priceCents: number;
+  /** GST paid on top of the fee. */
+  gstCents: number;
   status: BookingStatus;
   relationshipIds: string[];
 }
@@ -4061,7 +4082,10 @@ export type CommissionStatus =
 export interface CoachSettlementRow {
   professionalId: string;
   professionalName: string;
+  /** The month's effective rate (each booking keeps the rate it was made at). */
   commissionPct: number;
+  /** The rate this coach's new bookings get today. */
+  currentCommissionPct: number;
   grossCents: number;
   commissionCents: number;
   netCents: number;
@@ -5621,4 +5645,82 @@ export interface AdminPublicApplicationListResponse {
 export interface UpdatePublicApplicationInput {
   status: PublicApplicationStatus;
   adminNote?: string;
+}
+
+// ---- Coach levels, fees and FynroX commission (Package 4, Oct 2026) ----
+
+export interface AdminCoachService {
+  id: string;
+  key: string;
+  label: string;
+  /** null = combined fitness + nutrition session. */
+  serviceType: ProfessionalServiceType | null;
+  durationMinutes: number;
+  isActive: boolean;
+}
+
+export interface AdminScheduledFee {
+  id: string;
+  priceCents: number;
+  effectiveFrom: string;
+  reason: string | null;
+}
+
+export interface AdminCoachLevel {
+  id: string;
+  name: string;
+  rank: number;
+  description: string | null;
+  isActive: boolean;
+  coachCount: number;
+  fees: Array<{
+    serviceId: string;
+    /** Fee before GST in force today; null = not set (can't be booked). */
+    priceCents: number | null;
+    scheduled: AdminScheduledFee[];
+  }>;
+}
+
+export interface AdminScheduledCommission {
+  id: string;
+  /** null on a coach override = back to the default. */
+  pct: number | null;
+  effectiveFrom: string;
+  reason: string | null;
+}
+
+export interface AdminCoachPricingCoach {
+  id: string;
+  fullName: string;
+  status: string;
+  lifecycleStatus: string;
+  coachLevelId: string | null;
+  verifiedServices: ProfessionalServiceType[];
+  commissionPct: number;
+  hasCommissionOverride: boolean;
+  scheduledCommission: AdminScheduledCommission[];
+}
+
+/** GET /admin/coach-levels */
+export interface AdminCoachPricingResponse {
+  gstPercent: number;
+  commission: { defaultPct: number; scheduled: AdminScheduledCommission[] };
+  services: AdminCoachService[];
+  levels: AdminCoachLevel[];
+  coaches: AdminCoachPricingCoach[];
+}
+
+/** GET /professionals/me/level — the coach's own level and fees, read-only. */
+export interface CoachMyLevelResponse {
+  level: { name: string; rank: number; description: string | null } | null;
+  gstPercent: number;
+  commissionPct: number;
+  fees: Array<{
+    label: string;
+    serviceType: ProfessionalServiceType | null;
+    durationMinutes: number;
+    /** Before GST; null = FynroX hasn't set it yet. */
+    priceCents: number | null;
+    upcoming: { priceCents: number; effectiveFrom: string } | null;
+  }>;
 }

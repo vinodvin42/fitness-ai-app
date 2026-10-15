@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { buildApp, prisma, uniqueEmail, uniqueSuffix } from "./helpers";
+import { buildApp, prisma, uniqueEmail, uniqueSuffix, createPricedOffering } from "./helpers";
 import { hashPassword } from "../src/lib/password";
 import { signProfessionalAccessToken } from "../src/lib/professionalJwt";
 
@@ -37,6 +37,7 @@ describe("Coach booking creates a real Relationship, gated on a real coach accep
   let professionalId: string;
   let professionalAccessToken: string;
   let offeringId: string;
+  let pricing: Awaited<ReturnType<typeof createPricedOffering>> | undefined;
 
   beforeAll(async () => {
     userEmail = uniqueEmail("coaching");
@@ -58,23 +59,22 @@ describe("Coach booking creates a real Relationship, gated on a real coach accep
     professionalId = professional.id;
     professionalAccessToken = signProfessionalAccessToken({ sub: professionalId, email: professional.email }).token;
 
-    const offering = await prisma.professionalServiceOffering.create({
-      data: {
-        professionalId,
-        serviceType: "fitness",
-        label: "Test Fitness Session",
-        durationMinutes: 60,
-        priceCents: 0, // see this file's own top comment — PAY-01 gates anything priced above zero
-        isActive: true,
-      },
+    // Package 4: the price comes from the coach's level fee — 0 here, see
+    // this file's own top comment (PAY-01 gates anything priced above zero).
+    pricing = await createPricedOffering(professionalId, {
+      serviceType: "fitness",
+      feeCents: 0,
+      durationMinutes: 60,
+      label: "Test Fitness Session",
     });
-    offeringId = offering.id;
+    offeringId = pricing.offering.id;
   });
 
   afterAll(async () => {
     await prisma.booking.deleteMany({ where: { professionalId } });
     await prisma.relationship.deleteMany({ where: { professionalId } });
     await prisma.professionalServiceOffering.deleteMany({ where: { professionalId } });
+    await pricing?.cleanup();
     await prisma.professional.deleteMany({ where: { id: professionalId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.$disconnect();

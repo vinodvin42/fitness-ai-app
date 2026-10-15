@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
+import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
 import {
   AdminUpdateMaxActiveClientsInput,
   ListProfessionalsQuery,
@@ -378,6 +379,9 @@ export async function verifyCredential(
   // demote them back out of `available`.
   await professionalLifecycleService.maybeAdvanceToApproved(adminId, professionalId);
   await professionalLifecycleService.recomputeAvailability(professionalId, adminId);
+  // Package 4 — a coach already placed in a level gets an offering for the
+  // newly verified service (priced from the level fee).
+  if (input.status === "verified") await syncCoachOfferings(professionalId);
 
   return updated;
 }

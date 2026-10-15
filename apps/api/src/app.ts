@@ -46,6 +46,7 @@ import { adminAnalyticsRouter } from "./modules/adminAnalytics/adminAnalytics.ro
 import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegrations.routes";
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
+import { adminCoachLevelsRouter } from "./modules/adminCoachLevels/adminCoachLevels.routes";
 import { payoutRunsRouter } from "./modules/payoutRuns/payoutRuns.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
@@ -330,6 +331,8 @@ export function createApp() {
   // made: configurable per-coach/per-influencer commission) and a missing
   // Coupon/Refund entity (now built). See each module's own doc comment.
   app.use("/", adminSettlementsRouter);
+  // Package 4 — coach levels, fees and FynroX commission.
+  app.use("/", adminCoachLevelsRouter);
   // A-M3 — the payout run the settlement rows were waiting on.
   app.use("/", payoutRunsRouter);
   app.use("/", adminInfluencersRouter);

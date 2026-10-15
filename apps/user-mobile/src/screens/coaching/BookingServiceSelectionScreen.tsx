@@ -180,7 +180,11 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
           <SelectCard
             key={o.id}
             title={`${o.label ?? serviceLabel(o.serviceType)} · ${o.durationMinutes}min`}
-            subtitle={formatPrice(o.priceCents)}
+            subtitle={
+              o.priceCents === 0
+                ? "Free"
+                : `${formatPrice(o.priceCents)} + ${formatPrice(o.gstCents)} GST = ${formatPrice(o.totalCents)}`
+            }
             selected={selectedOfferingId === o.id}
             onPress={() => setSelectedOfferingId(o.id)}
           />

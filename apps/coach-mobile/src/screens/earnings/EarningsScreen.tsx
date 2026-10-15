@@ -8,7 +8,7 @@ import { Card } from "../../components/Card";
 import { StatusBadge } from "../../components/StatusBadge";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchEarnings } from "../../api/professionalDashboard";
+import { fetchEarnings, fetchMyLevel } from "../../api/professionalDashboard";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -49,6 +49,8 @@ export function EarningsScreen(_props: Props) {
     queryKey: ["professionalEarnings"],
     queryFn: fetchEarnings,
   });
+  // Package 4 — the level and fees FynroX set for this coach (read-only).
+  const { data: myLevel } = useQuery({ queryKey: ["professionalMyLevel"], queryFn: fetchMyLevel });
 
   if (isLoading) {
     return (
@@ -68,8 +70,33 @@ export function EarningsScreen(_props: Props) {
   return (
     <ScreenContainer title={t("earnings.title")}>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.lg }}>
-        Fynrox takes {data.commissionPct}% commission on what you earn.
+        FynroX takes {data.commissionPct}% commission on new bookings. Each booking keeps the rate it was made at.
       </Text>
+      {myLevel ? (
+        <Card style={{ marginBottom: spacing.lg }}>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
+            {myLevel.level ? `Your level: ${myLevel.level.name}` : "Level not set yet"}
+          </Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+            {myLevel.level
+              ? `FynroX sets your level and fees. Clients pay ${myLevel.gstPercent}% GST on top.`
+              : "FynroX will place you in a level. Clients can book you once it's set."}
+          </Text>
+          {myLevel.fees.map((f) => (
+            <View key={f.label} style={{ marginTop: spacing.sm }}>
+              <Text style={{ color: colors.textSecondary }}>
+                {f.label} · {f.durationMinutes} min · {f.priceCents === null ? "fee not set" : money(f.priceCents)}
+              </Text>
+              {f.upcoming ? (
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>
+                  {money(f.upcoming.priceCents)} from{" "}
+                  {new Date(f.upcoming.effectiveFrom).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                </Text>
+              ) : null}
+            </View>
+          ))}
+        </Card>
+      ) : null}
       {data.payoutFailure ? (
         <Card style={{ borderColor: colors.danger, marginBottom: spacing.lg }}>
           <Text style={{ color: colors.danger, ...typography.h2 }}>{t("earnings.payoutFailed")}</Text>
