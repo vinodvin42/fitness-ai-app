@@ -39,6 +39,11 @@ export function getChangeContext(): ChangeContext | undefined {
   return changeContext.getStore();
 }
 
+/** Runs `fn` with no change context, for system work (e.g. a due price change) done during an admin's request. */
+export function runOutsideChangeContext<T>(fn: () => T): T {
+  return changeContext.exit(fn);
+}
+
 const APPROVAL_REPLAY = Symbol("fynrox.approvalReplay");
 
 interface ReplayMarker {

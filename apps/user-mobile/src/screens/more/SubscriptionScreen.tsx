@@ -35,7 +35,12 @@ function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billing
 /** D8: e.g. "₹349.00 / mo from 1 Dec 2026" when a new price is scheduled. */
 function formatUpcoming(plan: SubscriptionPlan): string | null {
   if (!plan.upcomingPrice) return null;
-  const date = new Date(plan.upcomingPrice.effectiveFrom).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const date = new Date(plan.upcomingPrice.effectiveFrom).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
   return `${formatPrice(plan.upcomingPrice.priceCents, plan.billingCycle)} from ${date}`;
 }
 
@@ -338,9 +343,14 @@ export function SubscriptionScreen({ navigation, route }: Props) {
       )}
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
+        {/* Only billing periods that have a paid plan on sale (3-month and yearly prices may not be set yet). */}
         <Chip label={t("subscription.monthly")} selected={billingCycle === "monthly"} onPress={() => setBillingCycle("monthly")} />
-        <Chip label={t("subscription.quarterly")} selected={billingCycle === "quarterly"} onPress={() => setBillingCycle("quarterly")} />
-        <Chip label={t("subscription.annual")} selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
+        {(plans ?? []).some((p) => p.priceCents > 0 && p.billingCycle === "quarterly") ? (
+          <Chip label={t("subscription.quarterly")} selected={billingCycle === "quarterly"} onPress={() => setBillingCycle("quarterly")} />
+        ) : null}
+        {(plans ?? []).some((p) => p.priceCents > 0 && p.billingCycle === "annual") ? (
+          <Chip label={t("subscription.annual")} selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
+        ) : null}
       </View>
 
       <View style={{ marginTop: spacing.md, gap: spacing.sm }}>

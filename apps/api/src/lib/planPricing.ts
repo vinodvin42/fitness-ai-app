@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma";
 import { recordAudit } from "../middleware/auditLog";
+import { runOutsideChangeContext } from "./makerChecker";
 
 /**
  * Plan prices on a schedule (decisions D8/D18, Oct 2026).
@@ -17,28 +18,46 @@ import { recordAudit } from "../middleware/auditLog";
  *   until their next renewal after 1 Dec" needs no special case.
  */
 export async function applyDuePlanPriceChanges(now: Date = new Date()): Promise<number> {
-  const due = await prisma.planPriceChange.findMany({
+  const duePlans = await prisma.planPriceChange.findMany({
     where: { status: "scheduled", effectiveFrom: { lte: now } },
-    orderBy: { effectiveFrom: "asc" },
+    select: { planId: true },
+    distinct: ["planId"],
   });
   let applied = 0;
-  for (const change of due) {
-    // Claim first so two requests can never apply the same change twice.
-    const claimed = await prisma.planPriceChange.updateMany({
-      where: { id: change.id, status: "scheduled" },
-      data: { status: "applied", appliedAt: now },
+  for (const { planId } of duePlans) {
+    // One transaction per plan, with the plan row locked: the price and the
+    // "applied" marks change together, two requests can't both apply, and
+    // the latest due change always wins.
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "subscription_plans" WHERE "id" = ${planId} FOR UPDATE`;
+      const due = await tx.planPriceChange.findMany({
+        where: { planId, status: "scheduled", effectiveFrom: { lte: now } },
+        orderBy: { effectiveFrom: "asc" },
+      });
+      if (due.length === 0) return null;
+      const latest = due[due.length - 1];
+      const plan = await tx.subscriptionPlan.findUnique({ where: { id: planId }, select: { priceCents: true } });
+      await tx.planPriceChange.updateMany({
+        where: { id: { in: due.map((d) => d.id) } },
+        data: { status: "applied", appliedAt: now },
+      });
+      await tx.subscriptionPlan.update({ where: { id: planId }, data: { priceCents: latest.priceCents } });
+      return { latest, previous: plan?.priceCents ?? latest.previousCents, count: due.length };
     });
-    if (claimed.count === 0) continue;
-    await prisma.subscriptionPlan.update({ where: { id: change.planId }, data: { priceCents: change.priceCents } });
-    await recordAudit({
-      action: "plan.price_change_applied",
-      entityType: "SubscriptionPlan",
-      entityId: change.planId,
-      stateBefore: { priceCents: change.previousCents },
-      stateAfter: { priceCents: change.priceCents },
-      metadata: { priceChangeId: change.id, effectiveFrom: change.effectiveFrom.toISOString() },
-    });
-    applied++;
+    if (!result) continue;
+    applied += result.count;
+    // A system action: keep the admin's reason/approval (if this runs inside
+    // their request) off this audit entry.
+    await runOutsideChangeContext(() =>
+      recordAudit({
+        action: "plan.price_change_applied",
+        entityType: "SubscriptionPlan",
+        entityId: planId,
+        stateBefore: { priceCents: result.previous },
+        stateAfter: { priceCents: result.latest.priceCents },
+        metadata: { priceChangeId: result.latest.id, effectiveFrom: result.latest.effectiveFrom.toISOString() },
+      }),
+    );
   }
   return applied;
 }

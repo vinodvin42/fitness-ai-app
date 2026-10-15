@@ -58,9 +58,12 @@ export function MyPlanScreen({ navigation }: Props) {
   const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans });
 
   const sub = current.data;
-  const otherCycle = sub ? (sub.plan.billingCycle === "monthly" ? "annual" : "monthly") : null;
-  const canChangeCycle =
-    !!sub && sub.plan.priceCents > 0 && (plans.data ?? []).some((p) => p.tier === sub.plan.tier && p.billingCycle === otherCycle);
+  // Any other billing period (monthly / 3 months / yearly) on sale for this tier.
+  const otherCycle = sub
+    ? ((plans.data ?? []).find((p) => p.tier === sub.plan.tier && p.billingCycle !== sub.plan.billingCycle && p.priceCents > 0)
+        ?.billingCycle ?? null)
+    : null;
+  const canChangeCycle = !!sub && sub.plan.priceCents > 0 && otherCycle != null;
   const progress = sub ? periodProgress(sub) : null;
   const daysLeft = sub?.renewsAt ? Math.max(0, Math.ceil((new Date(sub.renewsAt).getTime() - Date.now()) / DAY)) : null;
   const cancellable =

@@ -3074,7 +3074,7 @@ export interface AdminPaymentDirectoryResponse {
 }
 
 export type AdminPaymentReference =
-  | { type: "plan"; id: string; name: string; tier: SubscriptionTier; priceCents: number; billingCycle: "monthly" | "annual" }
+  | { type: "plan"; id: string; name: string; tier: SubscriptionTier; priceCents: number; billingCycle: BillingCycle }
   | { type: "program"; id: string; name: string; priceCents: number };
 
 export interface AdminPaymentAuditEntry {

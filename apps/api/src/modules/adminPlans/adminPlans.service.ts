@@ -184,6 +184,21 @@ export async function reactivatePlan(actorAdminId: string, id: string) {
   return toPlanListItem(await getPlanOrThrow(id));
 }
 
+const IST_OFFSET_MS = 330 * 60 * 1000;
+
+/** The first midnight in India at or after `date`. */
+function indiaMidnightOnOrAfter(date: Date): Date {
+  const local = new Date(date.getTime() + IST_OFFSET_MS);
+  const midnightLocal = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  const midnight = midnightLocal - IST_OFFSET_MS;
+  return new Date(midnight >= date.getTime() ? midnight : midnight + 24 * 60 * 60 * 1000);
+}
+
+/** `YYYY-MM-DD` of a moment, in India time. */
+function indiaDate(date: Date): string {
+  return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 /** `YYYY-MM-DD` means midnight India time on that date; anything else is a full timestamp. */
 function parseEffectiveFrom(value: string): Date {
   return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00+05:30` : value);
@@ -211,21 +226,29 @@ export async function schedulePriceChange(actorAdminId: string, planId: string, 
   if (effectiveFrom.getTime() < now.getTime() - 60_000) {
     throw new ApiHttpError(422, "start_date_in_past", "The new price can't start in the past");
   }
-  if (input.priceCents === plan.priceCents) {
-    throw new ApiHttpError(422, "price_unchanged", "That is already the current price");
+  // Compare with the price that will be in force just before the new start
+  // date (a change already scheduled before it counts), not just today's —
+  // otherwise a decrease then an increase could dodge the notice rule.
+  const priorScheduled = await prisma.planPriceChange.findFirst({
+    where: { planId, status: "scheduled", effectiveFrom: { lt: effectiveFrom } },
+    orderBy: { effectiveFrom: "desc" },
+  });
+  const baselineCents = priorScheduled?.priceCents ?? plan.priceCents;
+  if (input.priceCents === baselineCents) {
+    throw new ApiHttpError(422, "price_unchanged", "That is already the price on that date");
   }
 
   const currentSubscribers = await prisma.subscription.findMany({
     where: { planId, status: { in: [...CURRENT_SUBSCRIPTION_STATUSES] } },
     select: { userId: true },
   });
-  const isIncrease = input.priceCents > plan.priceCents;
-  const minStart = new Date(now.getTime() + PRICE_INCREASE_NOTICE_DAYS * 24 * 60 * 60 * 1000);
-  if (isIncrease && currentSubscribers.length > 0 && effectiveFrom.getTime() < minStart.getTime() - 60_000) {
+  const isIncrease = input.priceCents > baselineCents || input.priceCents > plan.priceCents;
+  const minStart = indiaMidnightOnOrAfter(new Date(now.getTime() + PRICE_INCREASE_NOTICE_DAYS * 24 * 60 * 60 * 1000));
+  if (isIncrease && currentSubscribers.length > 0 && effectiveFrom.getTime() < minStart.getTime()) {
     throw new ApiHttpError(
       422,
       "notice_too_short",
-      `A price increase needs at least ${PRICE_INCREASE_NOTICE_DAYS} days' notice because this plan has ${currentSubscribers.length} subscriber(s). Pick a start date on or after ${minStart.toISOString().slice(0, 10)}.`,
+      `A price increase needs at least ${PRICE_INCREASE_NOTICE_DAYS} days' notice because this plan has ${currentSubscribers.length} subscriber(s). Pick a start date on or after ${indiaDate(minStart)}.`,
     );
   }
 
@@ -234,16 +257,26 @@ export async function schedulePriceChange(actorAdminId: string, planId: string, 
     throw new ApiHttpError(409, "price_change_exists", "A price change is already scheduled for that date. Cancel it first.");
   }
 
-  const change = await prisma.planPriceChange.create({
-    data: {
-      planId,
-      priceCents: input.priceCents,
-      previousCents: plan.priceCents,
-      effectiveFrom,
-      reason: input.reason ?? null,
-      createdByAdminId: actorAdminId,
-    },
-  });
+  let change;
+  try {
+    change = await prisma.planPriceChange.create({
+      data: {
+        planId,
+        priceCents: input.priceCents,
+        previousCents: baselineCents,
+        effectiveFrom,
+        reason: input.reason ?? null,
+        createdByAdminId: actorAdminId,
+      },
+    });
+  } catch (err) {
+    // The database's one-scheduled-change-per-date index caught a duplicate
+    // sent at the same moment.
+    if ((err as { code?: string }).code === "P2002") {
+      throw new ApiHttpError(409, "price_change_exists", "A price change is already scheduled for that date. Cancel it first.");
+    }
+    throw err;
+  }
 
   // Tell current subscribers now (in-app). Sent as a `system` notice so
   // notification preferences can't hide a price change (createNotification

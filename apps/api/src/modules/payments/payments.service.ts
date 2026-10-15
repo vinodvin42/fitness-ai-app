@@ -296,6 +296,10 @@ interface PaymentRecord {
   purpose: "subscription" | "program_purchase" | "booking";
   referenceId: string;
   status: "created" | "paid" | "failed";
+  // What was charged, and the coupon discount (if any) — together they give
+  // the plan price the subscriber locks in (Package 3).
+  amountCents: number;
+  discountCents: number | null;
   // PAY-01 — only set (and only read) when purpose is "booking". See its
   // own comment on the Payment model in schema.prisma.
   scheduledAt: Date | null;
@@ -379,7 +383,12 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
 
   try {
     if (payment.purpose === "subscription") {
-      await subscribe(payment.userId, { planId: payment.referenceId }, { verifiedPayment: true, paidPriceCents: payment.amountCents });
+      await subscribe(payment.userId, { planId: payment.referenceId }, {
+        verifiedPayment: true,
+        // The plan price before any coupon: a coupon discounts this payment,
+        // not the subscriber's ongoing price.
+        paidPriceCents: payment.amountCents + (payment.discountCents ?? 0),
+      });
     } else if (payment.purpose === "booking") {
       const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: payment.referenceId } });
       if (!offering) {
