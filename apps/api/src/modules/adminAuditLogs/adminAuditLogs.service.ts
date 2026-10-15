@@ -71,6 +71,10 @@ type AuditLogRow = {
   entityId: string | null;
   metadata: unknown;
   createdAt: Date;
+  // D21 maker-checker columns (Oct 2026).
+  reason?: string | null;
+  checkerAdminId?: string | null;
+  approvalRequestId?: string | null;
 };
 
 type ActorInfo = { fullName: string; email: string };
@@ -82,7 +86,12 @@ type ActorInfo = { fullName: string; email: string };
  */
 async function resolveActors(rows: AuditLogRow[]) {
   const userIds = [...new Set(rows.filter((r) => r.actorId).map((r) => r.actorId as string))];
-  const adminIds = [...new Set(rows.filter((r) => r.actorAdminId).map((r) => r.actorAdminId as string))];
+  const adminIds = [
+    ...new Set([
+      ...rows.filter((r) => r.actorAdminId).map((r) => r.actorAdminId as string),
+      ...rows.filter((r) => r.checkerAdminId).map((r) => r.checkerAdminId as string),
+    ]),
+  ];
   const professionalIds = [...new Set(rows.filter((r) => r.actorProfessionalId).map((r) => r.actorProfessionalId as string))];
 
   const [users, admins, professionals] = await Promise.all([
@@ -136,6 +145,12 @@ function toEntry(
     entityType: r.entityType,
     entityId: r.entityId,
     metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+    // D21: the actor above is the maker; the checker is the Super Admin who
+    // approved the change (null when it applied directly).
+    reason: r.reason ?? null,
+    checkerAdminId: r.checkerAdminId ?? null,
+    checkerLabel: r.checkerAdminId ? maps.adminMap.get(r.checkerAdminId)?.fullName ?? null : null,
+    approvalRequestId: r.approvalRequestId ?? null,
     createdAt: r.createdAt,
   };
 }

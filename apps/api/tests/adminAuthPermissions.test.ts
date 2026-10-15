@@ -46,7 +46,7 @@ describe("Admin auth + permissions", () => {
         email: contentAdminEmail,
         passwordHash,
         fullName: "Content Role Admin",
-        role: "content",
+        role: "operations",
         status: "active",
       },
     });

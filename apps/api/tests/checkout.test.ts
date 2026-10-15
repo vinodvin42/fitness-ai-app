@@ -50,7 +50,7 @@ describe("Checkout quote and purchase history (U-M1, U-M22, D3)", () => {
         email: `admin-checkout-${suffix}@example.com`,
         passwordHash: await hashPassword("unused"),
         fullName: "Checkout Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });

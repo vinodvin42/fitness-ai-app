@@ -51,7 +51,7 @@ describe("Creator Partner Lite portal", () => {
         email: `admin-creator-${suffix}@example.com`,
         passwordHash: await hashPassword("unused"),
         fullName: "Creator Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });

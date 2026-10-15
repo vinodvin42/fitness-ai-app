@@ -38,8 +38,8 @@ describe("Professional R1 lifecycle (application -> verification -> approved -> 
     professionalId = signupRes.body.professional.id;
     professionalToken = signupRes.body.tokens.accessToken;
 
-    // coach_operations holds professionals:view/edit/approve (see
-    // adminPermissions.ts's PERMISSION_MATRIX) — real gated actions below.
+    // super_admin applies professional changes directly; any other role's
+    // change here would become a maker-checker approval request (D21).
     const passwordHash = await hashPassword(adminPassword);
     adminEmail = uniqueEmail("lifecycle-admin");
     const admin = await prisma.adminUser.create({
@@ -47,7 +47,7 @@ describe("Professional R1 lifecycle (application -> verification -> approved -> 
         email: adminEmail,
         passwordHash,
         fullName: "Lifecycle Test Admin",
-        role: "coach_operations",
+        role: "super_admin",
         status: "active",
       },
     });

@@ -35,26 +35,15 @@ import { PERMISSION_MATRIX, AdminModule, AdminAction } from "../../middleware/ad
  */
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
-  super_admin: "Full system access",
-  user_operations: "User management and support",
-  coach_operations: "Professional verification and management",
-  finance: "Revenue, transactions, settlements",
-  content: "Programs, exercises, content approval",
-  growth: "Influencers, referrals, campaigns",
-  analytics: "Read-only analytics and reports",
-  support: "Ticket management and user assistance",
+  super_admin: "Lakshman. Full access; changes apply directly with a reason",
+  co_founder: "Views everything; every change is sent to the Super Admin for approval",
+  operations: "Users, professionals, gyms, partners and content; risky changes need approval",
+  finance: "Revenue, refunds, settlements and payout runs; money changes need approval",
+  safety_privacy: "Safety reports, privacy requests and health-data access reviews",
+  support: "Support tickets and user lookup",
 };
 
-const ROLE_ORDER = [
-  "super_admin",
-  "user_operations",
-  "coach_operations",
-  "finance",
-  "content",
-  "growth",
-  "analytics",
-  "support",
-] as const;
+const ROLE_ORDER = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"] as const;
 
 export async function listRoles() {
   // 31 Aug 2026 (first real Prisma client generation): orderBy is required

@@ -130,11 +130,11 @@ describe("Consent Management admin read view: GET /admin/users/:id/consents", ()
         email,
         passwordHash: await hashPassword(limitedPassword),
         fullName: "Limited Role Admin",
-        // "content" holds no sensitiveData grant in PERMISSION_MATRIX —
+        // "operations" holds no sensitiveData grant in PERMISSION_MATRIX —
         // only super_admin does (see adminPermissions.ts) — same
         // "role without the module" precedent other permission tests in
         // this suite use.
-        role: "content",
+        role: "operations",
         status: "active",
       },
     });

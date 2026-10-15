@@ -36,7 +36,7 @@ describe("Influencer payout mark-paid race: concurrent calls must not double-rec
         email: `admin-payout-race-${suffix}@example.com`,
         passwordHash: await hashPassword("unused-not-logged-in-with"),
         fullName: "Payout Race Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });

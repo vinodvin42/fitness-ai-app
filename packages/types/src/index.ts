@@ -1534,19 +1534,15 @@ export interface ReferralSummary {
 // ---- Admin console (Phase 6, added 20 Aug 2026) ----------------------------
 // docs/admin/*.md. AdminUser is a genuinely separate identity from `User`
 // above — see apps/api's prisma/schema.prisma AdminUser doc comment for
-// why. Only `super_admin` is actually enforced anywhere yet (gap §7 in
-// docs/admin/07-open-questions-gaps.md); the other 7 role names are listed
-// here because they're real, confirmed role names from the Figma review,
-// not because their permission matrices are implemented.
+// why. Roles follow decisions D15/D21 (Oct 2026): super_admin (Lakshman)
+// applies changes directly; everyone else's risky changes need his approval.
 
 export type AdminRole =
   | "super_admin"
-  | "user_operations"
-  | "coach_operations"
+  | "co_founder"
+  | "operations"
   | "finance"
-  | "content"
-  | "growth"
-  | "analytics"
+  | "safety_privacy"
   | "support";
 
 export type AdminUserStatus = "active" | "disabled";
@@ -1560,12 +1556,80 @@ export interface AdminUser {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** True once the admin has confirmed an authenticator app. */
+  mfaEnabled?: boolean;
 }
 
-/** Matches apps/api's adminLoginSchema (Zod). */
+/** Matches apps/api's adminLoginSchema (Zod). `code` is the authenticator code once MFA is set up. */
 export interface AdminLoginInput {
   email: string;
   password: string;
+  code?: string;
+  recoveryCode?: string;
+}
+
+// ---- Admin sign-in with an authenticator app (blueprint section 5) ----
+
+/** POST /admin/auth/login when the password is right but MFA still has to be set up. */
+export interface AdminMfaSetupRequiredResponse {
+  mfaSetupRequired: true;
+  setupToken: string;
+}
+
+/** POST /admin/auth/mfa/setup */
+export interface AdminMfaSetupResponse {
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+  /** Shown once for manual entry into the authenticator app. */
+  secret: string;
+}
+
+// ---- Maker-checker approvals (blueprint section 5, decision D21) ----
+
+export type ApprovalStatus =
+  | "pending"
+  | "applying"
+  | "approved"
+  | "rejected"
+  | "changes_requested"
+  | "expired"
+  | "failed"
+  | "cancelled";
+
+export interface ApprovalPerson {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  role: string | null;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  status: ApprovalStatus;
+  maker: ApprovalPerson;
+  makerRole: string;
+  checker: ApprovalPerson | null;
+  method: string;
+  path: string;
+  body: unknown;
+  module: string;
+  action: string;
+  summary: string;
+  reason: string;
+  decisionNote: string | null;
+  expiresAt: string;
+  decidedAt: string | null;
+  appliedAt: string | null;
+  resultStatus: number | null;
+  resultBody: unknown;
+  createdAt: string;
+}
+
+/** 202 answer from any admin write that was sent for approval. */
+export interface PendingApprovalResponse {
+  status: "pending_approval";
+  message: string;
+  approvalRequest: Pick<ApprovalRequest, "id" | "status" | "summary" | "reason" | "expiresAt" | "createdAt">;
 }
 
 export interface AdminLoginResult {
@@ -3188,6 +3252,11 @@ export interface AdminAuditLogEntry {
   entityType: string;
   entityId: string | null;
   metadata: Record<string, unknown> | null;
+  /** D21 maker-checker: the reason given, and the Super Admin who approved (null when applied directly). The actor is the maker. */
+  reason?: string | null;
+  checkerAdminId?: string | null;
+  checkerLabel?: string | null;
+  approvalRequestId?: string | null;
   createdAt: string;
 }
 
@@ -3816,12 +3885,10 @@ export interface AdminFinancialReportsResponse {
 
 export type AdminRoleName =
   | "super_admin"
-  | "user_operations"
-  | "coach_operations"
+  | "co_founder"
+  | "operations"
   | "finance"
-  | "content"
-  | "growth"
-  | "analytics"
+  | "safety_privacy"
   | "support";
 
 export interface AdminRoleSummary {

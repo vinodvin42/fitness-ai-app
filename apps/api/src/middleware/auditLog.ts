@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db/prisma";
+import { getChangeContext } from "../lib/makerChecker";
 
 /**
  * Write-once audit log helper. Call from service functions after a mutating
@@ -37,9 +38,22 @@ export async function recordAudit(params: {
   stateAfter?: Record<string, unknown> | null;
   /** e.g. "BR-COM-011". Spec §11 requires every event to carry one. */
   ruleId?: string | null;
+  /**
+   * D21 maker-checker. When omitted, these come from the change context of
+   * the admin write that is running (lib/makerChecker.ts): the reason the
+   * admin gave and, for an approved request, the Super Admin who approved
+   * it. The maker is the actor above.
+   */
+  reason?: string | null;
+  checkerAdminId?: string | null;
+  approvalRequestId?: string | null;
 }) {
+  const change = getChangeContext();
   await prisma.auditLog.create({
     data: {
+      reason: params.reason ?? change?.reason ?? null,
+      checkerAdminId: params.checkerAdminId ?? change?.checkerAdminId ?? null,
+      approvalRequestId: params.approvalRequestId ?? change?.approvalRequestId ?? null,
       actorId: params.actorId ?? null,
       actorAdminId: params.actorAdminId ?? null,
       actorProfessionalId: params.actorProfessionalId ?? null,

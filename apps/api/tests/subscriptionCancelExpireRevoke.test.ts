@@ -140,7 +140,7 @@ describe("Subscription cancel-at-period-end, lazy expiry, and admin force-revoke
           email: uniqueEmail("admin-finance-revoke"),
           passwordHash,
           fullName: "Finance Role Admin (revoke test)",
-          role: "finance",
+          role: "super_admin",
           status: "active",
         },
       });
@@ -269,7 +269,7 @@ describe("Subscription cancel-at-period-end, lazy expiry, and admin force-revoke
           email: uniqueEmail("admin-finance-unrevoke"),
           passwordHash,
           fullName: "Finance Role Admin (unrevoke test)",
-          role: "finance",
+          role: "super_admin",
           status: "active",
         },
       });

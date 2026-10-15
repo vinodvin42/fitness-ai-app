@@ -36,12 +36,14 @@ function csvField(value: string): string {
 }
 
 function downloadCsv(entries: AdminAuditLogDirectoryResponse["entries"]) {
-  const header = ["Timestamp", "Actor Type", "Actor", "Actor Email", "Action", "Entity Type", "Entity Id", "Metadata"];
+  const header = ["Timestamp", "Actor Type", "Actor (maker)", "Actor Email", "Approved by (checker)", "Reason", "Action", "Entity Type", "Entity Id", "Metadata"];
   const rows = entries.map((e) => [
     e.createdAt,
     e.actorType ?? "",
     e.actorLabel ?? "",
     e.actorEmail ?? "",
+    e.checkerLabel ?? (e.checkerAdminId ? e.checkerAdminId : "Applied directly"),
+    e.reason ?? "",
     e.action,
     e.entityType,
     e.entityId ?? "",
@@ -177,6 +179,7 @@ export function AuditLogsScreen() {
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
                   <th className="px-4 py-3 font-normal">{t("auditLogs.actor")}</th>
+                  <th className="px-4 py-3 font-normal">Approved by · reason</th>
                   <th className="px-4 py-3 font-normal">{t("auditLogs.action")}</th>
                   <th className="px-4 py-3 font-normal">{t("auditLogs.entity")}</th>
                   <th className="px-4 py-3 font-normal">{t("auditLogs.metadata")}</th>
@@ -192,6 +195,12 @@ export function AuditLogsScreen() {
                       </div>
                       <div className="font-medium text-text-primary">{e.actorLabel ?? "—"}</div>
                       {e.actorEmail && <div className="text-xs text-text-dim">{e.actorEmail}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-text-secondary">
+                      <div className="text-text-primary">
+                        {e.checkerAdminId ? e.checkerLabel ?? e.checkerAdminId : e.actorType === "admin" ? "Applied directly" : "—"}
+                      </div>
+                      {e.reason && <div className="mt-0.5 max-w-xs text-text-dim">{e.reason}</div>}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-text-secondary">{e.action}</td>
                     <td className="px-4 py-3 text-text-secondary">
@@ -223,7 +232,7 @@ export function AuditLogsScreen() {
                 ))}
                 {data.entries.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
                       {t("auditLogs.noAuditEntriesMatch")}
                     </td>
                   </tr>

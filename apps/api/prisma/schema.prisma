@@ -2178,14 +2178,18 @@ model Payment {
 // creates a `super_admin` account, so in practice only that role can log
 // in until a real Admin Users creation flow is used for the others (see
 // Module 12.01, `adminAccounts.service.ts`).
+// FynroX roles (decisions D15/D21, Oct 2026): Lakshman is the only Super
+// Admin; the co-founder views everything and every change he makes is an
+// approval request; Operations (Maya Rao), Finance (Kiran), Safety &
+// Privacy (Farah Ali) and Support (Anil) do day-to-day work directly but
+// send risky changes to the Super Admin. The older 8-role set was mapped in
+// migration 20261015110000_admin_roles_mfa_approvals.
 enum AdminRole {
   super_admin
-  user_operations
-  coach_operations
+  co_founder
+  operations
   finance
-  content
-  growth
-  analytics
+  safety_privacy
   support
 }
 
@@ -2202,6 +2206,14 @@ model AdminUser {
   role         AdminRole       @default(super_admin)
   status       AdminUserStatus @default(active)
   lastLoginAt  DateTime?
+  // Admin sign-in uses an authenticator app (blueprint section 5): email +
+  // password + 6-digit code, no OTP. `mfaSecret` is AES-256-GCM encrypted
+  // (lib/twoFactor.ts), `mfaEnabled` flips true only after a real code is
+  // confirmed, and recovery codes are bcrypt-hashed, single use.
+  mfaSecret        String?
+  mfaEnabled       Boolean  @default(false)
+  mfaEnabledAt     DateTime?
+  mfaRecoveryCodes String[] @default([])
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -2274,8 +2286,58 @@ model AdminUser {
   privacyRequestsResolved         PrivacyRequest[]             @relation("PrivacyRequestResolvedBy")
   publicApplicationsReviewed      PublicApplication[]          @relation("PublicApplicationReviewedBy")
   gymHelpRequestsResolved         GymHelpRequest[]
+  // Maker-checker (D21) — see ApprovalRequest.
+  approvalRequestsMade            ApprovalRequest[]            @relation("ApprovalRequestMaker")
+  approvalRequestsChecked         ApprovalRequest[]            @relation("ApprovalRequestChecker")
 
   @@map("admin_users")
+}
+
+enum ApprovalStatus {
+  pending
+  applying
+  approved
+  rejected
+  changes_requested
+  expired
+  failed
+  cancelled
+}
+
+// Maker-checker approval requests (blueprint section 5, decision D21).
+// When anyone other than the Super Admin makes a risky change, the request
+// (method, path, JSON body, reason) is stored here instead of being
+// applied. Only the Super Admin can approve; on approval the same route is
+// re-run in-process as the maker (lib/makerChecker.ts) and its result is
+// stored. Nobody approves their own change. Pending requests expire after
+// APPROVAL_EXPIRY_DAYS (default 7).
+model ApprovalRequest {
+  id             String         @id @default(uuid())
+  status         ApprovalStatus @default(pending)
+  makerAdminId   String
+  makerAdmin     AdminUser      @relation("ApprovalRequestMaker", fields: [makerAdminId], references: [id], onDelete: Cascade)
+  makerRole      String
+  checkerAdminId String?
+  checkerAdmin   AdminUser?     @relation("ApprovalRequestChecker", fields: [checkerAdminId], references: [id], onDelete: SetNull)
+  method         String
+  path           String
+  body           Json?
+  module         String
+  action         String
+  summary        String
+  reason         String
+  decisionNote   String?
+  expiresAt      DateTime
+  decidedAt      DateTime?
+  appliedAt      DateTime?
+  resultStatus   Int?
+  resultBody     Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([makerAdminId, createdAt])
+  @@map("approval_requests")
 }
 
 // ---- Coach marketplace (Phase 5, started 20 Aug 2026) ---------------------
@@ -2932,11 +2994,20 @@ model AuditLog {
   /// `ruleId` and the audit log did not.
   ruleId String?
 
+  /// D21 maker-checker: the reason the admin gave, the Super Admin who
+  /// approved the change (the maker is the actor), and the approval
+  /// request it came from. Null for actions that needed no approval.
+  reason            String?
+  checkerAdminId    String?
+  approvalRequestId String?
+
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([actorId])
   @@index([actorAdminId])
+  @@index([checkerAdminId])
+  @@index([approvalRequestId])
   @@index([actorProfessionalId])
   @@index([actorInfluencerId])
   @@index([entityType, entityId])

@@ -42,7 +42,7 @@ describe("Professional Offers (admin proposes a specific pro -> coach accepts/de
         email: adminEmail,
         passwordHash,
         fullName: "Offer Test Admin",
-        role: "coach_operations",
+        role: "super_admin",
         status: "active",
       },
     });

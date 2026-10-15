@@ -121,16 +121,15 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
     env.RAZORPAY_KEY_SECRET = "wave7-e2e-test-key-secret";
     env.RAZORPAY_WEBHOOK_SECRET = "wave7-e2e-test-webhook-secret";
 
-    // Real admin (coach_operations — has professionals:* and dashboard:view,
-    // the same role professionalOffers.test.ts uses for the propose-offer
-    // route and enough to read the unified action-items queue).
+    // Real admin (super_admin — applies changes directly, so none of the
+    // admin steps below become maker-checker approval requests).
     const adminEmail = uniqueEmail("wave7-admin");
     const admin = await prisma.adminUser.create({
       data: {
         email: adminEmail,
         passwordHash: await hashPassword(adminPassword),
         fullName: "Wave 7 Fixture Admin",
-        role: "coach_operations",
+        role: "super_admin",
         status: "active",
       },
     });

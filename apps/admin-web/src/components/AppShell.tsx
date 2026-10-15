@@ -173,6 +173,8 @@ interface SubNavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", path: "/", glyph: "▦", builtIn: true },
+  // Maker-checker approvals inbox (blueprint section 5, D21).
+  { label: "Approvals", path: "/approvals", glyph: "✓", builtIn: true },
   { label: "Users", path: "/users", glyph: "◔", builtIn: true },
   { label: "Professionals", path: "/professionals", glyph: "◈", builtIn: true },
   { label: "Relationships", path: "/relationships", glyph: "⇄", builtIn: true },
