@@ -1,7 +1,10 @@
 import { NextFunction, Response } from "express";
 import { AdminAuthedRequest } from "./adminAuth";
 import { ApiHttpError } from "./errorHandler";
-import { captureForApproval, isApprovalReplay, runWithChangeContext } from "../lib/makerChecker";
+import { prisma } from "../db/prisma";
+import { env } from "../config/env";
+import { MIN_REASON_LENGTH } from "../lib/highImpactAction";
+import { captureForApproval, isApprovalReplay, readChangeReason, runWithChangeContext } from "../lib/makerChecker";
 
 /**
  * Admin RBAC + maker-checker (FynroX blueprint section 5, decision D21,
@@ -101,6 +104,8 @@ export const PERMISSION_MATRIX: Record<KnownAdminRole, ModulePermissions> = {
     gyms: ["view", "create", "edit", "export", "approve"],
     admin: ["view", "create", "edit", "export"],
     approvals: ["view", "create"],
+    // Health data stays behind the two-person access review (sensitiveData).
+    sensitiveData: [],
   },
 
   // Maya Rao (Operations): users, professionals, relationships, content,
@@ -207,6 +212,32 @@ export function hasPermission(role: string | undefined, module: AdminModule, act
 }
 
 /**
+ * The Super Admin must give a reason for a risky change too (it goes to the
+ * audit log). Required everywhere except the automated test suite, where
+ * existing fixtures write without one; SUPER_ADMIN_REASON_REQUIRED=true|false
+ * overrides. Read at call time.
+ */
+export function isSuperAdminReasonRequired(): boolean {
+  const flag = process.env.SUPER_ADMIN_REASON_REQUIRED;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return env.NODE_ENV !== "test";
+}
+
+/**
+ * The admin's CURRENT role, read from the database. A session token lasts
+ * hours, so a write is never decided on the role inside the token alone: a
+ * demoted or disabled admin loses write access (and the Super Admin's
+ * direct-apply right) at once.
+ */
+async function currentRole(adminUserId: string | undefined): Promise<string | null> {
+  if (!adminUserId) return null;
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId }, select: { role: true, status: true } });
+  if (!admin || admin.status !== "active") return null;
+  return admin.role;
+}
+
+/**
  * Use after requireAdminAuth on any admin route that maps to a real
  * module/action. For a write that needs the Super Admin's approval (see
  * needsApproval), the request is saved as an ApprovalRequest and answered
@@ -217,17 +248,19 @@ export function hasPermission(role: string | undefined, module: AdminModule, act
  */
 export function requirePermission(module: AdminModule, action: AdminAction, opts: { approval?: ApprovalPolicy } = {}) {
   return function (req: AdminAuthedRequest, res: Response, next: NextFunction) {
-    const role = req.adminRole;
+    const tokenRole = req.adminRole;
 
-    if (!isKnownRole(role)) {
+    if (!isKnownRole(tokenRole)) {
+      // An AdminUser row can carry an unknown role only via a direct DB
+      // edit — fail closed rather than assume access.
       throw new ApiHttpError(403, "forbidden", "Your admin role is not recognized for this action");
     }
 
-    if (!hasPermission(role, module, action)) {
+    if (!hasPermission(tokenRole, module, action)) {
       throw new ApiHttpError(
         403,
         "forbidden",
-        `Your role (${role}) does not have "${action}" access to ${module}`,
+        `Your role (${tokenRole}) does not have "${action}" access to ${module}`,
       );
     }
 
@@ -236,11 +269,37 @@ export function requirePermission(module: AdminModule, action: AdminAction, opts
       return;
     }
 
-    if (!isApprovalReplay(req) && needsApproval(role, module, action, opts.approval)) {
-      captureForApproval(req, res, { module, action }).catch(next);
-      return;
-    }
+    (async () => {
+      const role = await currentRole(req.adminUserId);
+      if (!role || role !== tokenRole) {
+        throw new ApiHttpError(401, "session_outdated", "Your admin role or status changed. Sign in again.");
+      }
 
-    runWithChangeContext(req, next);
+      if (isApprovalReplay(req)) {
+        runWithChangeContext(req, next);
+        return;
+      }
+
+      if (needsApproval(role, module, action, opts.approval)) {
+        await captureForApproval(req, res, { module, action });
+        return;
+      }
+
+      // The Super Admin applies directly, but a risky change still needs a
+      // written reason for the audit log (blueprint section 5).
+      const riskyForOthers = needsApproval("operations", module, action, opts.approval);
+      if (role === "super_admin" && riskyForOthers && isSuperAdminReasonRequired()) {
+        const reason = readChangeReason(req);
+        if (!reason || reason.length < MIN_REASON_LENGTH) {
+          throw new ApiHttpError(
+            422,
+            "reason_required",
+            `Add a reason of at least ${MIN_REASON_LENGTH} characters. It is saved to the audit log.`,
+          );
+        }
+      }
+
+      runWithChangeContext(req, next);
+    })().catch(next);
   };
 }

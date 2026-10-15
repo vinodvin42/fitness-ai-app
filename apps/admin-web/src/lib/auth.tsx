@@ -14,7 +14,7 @@ interface AuthContextValue {
   adminUser: AdminUser | null;
   isLoading: boolean;
   /** Email + password (+ the 6-digit authenticator code once MFA is set up). */
-  login: (email: string, password: string, code?: string) => Promise<LoginResult>;
+  login: (email: string, password: string, second?: { code?: string; recoveryCode?: string }) => Promise<LoginResult>;
   startMfaSetup: (setupToken: string) => Promise<AdminMfaSetupResponse>;
   confirmMfaSetup: (setupToken: string, code: string) => Promise<MfaConfirmResult>;
   /** Starts the session returned by confirmMfaSetup, after the recovery codes were shown. */
@@ -56,8 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAdminUser(user);
   }
 
-  async function login(email: string, password: string, code?: string): Promise<LoginResult> {
-    const res = await apiClient.post("/admin/auth/login", { email, password, ...(code ? { code } : {}) });
+  async function login(email: string, password: string, second?: { code?: string; recoveryCode?: string }): Promise<LoginResult> {
+    const res = await apiClient.post("/admin/auth/login", {
+      email,
+      password,
+      ...(second?.code ? { code: second.code } : {}),
+      ...(second?.recoveryCode ? { recoveryCode: second.recoveryCode } : {}),
+    });
     if (res.data.mfaSetupRequired) {
       return { kind: "mfaSetupRequired", setupToken: res.data.setupToken };
     }

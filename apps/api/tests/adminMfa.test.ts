@@ -10,7 +10,7 @@ import { hashPassword } from "../src/lib/password";
  * so this file turns it on for itself and restores it afterwards.
  *
  * Rate limits: login and the MFA set-up routes share authRateLimit
- * (10 per 15 min); this file makes 9 such calls.
+ * (10 per 15 min); this file makes 10 such calls (the limit).
  */
 describe("Admin MFA", () => {
   const app = buildApp();
@@ -77,11 +77,15 @@ describe("Admin MFA", () => {
     expect(noCode.status).toBe(401);
     expect(noCode.body.error.code).toBe("mfa_required");
 
-    const withCode = await request(app)
-      .post("/admin/auth/login")
-      .send({ email, password, code: await generateTotp({ secret }) });
+    const code = await generateTotp({ secret });
+    const withCode = await request(app).post("/admin/auth/login").send({ email, password, code });
     expect(withCode.status).toBe(200);
     expect(typeof withCode.body.token).toBe("string");
+
+    // The same code can't be used twice.
+    const replayed = await request(app).post("/admin/auth/login").send({ email, password, code });
+    expect(replayed.status).toBe(401);
+    expect(replayed.body.error.code).toBe("invalid_mfa_code");
   });
 
   it("accepts a recovery code exactly once", async () => {

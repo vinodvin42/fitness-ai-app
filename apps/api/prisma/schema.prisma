@@ -2214,6 +2214,9 @@ model AdminUser {
   mfaEnabled       Boolean  @default(false)
   mfaEnabledAt     DateTime?
   mfaRecoveryCodes String[] @default([])
+  // Last accepted TOTP code + time, so a code can't be used twice.
+  mfaLastCode      String?
+  mfaLastCodeAt    DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

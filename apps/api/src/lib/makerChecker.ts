@@ -59,7 +59,17 @@ export function readChangeReason(req: AdminAuthedRequest): string | null {
   const header = req.headers["x-change-reason"];
   const fromHeader = Array.isArray(header) ? header[0] : header;
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const candidates = [fromHeader, body.changeReason, body.reason];
+  // The header is URL-encoded by admin-web so reasons in Hindi/Telugu or
+  // with symbols like ₹ survive HTTP header rules.
+  let decodedHeader = fromHeader;
+  if (typeof fromHeader === "string") {
+    try {
+      decodedHeader = decodeURIComponent(fromHeader);
+    } catch {
+      decodedHeader = fromHeader;
+    }
+  }
+  const candidates = [decodedHeader, body.changeReason, body.reason];
   for (const value of candidates) {
     if (typeof value === "string" && value.trim().length > 0) return value.trim().slice(0, 2000);
   }
@@ -157,6 +167,8 @@ export async function captureForApproval(
 
 let replayApp: Express | null = null;
 
+const REPLAY_TIMEOUT_MS = 30_000;
+
 /** Called once by createApp() so approvals can re-run routes in-process. */
 export function setApprovalReplayApp(app: Express): void {
   replayApp = app;
@@ -204,9 +216,11 @@ export function replayApprovedRequest(params: {
     const res = new ServerResponse(req);
     const chunks: Buffer[] = [];
     let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       if (settled) return;
       settled = true;
+      if (timer) clearTimeout(timer);
       const text = Buffer.concat(chunks).toString("utf8");
       let body: unknown = null;
       if (text.length > 0) {
@@ -235,10 +249,19 @@ export function replayApprovedRequest(params: {
       return res;
     };
 
+    // Never wait forever on a route that does not answer.
+    timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve({ status: 504, body: { error: { code: "apply_timeout", message: "Applying the approved change took too long" } } });
+    }, REPLAY_TIMEOUT_MS);
+    timer.unref?.();
+
     const handle = (app as unknown as { handle: (q: unknown, s: unknown, done: (err?: unknown) => void) => void }).handle;
     handle.call(app, req, res, (err?: unknown) => {
       if (settled) return;
       settled = true;
+      if (timer) clearTimeout(timer);
       resolve({ status: err ? 500 : 404, body: { error: { code: err ? "internal_error" : "not_found", message: "The approved change could not be applied" } } });
     });
   });

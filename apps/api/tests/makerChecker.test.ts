@@ -213,6 +213,44 @@ describe("Maker-checker approvals (D21)", () => {
     expect(superList.body.approvals.some((a: { id: string }) => a.id === id)).toBe(true);
   });
 
+  it("needs a reason from the Super Admin too when SUPER_ADMIN_REASON_REQUIRED is on", async () => {
+    const previous = process.env.SUPER_ADMIN_REASON_REQUIRED;
+    process.env.SUPER_ADMIN_REASON_REQUIRED = "true";
+    try {
+      const plan = await createPlan();
+      const missing = await request(app).patch(`/admin/plans/${plan.id}`).set("Authorization", `Bearer ${superToken}`).send({ priceCents: 31900 });
+      expect(missing.status).toBe(422);
+      expect(missing.body.error.code).toBe("reason_required");
+
+      const encoded = await request(app)
+        .patch(`/admin/plans/${plan.id}`)
+        .set("Authorization", `Bearer ${superToken}`)
+        .set("X-Change-Reason", encodeURIComponent("₹319 trial price — मालिक का निर्णय"))
+        .send({ priceCents: 31900 });
+      expect(encoded.status).toBe(200);
+      const audit = await prisma.auditLog.findFirst({ where: { actorAdminId: superId, entityId: plan.id }, orderBy: { createdAt: "desc" } });
+      expect(audit?.reason).toBe("₹319 trial price — मालिक का निर्णय");
+    } finally {
+      if (previous === undefined) delete process.env.SUPER_ADMIN_REASON_REQUIRED;
+      else process.env.SUPER_ADMIN_REASON_REQUIRED = previous;
+    }
+  });
+
+  it("refuses writes from a session whose admin was disabled or changed role", async () => {
+    const plan = await createPlan();
+    await prisma.adminUser.update({ where: { id: financeId }, data: { role: "support" } });
+    try {
+      const res = await request(app)
+        .patch(`/admin/plans/${plan.id}`)
+        .set("Authorization", `Bearer ${financeToken}`)
+        .send({ priceCents: 39900, reason: "Old session after a role change" });
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("session_outdated");
+    } finally {
+      await prisma.adminUser.update({ where: { id: financeId }, data: { role: "finance" } });
+    }
+  });
+
   it("still lets day-to-day reads through for every role", async () => {
     const res = await request(app).get("/admin/plans").set("Authorization", `Bearer ${financeToken}`);
     expect(res.status).toBe(200);

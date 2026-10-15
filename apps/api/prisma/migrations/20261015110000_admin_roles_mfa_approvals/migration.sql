@@ -23,6 +23,8 @@ ALTER TABLE "admin_users" ADD COLUMN "mfaSecret" TEXT;
 ALTER TABLE "admin_users" ADD COLUMN "mfaEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "admin_users" ADD COLUMN "mfaEnabledAt" TIMESTAMP(3);
 ALTER TABLE "admin_users" ADD COLUMN "mfaRecoveryCodes" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "admin_users" ADD COLUMN "mfaLastCode" TEXT;
+ALTER TABLE "admin_users" ADD COLUMN "mfaLastCodeAt" TIMESTAMP(3);
 
 -- 3. Audit log records the reason, the checker and the approval request.
 ALTER TABLE "audit_logs" ADD COLUMN "reason" TEXT;

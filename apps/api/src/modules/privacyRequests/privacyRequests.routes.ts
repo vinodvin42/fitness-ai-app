@@ -116,7 +116,7 @@ privacyRequestsRouter.post(
 privacyRequestsRouter.post(
   "/admin/privacy-requests/:id/complete",
   requireAdminAuth,
-  requirePermission("sensitiveData", "approve"),
+  requirePermission("sensitiveData", "approve", { approval: "required" }),
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const input = privacyResolutionSchema.parse(req.body);
@@ -136,7 +136,7 @@ privacyRequestsRouter.post(
 privacyRequestsRouter.post(
   "/admin/privacy-requests/:id/reject",
   requireAdminAuth,
-  requirePermission("sensitiveData", "approve"),
+  requirePermission("sensitiveData", "approve", { approval: "required" }),
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const input = privacyResolutionSchema.parse(req.body);

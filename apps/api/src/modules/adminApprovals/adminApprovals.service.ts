@@ -40,6 +40,22 @@ type ApprovalRow = {
 
 const PEOPLE_SELECT = { select: { id: true, fullName: true, email: true, role: true } } as const;
 
+const SECRET_KEY = /password|token|secret|recoverycodes|otp/i;
+
+/** Removes secret-looking fields (passwords, tokens, secrets, recovery codes) before storing or showing JSON. */
+export function redactSecrets(value: unknown, depth = 0): unknown {
+  if (depth > 8 || value == null) return value;
+  if (Array.isArray(value)) return value.map((v) => redactSecrets(v, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = SECRET_KEY.test(k) ? "[hidden]" : redactSecrets(v, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
 function canSeeAll(role: string | undefined): boolean {
   return role === "super_admin" || role === "co_founder";
 }
@@ -53,7 +69,7 @@ export function toApprovalDTO(row: ApprovalRow) {
     checker: row.checkerAdmin ?? (row.checkerAdminId ? { id: row.checkerAdminId, fullName: null, email: null, role: null } : null),
     method: row.method,
     path: row.path,
-    body: row.body,
+    body: redactSecrets(row.body),
     module: row.module,
     action: row.action,
     summary: row.summary,
@@ -63,18 +79,28 @@ export function toApprovalDTO(row: ApprovalRow) {
     decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
     appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
     resultStatus: row.resultStatus,
-    resultBody: row.resultBody,
+    resultBody: redactSecrets(row.resultBody),
     createdAt: row.createdAt.toISOString(),
   };
 }
 
-/** Marks every pending request past its expiry as expired. */
+/**
+ * Marks every pending request past its expiry as expired, and any request
+ * stuck in `applying` for more than 5 minutes (a crash or restart during
+ * approval) as failed, so nothing waits forever.
+ */
 export async function expireStaleApprovals(now: Date = new Date()): Promise<number> {
-  const result = await prisma.approvalRequest.updateMany({
-    where: { status: "pending", expiresAt: { lt: now } },
-    data: { status: "expired" },
-  });
-  return result.count;
+  const [expired] = await Promise.all([
+    prisma.approvalRequest.updateMany({
+      where: { status: "pending", expiresAt: { lt: now } },
+      data: { status: "expired" },
+    }),
+    prisma.approvalRequest.updateMany({
+      where: { status: "applying", decidedAt: { lt: new Date(now.getTime() - 5 * 60 * 1000) } },
+      data: { status: "failed", resultStatus: 504, resultBody: { error: { code: "apply_interrupted", message: "Applying was interrupted. Check the record and ask again if needed." } } },
+    }),
+  ]);
+  return expired.count;
 }
 
 export async function listApprovals(viewer: { adminId: string; role: string | undefined }, query: ListApprovalsQuery) {
@@ -119,8 +145,10 @@ export async function getApproval(viewer: { adminId: string; role: string | unde
   return { approval: toApprovalDTO(row), auditTrail };
 }
 
-function assertSuperAdmin(role: string | undefined) {
-  if (role !== "super_admin") {
+/** Checks the CURRENT database role and status, never just the session token. */
+async function assertSuperAdmin(checker: { adminId: string; role: string | undefined }) {
+  const admin = await prisma.adminUser.findUnique({ where: { id: checker.adminId }, select: { role: true, status: true } });
+  if (checker.role !== "super_admin" || !admin || admin.role !== "super_admin" || admin.status !== "active") {
     throw new ApiHttpError(403, "forbidden", "Only the Super Admin can decide approval requests");
   }
 }
@@ -148,7 +176,7 @@ async function claimPending(id: string, checkerAdminId: string, nextStatus: "app
 }
 
 export async function approve(checker: { adminId: string; role: string | undefined }, id: string, note: string | null) {
-  assertSuperAdmin(checker.role);
+  await assertSuperAdmin(checker);
   await claimPending(id, checker.adminId, "applying", note);
 
   const request = await prisma.approvalRequest.findUniqueOrThrow({ where: { id } });
@@ -185,7 +213,8 @@ export async function approve(checker: { adminId: string; role: string | undefin
       status: applied ? "approved" : "failed",
       appliedAt: applied ? new Date() : null,
       resultStatus,
-      resultBody: (resultBody ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+      // Never store secrets (e.g. a new admin's temporary password).
+      resultBody: (redactSecrets(resultBody) ?? Prisma.JsonNull) as Prisma.InputJsonValue,
     },
   });
 
@@ -200,11 +229,13 @@ export async function approve(checker: { adminId: string; role: string | undefin
     metadata: { makerAdminId: request.makerAdminId, method: request.method, path: request.path, resultStatus },
   });
 
-  return getApproval(checker, id);
+  // The un-redacted result goes to the approving Super Admin once (e.g. a
+  // new admin's temporary password to hand over); it is never stored.
+  return { ...(await getApproval(checker, id)), appliedResult: applied ? resultBody : null };
 }
 
 export async function reject(checker: { adminId: string; role: string | undefined }, id: string, note: string | null) {
-  assertSuperAdmin(checker.role);
+  await assertSuperAdmin(checker);
   await claimPending(id, checker.adminId, "rejected", note);
   await recordAudit({
     actorAdminId: checker.adminId,
@@ -219,7 +250,7 @@ export async function reject(checker: { adminId: string; role: string | undefine
 }
 
 export async function requestChanges(checker: { adminId: string; role: string | undefined }, id: string, note: string) {
-  assertSuperAdmin(checker.role);
+  await assertSuperAdmin(checker);
   await claimPending(id, checker.adminId, "changes_requested", note);
   await recordAudit({
     actorAdminId: checker.adminId,

@@ -29,10 +29,11 @@ function storedRole(): string | null {
 
 /**
  * Maker-checker (D21). Every admin except the Super Admin needs Lakshman's
- * approval for risky changes, and must say why. Until the admin v2 screens
- * add a reason box to each form, any write without a reason asks for one
- * here and sends it as the X-Change-Reason header. Cancelling the prompt
- * cancels the request. Forms that already send `reason` are left alone.
+ * approval for risky changes, and everyone (Lakshman included) must say
+ * why. Until the admin v2 screens add a reason box to each form, any write
+ * without a reason asks for one here and sends it as the X-Change-Reason
+ * header. Cancelling the prompt cancels the request. Forms that already
+ * send `reason` are left alone.
  */
 const WRITE_METHODS = new Set(["post", "put", "patch", "delete"]);
 const NO_REASON_PATHS = [/^\/admin\/auth\//, /^\/admin\/approvals/];
@@ -50,12 +51,17 @@ apiClient.interceptors.request.use((config) => {
   const hasReason =
     !!config.headers["X-Change-Reason"] ||
     (typeof body === "object" && body !== null && typeof body.reason === "string" && body.reason.trim().length >= 10);
-  if (token && role && role !== "super_admin" && WRITE_METHODS.has(method) && !hasReason && !NO_REASON_PATHS.some((re) => re.test(url))) {
-    const reason = window.prompt("This change needs Lakshman's approval. Why are you making it? (at least 10 characters)");
+  if (token && role && WRITE_METHODS.has(method) && !hasReason && !NO_REASON_PATHS.some((re) => re.test(url))) {
+    const question =
+      role === "super_admin"
+        ? "Why are you making this change? It is saved to the audit log. (at least 10 characters)"
+        : "This change needs Lakshman's approval. Why are you making it? (at least 10 characters)";
+    const reason = window.prompt(question);
     if (reason === null || reason.trim().length < 10) {
-      return Promise.reject(new AxiosError("A reason of at least 10 characters is needed to send this for approval.", "ERR_CANCELED", config));
+      return Promise.reject(new AxiosError("A reason of at least 10 characters is needed for this change.", "ERR_CANCELED", config));
     }
-    config.headers["X-Change-Reason"] = reason.trim();
+    // URL-encoded: HTTP headers can't carry ₹, Hindi/Telugu text or emoji as-is.
+    config.headers["X-Change-Reason"] = encodeURIComponent(reason.trim());
   }
   return config;
 });

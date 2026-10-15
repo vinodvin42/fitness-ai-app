@@ -37,6 +37,7 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,7 +46,8 @@ export function LoginScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const result = await login(email, password, step.kind === "code" ? code : undefined);
+      const second = step.kind === "code" ? (useRecoveryCode ? { recoveryCode: code } : { code }) : undefined;
+      const result = await login(email, password, second);
       if (result.kind === "mfaSetupRequired") {
         const setup = await startMfaSetup(result.setupToken);
         setCode("");
@@ -119,20 +121,42 @@ export function LoginScreen() {
             {step.kind === "code" && (
               <div>
                 <label className="mb-1 block text-xs text-text-secondary" htmlFor="code">
-                  6-digit code from your authenticator app
+                  {useRecoveryCode ? "Recovery code" : "6-digit code from your authenticator app"}
                 </label>
-                <input
-                  id="code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  required
-                  autoFocus
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className={`${INPUT_CLASS} tracking-[0.3em]`}
-                />
+                {useRecoveryCode ? (
+                  <input
+                    id="code"
+                    autoComplete="off"
+                    required
+                    autoFocus
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    className={`${INPUT_CLASS} font-mono tracking-widest`}
+                  />
+                ) : (
+                  <input
+                    id="code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    className={`${INPUT_CLASS} tracking-[0.3em]`}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseRecoveryCode((v) => !v);
+                    setCode("");
+                  }}
+                  className="mt-2 text-xs text-accent hover:underline"
+                >
+                  {useRecoveryCode ? "Use my authenticator app instead" : "Lost your phone? Use a recovery code"}
+                </button>
               </div>
             )}
 

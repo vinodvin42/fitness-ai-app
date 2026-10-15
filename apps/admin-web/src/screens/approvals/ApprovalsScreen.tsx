@@ -74,6 +74,8 @@ export function ApprovalsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  // Shown once after approving (e.g. a new admin's temporary password); never stored.
+  const [lastApplied, setLastApplied] = useState<unknown>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin-approvals", status],
@@ -86,7 +88,8 @@ export function ApprovalsScreen() {
   const decide = useMutation({
     mutationFn: async (action: "approve" | "reject" | "request-changes" | "cancel") =>
       apiClient.post(`/admin/approvals/${selectedId}/${action}`, note.trim() ? { note: note.trim() } : {}),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setLastApplied((res.data as { appliedResult?: unknown }).appliedResult ?? null);
       setNote("");
       setActionError(null);
       setSelectedId(null);
@@ -121,6 +124,20 @@ export function ApprovalsScreen() {
           </button>
         ))}
       </div>
+
+      {lastApplied != null && (
+        <div className="mb-4 rounded-xl border border-border-subtle bg-surface p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-text-primary">Change applied. Result (shown once, not saved):</p>
+            <button type="button" onClick={() => setLastApplied(null)} className="text-xs text-accent hover:underline">
+              Close
+            </button>
+          </div>
+          <pre className="max-h-56 overflow-auto rounded-md bg-surface-raised p-2 text-[11px] text-text-primary">
+            {JSON.stringify(lastApplied, null, 2)}
+          </pre>
+        </div>
+      )}
 
       {isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
       {isError && <p className="text-sm text-danger">{extractErrorMessage(error, "Couldn't load approvals.")}</p>}

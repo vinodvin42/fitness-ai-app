@@ -45,26 +45,46 @@ export function toPublicAdminUser(adminUser: {
   passwordHash?: string;
   mfaSecret?: string | null;
   mfaRecoveryCodes?: string[];
+  mfaLastCode?: string | null;
   mfaEnabled?: boolean;
 }) {
   // Never return the password hash or the MFA secret / recovery codes.
-  const { passwordHash: _passwordHash, mfaSecret: _mfaSecret, mfaRecoveryCodes: _mfaRecoveryCodes, ...publicAdminUser } = adminUser;
+  const {
+    passwordHash: _passwordHash,
+    mfaSecret: _mfaSecret,
+    mfaRecoveryCodes: _mfaRecoveryCodes,
+    mfaLastCode: _mfaLastCode,
+    ...publicAdminUser
+  } = adminUser;
   return publicAdminUser;
 }
 
 /**
- * Admin MFA is required in production, and anywhere ADMIN_MFA_REQUIRED=true.
- * Read at call time (not from the parsed env once) so a deployment can turn
- * it on without a code change, and tests can exercise both modes.
+ * Admin MFA is required (blueprint section 5: email + password + an
+ * authenticator code). The only exceptions: the automated test suite
+ * (NODE_ENV=test, so existing fixtures can sign in), and a developer's own
+ * machine may switch it off with ADMIN_MFA_REQUIRED=false — never in
+ * production. Read at call time.
  */
 export function isAdminMfaRequired(): boolean {
   const flag = process.env.ADMIN_MFA_REQUIRED;
+  if (env.NODE_ENV === "production") return true;
   if (flag === "true") return true;
   if (flag === "false") return false;
-  return env.NODE_ENV === "production";
+  return env.NODE_ENV !== "test";
 }
 
-type AdminRowForMfa = { id: string; mfaEnabled?: boolean; mfaSecret?: string | null; mfaRecoveryCodes?: string[] };
+/** A TOTP code may be used once: the same code is refused for this long after it worked. */
+const TOTP_REUSE_WINDOW_MS = 2 * 60 * 1000;
+
+type AdminRowForMfa = {
+  id: string;
+  mfaEnabled?: boolean;
+  mfaSecret?: string | null;
+  mfaRecoveryCodes?: string[];
+  mfaLastCode?: string | null;
+  mfaLastCodeAt?: Date | null;
+};
 
 /** Checks a 6-digit code, or burns one recovery code. Throws 401 when neither is right. */
 async function verifyAdminSecondFactor(adminUser: AdminRowForMfa, input: { code?: string; recoveryCode?: string }) {
@@ -72,17 +92,35 @@ async function verifyAdminSecondFactor(adminUser: AdminRowForMfa, input: { code?
     throw new ApiHttpError(401, "mfa_required", "Enter the 6-digit code from your authenticator app");
   }
   if (input.code && adminUser.mfaSecret) {
-    if (await verifyTotpCode(decryptSecret(adminUser.mfaSecret), input.code)) return;
+    const reused =
+      adminUser.mfaLastCode === input.code &&
+      !!adminUser.mfaLastCodeAt &&
+      Date.now() - adminUser.mfaLastCodeAt.getTime() < TOTP_REUSE_WINDOW_MS;
+    if (!reused && (await verifyTotpCode(decryptSecret(adminUser.mfaSecret), input.code))) {
+      // Remember the code so an intercepted code can't be replayed. The
+      // conditional write also stops two simultaneous sign-ins with one code.
+      const claimed = await prisma.adminUser.updateMany({
+        where: {
+          id: adminUser.id,
+          OR: [{ mfaLastCode: null }, { mfaLastCode: { not: input.code } }, { mfaLastCodeAt: { lt: new Date(Date.now() - TOTP_REUSE_WINDOW_MS) } }],
+        },
+        data: { mfaLastCode: input.code, mfaLastCodeAt: new Date() },
+      });
+      if (claimed.count === 1) return;
+    }
   }
   if (input.recoveryCode) {
     const normalised = input.recoveryCode.replace(/[\s-]/g, "").toUpperCase();
     const hashes = adminUser.mfaRecoveryCodes ?? [];
     for (let i = 0; i < hashes.length; i++) {
       if (await verifyPassword(normalised, hashes[i])) {
-        await prisma.adminUser.update({
-          where: { id: adminUser.id },
+        // Conditional write: if two sign-ins race with the same code, only
+        // the one that still finds the code in the list wins.
+        const used = await prisma.adminUser.updateMany({
+          where: { id: adminUser.id, mfaRecoveryCodes: { has: hashes[i] } },
           data: { mfaRecoveryCodes: hashes.filter((_, index) => index !== i) },
         });
+        if (used.count === 0) break;
         await recordAudit({
           actorAdminId: adminUser.id,
           action: "admin_user.mfa_recovery_code_used",
@@ -204,7 +242,7 @@ export async function resetAdminMfa(actorAdminId: string, targetAdminId: string)
   const target = await getAdminUserById(targetAdminId);
   await prisma.adminUser.update({
     where: { id: target.id },
-    data: { mfaEnabled: false, mfaEnabledAt: null, mfaSecret: null, mfaRecoveryCodes: [] },
+    data: { mfaEnabled: false, mfaEnabledAt: null, mfaSecret: null, mfaRecoveryCodes: [], mfaLastCode: null, mfaLastCodeAt: null },
   });
   await recordAudit({
     actorAdminId,
