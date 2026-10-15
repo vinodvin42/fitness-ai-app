@@ -4,7 +4,6 @@ import { encryptStringList, readHealthList } from "../../lib/fieldCrypto";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ageFromDateOfBirth, parseDateOnly } from "../../lib/age";
-import { assertAdultAge } from "../../lib/adultGate";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -141,8 +140,6 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // of OnboardingProfile.age keeps working.
   const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
   if (dateOfBirth) rest.age = ageFromDateOfBirth(dateOfBirth);
-  // FynroX is for adults 18+ only — there is no guardian flow (lib/adultGate.ts).
-  assertAdultAge({ dateOfBirth, age: rest.age });
   // "None" / "Prefer not to say" are answers, not reportable conditions (they must not raise a safety escalation).
   // Skipped health data: store nothing for medical/injuries (never trust
   // lists sent alongside the skip flag) and record WHEN it was skipped so
@@ -374,7 +371,6 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
 
   const { dateOfBirth: dobInput, ...fields } = input;
   const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
-  assertAdultAge({ dateOfBirth, age: fields.age });
   const profile = await prisma.onboardingProfile.update({
     where: { userId },
     data: { ...fields, ...(dateOfBirth ? { dateOfBirth, age: ageFromDateOfBirth(dateOfBirth) } : {}) },

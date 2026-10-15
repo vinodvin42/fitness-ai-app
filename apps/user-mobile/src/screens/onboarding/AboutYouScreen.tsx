@@ -19,7 +19,6 @@ const GENDERS = [
 
 const KG_PER_LB = 0.45359237;
 const CM_PER_IN = 2.54;
-const MIN_AGE = 18; // FynroX is for adults 18+ only
 
 const round = (n: number, dp: number) => Math.round(n * 10 ** dp) / 10 ** dp;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -28,8 +27,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * Figma "01 Onboarding / 04 About You": gender as three full-width cards, a
  * Date-of-birth card with a computed Age badge, and weight/height cards with
  * unit toggles. Storage stays kg/cm whichever unit is displayed. The date of
- * birth is the source of truth for age (the under-18 gate uses the
- * DOB-derived age). The optional body-fat/waist/hips baseline (18 Sep 2026)
+ * birth is the source of truth for age; there is no minimum age. The optional body-fat/waist/hips baseline (18 Sep 2026)
  * lives in a collapsed section below the Figma content.
  */
 export function AboutYouScreen({ navigation }: Props) {
@@ -37,9 +35,6 @@ export function AboutYouScreen({ navigation }: Props) {
   const [weightUnit, setWeightUnit] = useState<0 | 1>(0); // 0 = kg, 1 = lbs
   const [heightUnit, setHeightUnit] = useState<0 | 1>(0); // 0 = cm, 1 = ft
   const [showBaseline, setShowBaseline] = useState(false);
-
-  const age = state.dateOfBirth ? ageFromDob(state.dateOfBirth) : null;
-  const tooYoung = age != null && age < MIN_AGE;
 
   const stepWeight = (dir: 1 | -1) => {
     const base = state.weightKg ?? 70;
@@ -68,11 +63,11 @@ export function AboutYouScreen({ navigation }: Props) {
       title="About You"
       subtitle="Tell us about yourself for personalized recommendations."
       onNext={() => {
-        // FynroX is 18+ only: the Next button stays disabled under MIN_AGE.
+        // No age limit (owner decision, 15 Oct 2026): anyone can continue.
         markScreenReached("Schedule");
         navigation.navigate("Schedule");
       }}
-      nextDisabled={!state.gender || !state.dateOfBirth || tooYoung}
+      nextDisabled={!state.gender || !state.dateOfBirth}
     >
       <View style={{ gap: spacing.sm }}>
         {GENDERS.map((g) => (
@@ -89,7 +84,6 @@ export function AboutYouScreen({ navigation }: Props) {
       <DateOfBirthCard
         value={state.dateOfBirth}
         onChange={(dateOfBirth) => update({ dateOfBirth, age: ageFromDob(dateOfBirth) ?? undefined })}
-        error={tooYoung ? `FynroX is for adults ${MIN_AGE} and over.` : null}
       />
 
       <MeasureCard

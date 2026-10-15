@@ -3,10 +3,11 @@ import request from "supertest";
 import { buildApp, prisma, uniqueEmail } from "./helpers";
 
 /**
- * "Continue without health data" (onboarding/09) and the adults-only rule
- * (FynroX is 18+ only; there is no guardian flow). Real Postgres, no mocked Prisma.
+ * "Continue without health data" (onboarding/09) and the no-age-limit rule
+ * (owner decision, 15 Oct 2026: anyone can sign up; there is no guardian
+ * flow and no minimum age). Real Postgres, no mocked Prisma.
  */
-describe("Onboarding: health-data skip + adults only", () => {
+describe("Onboarding: health-data skip + no age limit", () => {
   const app = buildApp();
   let userId: string;
   let token: string;
@@ -23,7 +24,7 @@ describe("Onboarding: health-data skip + adults only", () => {
   beforeAll(async () => {
     const signup = await request(app)
       .post("/auth/signup")
-      .send({ email: uniqueEmail("skipadult"), password: "SomePassword1!", fullName: "Skip Tester" });
+      .send({ email: uniqueEmail("skipanyage"), password: "SomePassword1!", fullName: "Skip Tester" });
     userId = signup.body.user.id;
     token = signup.body.tokens.accessToken;
   });
@@ -59,26 +60,27 @@ describe("Onboarding: health-data skip + adults only", () => {
     expect(res.body.onboardingProfile.medicalConditions).toEqual(["Asthma"]);
   });
 
-  it("rejects an under-18 date of birth with under_18_not_allowed", async () => {
+  it("accepts a young date of birth — FynroX has no age limit", async () => {
     const now = new Date();
-    const dob = `${now.getUTCFullYear() - 16}-01-15`;
+    const dob = `${now.getUTCFullYear() - 12}-01-15`;
     const res = await request(app)
       .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
       .send({ ...baseProfile, age: undefined, dateOfBirth: dob });
 
-    expect(res.status).toBe(422);
-    expect(res.body.error.code).toBe("under_18_not_allowed");
+    expect(res.status).toBe(200);
+    expect(res.body.onboardingProfile.age).toBeGreaterThanOrEqual(11);
+    expect(res.body.onboardingProfile.age).toBeLessThanOrEqual(12);
   });
 
-  it("rejects an under-18 legacy age with under_18_not_allowed", async () => {
+  it("accepts any age on the legacy age field", async () => {
     const res = await request(app)
       .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
-      .send({ ...baseProfile, age: 17 });
+      .send({ ...baseProfile, age: 15 });
 
-    expect(res.status).toBe(422);
-    expect(res.body.error.code).toBe("under_18_not_allowed");
+    expect(res.status).toBe(200);
+    expect(res.body.onboardingProfile.age).toBe(15);
   });
 
   it("no longer exposes the guardian-review endpoints", async () => {

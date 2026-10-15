@@ -45,11 +45,11 @@ export function toDobString(day: string, month: string, year: string): string {
 interface DateOfBirthCardProps {
   value: string | undefined;
   onChange: (dob: string) => void;
-  /** Shown under the card when the age is below the minimum (13). */
+  /** Optional message shown under the card. */
   error?: string | null;
 }
 
-/** Figma About You "Date of birth" card: formatted date, computed Age badge, and the under-18 info note. */
+/** Figma About You "Date of birth" card: formatted date, computed Age badge, and an info note. */
 export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps) {
   const { colors: theme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -116,7 +116,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
       </View>
       <View style={[styles.note, { backgroundColor: theme.accentSoft }]}>
         <Icon name="info" size={14} color={theme.accent} />
-        <Text style={styles.noteText}>FynroX is for adults 18 and over.</Text>
+        <Text style={styles.noteText}>We use your age to tailor your plan.</Text>
       </View>
       {error ? (
         <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, fontFamily: fonts.body }}>

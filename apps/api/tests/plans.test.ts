@@ -341,16 +341,6 @@ RATIONALE: Gentle fit.`);
       await prisma.onboardingProfile.update({ where: { userId }, data: { healthDataSkippedAt: null } });
     });
 
-    it("refuses plan generation for a legacy under-18 account (FynroX is 18+ only)", async () => {
-      await prisma.onboardingProfile.update({ where: { userId }, data: { age: 16 } });
-
-      const res = await request(app).post("/plans/generate").set("Authorization", `Bearer ${accessToken}`).send();
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe("under_18_not_allowed");
-
-      await prisma.onboardingProfile.update({ where: { userId }, data: { age: null } });
-    });
-
     it("still generates cleanly when no equipmentContext was ever self-reported (never fabricates one)", async () => {
       await prisma.onboardingProfile.update({ where: { userId }, data: { equipmentContext: null } });
 

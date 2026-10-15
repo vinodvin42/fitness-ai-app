@@ -164,7 +164,7 @@ function buildSelectionPrompt(profile: {
     : "not specified — no equipment self-report on file, so don't assume either way";
 
   // Conservative paths: (a) the user skipped health data ("Continue without
-  // health data") — safety context is UNKNOWN, not "none". (FynroX is 18+ only.)
+  // health data") — safety context is UNKNOWN, not "none".
   // Prompt-level caution only; NOT a clinical screen and not a hard filter.
   const cautionNotes: string[] = [];
   if (profile.healthDataSkipped) {
