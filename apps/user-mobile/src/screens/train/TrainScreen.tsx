@@ -18,7 +18,7 @@ import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
 import { extractErrorMessage } from "../../lib/apiError";
 import { BRAND_NAME } from "../../lib/brand";
 import { useTheme } from "../../theme/ThemeProvider";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 import { ProgramsCatalog } from "./ProgramsMarketplaceScreen";
 
@@ -30,11 +30,11 @@ interface Props {
   initialTab?: Tab;
 }
 
-const PHASE_ROWS: Array<{ phase: WorkoutPhase; label: string; color: string }> = [
-  { phase: "warmup", label: "Mobility & Warm-up", color: colors.success },
-  { phase: "main", label: "Strength Training", color: colors.accent },
-  { phase: "cooldown", label: "Cooldown & Stretch", color: colors.aiAccent },
-];
+const PHASE_ROWS: Array<{ phase: WorkoutPhase; label: string; color: string }> = themed(() => ([
+  { phase: "warmup", label: "Mobility & Warm-up", color: colors.successText },
+  { phase: "main", label: "Strength Training", color: colors.accentText },
+  { phase: "cooldown", label: "Cooldown & Stretch", color: colors.aiText },
+]));
 
 const LEVEL_LABEL = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" } as const;
 
@@ -290,7 +290,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                   gap: spacing.sm,
                 }}
               >
-                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
+                <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
                   ✦ {BRAND_NAME.toUpperCase()} RECOMMENDATION
                 </Text>
                 <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
@@ -315,10 +315,10 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
                 }}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>TODAY'S WORKOUT</Text>
+                  <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>TODAY'S WORKOUT</Text>
                   {nextWorkout.data?.plan.programName ? (
                     <View style={{ borderRadius: 6, borderWidth: 1, borderColor: colors.aiBorder, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ color: colors.aiAccent, fontSize: 13, fontFamily: fonts.bodySemi }} numberOfLines={1}>
+                      <Text style={{ color: colors.aiText, fontSize: 13, fontFamily: fonts.bodySemi }} numberOfLines={1}>
                         {nextWorkout.data.plan.programName}
                       </Text>
                     </View>

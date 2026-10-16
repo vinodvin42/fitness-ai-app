@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
-import { colors, fonts, spacing } from "../theme/tokens";
+import { colors, fonts, spacing, themed } from "../theme/tokens";
 
 export function OfflineBanner() {
   const { t } = useTranslation();
@@ -51,7 +51,7 @@ export function OfflineBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     position: "absolute",
     top: 0,
@@ -68,4 +68,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.bodySemi,
   },
-});
+}));

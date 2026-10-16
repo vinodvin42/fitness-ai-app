@@ -131,7 +131,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
       <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>Target Muscles</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <View style={{ borderRadius: radius.sm, borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.accentSoft, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>{exercise.muscleGroup} (Primary)</Text>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>{exercise.muscleGroup} (Primary)</Text>
         </View>
       </View>
 
@@ -168,7 +168,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
           }}
         >
           <View style={{ flex: 1, gap: 3 }}>
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
               {BRAND_NAME.toUpperCase()} ALTERNATIVE
             </Text>
             <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 18 }}>

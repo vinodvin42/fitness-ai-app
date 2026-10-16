@@ -206,7 +206,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
             <Text style={{ color: colors.textMuted, fontSize: 13 }}>Skip rest</Text>
           </Pressable>
         ) : isComplete ? (
-          <Text style={{ color: colors.success, fontSize: 13 }}>{t("restTimer.complete")}</Text>
+          <Text style={{ color: colors.successText, fontSize: 13 }}>{t("restTimer.complete")}</Text>
         ) : null}
       </View>
     </View>

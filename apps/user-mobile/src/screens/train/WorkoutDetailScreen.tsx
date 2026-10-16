@@ -19,17 +19,17 @@ import { readinessFactorLabel } from "../../lib/readinessFactors";
 import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { BRAND_NAME } from "../../lib/brand";
 import { useTheme } from "../../theme/ThemeProvider";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "WorkoutDetail">;
 
 const PHASE_LABELS = { warmup: "Mobility & Warm-up", main: "Strength Training", cooldown: "Cooldown & Stretch" } as const;
-const PHASE_META: Record<keyof typeof PHASE_LABELS, { color: string }> = {
-  warmup: { color: colors.success },
-  main: { color: colors.accent },
-  cooldown: { color: colors.aiAccent },
-};
+const PHASE_META: Record<keyof typeof PHASE_LABELS, { color: string }> = themed(() => ({
+  warmup: { color: colors.successText },
+  main: { color: colors.accentText },
+  cooldown: { color: colors.aiText },
+}));
 const LEVEL_LABEL = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" } as const;
 
 /**
@@ -116,7 +116,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
       {score != null && readiness.data ? (
         <View style={{ gap: spacing.sm }}>
           <View style={{ alignSelf: "flex-start", borderRadius: radius.sm, borderWidth: 1, borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
               ✦ {BRAND_NAME.toUpperCase()} RECOVERY
             </Text>
           </View>
@@ -138,7 +138,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                 backgroundColor: colors.aiAccentSoft,
               }}
             >
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Why?</Text>
+              <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Why?</Text>
             </Pressable>
           </View>
         </View>
@@ -244,7 +244,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
             style={{ marginTop: spacing.sm }}
           />
         ) : (
-          <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.sm }}>
+          <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.sm }}>
             This workout is part of {workout.program.name}. Online payment isn't switched on yet, so it can't be bought right now.
           </Text>
         )

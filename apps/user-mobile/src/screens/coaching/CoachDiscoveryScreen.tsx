@@ -137,7 +137,7 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: colors.accent, ...typography.h1 }}>{coach.fullName.slice(0, 1)}</Text>
+                  <Text style={{ color: colors.accentText, ...typography.h1 }}>{coach.fullName.slice(0, 1)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{coach.fullName}</Text>

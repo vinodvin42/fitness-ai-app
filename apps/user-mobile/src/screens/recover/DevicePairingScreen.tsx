@@ -129,7 +129,7 @@ export function DevicePairingScreen({ navigation, route }: Props) {
           </Text>
         </View>
         {addedId ? (
-          <Text style={{ color: colors.success, ...typography.label }}>Added</Text>
+          <Text style={{ color: colors.successText, ...typography.label }}>Added</Text>
         ) : (
           <ActionButton
             label={pair.isPending ? "Adding…" : "Add Now"}

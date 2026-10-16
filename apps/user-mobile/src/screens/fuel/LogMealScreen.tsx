@@ -22,7 +22,7 @@ import {
 import { fetchRecipes } from "../../api/programs";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -346,7 +346,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
             <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 16, flex: 1 }}>{finalName}</Text>
             <View style={{ backgroundColor: colors.warningSoft, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ color: colors.warning, ...typography.caption }}>Unsaved</Text>
+              <Text style={{ color: colors.warningText, ...typography.caption }}>Unsaved</Text>
             </View>
           </View>
           <Text style={{ color: colors.textMuted, ...typography.meta }}>{MEAL_LABELS[mealType]}</Text>
@@ -455,6 +455,7 @@ export function LogMealScreen({ route, navigation }: Props) {
         disabled={quickLog.isPending}
         accessibilityRole="button"
         accessibilityLabel={`Log ${title}`}
+        hitSlop={10}
         style={{
           width: 28,
           height: 28,
@@ -635,12 +636,12 @@ export function LogMealScreen({ route, navigation }: Props) {
             accessibilityLabel="Quick Log"
             hitSlop={8}
           >
-            <Text style={{ color: theme.accent, ...typography.label, opacity: canSubmit && !isSubmitting ? 1 : 0.5 }}>
+            <Text style={{ color: theme.accentText, ...typography.label, opacity: canSubmit && !isSubmitting ? 1 : 0.5 }}>
               {isSubmitting ? "Logging…" : "Quick Log"}
             </Text>
           </Pressable>
         </View>
-        {scannedLabel ? <Text style={{ color: theme.accent, ...typography.caption }}>{scannedLabel}</Text> : null}
+        {scannedLabel ? <Text style={{ color: theme.accentText, ...typography.caption }}>{scannedLabel}</Text> : null}
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           {macroInput("Carbs", carbs, setCarbs)}
           {macroInput("Protein", protein, setProtein)}
@@ -658,7 +659,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           accessibilityState={{ expanded: showDetails }}
           accessibilityLabel="Add name or exact calories"
         >
-          <Text style={{ color: theme.accent, ...typography.label }}>
+          <Text style={{ color: theme.accentText, ...typography.label }}>
             {showDetails ? "Hide name and exact calories" : "Add name or exact calories"}
           </Text>
         </Pressable>
@@ -744,7 +745,7 @@ function TakeRow({ icon, title, subtitle, onPress }: { icon: IconName; title: st
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 50,
     borderRadius: radius.md,
@@ -755,4 +756,4 @@ const styles = {
     color: colors.textPrimary,
     fontSize: 15,
   },
-} as const;
+} as const));

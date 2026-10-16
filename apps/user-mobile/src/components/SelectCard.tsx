@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon, IconName } from "./Icon";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 
 interface SelectCardProps {
   title: string;
@@ -24,7 +24,8 @@ export function SelectCard({ title, subtitle, selected, onPress, icon }: SelectC
       accessibilityRole="radio"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       accessibilityState={{ selected, checked: selected }}
-      style={[styles.card, selected && styles.cardSelected]}
+      android_ripple={{ color: colors.ripple }}
+      style={({ pressed }: { pressed: boolean }) => [styles.card, selected && styles.cardSelected, pressed && { opacity: 0.88 }]}
     >
       {icon ? (
         <View style={[styles.iconWell, selected && styles.iconWellSelected]}>
@@ -42,7 +43,7 @@ export function SelectCard({ title, subtitle, selected, onPress, icon }: SelectC
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -94,4 +95,4 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.accent,
   },
-});
+}));

@@ -7,7 +7,7 @@ import { Chip } from "../../components/Chip";
 import { Icon } from "../../components/Icon";
 import { CheckboxField, OptionRow } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { BRAND_NAME } from "../../lib/brand";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 import { onboardingStep } from "../../navigation/onboardingSteps";
@@ -168,7 +168,7 @@ export function SafetyScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   h3: { ...typography.h3, fontSize: 15, color: colors.textPrimary },
   help: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary, marginTop: 4 },
   warning: {
@@ -200,4 +200,4 @@ const styles = StyleSheet.create({
   consentText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textPrimary },
   consentNote: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary },
   footNote: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary, textAlign: "center" },
-});
+}));

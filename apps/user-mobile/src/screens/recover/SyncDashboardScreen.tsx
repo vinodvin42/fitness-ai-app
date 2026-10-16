@@ -325,7 +325,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
         <TextField label="Blood oxygen SpO2 (%)" value={form.spo2} onChangeText={set("spo2")} keyboardType="numeric" />
         <TextField label="Stress score (0-100)" value={form.stressScore} onChangeText={set("stressScore")} keyboardType="numeric" />
         <TextField label="Battery (%) - optional" value={form.batteryPct} onChangeText={set("batteryPct")} keyboardType="numeric" />
-        {formError ? <Text style={{ color: colors.danger, ...typography.meta }}>{formError}</Text> : null}
+        {formError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{formError}</Text> : null}
         <Button label="Import values" loading={syncMutation.isPending} onPress={submit} />
       </BottomSheet>
     </RecoverShell>

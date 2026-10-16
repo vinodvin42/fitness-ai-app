@@ -96,6 +96,7 @@ export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, d
               onPress={onBack}
               accessibilityRole="button"
               accessibilityLabel="Back"
+              hitSlop={8}
               style={{
                 width: 32,
                 height: 32,

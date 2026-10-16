@@ -100,8 +100,8 @@ export function TimelineEventScreen({ route, navigation }: Props) {
           {prog.previous ? <Row label="Previous" date={prog.previous.at} value={pointText(prog.previous, prog.unit)} /> : null}
           <View style={{ gap: 6 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: colors.accent, ...typography.label }}>This Milestone</Text>
-              <Text style={{ color: colors.accent, fontFamily: fonts.bodyBold }}>
+              <Text style={{ color: colors.accentText, ...typography.label }}>This Milestone</Text>
+              <Text style={{ color: colors.accentText, fontFamily: fonts.bodyBold }}>
                 {pointText(prog.current, prog.unit)}
                 {prog.percentChange != null ? ` (${prog.percentChange > 0 ? "+" : ""}${prog.percentChange}%)` : ""}
               </Text>
@@ -128,7 +128,7 @@ export function TimelineEventScreen({ route, navigation }: Props) {
         <Card style={{ gap: spacing.xs, borderColor: colors.aiBorder, backgroundColor: colors.aiSurface }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
             <Icon name="sparkles" size={13} color={colors.aiAccent} />
-            <Text style={{ color: colors.aiAccent, ...typography.caption, letterSpacing: 0.8 }}>{BRAND_NAME.toUpperCase()} INSIGHT</Text>
+            <Text style={{ color: colors.aiText, ...typography.caption, letterSpacing: 0.8 }}>{BRAND_NAME.toUpperCase()} INSIGHT</Text>
           </View>
           <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 19 }}>
             A 5% load increase from {prog.current.value} kg would be about {prog.nextTarget} kg. Only move up if your form stays solid and you feel recovered. This is a general rule of thumb, not personalised medical advice.

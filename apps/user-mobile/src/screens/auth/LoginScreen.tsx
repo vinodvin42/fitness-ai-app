@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
-import { colors, layout, spacing, typography } from "../../theme/tokens";
+import { colors, layout, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
@@ -84,7 +84,7 @@ export function LoginScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {
     flexGrow: 1,
@@ -98,6 +98,6 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.display, color: colors.textPrimary },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
-});
+}));

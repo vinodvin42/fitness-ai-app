@@ -223,7 +223,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
       {generationError ? (
         <Card>
-          <Text style={{ color: colors.danger, ...typography.body }}>{generationError}</Text>
+          <Text style={{ color: colors.dangerText, ...typography.body }}>{generationError}</Text>
         </Card>
       ) : null}
 
@@ -287,7 +287,7 @@ export function MealPlanScreen({ navigation }: Props) {
                 >
                   <View style={{ width: 3, alignSelf: "stretch", backgroundColor: theme.accent }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.accent, fontSize: 13, fontFamily: fonts.bodySemi }}>{MEAL_LABELS[item.mealType]}</Text>
+                    <Text style={{ color: theme.accentText, fontSize: 13, fontFamily: fonts.bodySemi }}>{MEAL_LABELS[item.mealType]}</Text>
                     <Text style={{ color: colors.textPrimary, ...typography.h3 }} numberOfLines={2}>
                       {item.recipeName}
                     </Text>
@@ -305,7 +305,7 @@ export function MealPlanScreen({ navigation }: Props) {
               accessibilityLabel="Why this meal plan?"
               style={{ alignSelf: "flex-start", paddingVertical: spacing.xs }}
             >
-              <Text style={{ color: colors.aiAccent, ...typography.label }}>✦ Why this plan?</Text>
+              <Text style={{ color: colors.aiText, ...typography.label }}>✦ Why this plan?</Text>
             </Pressable>
           ) : null}
         </>

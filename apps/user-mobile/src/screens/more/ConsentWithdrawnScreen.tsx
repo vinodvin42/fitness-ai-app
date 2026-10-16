@@ -92,7 +92,7 @@ export function ConsentWithdrawnScreen({ navigation, route }: Props) {
           gap: 10,
         }}
       >
-        <Text style={{ color: theme.accent, ...typography.h3, fontSize: 14 }}>Withdrawal confirmed</Text>
+        <Text style={{ color: theme.accentText, ...typography.h3, fontSize: 14 }}>Withdrawal confirmed</Text>
         <DetailRow label="Account" value={user?.fullName ?? ""} />
         <DetailRow label="Effective" value={effective} />
       </View>

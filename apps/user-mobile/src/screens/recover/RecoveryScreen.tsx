@@ -11,7 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchRecovery, upsertRecovery } from "../../api/recovery";
 import { fetchTodayMindfulnessLogs, logMindfulness } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "Recovery">;
@@ -40,7 +40,7 @@ function dayLabel(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-const inputStyle = {
+const inputStyle = themed(() => ({
   color: colors.textPrimary,
   backgroundColor: colors.surface,
   borderRadius: radius.sm,
@@ -48,7 +48,7 @@ const inputStyle = {
   borderColor: colors.border,
   paddingHorizontal: spacing.sm,
   paddingVertical: spacing.sm,
-} as const;
+} as const));
 
 const EMPTY_MINDFULNESS = { durationMinutes: "", type: "", note: "" };
 

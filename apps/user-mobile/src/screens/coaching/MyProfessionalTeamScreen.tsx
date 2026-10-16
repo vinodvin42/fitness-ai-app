@@ -72,13 +72,13 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
             <Text
               onPress={() => navigation.navigate("CoachSessions")}
               accessibilityRole="link"
-              style={{ color: colors.accent, fontFamily: fonts.bodySemi }}
+              style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}
             >
               Sessions
             </Text>
             <Text
               onPress={() => navigation.navigate("Conversations")}
-              style={{ color: colors.accent, fontFamily: fonts.bodySemi }}
+              style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}
             >
               {t("coaching.team.allMessages")}
             </Text>
@@ -86,7 +86,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
           {data.team.map((member) => (
             <Card key={member.relationshipId}>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{member.professionalFullName}</Text>
-              <Text style={{ color: colors.accent, ...typography.meta, marginTop: 2 }}>
+              <Text style={{ color: colors.accentText, ...typography.meta, marginTop: 2 }}>
                 {serviceLabel(member.serviceType)}
               </Text>
               <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>

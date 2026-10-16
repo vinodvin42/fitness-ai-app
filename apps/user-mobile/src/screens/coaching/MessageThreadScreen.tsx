@@ -61,7 +61,7 @@ export function MessageThreadScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
-        <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontFamily: fonts.bodySemi }}>
+        <Text onPress={() => navigation.goBack()} style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}>
           ‹ Back
         </Text>
         <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>{fullName}</Text>

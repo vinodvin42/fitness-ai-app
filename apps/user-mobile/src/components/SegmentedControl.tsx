@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, touch } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 interface SegmentedControlProps<T extends string> {
@@ -33,9 +33,13 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={o.label}
+            hitSlop={{ top: 3, bottom: 3 }}
             style={{
               flex: 1,
               alignItems: "center",
+              justifyContent: "center",
+              // 42 + 3 px track padding top and bottom = 48 px touch target.
+              minHeight: touch.min - 6,
               paddingVertical: spacing.sm,
               borderRadius: radius.sm,
               backgroundColor: selected ? theme.accent : "transparent",
@@ -45,7 +49,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
               style={{
                 color: selected ? theme.textOnAccent : colors.textSecondary,
                 fontFamily: selected ? fonts.bodySemi : fonts.bodyMedium,
-                fontSize: 13,
+                fontSize: 14,
               }}
             >
               {o.label}

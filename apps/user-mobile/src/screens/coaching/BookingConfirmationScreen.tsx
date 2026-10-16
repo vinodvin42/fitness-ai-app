@@ -45,7 +45,7 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer title={t("coaching.booking.confirmedTitle")}>
       <Card style={{ alignItems: "center" }}>
-        <Text style={{ color: colors.success, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
+        <Text style={{ color: colors.successText, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           Your session with {booking.professionalFullName} is confirmed.
         </Text>

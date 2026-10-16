@@ -10,7 +10,7 @@ import { connectHealthProvider, fetchHealthConnections, revokeHealthConnection }
 import { fetchDevices, updateDevicePermissions } from "../../api/devices";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROVIDER_LABEL, timeAgo } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { RecoverShell } from "../recover/parts";
@@ -18,12 +18,12 @@ import { GroupHeader, OutlineButton, RowGroup, ToggleRow } from "./profileParts"
 
 type Props = NativeStackScreenProps<MoreStackParamList, "AppleHealthDevices">;
 
-const STATUS: Record<ConnectedDeviceStatus, { label: string; color: string }> = {
-  paired: { label: "Connected", color: colors.success },
-  syncing: { label: "Syncing", color: colors.accent },
-  error: { label: "Sync error", color: colors.danger },
+const STATUS: Record<ConnectedDeviceStatus, { label: string; color: string }> = themed(() => ({
+  paired: { label: "Connected", color: colors.successText },
+  syncing: { label: "Syncing", color: colors.accentText },
+  error: { label: "Sync error", color: colors.dangerText },
   disconnected: { label: "Disconnected", color: colors.textMuted },
-};
+}));
 
 const HEALTH_SCOPES = ["heart_rate", "sleep", "activity", "hrv"];
 

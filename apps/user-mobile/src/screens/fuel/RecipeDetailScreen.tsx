@@ -174,7 +174,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>Instructions</Text>
             {steps.map((step, i) => (
               <View key={i} style={{ gap: 2 }}>
-                <Text style={{ color: theme.accent, fontSize: 13, fontFamily: fonts.bodySemi }}>Step {i + 1}</Text>
+                <Text style={{ color: theme.accentText, fontSize: 13, fontFamily: fonts.bodySemi }}>Step {i + 1}</Text>
                 <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>{step}</Text>
               </View>
             ))}

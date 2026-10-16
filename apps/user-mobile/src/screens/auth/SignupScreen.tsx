@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
-import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import {
   clearStoredAcquisitionContext,
@@ -132,7 +132,7 @@ export function SignupScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {
     flexGrow: 1,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.display, color: colors.textPrimary },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
   acquisitionBanner: {
     backgroundColor: colors.accentSoft,
@@ -154,5 +154,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  acquisitionBannerText: { color: colors.accent, ...typography.meta },
-});
+  acquisitionBannerText: { color: colors.accentText, ...typography.meta },
+}));

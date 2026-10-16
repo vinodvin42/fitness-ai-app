@@ -1,6 +1,6 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 interface ButtonProps {
@@ -45,10 +45,12 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
-      style={[
+      android_ripple={{ color: isPrimary ? "rgba(255,255,255,0.18)" : colors.ripple }}
+      style={({ pressed }: { pressed: boolean }) => [
         styles.base,
         isPrimary ? [styles.primary, { backgroundColor: theme.accent }] : styles.secondary,
         (disabled || loading) && (mutedWhenDisabled && isPrimary && disabled ? styles.mutedDisabled : styles.disabled),
+        pressed && styles.pressed,
         style,
       ]}
     >
@@ -66,7 +68,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   base: {
     height: 52,
     borderRadius: radius.md,
@@ -75,6 +77,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     flexDirection: "row",
     gap: spacing.sm,
+    overflow: "hidden",
+  },
+  pressed: {
+    opacity: 0.88,
   },
   primary: {
     backgroundColor: colors.accent,
@@ -101,4 +107,4 @@ const styles = StyleSheet.create({
   labelSecondary: {
     color: colors.textPrimary,
   },
-});
+}));

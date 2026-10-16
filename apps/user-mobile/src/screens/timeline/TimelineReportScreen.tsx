@@ -93,7 +93,7 @@ export function TimelineReportScreen({ navigation }: Props) {
           </View>
 
           <Card style={{ gap: 4, borderColor: colors.accent, backgroundColor: colors.accentSoft }}>
-            <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>Executive Summary</Text>
+            <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>Executive Summary</Text>
             <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 14 }}>{data.summaryTitle}</Text>
           </Card>
 
@@ -116,10 +116,10 @@ export function TimelineReportScreen({ navigation }: Props) {
           ))}
 
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Text style={{ color: colors.success, backgroundColor: colors.successSoft, ...typography.caption, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, overflow: "hidden" }}>
+            <Text style={{ color: colors.successText, backgroundColor: colors.successSoft, ...typography.caption, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, overflow: "hidden" }}>
               ✓ Measured
             </Text>
-            <Text style={{ color: colors.warning, backgroundColor: colors.warningSoft, ...typography.caption, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, overflow: "hidden" }}>
+            <Text style={{ color: colors.warningText, backgroundColor: colors.warningSoft, ...typography.caption, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.xs, overflow: "hidden" }}>
               ~ Estimated
             </Text>
           </View>

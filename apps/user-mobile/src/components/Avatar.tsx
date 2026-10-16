@@ -36,7 +36,7 @@ export function Avatar({ name, uri, size = 40 }: AvatarProps) {
       {uri ? (
         <Image source={{ uri }} style={{ width: size, height: size }} />
       ) : (
-        <Text style={{ color: theme.accent, fontFamily: fonts.displaySemi, fontSize: size * 0.38 }}>{initialsOf(name)}</Text>
+        <Text style={{ color: theme.accentText, fontFamily: fonts.displaySemi, fontSize: size * 0.38 }}>{initialsOf(name)}</Text>
       )}
     </View>
   );

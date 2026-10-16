@@ -46,7 +46,7 @@ export function AIBanner({ title, body, ctaLabel, onPress }: AIBannerProps) {
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{title}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>{body}</Text>
         {ctaLabel ? (
-          <Text style={{ color: colors.aiAccent, ...typography.label, marginTop: spacing.sm }}>{ctaLabel} ›</Text>
+          <Text style={{ color: colors.aiText, ...typography.label, marginTop: spacing.sm }}>{ctaLabel} ›</Text>
         ) : null}
       </View>
       {onPress && !ctaLabel ? <Icon name="chevron-right" size={20} color={colors.aiAccent} /> : null}

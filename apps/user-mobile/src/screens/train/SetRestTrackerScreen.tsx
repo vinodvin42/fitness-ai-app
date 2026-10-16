@@ -324,7 +324,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                     hitSlop={8}
                     style={{ flex: 0.6 }}
                   >
-                    <Text style={{ color: theme.accent, fontSize: 13 }}>Edit</Text>
+                    <Text style={{ color: theme.accentText, fontSize: 13 }}>Edit</Text>
                   </Pressable>
                 </View>
               ))}

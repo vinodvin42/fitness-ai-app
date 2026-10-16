@@ -132,7 +132,7 @@ export function MyPlanScreen({ navigation }: Props) {
         <>
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.md }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ color: theme.accent, fontFamily: fonts.displayBold, fontSize: 24 }}>{sub.plan.name}</Text>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.displayBold, fontSize: 24 }}>{sub.plan.name}</Text>
               <Pill label={sub.cancelAtPeriodEnd ? "ENDING" : STATUS[sub.status].label} tone={sub.cancelAtPeriodEnd ? "warning" : STATUS[sub.status].tone} />
             </View>
             <View style={{ flexDirection: "row", gap: spacing.md }}>
@@ -143,7 +143,7 @@ export function MyPlanScreen({ navigation }: Props) {
               <View style={{ gap: 6 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Remaining</Text>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+                  <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                     {daysLeft} day{daysLeft === 1 ? "" : "s"}
                   </Text>
                 </View>
@@ -180,7 +180,7 @@ export function MyPlanScreen({ navigation }: Props) {
           </RowGroup>
 
           {sub.status === "past_due" ? (
-            <Text style={{ color: colors.warning, ...typography.meta }}>
+            <Text style={{ color: colors.warningText, ...typography.meta }}>
               Your last payment did not go through. Choose a plan to pay again and keep premium access.
             </Text>
           ) : null}

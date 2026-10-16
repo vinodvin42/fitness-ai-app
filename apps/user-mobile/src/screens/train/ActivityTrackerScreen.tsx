@@ -456,7 +456,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
           style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.aiSurface, borderRadius: radius.md, paddingVertical: 11 }}
         >
           <Icon name="mic" size={14} color={colors.aiAccent} />
-          <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyMedium, fontSize: 13 }}>
+          <Text style={{ color: colors.aiText, fontFamily: fonts.bodyMedium, fontSize: 13 }}>
             Audio coaching prompts are not available yet
           </Text>
         </Pressable>
@@ -469,7 +469,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
               <Text style={{ color: colors.textSecondary }}>
                 {formatKm(live.distanceM, distanceUnit)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
               </Text>
-              {distanceError ? <Text style={{ color: colors.danger, ...typography.meta }}>{distanceError}</Text> : null}
+              {distanceError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{distanceError}</Text> : null}
             </>
           ) : (
             <TextField

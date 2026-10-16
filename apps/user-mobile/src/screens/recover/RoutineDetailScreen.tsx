@@ -41,7 +41,7 @@ function NumberBadge({ n }: { n: number }) {
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: colors.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>{n}</Text>
+      <Text style={{ color: colors.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>{n}</Text>
     </View>
   );
 }

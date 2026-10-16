@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import { Icon } from "./Icon";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 import { HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, cmToFeetInches, inToCm, kgToLb, lbToKg } from "../lib/measureUnits";
 
@@ -111,7 +111,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
         </Pressable>
         <View style={{ alignItems: "flex-start", minWidth: 56 }}>
           <Text style={styles.ageLabel}>Age</Text>
-          <Text style={[styles.age, { color: theme.accent }]}>{age != null && age >= 0 ? age : "–"}</Text>
+          <Text style={[styles.age, { color: theme.accentText }]}>{age != null && age >= 0 ? age : "–"}</Text>
           <Text style={styles.ageLabel}>{age == null ? "" : age < 18 ? "Under 18" : "Adult"}</Text>
         </View>
       </View>
@@ -120,7 +120,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
         <Text style={styles.noteText}>We use your age to tailor your plan.</Text>
       </View>
       {error ? (
-        <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13, fontFamily: fonts.body }}>
+        <Text accessibilityRole="alert" style={{ color: colors.dangerText, fontSize: 13, fontFamily: fonts.body }}>
           {error}
         </Text>
       ) : null}
@@ -132,7 +132,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
           <DobInput label="Year" value={year} onChangeText={setYear} maxLength={4} placeholder="YYYY" flex={1.6} />
         </View>
         {formError ? (
-          <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13, fontFamily: fonts.body }}>
+          <Text accessibilityRole="alert" style={{ color: colors.dangerText, fontSize: 13, fontFamily: fonts.body }}>
             {formError}
           </Text>
         ) : null}
@@ -452,7 +452,7 @@ function StepButton({ icon, label, onPress }: { icon: "minus" | "plus"; label: s
 /** Dimmer than textMuted so an example value is never mistaken for a typed one (large text, so 3:1 is the bar). */
 const PLACEHOLDER_COLOR = "rgba(152,162,179,0.55)";
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -513,4 +513,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+}));

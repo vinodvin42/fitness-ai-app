@@ -5,7 +5,7 @@ import type { WorkoutDetail } from "@fitness-ai-app/types";
 import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { agoShort, formatDayAndTime } from "../../lib/format";
-import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 
 /**
@@ -14,14 +14,14 @@ import { useTheme } from "../../theme/ThemeProvider";
  * instead of the avatar header of the live screen.
  */
 
-const cardBase = {
+const cardBase = themed(() => ({
   backgroundColor: colors.surface,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: radius.card,
   padding: 16,
   gap: 10,
-} as const;
+} as const));
 
 function Shell({ children, topGap = 0 }: { children: React.ReactNode; topGap?: number }) {
   return (
@@ -165,14 +165,14 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
             : "Today's plan and wearable data can't load without a connection."}
         </Text>
         {lastSyncedAt > 0 ? (
-          <Text style={{ color: colors.warning, fontSize: 13 }}>
+          <Text style={{ color: colors.warningText, fontSize: 13 }}>
             Last synced {formatDayAndTime(lastSyncedAt)} · {agoShort(lastSyncedAt)}
           </Text>
         ) : (
-          <Text style={{ color: colors.warning, fontSize: 13 }}>Nothing has been saved on this device yet.</Text>
+          <Text style={{ color: colors.warningText, fontSize: 13 }}>Nothing has been saved on this device yet.</Text>
         )}
         <Pressable onPress={onRetry} disabled={retrying} accessibilityRole="button" accessibilityLabel="Try reconnecting" hitSlop={8}>
-          <Text style={{ color: theme.accent, ...typography.label, fontSize: 13 }}>{retrying ? "Checking connection..." : "Try reconnecting ›"}</Text>
+          <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>{retrying ? "Checking connection..." : "Try reconnecting ›"}</Text>
         </Pressable>
       </View>
 
@@ -180,7 +180,7 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
         <View style={cardBase}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="download" size={14} color={theme.accent} />
-            <Text style={{ color: theme.accent, fontSize: 13, letterSpacing: 0.8, fontFamily: fonts.bodySemi }}>AVAILABLE OFFLINE</Text>
+            <Text style={{ color: theme.accentText, fontSize: 13, letterSpacing: 0.8, fontFamily: fonts.bodySemi }}>AVAILABLE OFFLINE</Text>
           </View>
           <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }}>{workout.name}</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{meta}</Text>

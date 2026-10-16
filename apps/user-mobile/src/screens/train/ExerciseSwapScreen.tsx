@@ -157,7 +157,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
                   <Text style={{ color: colors.textPrimary, ...typography.h2, flex: 1 }}>{best.name}</Text>
                   <View style={{ backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{matchPercent(exercise, best)}% Match</Text>
+                    <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{matchPercent(exercise, best)}% Match</Text>
                   </View>
                 </View>
                 <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>

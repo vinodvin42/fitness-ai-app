@@ -37,16 +37,16 @@ const STEPS: RelationshipStatus[] = ["requested", "accepted", "awaiting_payment"
 function statusPresentation(status: RelationshipStatus): { color: string; icon: IconName } {
   switch (status) {
     case "requested":
-      return { color: colors.aiAccent, icon: "sparkles" };
+      return { color: colors.aiText, icon: "sparkles" };
     case "accepted":
-      return { color: colors.warning, icon: "check" };
+      return { color: colors.warningText, icon: "check" };
     case "awaiting_payment":
-      return { color: colors.warning, icon: "clock" };
+      return { color: colors.warningText, icon: "clock" };
     case "activating":
-      return { color: colors.warning, icon: "refresh-cw" };
+      return { color: colors.warningText, icon: "refresh-cw" };
     case "active":
     default:
-      return { color: colors.success, icon: "check" };
+      return { color: colors.successText, icon: "check" };
   }
 }
 
@@ -142,7 +142,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
                 <Icon name="check" size={18} color={colors.success} />
-                <Text style={{ color: colors.success, ...typography.label }}>{t("coaching.relationship.step.active")}</Text>
+                <Text style={{ color: colors.successText, ...typography.label }}>{t("coaching.relationship.step.active")}</Text>
               </View>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
                 {active.length === 1 ? "You have 1 coach working with you" : `You have ${active.length} coaches working with you`}

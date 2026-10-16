@@ -61,7 +61,7 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer title={t("coaching.change.title")}>
       <Card>
-        <Text style={{ color: colors.warning, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
+        <Text style={{ color: colors.warningText, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
           Changing your {serviceType} professional doesn't affect any other service relationship you have — only
           your pairing with {professionalFullName} for {serviceType}.

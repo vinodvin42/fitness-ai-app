@@ -9,7 +9,7 @@ import { CameraPermissionDenied } from "../../components/CameraPermissionDenied"
 import { Icon } from "../../components/Icon";
 import { lookupBarcode, logMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -226,7 +226,7 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
           </Pressable>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <Pressable onPress={onEditDetails} accessibilityRole="button" accessibilityLabel="Edit details" hitSlop={8}>
-              <Text style={{ color: theme.accent, ...typography.label }}>Edit details</Text>
+              <Text style={{ color: theme.accentText, ...typography.label }}>Edit details</Text>
             </Pressable>
             <Pressable onPress={scanAgain} accessibilityRole="button" accessibilityLabel="Scan again" hitSlop={8}>
               <Text style={{ color: colors.textSecondary, ...typography.label }}>Scan again</Text>
@@ -257,7 +257,7 @@ function MacroTile({ label, value, color }: { label: string; value: string; colo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   center: {
     flex: 1,
@@ -315,4 +315,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong },
-});
+}));

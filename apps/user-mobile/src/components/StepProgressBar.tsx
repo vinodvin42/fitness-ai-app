@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, fonts, spacing } from "../theme/tokens";
+import { colors, fonts, spacing, themed } from "../theme/tokens";
 import { BRAND_NAME } from "../lib/brand";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -25,18 +25,18 @@ export function StepProgressBar({ step, total, caption, progress, showBrand = tr
         <View style={[styles.fill, { width: `${fraction * 100}%`, backgroundColor: theme.accent }]} />
       </View>
       <View style={styles.row}>
-        <Text style={[styles.label, { color: theme.accent }]}>{caption ?? `Step ${step} of ${total}`}</Text>
+        <Text style={[styles.label, { color: theme.accentText }]}>{caption ?? `Step ${step} of ${total}`}</Text>
         {showBrand ? <Text style={styles.brand}>{BRAND_NAME}</Text> : null}
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { marginBottom: spacing.sm },
   track: { height: 3, borderRadius: 999, backgroundColor: colors.border, overflow: "hidden" },
   fill: { height: "100%", borderRadius: 999 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },
   label: { fontSize: 13, fontFamily: fonts.bodySemi },
   brand: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bodySemi },
-});
+}));

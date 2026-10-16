@@ -9,7 +9,7 @@ import { Icon, IconName } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchStreaks } from "../../api/progress";
 import { BRAND_NAME } from "../../lib/brand";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "StreakTracker">;
@@ -27,12 +27,12 @@ const CATEGORY_LABELS: Record<StreakCategory, string> = {
   mindfulness: "Mindfulness",
 };
 const CATEGORY_ORDER: StreakCategory[] = ["training", "nutrition", "hydration", "mindfulness"];
-const CATEGORY_META: Record<StreakCategory, { icon: IconName; tint: string; tintSoft: string }> = {
+const CATEGORY_META: Record<StreakCategory, { icon: IconName; tint: string; tintSoft: string }> = themed(() => ({
   training: { icon: "dumbbell", tint: colors.accent, tintSoft: colors.accentSoft },
   nutrition: { icon: "utensils", tint: colors.success, tintSoft: colors.successSoft },
   hydration: { icon: "droplet", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)" },
   mindfulness: { icon: "moon", tint: colors.aiAccent, tintSoft: "rgba(155,135,255,0.16)" },
-};
+}));
 
 function dayLabel(n: number): string {
   return `${n} day${n === 1 ? "" : "s"}`;
@@ -141,13 +141,13 @@ export function StreakTrackerScreen(_props: Props) {
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Quiet activity calendar</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Pressable onPress={() => goToMonth(-1)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Previous month">
-              <Text style={{ color: colors.accent, ...typography.h2 }}>{"‹"}</Text>
+              <Text style={{ color: colors.accentText, ...typography.h2 }}>{"‹"}</Text>
             </Pressable>
-            <Text style={{ color: colors.accent, ...typography.caption, backgroundColor: colors.accentSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+            <Text style={{ color: colors.accentText, ...typography.caption, backgroundColor: colors.accentSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
               {monthName} {year}
             </Text>
             <Pressable onPress={() => goToMonth(1)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Next month">
-              <Text style={{ color: colors.accent, ...typography.h2 }}>{"›"}</Text>
+              <Text style={{ color: colors.accentText, ...typography.h2 }}>{"›"}</Text>
             </Pressable>
           </View>
         </View>

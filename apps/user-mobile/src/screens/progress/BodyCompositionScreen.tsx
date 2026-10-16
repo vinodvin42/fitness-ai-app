@@ -131,7 +131,7 @@ export function BodyCompositionScreen({ navigation }: Props) {
           <Card style={{ gap: spacing.sm }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ color: colors.textPrimary, ...typography.h3 }}>6-Month Trends</Text>
-              <Text style={{ color: colors.accent, ...typography.caption }}>Fat vs Estimated Lean Mass</Text>
+              <Text style={{ color: colors.accentText, ...typography.caption }}>Fat vs Estimated Lean Mass</Text>
             </View>
             {fat.length >= 2 ? (
               <>
@@ -184,7 +184,7 @@ export function BodyCompositionScreen({ navigation }: Props) {
                     {data.scale.latestBodyFatPercent != null ? ` · ${data.scale.latestBodyFatPercent}% fat` : ""}
                   </Text>
                 </View>
-                <Text style={{ color: colors.success, ...typography.label }}>Synced</Text>
+                <Text style={{ color: colors.successText, ...typography.label }}>Synced</Text>
               </View>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>Scale body-fat readings are estimates and can vary with hydration.</Text>
             </Card>

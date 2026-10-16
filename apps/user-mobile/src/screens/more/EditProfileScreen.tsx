@@ -282,7 +282,7 @@ export function EditProfileScreen({ navigation }: Props) {
         </Text>
       </Field>
 
-      {error ? <Text style={{ color: colors.danger, ...typography.meta }}>{error}</Text> : null}
+      {error ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{error}</Text> : null}
 
       <Button label="Save Changes" onPress={onSave} loading={isSubmitting} disabled={!fullName.trim()} />
     </RecoverShell>

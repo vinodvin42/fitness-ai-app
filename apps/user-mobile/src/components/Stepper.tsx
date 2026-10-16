@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon } from "./Icon";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed, touch } from "../theme/tokens";
 
 interface StepperProps {
   label: string;
@@ -29,9 +29,10 @@ export function Stepper({ label, value, unit, step = 1, min = 0, max = 999, onCh
           accessibilityRole="button"
           accessibilityLabel={`Decrease ${label}`}
           accessibilityHint={`Current value ${value ?? min} ${unit}`}
-          style={styles.button}
+          android_ripple={{ color: colors.ripple }}
+          style={({ pressed }: { pressed: boolean }) => [styles.button, pressed && { opacity: 0.8 }]}
         >
-          <Icon name="minus" size={18} color={colors.accent} strokeWidth={2.5} />
+          <Icon name="minus" size={18} color={colors.accentText} strokeWidth={2.5} />
         </Pressable>
         <Text style={styles.value} accessibilityLabel={`${label}: ${value ?? "not set"} ${unit}`}>
           {value ?? "–"} <Text style={styles.unit}>{unit}</Text>
@@ -41,16 +42,17 @@ export function Stepper({ label, value, unit, step = 1, min = 0, max = 999, onCh
           accessibilityRole="button"
           accessibilityLabel={`Increase ${label}`}
           accessibilityHint={`Current value ${value ?? min} ${unit}`}
-          style={styles.button}
+          android_ripple={{ color: colors.ripple }}
+          style={({ pressed }: { pressed: boolean }) => [styles.button, pressed && { opacity: 0.8 }]}
         >
-          <Icon name="plus" size={18} color={colors.accent} strokeWidth={2.5} />
+          <Icon name="plus" size={18} color={colors.accentText} strokeWidth={2.5} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
@@ -67,8 +69,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   button: {
-    width: 40,
-    height: 40,
+    width: touch.min,
+    height: touch.min,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -88,4 +90,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.body,
   },
-});
+}));

@@ -1,7 +1,7 @@
 import { Platform, Share } from "react-native";
 import type { JourneyReport, TimelineCategory, TimelineEvent } from "@fitness-ai-app/types";
 import { BRAND_NAME } from "./brand";
-import { colors } from "../theme/tokens";
+import { colors, themed } from "../theme/tokens";
 
 export const CATEGORY_LABEL: Record<TimelineCategory, string> = {
   strength: "Strength",
@@ -12,14 +12,14 @@ export const CATEGORY_LABEL: Record<TimelineCategory, string> = {
   life: "Life",
 };
 
-export const CATEGORY_COLOR: Record<TimelineCategory, string> = {
+export const CATEGORY_COLOR: Record<TimelineCategory, string> = themed(() => ({
   strength: colors.accent,
   cardio: colors.orange,
   body: colors.warning,
   health: colors.success,
   recovery: colors.aiAccent,
   life: colors.textMuted,
-};
+}));
 
 export const TYPE_LABEL: Record<TimelineEvent["type"], string> = {
   pr: "Personal Record",

@@ -184,12 +184,12 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
           </Text>
           <Button label="Find your first workout" onPress={() => navigation.navigate("ProgramsMarketplace")} style={{ alignSelf: "stretch" }} />
           <Pressable onPress={() => navigation.navigate("Routines")} accessibilityRole="button" hitSlop={8}>
-            <Text style={{ color: theme.accent, ...typography.label }}>Already trained? Log a workout</Text>
+            <Text style={{ color: theme.accentText, ...typography.label }}>Already trained? Log a workout</Text>
           </Pressable>
         </View>
         {starter ? (
           <Card style={{ gap: spacing.xs }}>
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>A SIMPLE PLACE TO START</Text>
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>A SIMPLE PLACE TO START</Text>
             <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{starter.name}</Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>
               {starter.durationWeeks} week{starter.durationWeeks === 1 ? "" : "s"}
@@ -199,7 +199,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
               {starter.description}
             </Text>
             <Pressable onPress={() => navigation.navigate("ProgramDetail", { programId: starter.id })} accessibilityRole="button" hitSlop={8}>
-              <Text style={{ color: theme.accent, ...typography.label }}>View program →</Text>
+              <Text style={{ color: theme.accentText, ...typography.label }}>View program →</Text>
             </Pressable>
           </Card>
         ) : null}
@@ -246,7 +246,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
             paddingVertical: 6,
           }}
         >
-          <Text numberOfLines={1} style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+          <Text numberOfLines={1} style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
             {compareMode ? "Cancel Compare" : "Compare Side by Side"}
           </Text>
         </Pressable>
@@ -430,7 +430,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
         <Card style={{ borderColor: colors.warning, backgroundColor: colors.warningSoft, gap: spacing.xs }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="sparkles" size={13} color={colors.warning} />
-            <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
+            <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
           </View>
           <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
             {stats.consistency !== null && stats.consistency < 70

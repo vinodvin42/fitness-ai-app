@@ -118,7 +118,7 @@ export function MoreScreen({ navigation }: Props) {
         {BRAND_NAME} Version {Constants.expoConfig?.version ?? "—"}
       </Text>
       <Pressable onPress={logout} accessibilityRole="button" accessibilityLabel="Log out of account" style={{ alignSelf: "center", padding: spacing.sm }}>
-        <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 15 }}>{t("more.logOut")}</Text>
+        <Text style={{ color: colors.dangerText, fontFamily: fonts.bodySemi, fontSize: 15 }}>{t("more.logOut")}</Text>
       </Pressable>
     </ScreenContainer>
   );
@@ -149,7 +149,7 @@ function RowGroup({ rows }: { rows: MoreRow[] }) {
           <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h3, fontFamily: fonts.bodySemi }}>{r.label}</Text>
           {r.badge ? (
             <View style={{ backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ color: colors.aiAccent, fontSize: 13 }}>{r.badge}</Text>
+              <Text style={{ color: colors.aiText, fontSize: 13 }}>{r.badge}</Text>
             </View>
           ) : null}
           <Icon name="chevron-right" size={18} color={colors.textMuted} />

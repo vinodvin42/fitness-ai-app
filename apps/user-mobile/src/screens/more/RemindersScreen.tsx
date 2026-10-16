@@ -12,7 +12,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchReminders, updateReminder } from "../../api/reminders";
 import { useReminderSync } from "../../lib/useReminderSync";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Reminders">;
@@ -25,13 +25,13 @@ const CATEGORY_LABEL: Record<Reminder["category"], string> = {
   general: "General",
 };
 
-const CATEGORY_META: Record<Reminder["category"], { icon: IconName; tint: string; tintSoft: string }> = {
+const CATEGORY_META: Record<Reminder["category"], { icon: IconName; tint: string; tintSoft: string }> = themed(() => ({
   workout: { icon: "dumbbell", tint: colors.accent, tintSoft: colors.accentSoft },
   meal: { icon: "utensils", tint: colors.success, tintSoft: colors.successSoft },
   water: { icon: "droplet", tint: colors.cyan, tintSoft: "rgba(34,211,238,0.16)" },
   measurement: { icon: "trending-up", tint: colors.warning, tintSoft: colors.warningSoft },
   general: { icon: "bell", tint: colors.aiAccent, tintSoft: colors.aiAccentSoft },
-};
+}));
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

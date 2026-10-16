@@ -98,7 +98,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
           <Card style={cardStyle}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Preferred Duration</Text>
-              <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                 {draftDuration ?? data.preferredDurationMinutes} mins
               </Text>
             </View>
@@ -147,7 +147,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
           <Card style={{ gap: spacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Default rest</Text>
-              <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{data.restTimerSeconds} sec</Text>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{data.restTimerSeconds} sec</Text>
             </View>
             <ValueSlider
               value={data.restTimerSeconds}
@@ -265,7 +265,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
             <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Wearable Heart Rate Zones</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Not connected</Text>
+                <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Not connected</Text>
                 <Icon name="chevron-right" size={16} color={theme.accent} />
               </View>
             </Card>

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, elevation, radius, spacing, typography } from "../theme/tokens";
+import { colors, elevation, radius, spacing, typography, themed } from "../theme/tokens";
 
 export type ToastTone = "info" | "success" | "error";
 interface ToastItem {
@@ -15,7 +15,7 @@ interface ToastApi {
 
 const ToastContext = createContext<ToastApi>({ show: () => undefined });
 
-const TONE_COLOR: Record<ToastTone, string> = { info: colors.aiAccent, success: colors.success, error: colors.danger };
+const TONE_COLOR: Record<ToastTone, string> = themed(() => ({ info: colors.aiAccent, success: colors.success, error: colors.danger }));
 
 /** Mount once near the app root; call `useToast().show("Saved", "success")` from anywhere below. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {

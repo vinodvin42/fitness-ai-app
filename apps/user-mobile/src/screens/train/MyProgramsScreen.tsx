@@ -67,7 +67,7 @@ function ProgramCard({ item, onPress }: { item: MyProgram; onPress: () => void }
         </View>
         {!done ? (
           <View style={{ borderWidth: 1, borderColor: colors.accent, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 2 }}>
-            <Text style={{ color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>Active</Text>
+            <Text style={{ color: colors.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>Active</Text>
           </View>
         ) : null}
         <Icon name="chevron-right" size={16} color={colors.textMuted} />

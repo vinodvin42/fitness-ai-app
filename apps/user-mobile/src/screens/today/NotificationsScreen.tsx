@@ -16,7 +16,7 @@ import { useToast } from "../../components/Toast";
 import { dismissNotification, fetchNotifications, markAllNotificationsRead, markNotificationRead } from "../../api/notifications";
 import { openNotificationDeepLink } from "../../lib/deepLink";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TodayStackParamList } from "../../navigation/TodayStack";
@@ -41,14 +41,14 @@ const KIND_ICON: Record<NotificationKind, IconName> = {
 };
 
 // Figma Today 02: workout = blue, coach = green, report/system = violet.
-const KIND_TINT: Record<NotificationKind, string> = {
+const KIND_TINT: Record<NotificationKind, string> = themed(() => ({
   reminder: colors.accent,
   workout: colors.accent,
   nutrition: colors.warning,
   coach: colors.success,
   billing: colors.warning,
   system: colors.aiAccent,
-};
+}));
 
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -187,7 +187,7 @@ export function NotificationsScreen({ navigation }: Props) {
             accessibilityLabel="Mark all notifications as read"
             hitSlop={8}
           >
-            <Text style={{ color: theme.accent, ...typography.label, fontSize: 13 }}>
+            <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>
               {readAll.isPending ? "Marking..." : "Mark all read"}
             </Text>
           </Pressable>

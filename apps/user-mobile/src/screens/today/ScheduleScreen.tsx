@@ -15,7 +15,7 @@ import { fetchNextWorkout } from "../../api/plans";
 import { fetchCurrentMealPlan } from "../../api/mealPlans";
 import { fetchDueMedications, localDateString } from "../../api/medications";
 import { formatTimeOfDay } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TodayStackParamList } from "../../navigation/TodayStack";
@@ -28,7 +28,7 @@ const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 const MEAL_LABEL: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", snack: "Snack", dinner: "Dinner" };
 
 type Tag = "Workout" | "Nutrition" | "Recovery" | "Hydration" | "Medicine" | "Progress" | "Reminder";
-const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = {
+const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = themed(() => ({
   Workout: { fg: colors.accent, bg: colors.accentSoft },
   Nutrition: { fg: colors.success, bg: colors.successSoft },
   Recovery: { fg: colors.aiAccent, bg: colors.aiAccentSoft },
@@ -36,7 +36,7 @@ const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = {
   Medicine: { fg: colors.warning, bg: colors.warningSoft },
   Progress: { fg: colors.warning, bg: colors.warningSoft },
   Reminder: { fg: colors.aiAccent, bg: colors.aiAccentSoft },
-};
+}));
 const REMINDER_TAG: Record<Reminder["category"], Tag> = {
   workout: "Workout",
   meal: "Nutrition",

@@ -254,7 +254,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
             </Pressable>
             <BrandMark size={34} withName />
           </View>
-          <Text style={{ color: colors.accent, ...typography.caption }}>Recover / Mindful practice</Text>
+          <Text style={{ color: colors.accentText, ...typography.caption }}>Recover / Mindful practice</Text>
           <View style={{ gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 22 }}>{routine.title}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>{routine.description}</Text>
@@ -301,7 +301,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
       <PracticeArt height={150} icon={routine.kind === "mobility" ? "activity" : "flower"} />
       <Card style={{ gap: 6, borderColor: colors.accentSoft }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>
+          <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>
             CURRENT {routine.kind === "mobility" ? "STEP" : "POSE"}
           </Text>
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>
@@ -338,7 +338,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
           accessibilityLabel={routine.kind === "mobility" ? "Skip step" : "Skip pose"}
           style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
         >
-          <Text style={{ color: colors.accent, ...typography.label }}>{routine.kind === "mobility" ? "Skip step" : "Skip pose"}</Text>
+          <Text style={{ color: colors.accentText, ...typography.label }}>{routine.kind === "mobility" ? "Skip step" : "Skip pose"}</Text>
           <Icon name="chevron-right" size={14} color={colors.accent} />
         </Pressable>
       </View>

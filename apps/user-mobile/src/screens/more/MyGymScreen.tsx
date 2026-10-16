@@ -11,14 +11,14 @@ import { Pill } from "../../components/Pill";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchGymMe, GYM_ME_KEY } from "../../api/gym";
 import { fmtGymDate, fmtGymDateTime, fmtGymRange, fmtGymTime, GYM_PRIVACY_FOOTER, gymDayShort } from "../../lib/gymFormat";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { RecoverShell } from "../recover/parts";
 import { GroupHeader } from "./profileParts";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "MyGym">;
 
-const card = { backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border } as const;
+const card = themed(() => ({ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border } as const));
 
 /**
  * My Gym (Figma My Gym 01): gym card with a live "Open now" pill, the gym's
@@ -73,7 +73,7 @@ export function MyGymScreen({ navigation }: Props) {
                 </Text>
               ) : null}
             </View>
-            {!gym.gym.active ? <Text style={{ color: colors.warning, ...typography.meta }}>This gym is no longer an active partner.</Text> : null}
+            {!gym.gym.active ? <Text style={{ color: colors.warningText, ...typography.meta }}>This gym is no longer an active partner.</Text> : null}
           </View>
 
           {gym.announcement ? (
@@ -87,7 +87,7 @@ export function MyGymScreen({ navigation }: Props) {
                 gap: 4,
               }}
             >
-              <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+              <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                 {gym.announcement.kind === "holiday" ? "Holiday update" : "Gym notice"}
               </Text>
               {gym.announcement.title !== (gym.announcement.kind === "holiday" ? "Holiday update" : "Gym notice") ? (

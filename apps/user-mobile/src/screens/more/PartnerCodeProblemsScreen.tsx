@@ -2,7 +2,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Button } from "../../components/Button";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { RecoverShell } from "../recover/parts";
 import { OutlineButton } from "./profileParts";
@@ -10,7 +10,7 @@ import { OutlineButton } from "./profileParts";
 type Props = NativeStackScreenProps<MoreStackParamList, "PartnerCodeProblems">;
 type Reason = "not_found" | "expired" | "already_linked";
 
-const CARDS: Array<{ reason: Reason; tag: string; tone: string; body: (code?: string) => string }> = [
+const CARDS: Array<{ reason: Reason; tag: string; tone: string; body: (code?: string) => string }> = themed(() => [
   {
     reason: "not_found",
     tag: "Code not found",
@@ -30,7 +30,7 @@ const CARDS: Array<{ reason: Reason; tag: string; tone: string; body: (code?: st
     tone: colors.accent,
     body: () => "Your account is already linked to a partner code. Use Change partner code to switch to a different one.",
   },
-];
+]);
 
 /**
  * Code problems, explained (Figma Profile & Settings 15). Opened after a

@@ -260,18 +260,18 @@ export function WhyThisChangedScreen({ route }: Props) {
 function statusPresentation(status: RecommendationStatus): { label: string; color: string; icon: "sparkles" | "check" | "minus" | "target" | "refresh-cw" } {
   switch (status) {
     case "active":
-      return { label: "Awaiting your review", color: colors.aiAccent, icon: "sparkles" };
+      return { label: "Awaiting your review", color: colors.aiText, icon: "sparkles" };
     case "accepted":
-      return { label: "Accepted", color: colors.success, icon: "check" };
+      return { label: "Accepted", color: colors.successText, icon: "check" };
     case "modified":
-      return { label: "Modified", color: colors.accent, icon: "target" };
+      return { label: "Modified", color: colors.accentText, icon: "target" };
     case "declined":
       // A real, legitimate choice (BR-AI-010's neighbor rule) — muted, not danger.
       return { label: "Declined", color: colors.textSecondary, icon: "minus" };
     case "no_change":
       // BR-AI-010: "Continue Current Plan / No Change is valid" — success
       // treatment, same as an accepted switch, never an error/empty state.
-      return { label: "Confirmed — No Change", color: colors.success, icon: "check" };
+      return { label: "Confirmed — No Change", color: colors.successText, icon: "check" };
     case "superseded":
       return { label: "Superseded by a newer recommendation", color: colors.textMuted, icon: "refresh-cw" };
     default:

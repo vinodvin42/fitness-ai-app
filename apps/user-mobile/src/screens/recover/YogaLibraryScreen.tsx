@@ -112,7 +112,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
           >
             <PracticeArt height={150} icon={hero.icon} />
             <View style={{ paddingHorizontal: 4, gap: 4 }}>
-              <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>{hero.tag}</Text>
+              <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>{hero.tag}</Text>
               <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>{hero.title}</Text>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>{hero.meta}</Text>
               <Text style={{ color: colors.textSecondary, ...typography.meta }}>{hero.blurb}</Text>
@@ -143,7 +143,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name={e.icon} size={12} color={colors.accent} />
-              <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>{e.tag}</Text>
+              <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>{e.tag}</Text>
             </View>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{e.title}</Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>{e.meta}</Text>

@@ -10,7 +10,7 @@ import { Chip } from "../../components/Chip";
 import { Button } from "../../components/Button";
 import { createTicket } from "../../api/support";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing } from "../../theme/tokens";
+import { colors, spacing, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SupportTicketForm">;
@@ -100,7 +100,7 @@ export function SupportTicketFormScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 48,
     borderRadius: 8,
@@ -115,4 +115,4 @@ const styles = {
     paddingTop: spacing.sm,
     textAlignVertical: "top" as const,
   },
-} as const;
+} as const));

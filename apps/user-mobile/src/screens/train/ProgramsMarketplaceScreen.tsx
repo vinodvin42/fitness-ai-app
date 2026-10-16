@@ -169,7 +169,7 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
             </View>
           )}
           <View style={{ padding: spacing.md }}>
-            <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>RECOMMENDED FOR YOU</Text>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>RECOMMENDED FOR YOU</Text>
             <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: 4 }}>{featured.name}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
               {featured.durationWeeks} weeks
@@ -219,13 +219,13 @@ export function ProgramsCatalog({ navigation }: CatalogProps) {
                   </Text>
                   {p.level ? <Tag label={LEVEL_LABEL[p.level]} /> : null}
                 </View>
-                {p.isAiOnly ? <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Personalized</Text> : null}
+                {p.isAiOnly ? <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Personalized</Text> : null}
                 {progress != null ? (
                   <View style={{ gap: 3 }}>
                     <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: "hidden" }}>
                       <View style={{ height: "100%", width: `${progress}%`, backgroundColor: theme.accent }} />
                     </View>
-                    <Text style={{ color: theme.accent, fontSize: 13 }}>{progress}% completed</Text>
+                    <Text style={{ color: theme.accentText, fontSize: 13 }}>{progress}% completed</Text>
                   </View>
                 ) : null}
                 <View

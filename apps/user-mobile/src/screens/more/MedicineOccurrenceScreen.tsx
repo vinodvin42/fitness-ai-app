@@ -179,14 +179,14 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
       case "due":
         return (
           <>
-            <Text style={{ color: theme.accent, ...typography.h3 }}>Due · {formatClockTz(dose.scheduledFor)}</Text>
+            <Text style={{ color: theme.accentText, ...typography.h3 }}>Due · {formatClockTz(dose.scheduledFor)}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>{formatLongDate(dose.scheduledFor)} · Not logged yet</Text>
           </>
         );
       case "snoozed":
         return (
           <>
-            <Text style={{ color: theme.accent, ...typography.h3 }}>Snoozed · Not marked as taken</Text>
+            <Text style={{ color: theme.accentText, ...typography.h3 }}>Snoozed · Not marked as taken</Text>
             {dose.loggedAt ? <Row label="Snoozed at" value={formatStamp(dose.loggedAt)} /> : null}
             {dose.snoozedUntil ? <Row label="Remind again" value={formatStamp(dose.snoozedUntil)} /> : null}
           </>
@@ -194,7 +194,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
       case "taken":
         return (
           <>
-            <Text style={{ color: theme.accent, ...typography.h3 }}>Taken · Logged by you</Text>
+            <Text style={{ color: theme.accentText, ...typography.h3 }}>Taken · Logged by you</Text>
             {dose.loggedAt ? <Row label="Recorded at" value={formatStamp(dose.loggedAt)} /> : null}
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>
               This occurrence is complete. No further alert is planned for this reminder today.
@@ -204,7 +204,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
       case "skipped":
         return (
           <>
-            <Text style={{ color: theme.accent, ...typography.h3 }}>Skipped · Logged by you</Text>
+            <Text style={{ color: theme.accentText, ...typography.h3 }}>Skipped · Logged by you</Text>
             {dose.loggedAt ? <Row label="Recorded at" value={formatStamp(dose.loggedAt)} /> : null}
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>
               Only this reminder occurrence is closed. Your saved schedule and prescription instructions haven't changed.

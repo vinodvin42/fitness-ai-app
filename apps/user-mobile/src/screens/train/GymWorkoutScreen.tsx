@@ -119,7 +119,7 @@ export function GymWorkoutScreen({ navigation }: Props) {
 
           {pending ? (
             <View style={{ backgroundColor: colors.warningSoft, borderRadius: radius.card, borderWidth: 1, borderColor: colors.warning, padding: 14, gap: spacing.sm }}>
-              <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 13 }}>Suggested swap for this gym</Text>
+              <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 13 }}>Suggested swap for this gym</Text>
               <Text style={{ color: colors.textPrimary, ...typography.meta, lineHeight: 19 }}>
                 The {pending.unavailableEquipmentName.toLowerCase()} was marked unavailable on {fmtGymDate(pending.updatedAt)}. Swap {pending.from.name} for{" "}
                 {pending.to.name}
@@ -170,8 +170,8 @@ export function GymWorkoutScreen({ navigation }: Props) {
                     <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>
                       {swapped ? swapped.name : e.name}
                     </Text>
-                    {flagged ? <Text style={{ color: colors.warning, fontFamily: fonts.bodyBold, fontSize: 13 }}>swap suggested</Text> : null}
-                    {swapped ? <Text style={{ color: colors.success, fontFamily: fonts.bodyBold, fontSize: 13 }}>swapped</Text> : null}
+                    {flagged ? <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 13 }}>swap suggested</Text> : null}
+                    {swapped ? <Text style={{ color: colors.successText, fontFamily: fonts.bodyBold, fontSize: 13 }}>swapped</Text> : null}
                   </View>
                   <Text style={{ color: colors.textMuted, ...typography.meta }}>
                     {PHASE_ORDER_LABEL[e.phase] ? `${PHASE_ORDER_LABEL[e.phase]} · ` : ""}

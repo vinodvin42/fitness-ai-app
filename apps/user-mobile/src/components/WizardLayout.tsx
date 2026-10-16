@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StepProgressBar } from "./StepProgressBar";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
-import { colors, layout, radius, spacing, typography } from "../theme/tokens";
+import { colors, layout, radius, spacing, typography, themed } from "../theme/tokens";
 
 interface WizardLayoutProps {
   step: number;
@@ -52,7 +52,7 @@ export function WizardLayout({
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <StepProgressBar step={step} total={total} caption={caption} progress={progress} />
         {onBack ? (
-          <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel={t("wizard.back")} style={styles.backChip}>
+          <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel={t("wizard.back")} hitSlop={8} style={styles.backChip}>
             <Icon name="chevron-left" size={16} color={colors.textPrimary} />
           </Pressable>
         ) : null}
@@ -85,7 +85,7 @@ const column = {
   alignSelf: "center" as const,
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   backChip: {
@@ -104,4 +104,4 @@ const styles = StyleSheet.create({
   body: { marginTop: spacing.md, gap: spacing.sm },
   footer: { ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.md },
   nextButton: { width: "100%", borderRadius: radius.md },
-});
+}));

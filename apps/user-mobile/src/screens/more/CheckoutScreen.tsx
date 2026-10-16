@@ -134,10 +134,10 @@ export function CheckoutScreen({ route, navigation }: Props) {
             undiscounted price stands. Failing the whole purchase over a
             typo would be a worse outcome than charging full price. */}
         {q.couponError ? (
-          <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.xs }}>{q.couponError}</Text>
+          <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.xs }}>{q.couponError}</Text>
         ) : null}
         {q.couponCode ? (
-          <Text style={{ color: colors.success, ...typography.meta, marginTop: spacing.xs }}>
+          <Text style={{ color: colors.successText, ...typography.meta, marginTop: spacing.xs }}>
             {t("checkout.codeApplied", { code: q.couponCode })}
           </Text>
         ) : null}
@@ -157,7 +157,7 @@ export function CheckoutScreen({ route, navigation }: Props) {
       {!q.canPay ? (
         // Honest rather than a dead button: the gateway is genuinely not
         // configured on this server.
-        <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.md }}>
+        <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.md }}>
           {t("checkout.paymentsUnavailable")}
         </Text>
       ) : null}

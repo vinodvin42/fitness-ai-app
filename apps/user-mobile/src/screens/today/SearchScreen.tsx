@@ -198,7 +198,7 @@ export function SearchScreen({ navigation }: Props) {
                   imageStyle={{ opacity: 0.55 }}
                 >
                   <View style={{ padding: 16, gap: 4 }}>
-                    <Text style={{ color: colors.warning, fontSize: 13, letterSpacing: 1, fontFamily: fonts.bodySemi }}>
+                    <Text style={{ color: colors.warningText, fontSize: 13, letterSpacing: 1, fontFamily: fonts.bodySemi }}>
                       {t.basis === "most_started_30d" ? "POPULAR WORKOUT" : "FEATURED WORKOUT"}
                     </Text>
                     <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t.workout.name}</Text>

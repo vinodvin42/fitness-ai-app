@@ -9,12 +9,12 @@ import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchSubscriptionHistory } from "../../api/subscriptions";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SubscriptionHistory">;
 
-const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = {
+const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = themed(() => ({
   active: colors.success,
   trialing: colors.accent,
   past_due: colors.warning,
@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<SubscriptionDetail["status"], string> = {
   // are amber rather than red: both are recoverable.
   pending: colors.warning,
   suspended: colors.warning,
-};
+}));
 
 /**
  * Purchase History (docs/mobile/03-screen-inventory.md §M) — a plain

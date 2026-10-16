@@ -10,7 +10,7 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { Icon, IconName } from "../../components/Icon";
 import { fetchReferralSummary } from "../../api/referrals";
-import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { BRAND_NAME } from "../../lib/brand";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -196,7 +196,7 @@ function Stat({ value, label, tint }: { value: number; label: string; tint?: str
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   column: { flex: 1, width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center" },
   topBar: { paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.xs },
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   code: { color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 24, letterSpacing: 1.5 },
   copyBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.surfaceHigh },
-  copyText: { color: colors.accent, ...typography.label },
+  copyText: { color: colors.accentText, ...typography.label },
   sectionLabel: { color: colors.textPrimary, ...typography.label },
   shortcuts: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: spacing.sm },
   shortcut: { alignItems: "center", gap: 6, width: 64 },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNumText: { color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 13 },
+  stepNumText: { color: colors.accentText, fontFamily: fonts.bodyBold, fontSize: 13 },
   stepTitle: { color: colors.textPrimary, ...typography.label },
   stepBody: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
   stat: {
@@ -280,4 +280,4 @@ const styles = StyleSheet.create({
   statValue: { color: colors.textPrimary, ...typography.h1 },
   statLabel: { color: colors.textMuted, ...typography.caption, textAlign: "center" },
   footer: { padding: layout.screenPadding, borderTopWidth: 1, borderTopColor: colors.border },
-});
+}));

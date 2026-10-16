@@ -255,7 +255,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
       {/* A paid session can't be bought while online payment is off: say so
           plainly instead of showing a button that does nothing. */}
       {selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
-        <Text style={{ color: colors.warning, ...typography.meta, marginTop: spacing.lg }}>{t("checkout.paymentsUnavailable")}</Text>
+        <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.lg }}>{t("checkout.paymentsUnavailable")}</Text>
       ) : (
         <Button
           label="Confirm booking"

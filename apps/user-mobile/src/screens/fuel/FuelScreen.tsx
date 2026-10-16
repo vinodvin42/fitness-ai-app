@@ -145,7 +145,7 @@ export function FuelScreen({ navigation }: Props) {
       <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: spacing.xs }}>
           <Text style={{ color: colors.textSecondary, ...typography.label }}>Daily total</Text>
-          <Text style={{ color: theme.accent, ...typography.label }}>
+          <Text style={{ color: theme.accentText, ...typography.label }}>
             {totals.calories.toLocaleString()} / {DAILY_TARGETS.calories.toLocaleString()} kcal
           </Text>
         </View>
@@ -225,7 +225,7 @@ export function FuelScreen({ navigation }: Props) {
                       {logs.length > 1 ? `${logs.length} items · ` : ""}Logged at {formatTimeOfDay(new Date(latest.loggedAt))}
                     </Text>
                   </View>
-                  <Text style={{ color: theme.accent, ...typography.label }}>{kcal} kcal</Text>
+                  <Text style={{ color: theme.accentText, ...typography.label }}>{kcal} kcal</Text>
                 </Card>
               </Pressable>
             );
@@ -257,6 +257,7 @@ export function FuelScreen({ navigation }: Props) {
                 disabled={isLoggingWater}
                 accessibilityRole="button"
                 accessibilityLabel="Add one glass of water"
+                hitSlop={8}
                 style={{
                   width: 32,
                   height: 32,

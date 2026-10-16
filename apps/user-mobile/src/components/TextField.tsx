@@ -54,12 +54,12 @@ export function TextField({ label, error, helper, secure, containerStyle, onFocu
             accessibilityLabel={revealed ? "Hide password" : "Show password"}
             hitSlop={8}
           >
-            <Text style={{ color: theme.accent, ...typography.label }}>{revealed ? "Hide" : "Show"}</Text>
+            <Text style={{ color: theme.accentText, ...typography.label }}>{revealed ? "Hide" : "Show"}</Text>
           </Pressable>
         ) : null}
       </View>
       {error ? (
-        <Text accessibilityRole="alert" style={{ color: colors.danger, ...typography.meta, marginTop: spacing.xs }}>
+        <Text accessibilityRole="alert" style={{ color: colors.dangerText, ...typography.meta, marginTop: spacing.xs }}>
           {error}
         </Text>
       ) : helper ? (

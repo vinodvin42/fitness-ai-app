@@ -225,7 +225,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
                 keyboardType="numbers-and-punctuation"
               />
             </View>
-            {quietError ? <Text style={{ color: colors.danger, ...typography.meta }}>{quietError}</Text> : null}
+            {quietError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{quietError}</Text> : null}
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>Push alerts are held during this window.</Text>
             <Button label="Save quiet hours" onPress={() => saveQuiet(false)} loading={mutation.isPending} />
             {data.quietHoursStart ? <Button label="Turn off quiet hours" variant="secondary" onPress={() => saveQuiet(true)} /> : null}

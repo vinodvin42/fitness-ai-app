@@ -15,18 +15,18 @@ import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } f
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatRupees } from "../../lib/money";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Subscription">;
 
 const TIER_LABEL: Record<SubscriptionPlan["tier"], string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
 const TIER_ICON: Record<SubscriptionPlan["tier"], IconName> = { basic: "zap", grow: "trophy", prime: "sparkles" };
-const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string }> = {
+const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string }> = themed(() => ({
   basic: { color: colors.textSecondary, soft: colors.surfaceHigh },
-  grow: { color: colors.accent, soft: colors.accentSoft },
-  prime: { color: colors.aiAccent, soft: colors.aiAccentSoft },
-};
+  grow: { color: colors.accentText, soft: colors.accentSoft },
+  prime: { color: colors.aiText, soft: colors.aiAccentSoft },
+}));
 
 function formatPrice(priceCents: number, billingCycle: SubscriptionPlan["billingCycle"]) {
   if (priceCents === 0) return "Free";
@@ -359,7 +359,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         <Text style={{ color: colors.textSecondary }}>{current ? "Change plan" : "Choose a plan"}</Text>
         {/* Paid plans are still listed with their prices, but without a
             dead button: one plain line says why they can't be bought yet. */}
-        {!paymentsConfigured ? <Text style={{ color: colors.warning, ...typography.meta }}>{t("checkout.paymentsUnavailable")}</Text> : null}
+        {!paymentsConfigured ? <Text style={{ color: colors.warningText, ...typography.meta }}>{t("checkout.paymentsUnavailable")}</Text> : null}
         {(plans ?? [])
           .filter((plan) => plan.id !== current?.planId)
           // Basic (free) has no annual variant — a billing-cycle choice is

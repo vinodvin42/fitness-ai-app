@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, Switch, Text, View, ViewStyle } from "react-native";
+import { Platform, Pressable, Switch, Text, View, ViewStyle } from "react-native";
 import { Icon, IconName } from "./Icon";
-import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
+import { colors, fonts, radius, spacing, typography, touch } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 /** Small uppercase-ish section heading above a settings group (Figma Settings frames). */
@@ -56,7 +56,9 @@ export function ToggleRow({ title, subtitle, value, onValueChange, disabled, ico
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ true: theme.accent, false: colors.border }}
+        trackColor={{ true: theme.accent, false: colors.borderStrong }}
+        thumbColor={Platform.OS === "android" ? (value ? theme.textOnAccent : colors.surface) : undefined}
+        ios_backgroundColor={colors.borderStrong}
         accessibilityLabel={accessibilityLabel ?? title}
       />
     </View>
@@ -79,13 +81,14 @@ export function ValueRow({ title, subtitle, value, onPress }: ValueRowProps) {
       disabled={!onPress}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={value ? `${title}, ${value}` : title}
-      style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 }}
+      android_ripple={onPress ? { color: colors.ripple } : undefined}
+      style={({ pressed }: { pressed: boolean }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14, minHeight: touch.min, opacity: pressed && onPress ? 0.85 : 1 })}
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
         {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>{subtitle}</Text> : null}
       </View>
-      {value ? <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text> : null}
+      {value ? <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text> : null}
     </Pressable>
   );
 }
@@ -104,7 +107,7 @@ export function ActionRow({
   tone?: "neutral" | "danger";
   loading?: boolean;
 }) {
-  const color = tone === "danger" ? colors.danger : colors.textPrimary;
+  const color = tone === "danger" ? colors.dangerText : colors.textPrimary;
   return (
     <Pressable
       onPress={onPress}

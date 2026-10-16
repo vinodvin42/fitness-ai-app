@@ -1,26 +1,31 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import * as Notifications from "expo-notifications";
-import { NavigationContainer, DarkTheme, createNavigationContainerRef } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme, DefaultTheme, createNavigationContainerRef, type NavigationState } from "@react-navigation/native";
 import { todayAtIso } from "../lib/medicationReminder";
 import { useAuth } from "../context/AuthContext";
 import { AuthStack } from "./AuthStack";
 import { OnboardingStack } from "./OnboardingStack";
 import { MainTabs } from "./MainTabs";
 import { LockScreen } from "../screens/lock/LockScreen";
-import { colors } from "../theme/tokens";
+import { colors, getScheme } from "../theme/tokens";
+import { useTheme } from "../theme/ThemeProvider";
 
-const navigationTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: colors.background,
-    card: colors.surface,
-    border: colors.border,
-    primary: colors.accent,
-    text: colors.textPrimary,
-  },
-};
+/** Navigation chrome colours for the current theme (rebuilt when the theme changes). */
+function buildNavigationTheme() {
+  const base = getScheme() === "dark" ? DarkTheme : DefaultTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: colors.background,
+      card: colors.surface,
+      border: colors.border,
+      primary: colors.accent,
+      text: colors.textPrimary,
+    },
+  };
+}
 
 const navigationRef = createNavigationContainerRef<{ More: { screen: string; params: object } }>();
 
@@ -48,6 +53,12 @@ function occurrenceFromData(data: Record<string, unknown> | undefined): Occurren
  */
 export function RootNavigator() {
   const { isAuthenticated, isLoading, onboardingCompleted, isBiometricLockEnabled, isUnlocked } = useAuth();
+  // A theme change remounts the tree (keyed on `version`) so every screen
+  // re-reads the live colour tokens; the navigation state is kept and
+  // restored, so the user stays on the screen they were on.
+  const { version } = useTheme();
+  const navState = useRef<NavigationState | undefined>(undefined);
+  const navigationTheme = React.useMemo(buildNavigationTheme, [version]);
 
   // Tapping a medicine notification deep-links to its occurrence screen. A tap that
   // arrives before the user is signed in / unlocked waits until MainTabs is mounted.
@@ -102,7 +113,17 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navigationTheme} onReady={flush}>{content}
+    <NavigationContainer
+      key={version}
+      ref={navigationRef}
+      theme={navigationTheme}
+      initialState={navState.current}
+      onStateChange={(state) => {
+        navState.current = state;
+      }}
+      onReady={flush}
+    >
+      {content}
     </NavigationContainer>
   );
 }

@@ -34,7 +34,7 @@ import {
 } from "../../api/aiCoach";
 import { useAuth } from "../../context/AuthContext";
 import { clearDraft, loadDraft, newClientId, saveDraft, type AiCoachDraft } from "../../lib/aiCoachDraft";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -498,7 +498,7 @@ export function AiCoachScreen({ navigation }: Props) {
                 accessibilityLabel={q}
                 style={styles.quickChip}
               >
-                <Text style={[styles.quickChipText, { color: theme.accent }]}>{q}</Text>
+                <Text style={[styles.quickChipText, { color: theme.accentText }]}>{q}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -511,7 +511,7 @@ export function AiCoachScreen({ navigation }: Props) {
             accessibilityLabel="AI limit reached. See options"
             style={styles.limitNotice}
           >
-            <Text style={{ color: colors.aiAccent, ...typography.label }}>
+            <Text style={{ color: colors.aiText, ...typography.label }}>
               AI limit reached for now. Your draft is kept. Tap for options.
             </Text>
           </Pressable>
@@ -614,7 +614,7 @@ export function AiCoachScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   centerFill: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: {
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   bubbleTextUser: { color: colors.textOnAccent, fontSize: 15, lineHeight: 21 },
   bubbleTextAssistant: { color: colors.textPrimary, fontSize: 15, lineHeight: 21 },
   whyLink: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.xs, alignSelf: "flex-start" },
-  whyText: { color: colors.aiAccent, fontSize: 13, fontFamily: fonts.bodySemi },
+  whyText: { color: colors.aiText, fontSize: 13, fontFamily: fonts.bodySemi },
   timeLabel: { ...typography.meta, fontSize: 13, color: colors.textMuted, marginTop: 4 },
   quickScroll: { flexGrow: 0 },
   quickRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.xs },
@@ -735,4 +735,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-});
+}));

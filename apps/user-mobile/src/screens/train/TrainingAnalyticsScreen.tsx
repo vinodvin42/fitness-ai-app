@@ -163,15 +163,15 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
                   {data.consistency.completedThisWeek} workout{data.consistency.completedThisWeek === 1 ? "" : "s"} this week.
                 </Text>
                 <Pressable onPress={() => navigation.navigate("WorkoutSettings")} accessibilityRole="button" hitSlop={8}>
-                  <Text style={{ color: theme.accent, ...typography.label }}>Open Preferences</Text>
+                  <Text style={{ color: theme.accentText, ...typography.label }}>Open Preferences</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <Text style={{ color: colors.success, fontFamily: fonts.displayBold, fontSize: 28 }}>{data.consistency.percent}%</Text>
+                  <Text style={{ color: colors.successText, fontFamily: fonts.displayBold, fontSize: 28 }}>{data.consistency.percent}%</Text>
                   <View style={{ backgroundColor: colors.successSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: colors.success, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+                    <Text style={{ color: colors.successText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                       {data.consistency.completedThisWeek} of {data.consistency.plannedPerWeek} workouts completed
                     </Text>
                   </View>
@@ -208,7 +208,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
           <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.xs }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name="sparkles" size={13} color={colors.aiAccent} />
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
+              <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
             </View>
             {data.acwr ? (
               <>
@@ -248,7 +248,7 @@ export function TrainingAnalyticsScreen({ navigation }: Props) {
                         {pr.muscleGroup} · {fmtDate(pr.achievedAt)}
                       </Text>
                     </View>
-                    <Text style={{ color: colors.success, ...typography.h3 }}>
+                    <Text style={{ color: colors.successText, ...typography.h3 }}>
                       {kgToDisplay(pr.weightKg, unit)}
                       {unit} x {pr.reps}
                     </Text>

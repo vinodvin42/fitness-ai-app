@@ -128,7 +128,7 @@ export function LogMeasurementScreen({ navigation }: Props) {
       subtitle="Use a measuring tape for accuracy"
       right={
         <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4 }}>
-          <Text style={{ color: colors.accent, ...typography.caption }}>{today}</Text>
+          <Text style={{ color: colors.accentText, ...typography.caption }}>{today}</Text>
         </View>
       }
     >
@@ -153,7 +153,7 @@ export function LogMeasurementScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textPrimary, flex: 1, ...typography.body, fontSize: 14 }}>{f.label}</Text>
                 <TextInput
                   accessibilityLabel={`${f.label} ${f.kind === "len" ? units.lenUnit : f.kind === "wt" ? units.wtUnit : "percent"}`}
-                  style={{ color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 14, textAlign: "right", minWidth: 70, paddingVertical: 10 }}
+                  style={{ color: colors.accentText, fontFamily: fonts.bodyBold, fontSize: 14, textAlign: "right", minWidth: 70, paddingVertical: 10 }}
                   placeholder={placeholderFor(f)}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"

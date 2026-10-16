@@ -8,7 +8,7 @@ import { SelectCard } from "../../components/SelectCard";
 import { Button } from "../../components/Button";
 import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, fonts, spacing } from "../../theme/tokens";
+import { colors, fonts, spacing, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CountrySelection">;
@@ -97,7 +97,7 @@ export function CountrySelectionScreen({ navigation: _navigation }: Props) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 48,
     borderRadius: 8,
@@ -107,4 +107,4 @@ const styles = {
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,
   },
-} as const;
+} as const));

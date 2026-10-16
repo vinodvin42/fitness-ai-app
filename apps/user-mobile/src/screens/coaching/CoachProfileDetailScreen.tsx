@@ -76,7 +76,7 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: colors.accent, ...typography.display }}>{data.fullName.slice(0, 1)}</Text>
+            <Text style={{ color: colors.accentText, ...typography.display }}>{data.fullName.slice(0, 1)}</Text>
           </View>
           <View style={{ flex: 1, justifyContent: "center" }}>
             <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{data.fullName}</Text>
