@@ -27,8 +27,11 @@
       // Bumps android.versionCode server-side for each build of this
       // profile. Without it, "remote" alone would just pin one number.
       "autoIncrement": true,
+      // Custom domain (16 Oct 2026): api.fynrox.com is a CNAME to the same
+      // App Service (primefit-api-zjcprljmiu7mq.azurewebsites.net), which
+      // stays live — APKs built before this change keep working against it.
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://primefit-api-zjcprljmiu7mq.azurewebsites.net"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.fynrox.com"
       }
     }
   }
