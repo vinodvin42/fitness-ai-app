@@ -19,11 +19,18 @@ name: CI
 # Render's own build environment, so this narrows the risk, it doesn't
 # fully retire it.
 
+# Batch 0 (16 Oct 2026): runs on every branch and every pull request, not
+# just main, so feature branches are checked before they are merged.
+# Safety for untrusted pull requests: this uses `pull_request` (never
+# `pull_request_target`), so a PR from a fork runs with a read-only token
+# and NO repository secrets. This workflow uses no secrets at all — every
+# value in the env blocks below is a throwaway CI placeholder, and the only
+# database is the job's own disposable postgres:16 service container.
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: ["**"]
+  pull_request: {}
+  workflow_dispatch: {}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -87,16 +94,32 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Never let a mistyped/overridden DATABASE_URL point the tests (which
+      # create and delete rows freely) at a real database.
+      - name: Refuse any database that is not this job's disposable service
+        run: |
+          case "$DATABASE_URL" in
+            postgresql://*@localhost:5432/*|postgresql://*@127.0.0.1:5432/*) echo "Using the disposable CI database." ;;
+            *) echo "DATABASE_URL does not point at the job's local postgres service; refusing to run." >&2; exit 1 ;;
+          esac
+
       - name: Install dependencies
         run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=apps/api/prisma/schema.prisma
 
+      # Lint/typecheck failures are reported at the end (see the last step)
+      # instead of stopping the job, so the test results are always visible
+      # too — needed to tell existing failures from new ones.
       - name: Lint every workspace
+        id: lint
+        continue-on-error: true
         run: npm run lint
 
       - name: Typecheck every workspace
+        id: typecheck
+        continue-on-error: true
         run: npm run typecheck
 
       # migrate deploy, not db push — apps/api/prisma/migrations/ is now a
@@ -119,7 +142,17 @@ jobs:
       # different thing (that the compiled output starts up and can reach
       # Postgres at all, not that its business logic is correct).
       - name: Run tests
-        run: npm run test --workspace=apps/api
+        id: tests
+        continue-on-error: true
+        run: npm run test --workspace=apps/api -- --reporter=default --reporter=junit --outputFile.junit=test-results/api-junit.xml
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-junit-branch
+          path: apps/api/test-results/api-junit.xml
+          if-no-files-found: warn
 
       - name: Build the API
         run: npm run build --workspace=apps/api
@@ -153,3 +186,128 @@ jobs:
 
       - name: Build user-mobile (web export)
         run: npm run build:mobile
+
+      - name: Fail if lint, typecheck or tests failed
+        if: ${{ !cancelled() }}
+        run: |
+          echo "lint=${{ steps.lint.outcome }} typecheck=${{ steps.typecheck.outcome }} tests=${{ steps.tests.outcome }}"
+          if [ "${{ steps.lint.outcome }}" != "success" ] || [ "${{ steps.typecheck.outcome }}" != "success" ] || [ "${{ steps.tests.outcome }}" != "success" ]; then
+            exit 1
+          fi
+
+  # Runs the same API tests on main (on branches other than main only), so
+  # the compare job can separate failures that already exist on main from
+  # failures a branch introduces. Same disposable database, no secrets.
+  baseline-main:
+    if: ${{ github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fitness_ai_app_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # CI-only values, never real secrets — this database and these keys
+      # exist for the length of one workflow run and are thrown away
+      # after. Real secrets live in Render/Vercel's own env var UI (see
+      # DEPLOY-RUNBOOK.md), never in this file.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fitness_ai_app_ci?schema=public
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-credential
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-credential
+      ADMIN_JWT_SECRET: ci-only-admin-secret-not-a-real-credential
+      PROFESSIONAL_JWT_SECRET: ci-only-professional-secret-not-a-real-credential
+      # Gym Partner Lite and Creator/Influencer portals (R2 Wave 5, 21 Sep
+      # 2026) — each self-service portal is its own identity with its own
+      # token secret, same "never interchangeable with another identity's
+      # token" reasoning as ADMIN_JWT_SECRET and PROFESSIONAL_JWT_SECRET.
+      # Both are required (not optional) in config/env.ts, which validates
+      # at import time, so omitting them here made every test file fail on
+      # import rather than on assertion — see the note above the test step.
+      GYM_JWT_SECRET: ci-only-gym-secret-not-a-real-credential
+      INFLUENCER_JWT_SECRET: ci-only-influencer-secret-not-a-real-credential
+      CORS_ORIGINS: http://localhost:5173
+      # Two-Factor Authentication (25 Aug 2026, gap §17) — env.ts requires
+      # exactly 64 hex chars (32 bytes, AES-256-GCM's fixed key size), so
+      # unlike the JWT secrets above this can't be a descriptive placeholder
+      # string. Generated once with `openssl rand -hex 32` for CI only —
+      # thrown away after every run, same as everything else in this block.
+      TWO_FACTOR_ENCRYPTION_KEY: 8cd1aec52e2f286867dbd56ed3d8e61f11bb5557a9f86abe38d0b43e40563597
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Refuse any database that is not this job's disposable service
+        run: |
+          case "$DATABASE_URL" in
+            postgresql://*@localhost:5432/*|postgresql://*@127.0.0.1:5432/*) echo "Using the disposable CI database." ;;
+            *) echo "DATABASE_URL does not point at the job's local postgres service; refusing to run." >&2; exit 1 ;;
+          esac
+
+      - run: npm ci
+      - run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Run tests on main (baseline)
+        continue-on-error: true
+        run: npm run test --workspace=apps/api -- --reporter=default --reporter=junit --outputFile.junit=test-results/api-junit.xml
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: api-junit-main
+          path: apps/api/test-results/api-junit.xml
+          if-no-files-found: warn
+
+  compare-with-main:
+    if: ${{ !cancelled() && github.ref != 'refs/heads/main' }}
+    needs: [build-and-test, baseline-main]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+      - name: Separate existing failures from new ones
+        run: |
+          python3 - <<'PY'
+          import os, glob, xml.etree.ElementTree as ET
+          def failed(name):
+              files = glob.glob(f"results/{name}/*.xml")
+              if not files:
+                  return None
+              out = set()
+              for case in ET.parse(files[0]).getroot().iter("testcase"):
+                  if case.find("failure") is not None or case.find("error") is not None:
+                      out.add(f'{case.get("classname")} > {case.get("name")}')
+              return out
+          branch, main = failed("api-junit-branch"), failed("api-junit-main")
+          lines = ["## API tests: this branch vs main", ""]
+          if branch is None or main is None:
+              lines.append("Results missing for " + ", ".join(n for n, v in (("branch", branch), ("main", main)) if v is None) + ".")
+          else:
+              new, existing, fixed = sorted(branch - main), sorted(branch & main), sorted(main - branch)
+              lines += [f"- New failures (fail here, pass on main): **{len(new)}**", f"- Existing failures (also fail on main): {len(existing)}", f"- Fixed (fail on main, pass here): {len(fixed)}", ""]
+              for title, items in (("New failures", new), ("Existing failures", existing), ("Fixed", fixed)):
+                  if items:
+                      lines.append(f"### {title}")
+                      lines += [f"- {t}" for t in items] + [""]
+          open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          PY
