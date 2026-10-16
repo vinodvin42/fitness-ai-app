@@ -18,6 +18,9 @@ they do not contact any deployed host.
 | D | `d-gym-equipment.journey.ts` | A gym-portal equipment update → the member's My Gym view. Gym B can't read or change gym A's data. |
 | E | `e-referral-commission.journey.ts` | Creator-link signup → attribution → test payment → commission. Duplicate verify and webhook events. Forged signature. |
 | F | `f-payments-access.journey.ts` | Payment → access. Cancel → access until period end → expired. No-cancel period end, and refund (current behaviour; policy blocked). The admin refund screen's request shape. |
+| G | `g-workout.journey.ts` | Workout: start, save set, retry the same save, edit, complete, history totals, invalid state changes, ownership, input validation. |
+| H | `h-food.journey.ts` | Food: add, edit, delete, quantity/serving support, local-day (IST) totals, retry, ownership. |
+| I | `i-today-weekly.journey.ts` | Today / weekly review: empty-user answers, and workout and food totals compared across endpoints and with the stored rows. |
 
 Each step appends to `test-results/connectivity/evidence.jsonl`, recording:
 - endpoints called and file paths involved;

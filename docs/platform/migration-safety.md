@@ -161,3 +161,26 @@ Fixture loading succeeded (exit 0) and is reported separately from the migration
 | `coach_levels_fees_commission` | Every coach offering's `priceCents` was **dropped** (₹1,200 / ₹1,500 / ₹900 / ₹2,000 lost). The `commissionPct` column was dropped; the 25% coach was carried into `commission_rates`, and the 20% coaches rely on the default. Only the demo id `coach-alex-rivera` got a level, so **`fx-coach-25` and `fx-coach-20` have no level**. Existing bookings got `commissionPct` 25 and `gstCents` 0. The booking payment got `feeCents` = amount + discount (₹1,500) and `taxCents` 0. |
 
 The logs and before/after snapshots are in the session's scratch evidence folder. The fixture and snapshot files are committed so the same run can be repeated with Prisma on the PC.
+
+### 7.1 Admin role migration: two separate findings (both valid)
+
+From `20261015110000_admin_roles_mfa_approvals/migration.sql`:
+
+```sql
+ALTER TABLE "admin_users" ALTER COLUMN "role" DROP DEFAULT;
+ALTER TABLE "admin_users" ALTER COLUMN "role" TYPE "AdminRole" USING (
+  CASE "role"::text
+    WHEN 'super_admin' THEN 'super_admin'
+    WHEN 'finance' THEN 'finance'
+    WHEN 'support' THEN 'support'
+    ELSE 'operations'
+  END
+)::"AdminRole";
+ALTER TABLE "admin_users" ALTER COLUMN "role" SET DEFAULT 'super_admin';
+```
+
+1. **Existing rows are remapped.** Any role other than `super_admin`, `finance` or `support` becomes `operations`. That covers `user_operations`, `coach_operations`, `analytics`, `growth` and `content`. This was observed on synthetic data (section 7) and is new in this branch.
+2. **New rows default to `super_admin`.** This is not new: main's first migration already has `"role" "AdminRole" NOT NULL DEFAULT 'super_admin'`, and both schemas declare `role AdminRole @default(super_admin)`. The branch re-applies the same default after changing the column's type.
+   - The admin "create admin user" API requires an explicit role (`adminAccounts.schema.ts`, `role: z.enum(adminRoles)`). The default therefore applies only to inserts that omit the role: direct SQL, scripts, seeds, or code that calls `prisma.adminUser.create` without one.
+   - Observed: a role-less insert after the upgrade became `super_admin` (direct SQL, PostgreSQL 16.15).
+   - **Proposed correction (separate, needs approval):** a least-privilege default, such as `support`, or no default at all so every insert must name a role.

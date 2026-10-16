@@ -21,6 +21,12 @@
  *   gymA, gymB        — a gym and a separate gym for isolation checks (D)
  *   creator           — influencer + campaign with a synthetic link code (E)
  *   plan              — TEST-ONLY paid plan, ₹1/month, for payment journeys (E, F)
+ *   dailyOwner, dailyOther — daily-use checks: owner and a second user for
+ *                       ownership (G workouts, H food)
+ *   reviewActive      — Today/weekly consistency against records it saves (I)
+ *   reviewSparse      — a user with no records, for the sparse-data case (I)
+ *   training          — one free TEST-ONLY programme with one workout and one
+ *                       exercise (G, I); no purchase needed
  * A third user for E is created during that journey by signing up with the
  * creator's code, because attribution only happens at signup.
  */
@@ -56,6 +62,11 @@ export interface SyntheticWorld {
   gymB: WorldAccount & { inviteCode: string; locationId: string };
   creator: WorldAccount & { campaignId: string; linkCode: string; commissionPct: number };
   plan: { id: string; priceCents: number };
+  dailyOwner: WorldAccount;
+  dailyOther: WorldAccount;
+  reviewActive: WorldAccount;
+  reviewSparse: WorldAccount;
+  training: { programId: string; workoutId: string; exerciseId: string };
 }
 
 /**
@@ -201,6 +212,20 @@ export async function seedSyntheticWorld(
     },
   });
 
+  const dailyOwner = await user("daily-owner", "TEST-ONLY Daily User");
+  const dailyOther = await user("daily-other", "TEST-ONLY Other Daily User");
+  const reviewActive = await user("review-active", "TEST-ONLY Review User");
+  const reviewSparse = await user("review-sparse", "TEST-ONLY Sparse User");
+  const exercise = await prisma.exercise.create({
+    data: { name: `TEST-ONLY Goblet Squat ${runId}`, muscleGroup: `tst-legs-${runId}`, equipment: "Dumbbell", difficulty: "beginner", status: "published" },
+  });
+  const program = await prisma.program.create({
+    data: { name: `TEST-ONLY programme ${runId}`, type: "fitness", description: "TEST-ONLY connectivity fixture", durationWeeks: 1, priceCents: 0 },
+  });
+  const workout = await prisma.workout.create({
+    data: { programId: program.id, name: "TEST-ONLY Lower Body", order: 0, durationMinutes: 30 },
+  });
+
   return {
     runId,
     createdAt: new Date().toISOString(),
@@ -219,6 +244,11 @@ export async function seedSyntheticWorld(
     gymB,
     creator: { id: influencer.id, email: influencer.email!, campaignId: campaign.id, linkCode, commissionPct: creatorCommissionPct },
     plan: { id: plan.id, priceCents: plan.priceCents },
+    dailyOwner,
+    dailyOther,
+    reviewActive,
+    reviewSparse,
+    training: { programId: program.id, workoutId: workout.id, exerciseId: exercise.id },
   };
 }
 

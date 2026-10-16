@@ -27,6 +27,9 @@ const SCENARIOS: Record<string, string> = {
   D: "Gym equipment",
   E: "Referral and commission",
   F: "Payments and access",
+  G: "Core daily use: workout session",
+  H: "Core daily use: food logging",
+  I: "Core daily use: Today / weekly review consistency",
 };
 const SUITE_COMMAND = "npm run test:connectivity --workspace=apps/api";
 
@@ -124,10 +127,16 @@ function main() {
     out.push("");
   }
 
-  out.push("## API integration results");
+  out.push("## Connectivity journeys (A-F), API integration");
   out.push("");
   for (const [id, name] of Object.entries(SCENARIOS)) {
     const mine = lines.filter((l) => l.scenario === id);
+    if (id === "G") {
+      out.push("## Core daily-use API checks (G-I)");
+      out.push("");
+      out.push("API level only. Phone recovery (offline, app killed mid-workout, retries) and screen behaviour are separate native/UI checks and are not covered here.");
+      out.push("");
+    }
     out.push(`### ${id}. ${name}`);
     out.push("");
     if (mine.length === 0) {
