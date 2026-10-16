@@ -429,7 +429,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{modeTitle}</Text>
             <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-              Mode changes between exercises. Switching is locked while you're mid-set. Change it from the Train tab.
+              Mode changes between exercises. Switching is locked while you're mid-set. Change it from the Workouts tab.
             </Text>
           </View>
         ) : null}

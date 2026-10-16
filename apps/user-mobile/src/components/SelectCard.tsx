@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon, IconName } from "./Icon";
+import { FocusRing, useFocusState } from "./FocusRing";
 import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 
 interface SelectCardProps {
@@ -10,6 +11,7 @@ interface SelectCardProps {
   onPress: () => void;
   /** Optional leading glyph shown in a soft well. */
   icon?: IconName;
+  disabled?: boolean;
 }
 
 /**
@@ -17,26 +19,31 @@ interface SelectCardProps {
  * 2026 polish: an accent-tinted selected state with a checkmark, and an
  * optional leading icon well.
  */
-export function SelectCard({ title, subtitle, selected, onPress, icon }: SelectCardProps) {
+export function SelectCard({ title, subtitle, selected, onPress, icon, disabled }: SelectCardProps) {
+  const { focused, focusProps } = useFocusState();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-      accessibilityState={{ selected, checked: selected }}
+      accessibilityState={{ selected, checked: selected, disabled: !!disabled }}
+      disabled={disabled}
+      {...focusProps}
       android_ripple={{ color: colors.ripple }}
-      style={({ pressed }: { pressed: boolean }) => [styles.card, selected && styles.cardSelected, pressed && { opacity: 0.88 }]}
+      style={({ pressed }: { pressed: boolean }) => [styles.card, selected && styles.cardSelected, pressed && !disabled && { opacity: 0.88 }, disabled && styles.cardDisabled]}
     >
+      <FocusRing visible={focused} radius={radius.card} />
       {icon ? (
-        <View style={[styles.iconWell, selected && styles.iconWellSelected]}>
-          <Icon name={icon} size={20} color={selected ? colors.accent : colors.textSecondary} />
+        <View style={[styles.iconWell, selected && styles.iconWellSelected, disabled && { opacity: 0.45 }]}>
+          <Icon name={icon} size={20} color={selected ? colors.accentText : colors.textSecondary} />
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, selected && styles.titleSelected]}>{title}</Text>
+        {/* Disabled dims title, icon and radio; the subtitle often explains why, so it stays readable. */}
+        <Text style={[styles.title, selected && styles.titleSelected, disabled && { color: colors.textMuted }]}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      <View style={[styles.radio, selected && styles.radioSelected]}>
+      <View style={[styles.radio, selected && styles.radioSelected, disabled && { opacity: 0.45 }]}>
         {selected ? <Icon name="check" size={14} color={colors.textOnAccent} strokeWidth={3} /> : null}
       </View>
     </Pressable>
@@ -54,6 +61,9 @@ const styles = themed(() => StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  cardDisabled: {
+    backgroundColor: "transparent",
+  },
   cardSelected: {
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
@@ -67,7 +77,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: "center",
   },
   iconWellSelected: {
-    backgroundColor: "rgba(79,125,243,0.22)",
+    backgroundColor: colors.accentSoft,
   },
   title: {
     color: colors.textPrimary,
@@ -87,7 +97,7 @@ const styles = themed(() => StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.borderStrong,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
   },

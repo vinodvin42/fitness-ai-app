@@ -17,7 +17,9 @@ export function TextField({ label, error, helper, secure, containerStyle, onFocu
   const { colors: theme } = useTheme();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const borderColor = error ? colors.danger : focused ? theme.accent : colors.border;
+  const disabled = input.editable === false;
+  // Edge is the only thing that identifies the field, so it uses `outline` (>= 3:1). Focus thickens to 2 px.
+  const borderColor = error ? colors.dangerText : focused ? colors.focus : colors.outline;
   return (
     <View style={containerStyle}>
       <Text style={{ color: colors.textSecondary, ...typography.label, marginBottom: spacing.xs }}>{label}</Text>
@@ -25,16 +27,18 @@ export function TextField({ label, error, helper, secure, containerStyle, onFocu
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor,
+          backgroundColor: disabled ? colors.surfaceHigh : colors.surface,
+          borderWidth: focused || error ? 2 : 1,
+          borderColor: disabled ? colors.border : borderColor,
           borderRadius: radius.md,
-          paddingHorizontal: spacing.md,
+          // keep text from shifting when the border thickens
+          paddingHorizontal: focused || error ? spacing.md - 1 : spacing.md,
         }}
       >
         <TextInput
           {...input}
           accessibilityLabel={input.accessibilityLabel ?? label}
+          accessibilityState={{ disabled }}
           secureTextEntry={secure ? !revealed : input.secureTextEntry}
           placeholderTextColor={colors.textMuted}
           onFocus={(e) => {
@@ -45,7 +49,7 @@ export function TextField({ label, error, helper, secure, containerStyle, onFocu
             setFocused(false);
             onBlur?.(e);
           }}
-          style={{ flex: 1, minHeight: 48, color: colors.textPrimary, fontFamily: fonts.body, fontSize: 16 }}
+          style={{ flex: 1, minHeight: 48, color: disabled ? colors.textSecondary : colors.textPrimary, fontFamily: fonts.body, fontSize: 16 }}
         />
         {secure ? (
           <Pressable

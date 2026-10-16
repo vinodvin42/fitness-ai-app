@@ -535,7 +535,7 @@ export function TodayScreen({ navigation }: Props) {
           <Pressable
             onPress={() => navigation.navigate("Fuel", { screen: "FuelDashboard" })}
             accessibilityRole="button"
-            accessibilityLabel="Open Fuel"
+            accessibilityLabel="Open Food"
             style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
           >
             <View style={{ flex: 1 }}>

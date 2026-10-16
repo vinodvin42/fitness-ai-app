@@ -112,7 +112,7 @@ export function MyProgramsScreen({ navigation }: Props) {
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : (myPrograms ?? []).length === 0 ? (
-        <EmptyState title="No programs yet" subtitle="You haven't started or purchased any programs yet — browse Programs on the Train tab." />
+        <EmptyState title="No programs yet" subtitle="You haven't started or purchased any programs yet — browse Programs on the Workouts tab." />
       ) : (
         <>
           <SectionHeader title="Active Programs" count={active.length} />

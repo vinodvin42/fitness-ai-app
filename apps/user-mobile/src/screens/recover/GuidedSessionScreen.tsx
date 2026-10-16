@@ -254,7 +254,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
             </Pressable>
             <BrandMark size={34} withName />
           </View>
-          <Text style={{ color: colors.accentText, ...typography.caption }}>Recover / Mindful practice</Text>
+          <Text style={{ color: colors.accentText, ...typography.caption }}>Recovery / Mindful practice</Text>
           <View style={{ gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 22 }}>{routine.title}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>{routine.description}</Text>

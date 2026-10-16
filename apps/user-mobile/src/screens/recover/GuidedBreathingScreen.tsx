@@ -141,7 +141,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
 
   if (phase === "setup") {
     return (
-      <RecoverShell title="Guided breathing" subtitle="Recover · Pick a pace" onBack={() => navigation.goBack()}>
+      <RecoverShell title="Guided breathing" subtitle="Recovery · Pick a pace" onBack={() => navigation.goBack()}>
         <Card style={{ gap: spacing.sm }}>
           <Text style={{ color: colors.textMuted, ...typography.label }}>PATTERN</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>

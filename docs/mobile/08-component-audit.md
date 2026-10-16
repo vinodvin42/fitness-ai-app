@@ -124,8 +124,8 @@ These are screen-level fixes to roll out using the shared components above, in o
 - Today: inline text links ("Log meal", "See recipes", "Open schedule") are 20–36 px tall. Move them to a shared `TextLink` with 48 dp height.
 - About You: the KG/LBS and CM/FT toggles are 32 px → `SegmentedControl`.
 - 24 hand-rolled icon buttons across screens → `IconButton`.
-- `ToggleRow`: make the whole row toggle the switch (bigger target than the 51×31 switch alone).
 - Design question: in light mode the secondary button sits on `surfaceRaised` (light grey). Figma may want white with a border.
+- Navigation at 320 px wide (small Android): "Workouts" leaves about 3 px spare in a 64 px tab. Check on a real small device.
 - Hindi and other Indian scripts: Inter has no Devanagari, Tamil and so on, so those fall back to the system font (Noto on Android). Check line heights with real Hindi copy before translations ship.
 
 ## 7. Third-party UI policy
@@ -142,3 +142,49 @@ React Native Paper was considered and declined: its Material 3 theme would compe
 
 - Run `npm install` at the repo root. `@expo-google-fonts/inter` replaces sora, manrope and jetbrains-mono, and `package-lock.json` must be regenerated (this environment could not reach the npm registry).
 - Design sign-off is needed on every `(derived)` token in §1.
+
+
+## 9. Refinement pass (16 Oct 2026, after kit review)
+
+### Change log
+- **Real icons in the kit.** The square glyphs were a gap in the preview harness, not the app. The renders now use the actual lucide icons that `Icon.tsx` maps (minus/plus on the stepper, pause, check and so on).
+- **Numbers.** New `MetricValue` component: tabular figures, the unit about half-size in secondary colour on the same baseline, single line, shrinking instead of wrapping. Sizes are `large` (metricLarge 40/46), `medium` (h1) and `small` (h3). `StatTile` takes an optional `unit`. The type spec and realistic usage are separate kit sections.
+- **Navigation labels: Today · Workouts · Food · Recovery · More.** These are plain words for beginner and intermediate users, the words they already use. "Fuel" and "Recover" are coach jargon, and the plain words translate more directly. Applied in `nav.*`, the tab-root titles (Workouts, Food), and the screen copy that named a tab ("in Recovery", "the Workouts tab"). Route ids stay `Train/Fuel/Recover`. Icons and label keys now live in `navigation/tabConfig.ts`, and the label style in `typography.tabLabel`, shared by MainTabs and the kit. Fit is measured below. The Figma "Navigation/Bottom" component still says Train/Fuel/Recover and needs updating.
+- **Contrast tokens.** New `outline` token (dark #748390, light #6f7f8a, ≥ 3:1 on every surface). It is used where the edge is the only thing that identifies a control: text-input borders, off switches and empty radios. These were about 1.3:1. New `focus` token (dark #5cbaf0, light #00609e). The active tab now uses `accentText`.
+- **States implemented in shared components** (`FocusRing` + `useFocusState`):
+  - Button: pressed, focused, disabled (flat grey with a readable label; replaces the faded accent), loading (keeps full colour, because busy is not unavailable).
+  - TextField: default, focused (2 px focus border), filled, error (2 px dangerText border + message), disabled (`editable={false}`: muted fill, readable value).
+  - SelectCard, Chip, SegmentedControl (whole control or one option): selected, unselected, focused, disabled. SelectCard and Chip gained a `disabled` prop.
+  - ToggleRow: on, off, focused, disabled. The whole row is now the switch (≥ 48 dp target), announced once to screen readers.
+  - IconButton: focused.
+  - Disabled rows and cards dim only the title, icon and control. The subtitle that says *why* stays readable.
+
+### Contrast (computed from token values, worst case across canvas / card / raised / muted)
+
+| Role | Dark | Light | Need |
+|---|---|---|---|
+| textPrimary | 12.20 | 14.97 | 4.5 |
+| textSecondary | 6.11 | 7.17 | 4.5 |
+| textMuted (meta, helper, placeholder, inactive tab) | 4.57 | 4.58 | 4.5 |
+| accentText (links, active tab) | 5.66 | 5.50 | 4.5 |
+| status/AI text on its own tint | 4.69–6.10 | 4.79–5.28 | 4.5 |
+| textOnAccent on each accent option | 5.47–11.13 | 4.75–6.29 | 4.5 |
+| outline (input edge, off switch, empty radio) | 3.13 | 3.43 | 3 |
+| accent (selected fill, switch on) | 3.52 | 3.94 | 3 |
+| focus ring | 5.66 | 5.50 | 3 |
+| border (card edges, dividers) | decorative | decorative | — |
+| Disabled button label (grey) | 4.57 | 4.58 | exempt |
+| Disabled chip / segment labels (45% opacity, measured) | 2.2–2.7 | 2.1–2.2 | exempt |
+
+Status of the measured renders (9 screens + 2 kit pages, both themes): 0 readable-text failures, 0 overflow. The only text below 4.5:1 is intentionally disabled.
+
+### Navigation fit (Inter Semibold 13, measured)
+
+| Width | Tab cell | Workouts | Recovery | Clipped |
+|---|---|---|---|---|
+| 390 px | 78 px | 61 px (17 spare) | 59 px (19 spare) | none |
+| 360 px | 72 px | 61 px (11 spare) | 59 px (13 spare) | none |
+
+### Implemented vs presentation
+- **Implemented in app code:** all tokens (one semantic `Palette` with dark and light values, swapped by `applyTheme`), every component in the kit, every state shown, `MetricValue`, `tabConfig`, `typography.tabLabel`. Both themes use the same components and tokens; nothing is styled twice.
+- **Presentation only:** the kit pages themselves (they live in the preview harness, not in the app), and the way pressed/focused are frozen for the screenshot. In the app, pressed comes from touch and focused from keyboard, switch access or D-pad. On Android, pressed also shows a ripple, which a static render can't show.

@@ -34,6 +34,10 @@ type Palette = {
   overlay: string;
   /** Material state layer for pressed feedback / android_ripple. */
   ripple: string;
+  /** Focus indicator ring (keyboard / switch access). Fixed blue so it never reads as an error, whatever the accent. */
+  focus: string;
+  /** Outline of controls whose edge is their only identifier: text inputs, off switches, empty radios/checkboxes (WCAG 1.4.11, >= 3:1). */
+  outline: string;
 };
 
 /**
@@ -83,6 +87,8 @@ export const palettes: Record<Scheme, Palette> = {
     brandMark: "#ffffff", // brand/mark (logo on dark)
     overlay: "rgba(0,0,0,0.6)",
     ripple: "rgba(255,255,255,0.10)", // (derived) Material pressed state layer
+    focus: "#5cbaf0", // (derived) >= 3:1 on canvas, card, raised and muted
+    outline: "#748390", // (derived) >= 3:1 on canvas, card, raised and muted
   },
   light: {
     background: "#f4f7f9",
@@ -125,6 +131,8 @@ export const palettes: Record<Scheme, Palette> = {
     brandMark: "#000000", // brand/mark (logo on light)
     overlay: "rgba(18,23,26,0.45)",
     ripple: "rgba(18,23,26,0.08)", // (derived) Material pressed state layer
+    focus: "#00609e", // (derived) >= 3:1 on canvas, card, raised and muted
+    outline: "#6f7f8a", // (derived) >= 3:1 on canvas, card, raised and muted
   },
 };
 
@@ -246,6 +254,8 @@ export const typography = {
   label: { fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 20 }, // label-large
   meta: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
   caption: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 18, letterSpacing: 0.4 },
+  /** Bottom navigation label (Material label-medium). Shared by MainTabs and the component kit. */
+  tabLabel: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 16, letterSpacing: 0 },
 };
 
 export const layout = {

@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleProp, ViewStyle } from "react-native";
 import { Icon, IconName } from "./Icon";
 import { colors, radius, touch } from "../theme/tokens";
+import { FocusRing, useFocusState } from "./FocusRing";
 
 interface IconButtonProps {
   icon: IconName;
@@ -39,6 +40,7 @@ export function IconButton({
   style,
 }: IconButtonProps) {
   const slop = Math.max(0, Math.ceil((touch.min - size) / 2));
+  const { focused, focusProps } = useFocusState();
   const fill =
     variant === "accent"
       ? { backgroundColor: colors.accent, borderWidth: 0 }
@@ -54,6 +56,7 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled, selected: !!selected }}
       hitSlop={slop}
+      {...focusProps}
       android_ripple={{ color: colors.ripple, borderless: variant === "plain", radius: touch.min / 2 }}
       style={({ pressed }: { pressed: boolean }) => [
         {
@@ -62,13 +65,13 @@ export function IconButton({
           borderRadius: radius.sm,
           alignItems: "center",
           justifyContent: "center",
-          overflow: "hidden",
           opacity: disabled ? 0.45 : pressed ? 0.8 : 1,
         },
         fill,
         style,
       ]}
     >
+      <FocusRing visible={focused} radius={radius.sm} />
       <Icon name={icon} size={iconSize} color={iconColor} />
     </Pressable>
   );

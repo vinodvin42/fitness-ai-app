@@ -112,7 +112,7 @@ export function TodayLoadingView({ greeting, firstName }: { greeting: string; fi
       </View>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", lineHeight: 17 }}>
-        Scores and recommendations appear when loading finishes.{"\n"}You can still browse Train, Fuel or Recover.
+        Scores and recommendations appear when loading finishes.{"\n"}You can still browse Workouts, Food or Recovery.
       </Text>
     </Shell>
   );

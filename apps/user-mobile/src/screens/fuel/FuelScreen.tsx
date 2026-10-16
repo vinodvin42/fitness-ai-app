@@ -118,7 +118,7 @@ export function FuelScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -142,7 +142,7 @@ export function FuelScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: spacing.xs }}>
           <Text style={{ color: colors.textSecondary, ...typography.label }}>Daily total</Text>
           <Text style={{ color: theme.accentText, ...typography.label }}>

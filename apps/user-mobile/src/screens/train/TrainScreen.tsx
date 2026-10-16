@@ -195,7 +195,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
 
   return (
     <ScreenContainer
-      title="Training"
+      title="Workouts"
       right={
         <Pressable
           onPress={() => navigation.navigate("WorkoutSettings")}

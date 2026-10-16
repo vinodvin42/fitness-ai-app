@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, radius, spacing, themed, touch } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 import { Icon } from "./Icon";
+import { FocusRing, useFocusState } from "./FocusRing";
 
 interface ChipProps {
   label: string;
@@ -23,11 +24,13 @@ interface ChipProps {
   variant?: "solid" | "danger" | "outlined";
   /** Show a leading check mark when selected (Figma goal chips). */
   showCheck?: boolean;
+  disabled?: boolean;
 }
 
 /** Single/multi-select pill — docs/mobile/04-design-system.md §5 "Chip selector". */
-export function Chip({ label, selected, onPress, accessibilityLabel, variant = "solid", showCheck }: ChipProps) {
+export function Chip({ label, selected, onPress, accessibilityLabel, variant = "solid", showCheck, disabled }: ChipProps) {
   const { colors: theme } = useTheme();
+  const { focused, focusProps } = useFocusState();
   const selectedStyle =
     variant === "danger"
       ? { borderColor: colors.dangerText, backgroundColor: colors.dangerSoft }
@@ -46,11 +49,14 @@ export function Chip({ label, selected, onPress, accessibilityLabel, variant = "
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled: !!disabled }}
+      disabled={disabled}
       hitSlop={HIT_SLOP}
+      {...focusProps}
       android_ripple={{ color: colors.ripple }}
-      style={({ pressed }: { pressed: boolean }) => [styles.chip, selected && selectedStyle, pressed && styles.pressed]}
+      style={({ pressed }: { pressed: boolean }) => [styles.chip, selected && selectedStyle, pressed && styles.pressed, disabled && styles.disabled]}
     >
+      <FocusRing visible={focused} radius={radius.pill} />
       <View style={styles.inner}>
         {selected && variant === "danger" ? <Icon name="alert-triangle" size={13} color={textColor} /> : null}
         {selected && variant === "outlined" ? <View style={[styles.dot, { backgroundColor: textColor }]} /> : null}
@@ -69,7 +75,6 @@ const styles = themed(() => StyleSheet.create({
   chip: {
     minHeight: CHIP_HEIGHT,
     justifyContent: "center",
-    overflow: "hidden",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.pill,
@@ -87,4 +92,5 @@ const styles = themed(() => StyleSheet.create({
     fontFamily: fonts.bodySemi,
   },
   pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.45 },
 }));

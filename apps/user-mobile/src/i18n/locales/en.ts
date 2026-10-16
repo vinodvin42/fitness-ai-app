@@ -29,9 +29,10 @@ export const en = {
 
   nav: {
     today: "Today",
-    train: "Train",
-    fuel: "Fuel",
-    recover: "Recover",
+    // Plain words for beginners (Oct 2026 decision); route names stay Train/Fuel/Recover.
+    train: "Workouts",
+    fuel: "Food",
+    recover: "Recovery",
     more: "More",
   },
 

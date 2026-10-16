@@ -69,7 +69,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
   const rest = shown.filter((e) => e !== hero);
 
   return (
-    <RecoverShell title="Yoga & Mobility" subtitle="Recover · Move gently, breathe easily" onBack={() => navigation.goBack()}>
+    <RecoverShell title="Yoga & Mobility" subtitle="Recovery · Move gently, breathe easily" onBack={() => navigation.goBack()}>
       <SearchBar value={query} onChangeText={setQuery} placeholder="Search yoga, breathing or mobility" />
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         {FILTERS.map((f) => {

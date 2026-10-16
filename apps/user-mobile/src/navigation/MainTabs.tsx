@@ -12,7 +12,8 @@ import { RecoverStack } from "./RecoverStack";
 import type { RecoverStackParamList } from "./RecoverStack";
 import { MoreStack } from "./MoreStack";
 import type { MoreStackParamList } from "./MoreStack";
-import { Icon, IconName } from "../components/Icon";
+import { Icon } from "../components/Icon";
+import { TAB_ICONS, TAB_LABEL_KEYS } from "./tabConfig";
 import { colors, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -53,13 +54,6 @@ export type MainTabsParamList = {
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
-const TAB_ICONS: Record<keyof MainTabsParamList, IconName> = {
-  Today: "home",
-  Train: "dumbbell",
-  Fuel: "utensils",
-  Recover: "heart-pulse",
-  More: "menu",
-};
 
 export function MainTabs() {
   const { t } = useTranslation();
@@ -68,11 +62,11 @@ export function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.accent,
+        tabBarActiveTintColor: theme.accentText,
         tabBarInactiveTintColor: colors.textMuted,
         // Labels at 13 (were 11) for small budget phones; the bar is 4px
         // taller so a 13px label still clears the bottom edge under its icon.
-        tabBarLabelStyle: { ...typography.caption, fontSize: 13, letterSpacing: 0, marginTop: -2 },
+        tabBarLabelStyle: { ...typography.tabLabel, marginTop: -2 },
         tabBarItemStyle: { paddingTop: 8 },
         tabBarStyle: {
           backgroundColor: colors.surface,
@@ -87,11 +81,11 @@ export function MainTabs() {
       })}
     >
       {/* `name` is the route id and must stay English (navigation.navigate("Today")); `title` is the translated tab label. */}
-      <Tab.Screen name="Today" component={TodayStack} options={{ title: t("nav.today") }} />
-      <Tab.Screen name="Train" component={TrainStack} options={{ title: t("nav.train") }} />
-      <Tab.Screen name="Fuel" component={FuelStack} options={{ title: t("nav.fuel") }} />
-      <Tab.Screen name="Recover" component={RecoverStack} options={{ title: t("nav.recover") }} />
-      <Tab.Screen name="More" component={MoreStack} options={{ title: t("nav.more") }} />
+      <Tab.Screen name="Today" component={TodayStack} options={{ title: t(TAB_LABEL_KEYS.Today) }} />
+      <Tab.Screen name="Train" component={TrainStack} options={{ title: t(TAB_LABEL_KEYS.Train) }} />
+      <Tab.Screen name="Fuel" component={FuelStack} options={{ title: t(TAB_LABEL_KEYS.Fuel) }} />
+      <Tab.Screen name="Recover" component={RecoverStack} options={{ title: t(TAB_LABEL_KEYS.Recover) }} />
+      <Tab.Screen name="More" component={MoreStack} options={{ title: t(TAB_LABEL_KEYS.More) }} />
     </Tab.Navigator>
   );
 }

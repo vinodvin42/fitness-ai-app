@@ -113,7 +113,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
                   ))}
                 </View>
                 <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-                  No heart-rate data for this session. Connect a wearable in Recover to see time in each zone.
+                  No heart-rate data for this session. Connect a wearable in Recovery to see time in each zone.
                 </Text>
               </Card>
 

@@ -1,12 +1,15 @@
 import React from "react";
 import { Text, View, ViewStyle } from "react-native";
 import { Icon, IconName } from "./Icon";
+import { MetricValue } from "./MetricValue";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 interface StatTileProps {
   icon: IconName;
   label: string;
   value: string | number;
+  /** Optional unit rendered smaller after the value, e.g. "kg". */
+  unit?: string;
   /** Accent color for the icon well (defaults to the app accent). */
   tint?: string;
   tintSoft?: string;
@@ -18,7 +21,7 @@ interface StatTileProps {
  * "Stat/metric tile"). Added 31 Aug 2026. Used in readiness factors,
  * recovery metrics, activity/summary rows.
  */
-export function StatTile({ icon, label, value, tint = colors.accent, tintSoft = colors.accentSoft, style }: StatTileProps) {
+export function StatTile({ icon, label, value, unit, tint = colors.accent, tintSoft = colors.accentSoft, style }: StatTileProps) {
   return (
     <View
       style={[
@@ -46,7 +49,7 @@ export function StatTile({ icon, label, value, tint = colors.accent, tintSoft = 
       >
         <Icon name={icon} size={18} color={tint} />
       </View>
-      <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{value}</Text>
+      <MetricValue value={value} unit={unit} size="medium" />
       <Text style={{ color: colors.textMuted, ...typography.caption, textTransform: "uppercase" }}>{label}</Text>
     </View>
   );

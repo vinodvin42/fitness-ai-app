@@ -2,6 +2,7 @@ import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
 import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
+import { FocusRing, useFocusState } from "./FocusRing";
 
 interface ButtonProps {
   label: string;
@@ -10,7 +11,7 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
-  /** Primary only: when disabled, render a flat grey button with muted text (Figma wizard Continue) instead of a faded accent. */
+  /** @deprecated Disabled buttons are always the flat grey "unavailable" style now (Oct 2026); kept so existing call sites compile. */
   mutedWhenDisabled?: boolean;
   /**
    * Overrides the screen-reader label (defaults to `label`) — use when the
@@ -31,12 +32,13 @@ export function Button({
   loading,
   disabled,
   style,
-  mutedWhenDisabled,
+  mutedWhenDisabled: _mutedWhenDisabled,
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
   const isPrimary = variant === "primary";
   const { colors: theme } = useTheme();
+  const { focused, focusProps } = useFocusState();
   return (
     <Pressable
       onPress={onPress}
@@ -45,22 +47,25 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
+      {...focusProps}
       android_ripple={{ color: isPrimary ? "rgba(255,255,255,0.18)" : colors.ripple }}
       style={({ pressed }: { pressed: boolean }) => [
         styles.base,
         isPrimary ? [styles.primary, { backgroundColor: theme.accent }] : styles.secondary,
-        (disabled || loading) && (mutedWhenDisabled && isPrimary && disabled ? styles.mutedDisabled : styles.disabled),
+        // Disabled = flat grey, label still readable (textMuted, >= 4.5:1). Loading keeps full colour: it is busy, not unavailable.
+        disabled && (isPrimary ? styles.mutedDisabled : styles.secondaryDisabled),
         pressed && styles.pressed,
         style,
       ]}
     >
+      <FocusRing visible={focused} radius={radius.md} />
       {loading ? (
         <ActivityIndicator color={isPrimary ? theme.textOnAccent : theme.accent} />
       ) : (
         <Text
           style={[
             styles.label,
-            isPrimary ? [styles.labelPrimary, { color: mutedWhenDisabled && disabled ? colors.textMuted : theme.textOnAccent }] : styles.labelSecondary,
+            isPrimary ? [styles.labelPrimary, { color: disabled ? colors.textMuted : theme.textOnAccent }] : [styles.labelSecondary, disabled && { color: colors.textMuted }],
           ]}
         >{label}</Text>
       )}
@@ -77,7 +82,6 @@ const styles = themed(() => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     flexDirection: "row",
     gap: spacing.sm,
-    overflow: "hidden",
   },
   pressed: {
     opacity: 0.88,
@@ -90,11 +94,12 @@ const styles = themed(() => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
-  disabled: {
-    opacity: 0.45,
-  },
   mutedDisabled: {
     backgroundColor: colors.surfaceHigh,
+  },
+  secondaryDisabled: {
+    backgroundColor: "transparent",
+    borderColor: colors.border,
   },
   label: {
     fontFamily: fonts.displayBold,

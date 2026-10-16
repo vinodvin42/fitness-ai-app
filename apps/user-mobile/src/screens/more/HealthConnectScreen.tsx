@@ -105,7 +105,7 @@ export function HealthConnectScreen({ navigation }: Props) {
       <InfoCard
         tone="accent"
         title="This saves your permission"
-        body="Connecting here saves your permission and the kinds of data you allow. Your readings come in when your device syncs (see Recover > Connected devices)."
+        body="Connecting here saves your permission and the kinds of data you allow. Your readings come in when your device syncs (see Recovery > Connected devices)."
       />
 
       {isLoading ? (
