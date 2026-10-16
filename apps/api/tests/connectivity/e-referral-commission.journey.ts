@@ -26,6 +26,7 @@ import {
   record,
   signWebhook,
   startJourney,
+  blockOn,
   type Journey,
 } from "./harness/journey";
 import { EMAIL_DOMAIN } from "./harness/syntheticWorld";
@@ -78,6 +79,12 @@ describe("E. Creator attribution → payment → commission", () => {
   });
 
   it("E2 the attributed user pays for the TEST-ONLY plan and gets access", async () => {
+    if (!userCToken) {
+      blockOn(
+        { scenario: S, check: "E2 eligible test payment", surface: "user-mobile", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "attributed user C pays" },
+        "E1 did not create user C",
+      );
+    }
     const buy = await buyTestPlan(j, userCToken);
     orderId = buy.orderId;
     providerPaymentId = buy.providerPaymentId;
@@ -107,6 +114,12 @@ describe("E. Creator attribution → payment → commission", () => {
   });
 
   it("E3 duplicate verify and duplicate webhooks do not double-charge or double-grant", async () => {
+    if (!paymentRowId || !orderId) {
+      blockOn(
+        { scenario: S, check: "E3 duplicate payment events", surface: "payment provider + user-mobile", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "repeat events on E2's payment" },
+        "E2 produced no paid payment",
+      );
+    }
     const reverify = await request(j.app)
       .post("/payments/razorpay/verify")
       .set(bearer(userCToken))
@@ -141,6 +154,12 @@ describe("E. Creator attribution → payment → commission", () => {
   });
 
   it("E4 the attributing creator gets exactly one commission for the payment", async () => {
+    if (!paymentRowId) {
+      blockOn(
+        { scenario: S, check: "E4 payment → commission record → creator portal", surface: "creator-portal", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "commission for E2's payment" },
+        "E2 produced no paid payment",
+      );
+    }
     const commissions = await prisma.creatorCommission.findMany({ where: { paymentId: paymentRowId } });
     const ledger = await request(j.app).get("/influencer-portal/commissions").set(bearer(creatorToken));
     const entries: unknown[] = ledger.body?.entries ?? [];
@@ -175,6 +194,12 @@ describe("E. Creator attribution → payment → commission", () => {
   });
 
   it("E5 a payment with a bad signature grants nothing", async () => {
+    if (!userCToken) {
+      blockOn(
+        { scenario: S, check: "E5 forged payment signature", surface: "user-mobile", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "forged verify refused" },
+        "E1 did not create user C",
+      );
+    }
     const order = await request(j.app)
       .post("/payments/razorpay/orders")
       .set(bearer(userCToken))
@@ -196,6 +221,7 @@ describe("E. Creator attribution → payment → commission", () => {
       recordsWritten: ["Payment (failed)"],
       recordsRead: ["Payment", "Subscription count"],
       expected: "verify 400 invalid_signature; payment failed; no extra access",
+      isolation: "A forged payment signature cannot grant access",
       observed: `order ${describeResponse(order)}; verify ${describeResponse(bad)}; payment=${row?.status}; active subs=${activeSubs}`,
       verdict: ok ? "passed" : "failed",
     });

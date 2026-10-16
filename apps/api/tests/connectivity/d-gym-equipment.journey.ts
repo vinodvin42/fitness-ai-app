@@ -137,14 +137,12 @@ describe("D. Gym equipment → member view, and gym isolation", () => {
     const eqRow = gymAEquipmentId ? await prisma.gymEquipment.findUnique({ where: { id: gymAEquipmentId } }) : null;
     const locLeak = (Array.isArray(locsB.body) ? locsB.body : []).some((l: { id: string }) => l.id === j.world.gymA.locationId);
     const eqLeak = (eqB.body?.items ?? []).some((e: { id: string }) => e.id === gymAEquipmentId);
-    const ok =
-      patchLoc.status === 404 &&
-      after?.equipment === before?.equipment &&
-      (!patchEq || patchEq.status === 404) &&
-      (!delEq || delEq.status === 404) &&
-      (!gymAEquipmentId || eqRow?.available === true) &&
-      !locLeak &&
-      !eqLeak;
+    const locationChecksOk = patchLoc.status === 404 && after?.equipment === before?.equipment && !locLeak;
+    const equipmentChecksOk = !!gymAEquipmentId && patchEq?.status === 404 && delEq?.status === 404 && eqRow?.available === true && !eqLeak;
+    const ok = locationChecksOk && equipmentChecksOk;
+    // If D3 created no equipment, half of this check could not run: that is
+    // "blocked", not "passed" (unless the location half already failed).
+    const verdict = !locationChecksOk ? "failed" : !gymAEquipmentId ? "blocked" : equipmentChecksOk ? "passed" : "failed";
     record({
       scenario: S,
       check: "D4 cross-gym isolation",
@@ -161,11 +159,13 @@ describe("D. Gym equipment → member view, and gym isolation", () => {
       recordsWritten: [],
       recordsRead: ["GymLocation (gym A)", "GymEquipment (gym A)"],
       expected: "every gym B attempt 404; gym A's rows unchanged; gym B's lists exclude gym A's rows",
+      isolation: "Gym B writing to and listing gym A's location and equipment",
       observed:
         `location patch ${describeResponse(patchLoc)}; equipment patch ${patchEq ? describeResponse(patchEq) : "skipped"}; ` +
         `equipment delete ${delEq ? describeResponse(delEq) : "skipped"}; gym A text unchanged=${after?.equipment === before?.equipment}; ` +
         `gym A item intact=${eqRow?.available === true}; leaks: locations=${locLeak}, equipment=${eqLeak}`,
-      verdict: ok ? "passed" : "failed",
+      verdict,
+      blockedBy: gymAEquipmentId ? undefined : "D3 created no gym A equipment item, so the equipment half was not tested",
     });
     expect(ok).toBe(true);
   });
@@ -183,6 +183,7 @@ describe("D. Gym equipment → member view, and gym isolation", () => {
       recordsWritten: [],
       recordsRead: ["UserPartnerLink for user A"],
       expected: "404 gym_not_linked",
+      isolation: "A user with no gym link reading gym data",
       observed: describeResponse(view),
       verdict: ok ? "passed" : "failed",
     });

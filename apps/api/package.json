@@ -13,6 +13,7 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:connectivity": "vitest run --config vitest.connectivity.config.mts --reporter=default --reporter=junit --outputFile.junit=test-results/connectivity/junit.xml",
+    "typecheck:connectivity": "tsc -p tsconfig.connectivity.json",
     "connectivity:prepare-db": "tsx tests/connectivity/harness/prepareDatabase.ts",
     "connectivity:report": "tsx tests/connectivity/harness/renderReport.ts",
     "db:generate": "prisma generate",

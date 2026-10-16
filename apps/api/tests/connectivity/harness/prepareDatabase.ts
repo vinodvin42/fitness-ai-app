@@ -16,12 +16,13 @@
  * Prints the database name only — never the URL or credentials.
  */
 import { spawnSync } from "node:child_process";
-import path from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { assertIsolatedEnvironment, parseDatabaseUrl } from "./isolation";
+import { apiRootFromCwd, assertIsolatedEnvironment, assertNoDotenvFiles, parseDatabaseUrl } from "./isolation";
 import { assertHarnessDatabase, createMarker, inspectDatabase } from "./databaseGuard";
 
 async function main() {
+  const apiRoot = apiRootFromCwd();
+  assertNoDotenvFiles(apiRoot);
   assertIsolatedEnvironment(process.env);
   const target = parseDatabaseUrl(process.env.DATABASE_URL)!;
   console.log(`[connectivity] target database: ${target.database} on ${target.host}:${target.port}`);
@@ -45,7 +46,6 @@ async function main() {
     await client.$disconnect();
   }
 
-  const apiRoot = path.resolve(__dirname, "..", "..", "..");
   const result = spawnSync("npx", ["prisma", "migrate", "deploy"], {
     cwd: apiRoot,
     env: process.env,

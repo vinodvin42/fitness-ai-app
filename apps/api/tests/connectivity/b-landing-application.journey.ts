@@ -141,6 +141,7 @@ describe("B. Landing application", () => {
       recordsWritten: [],
       recordsRead: [`PublicApplication ${applicationId}`],
       expected: "operations 200 and the application listed; support 403; user token 401",
+      isolation: "Admin role without growth access (support) and a consumer token, both refused",
       observed: `operations ${describeResponse(asOps)} listed=${!!seen}; support ${describeResponse(asSupport)}; user ${describeResponse(asUser)}`,
       verdict: ok ? "passed" : "failed",
     });

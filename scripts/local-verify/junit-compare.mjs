@@ -23,6 +23,14 @@ function parse(file) {
     const status = /<(failure|error)\b/.test(body) ? "failed" : /<skipped\b/.test(body) ? "skipped" : "passed";
     cases.set(`${cls} > ${name}`, status);
   }
+  // File-level problems (a test file that fails to load can produce no <testcase> at all).
+  const suites = new Map();
+  for (const sm of xml.matchAll(/<testsuite\b([^>]*)>/g)) {
+    const a = sm[1];
+    const sname = /\bname="([^"]*)"/.exec(a)?.[1] ?? "";
+    suites.set(sname, { tests: Number(/\btests="(\d+)"/.exec(a)?.[1] ?? 0), errors: Number(/\berrors="(\d+)"/.exec(a)?.[1] ?? 0) });
+  }
+  cases.suites = suites;
   return cases;
 }
 
@@ -44,7 +52,11 @@ const newFailures = branchFailed.filter((k) => !mainFailed.has(k));
 const preExisting = branchFailed.filter((k) => mainFailed.has(k));
 const fixed = [...mainFailed].filter((k) => branch.get(k) === "passed");
 
+const suiteProblems = [...branch.suites].filter(([n, v]) => (v.errors > 0 && !((main.suites.get(n)?.errors ?? 0) > 0)) || (v.tests === 0 && (main.suites.get(n)?.tests ?? 0) > 0)).map(([n, v]) => `${n} (tests=${v.tests}, errors=${v.errors}; main tests=${main.suites.get(n)?.tests ?? "absent"})`);
 lines.push(`Branch: ${branch.size} tests, ${branchFailed.length} failed.  Main: ${main.size} tests, ${mainFailed.size} failed.`);
+lines.push("");
+lines.push(`Test FILES with load errors or no tests on the branch (${suiteProblems.length}):`);
+suiteProblems.forEach((k) => lines.push(`  ! ${k}`));
 lines.push("");
 lines.push(`NEW failures on the branch (regressions or new tests failing) (${newFailures.length}):`);
 newFailures.forEach((k) => lines.push(`  ! ${k}`));
@@ -56,4 +68,4 @@ lines.push(`Fixed on the branch (failing on main, passing here) (${fixed.length}
 fixed.forEach((k) => lines.push(`  + ${k}`));
 fs.writeFileSync(outPath, lines.join("\n") + "\n");
 console.log(lines.join("\n"));
-process.exit(newFailures.length > 0 ? 1 : 0);
+process.exit(newFailures.length > 0 || suiteProblems.length > 0 ? 1 : 0);

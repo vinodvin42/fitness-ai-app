@@ -42,8 +42,6 @@ export interface SyntheticWorld {
   runId: string;
   createdAt: string;
   label: "TEST-ONLY synthetic data";
-  /** Synthetic password shared by every synthetic account in this run. Never printed. */
-  password: string;
   userA: WorldAccount;
   userB: WorldAccount;
   coachLevel: { id: string; name: string };
@@ -60,12 +58,25 @@ export interface SyntheticWorld {
   plan: { id: string; priceCents: number };
 }
 
+/**
+ * The synthetic password for every account in this run. It comes from the
+ * environment (FYNROX_SYNTHETIC_PASSWORD, a test-only value the runner
+ * generates per run) so it is never written to world.json or any log.
+ */
+export function syntheticPassword(): string {
+  const value = process.env.FYNROX_SYNTHETIC_PASSWORD;
+  if (!value || !value.startsWith("test-only-")) {
+    throw new Error("FYNROX_SYNTHETIC_PASSWORD must be set to a test-only value for the connectivity harness.");
+  }
+  return value;
+}
+
 export async function seedSyntheticWorld(
   prisma: PrismaClient,
   deps: { hashPassword: (pw: string) => Promise<string>; generateUniqueReferralCode: () => Promise<string> },
 ): Promise<SyntheticWorld> {
   const runId = `${Date.now().toString(36)}${crypto.randomBytes(3).toString("hex")}`;
-  const password = `test-only-pw-${crypto.randomBytes(12).toString("hex")}`;
+  const password = syntheticPassword();
   const passwordHash = await deps.hashPassword(password);
   const email = (who: string) => `${who}.${runId}@${EMAIL_DOMAIN}`;
   const code = (prefix: string) => `${prefix}${runId}`.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
@@ -194,7 +205,6 @@ export async function seedSyntheticWorld(
     runId,
     createdAt: new Date().toISOString(),
     label: "TEST-ONLY synthetic data",
-    password,
     userA,
     userB,
     coachLevel: { id: coachLevel.id, name: coachLevel.name },

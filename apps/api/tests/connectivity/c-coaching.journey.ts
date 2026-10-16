@@ -34,6 +34,7 @@ import {
   loginUser,
   record,
   startJourney,
+  blockOn,
   type Journey,
 } from "./harness/journey";
 
@@ -82,6 +83,8 @@ describe("C. Coaching request → coach decision → user status", () => {
     const seenByA = (offersA.body?.offers ?? []).some((o: { offerId: string; userId: string }) => o.offerId === r.offerId && o.userId === j.world.userA.id);
     const seenByB = (offersB.body?.offers ?? []).some((o: { offerId: string }) => o.offerId === r.offerId);
     const wrongCoach = await request(j.app).post(`/professionals/me/offers/${r.offerId}/accept`).set(bearer(coachB));
+    // Hand the offer to C2 before asserting, so C2 can report precisely if C1 fails.
+    if (r.offerId) (globalThis as { __c1Offer?: { offerId: string; requestId: string } }).__c1Offer = { offerId: r.offerId, requestId: r.requestId };
     const ok = r.created.status === 201 && r.inQueue && r.match.status === 201 && seenByA && !seenByB && wrongCoach.status === 404;
     record({
       scenario: S,
@@ -105,20 +108,23 @@ describe("C. Coaching request → coach decision → user status", () => {
       recordsWritten: [`GuidanceRequest ${r.requestId}`, `ProfessionalOffer ${r.offerId}`, "AdminActionItem (assignment pending)"],
       recordsRead: ["GuidanceRequest queue", "ProfessionalOffer (coach A, coach B views)"],
       expected: "request 201, in the admin queue, match 201, coach A sees the offer, coach B does not and gets 404 trying to accept",
+      isolation: "Coach B listing and accepting an offer addressed to coach A",
       observed:
         `request ${describeResponse(r.created)}; in queue ${r.inQueue}; match ${describeResponse(r.match)}; ` +
         `coach A sees it ${seenByA}; coach B sees it ${seenByB}; coach B accept ${describeResponse(wrongCoach)}`,
       verdict: ok ? "passed" : "failed",
     });
     expect(ok).toBe(true);
-
-    // C2 continues from this offer.
-    (globalThis as { __c1Offer?: { offerId: string; requestId: string } }).__c1Offer = { offerId: r.offerId, requestId: r.requestId };
   });
 
   it("C2 coach accepts; the user sees the accepted coach on the next read (no notification)", async () => {
     const prior = (globalThis as { __c1Offer?: { offerId: string; requestId: string } }).__c1Offer;
-    expect(prior).toBeDefined();
+    if (!prior) {
+      blockOn(
+        { scenario: S, check: "C2 coach accepts → user status", surface: "coach-mobile → user-mobile", configuration: CONFIGURATION, endpoints: ["POST /professionals/me/offers/:id/accept"], files: [], recordsWritten: [], recordsRead: [], expected: "coach A accepts the offer from C1" },
+        "C1 produced no offer to accept",
+      );
+    }
     const startedAt = new Date();
     const accept = await request(j.app).post(`/professionals/me/offers/${prior!.offerId}/accept`).set(bearer(coachA));
     const relationshipId = accept.body?.relationshipId as string;
@@ -239,6 +245,7 @@ describe("C. Coaching request → coach decision → user status", () => {
         `first ${describeResponse(first)}; coach A sees ${!!pending}; coach B sees ${seenByB}; coach B accept ${describeResponse(wrongCoach)}; ` +
         `user before=${statusBefore}; accept ${describeResponse(accept)}; user after=${statusAfter}; booking ${describeResponse(booking)} status=${booking.body?.status}`,
       verdict: ok ? "passed" : "failed",
+      isolation: "Coach B listing and accepting a request addressed to coach A",
       notes: "The 'request sent' moment is a 409 response that still creates the request row. Behaviour recorded as observed.",
     });
     expect(ok).toBe(true);

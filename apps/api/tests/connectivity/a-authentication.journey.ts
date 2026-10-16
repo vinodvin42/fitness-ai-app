@@ -10,7 +10,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { prisma } from "../../src/db/prisma";
-import { CONFIGURATION, bearer, describeResponse, loginCoach, loginUser, record, startJourney, type Journey } from "./harness/journey";
+import { CONFIGURATION, blockOn, bearer, describeResponse, loginCoach, loginUser, record, startJourney, type Journey } from "./harness/journey";
 
 const S = "A";
 let j: Journey;
@@ -71,8 +71,13 @@ describe("A. Authentication and record ownership", () => {
       .post("/support/tickets")
       .set(bearer(tokenB))
       .send({ subject: "TEST-ONLY ticket", message: "TEST-ONLY synthetic message for the ownership check", category: "other" });
-    expect(created.status).toBe(201);
-    const ticketId = created.body.id as string;
+    const ticketId = created.body?.id as string;
+    if (created.status !== 201 || !ticketId) {
+      blockOn(
+        { scenario: S, check: "A3 another user's support ticket", surface: "user-mobile", configuration: CONFIGURATION, endpoints: ["POST /support/tickets"], files: ["apps/api/src/modules/support/support.service.ts"], recordsWritten: [], recordsRead: [], expected: "ticket created for user B, then hidden from user A" },
+        `user B's ticket could not be created (${describeResponse(created)})`,
+      );
+    }
 
     const asOwner = await request(j.app).get(`/support/tickets/${ticketId}`).set(bearer(tokenB));
     const asOther = await request(j.app).get(`/support/tickets/${ticketId}`).set(bearer(tokenA));
@@ -89,6 +94,7 @@ describe("A. Authentication and record ownership", () => {
       recordsWritten: [`SupportTicket ${ticketId} (owned by B)`],
       recordsRead: [`SupportTicket ${ticketId}`],
       expected: "owner 200; user A 404 (existence not revealed); not in A's list",
+      isolation: "User A reading user B's support ticket by id and in A's own list",
       observed: `owner ${describeResponse(asOwner)}; A ${describeResponse(asOther)}; in A's list: ${leakedInList}`,
       verdict: ok ? "passed" : "failed",
     });
@@ -100,8 +106,13 @@ describe("A. Authentication and record ownership", () => {
       .post("/coaching/guidance-requests")
       .set(bearer(tokenB))
       .send({ serviceType: "nutrition", userNote: "TEST-ONLY ownership check" });
-    expect(created.status).toBe(201);
-    const requestId = created.body.id as string;
+    const requestId = created.body?.id as string;
+    if (created.status !== 201 || !requestId) {
+      blockOn(
+        { scenario: S, check: "A4 another user's guidance request", surface: "user-mobile", configuration: CONFIGURATION, endpoints: ["POST /coaching/guidance-requests"], files: ["apps/api/src/modules/guidanceRequests/guidanceRequests.service.ts"], recordsWritten: [], recordsRead: [], expected: "request created for user B, then not cancellable by user A" },
+        `user B's guidance request could not be created (${describeResponse(created)})`,
+      );
+    }
 
     const byOther = await request(j.app).post(`/coaching/guidance-requests/${requestId}/cancel`).set(bearer(tokenA));
     const row = await prisma.guidanceRequest.findUnique({ where: { id: requestId } });
@@ -117,6 +128,7 @@ describe("A. Authentication and record ownership", () => {
       recordsWritten: [`GuidanceRequest ${requestId} (B; cancelled by B at the end)`],
       recordsRead: [`GuidanceRequest ${requestId}`],
       expected: "user A 404 and the request stays open; owner B can cancel (200)",
+      isolation: "User A acting on user B's guidance request",
       observed: `A ${describeResponse(byOther)}; status after A: ${row?.status}; B ${describeResponse(byOwner)}`,
       verdict: ok ? "passed" : "failed",
     });
@@ -138,6 +150,7 @@ describe("A. Authentication and record ownership", () => {
       recordsWritten: [],
       recordsRead: ["Professional coach A", "User A"],
       expected: "user token on coach API 401; coach token on user API 401; coach's own profile 200",
+      isolation: "Identity separation between the user and coach token types",
       observed: `user→coach ${describeResponse(userOnCoach)}; coach→user ${describeResponse(coachOnUser)}; coach own ${describeResponse(coachOwn)}`,
       verdict: ok ? "passed" : "failed",
       notes: "Separation depends on the secrets being different. Only test-only secrets were used here; production secret values were not checked.",

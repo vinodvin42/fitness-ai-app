@@ -28,6 +28,7 @@ import {
   loginUser,
   record,
   startJourney,
+  blockOn,
   type Journey,
 } from "./harness/journey";
 
@@ -83,6 +84,12 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
   });
 
   it("F2 another user cannot read this payment", async () => {
+    if (!paymentA) {
+      blockOn(
+        { scenario: S, check: "F2 payment ownership", surface: "user-mobile", configuration: CONFIGURATION, endpoints: ["GET /payments/:id"], files: [], recordsWritten: [], recordsRead: [], expected: "404 for user B on user A's payment" },
+        "F1 produced no payment to test against",
+      );
+    }
     const res = await request(j.app).get(`/payments/${paymentA}`).set(bearer(userB));
     const ok = res.status === 404;
     record({
@@ -95,6 +102,7 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
       recordsWritten: [],
       recordsRead: [`Payment ${paymentA}`],
       expected: "404 for user B",
+      isolation: "User B reading user A's payment by id",
       observed: describeResponse(res),
       verdict: ok ? "passed" : "failed",
     });
@@ -102,10 +110,22 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
   });
 
   it("F3 cancellation: access continues to the period end, then ends (current behaviour)", async () => {
+    if (!paymentA) {
+      blockOn(
+        { scenario: S, check: "F3 cancel → access until period end → expired", surface: "user-mobile", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "cancel user A's paid subscription" },
+        "F1 produced no paid subscription",
+      );
+    }
     const cancel = await request(j.app).post("/subscriptions/cancel").set(bearer(userA));
     const during = await request(j.app).get("/subscriptions/me").set(bearer(userA));
     const sub = await prisma.subscription.findFirst({ where: { userId: j.world.userA.id, status: "active" }, orderBy: { createdAt: "desc" } });
-    if (sub) await prisma.subscription.update({ where: { id: sub.id }, data: { renewsAt: PAST() } }); // test time travel
+    if (cancel.status !== 200 || !sub) {
+      blockOn(
+        { scenario: S, check: "F3 cancel → access until period end → expired", surface: "user-mobile", configuration: CONFIGURATION, endpoints: ["POST /subscriptions/cancel"], files: [], recordsWritten: [], recordsRead: [], expected: "cancel accepted on an active subscription" },
+        `cancel did not succeed on an active subscription (${describeResponse(cancel)})`,
+      );
+    }
+    await prisma.subscription.update({ where: { id: sub.id }, data: { renewsAt: PAST() } }); // test time travel
     const afterEnd = await request(j.app).get("/subscriptions/me").set(bearer(userA));
     const observed =
       `cancel ${describeResponse(cancel)} cancelAtPeriodEnd=${cancel.body?.cancelAtPeriodEnd}; during period status=${during.body?.subscription?.status} ` +
@@ -132,7 +152,14 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
     const row = await prisma.payment.findUnique({ where: { providerOrderId: buy.orderId } });
     paymentB = row?.id ?? "";
     const sub = await prisma.subscription.findFirst({ where: { userId: j.world.userB.id, status: "active" }, orderBy: { createdAt: "desc" } });
-    if (sub) await prisma.subscription.update({ where: { id: sub.id }, data: { renewsAt: PAST() } }); // test time travel
+    if (buy.verify.status !== 200 || !sub) {
+      paymentB = "";
+      blockOn(
+        { scenario: S, check: "F4 no cancel, period ended", surface: "user-mobile", configuration: CONFIGURATION, endpoints: ["POST /payments/razorpay/verify"], files: [], recordsWritten: [], recordsRead: [], expected: "user B holds an active paid subscription to age past its period" },
+        `user B's test payment did not produce an active subscription (verify ${describeResponse(buy.verify)})`,
+      );
+    }
+    await prisma.subscription.update({ where: { id: sub.id }, data: { renewsAt: PAST() } }); // test time travel
     const read = await request(j.app).get("/subscriptions/me").set(bearer(userB));
     const status = read.body?.subscription?.status;
     record({
@@ -166,6 +193,12 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
   });
 
   it("F5 refund raised from the admin screen's request shape", async () => {
+    if (!paymentB) {
+      blockOn(
+        { scenario: S, check: "F5 admin-web refund request shape", surface: "admin-web", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "refund on user B's payment" },
+        "F4 produced no paid payment for user B",
+      );
+    }
     // Exactly the body RefundsScreen.tsx sends: amountCents + reason, no
     // typed confirmation. (admin-web's api.ts adds no X-Change-Reason header
     // here because the body already carries a reason of 10+ characters.)
@@ -198,6 +231,12 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
   });
 
   it("F6 refund with the API's full contract; effect on access (current behaviour; policy blocked)", async () => {
+    if (!paymentB) {
+      blockOn(
+        { scenario: S, check: "F6 refund recorded and visible to the user", surface: "admin-web → user-mobile", configuration: CONFIGURATION, endpoints: [], files: [], recordsWritten: [], recordsRead: [], expected: "refund on user B's payment" },
+        "F4 produced no paid payment for user B",
+      );
+    }
     const existing = await prisma.refund.count({ where: { paymentId: paymentB } });
     let raise: request.Response | null = null;
     let approve: request.Response | null = null;
@@ -231,33 +270,36 @@ describe("F. Payment → entitlement → cancel / expiry / refund", () => {
         `refund=${refund?.status ?? "none"} ${refund?.amountCents ?? 0}; payment status=${payment?.status}; user sees refundedCents=${shown?.refund?.refundedCents ?? "none"}`,
       verdict: refundRecorded ? "passed" : "failed",
     });
-    record({
-      scenario: S,
-      check: "F6 access after a full refund",
-      surface: "user-mobile",
-      configuration: CONFIGURATION,
-      endpoints: ["GET /subscriptions/me"],
-      files: ["apps/api/src/modules/adminRefunds/adminRefunds.service.ts", "apps/api/src/modules/subscriptions/subscriptions.service.ts"],
-      recordsWritten: [],
-      recordsRead: ["Subscription via GET /subscriptions/me"],
-      expected: "Current code: a refund does not change the subscription",
-      observed: `subscription status after full refund=${access.body?.subscription?.status ?? "none"}`,
-      verdict: "current-behaviour",
-    });
-    record({
-      scenario: S,
-      check: "F6 intended: what a refund does to access",
-      surface: "user-mobile",
-      configuration: CONFIGURATION,
-      endpoints: [],
-      files: [],
-      recordsWritten: [],
-      recordsRead: [],
-      expected: "Not defined yet",
-      observed: `Currently ${access.body?.subscription?.status ?? "none"} after a full refund`,
-      verdict: "blocked",
-      blockedBy: "Refund terms decision (legal/terms-of-service.md is marked [NEEDS A REAL POLICY])",
-    });
+    // Only describe what a refund does to access if a refund actually happened.
+    if (refundRecorded) {
+      record({
+        scenario: S,
+        check: "F6 access after a full refund",
+        surface: "user-mobile",
+        configuration: CONFIGURATION,
+        endpoints: ["GET /subscriptions/me"],
+        files: ["apps/api/src/modules/adminRefunds/adminRefunds.service.ts", "apps/api/src/modules/subscriptions/subscriptions.service.ts"],
+        recordsWritten: [],
+        recordsRead: ["Subscription via GET /subscriptions/me"],
+        expected: "Current code: a refund does not change the subscription",
+        observed: `subscription status after full refund=${access.body?.subscription?.status ?? "none"}`,
+        verdict: "current-behaviour",
+      });
+      record({
+        scenario: S,
+        check: "F6 intended: what a refund does to access",
+        surface: "user-mobile",
+        configuration: CONFIGURATION,
+        endpoints: [],
+        files: [],
+        recordsWritten: [],
+        recordsRead: [],
+        expected: "Not defined yet",
+        observed: `Currently ${access.body?.subscription?.status ?? "none"} after a full refund`,
+        verdict: "blocked",
+        blockedBy: "Refund terms decision (legal/terms-of-service.md is marked [NEEDS A REAL POLICY])",
+      });
+    }
     expect(refundRecorded).toBe(true);
   });
 });

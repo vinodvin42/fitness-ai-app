@@ -13,12 +13,29 @@
  */
 import crypto from "node:crypto";
 import request from "supertest";
+import { expect } from "vitest";
 import type { Express } from "express";
 import { createApp } from "../../../src/app";
 import { mockPaymentSignature } from "../../../src/providers";
-import { loadWorld, type SyntheticWorld } from "./syntheticWorld";
+import { loadWorld, syntheticPassword, type SyntheticWorld } from "./syntheticWorld";
+import { appendEvidence, type EvidenceEntry } from "./evidence";
 
-export { record, describeResponse } from "./evidence";
+export { describeResponse } from "./evidence";
+
+/** Appends one evidence entry, stamped with this run's id and the current Vitest test name. */
+export function record(entry: EvidenceEntry): void {
+  appendEvidence(entry, { runId: loadWorld().runId, testName: expect.getState().currentTestName ?? "(outside a test)" });
+}
+
+/**
+ * For a step whose precondition (an earlier step) did not hold: records the
+ * step as blocked, naming why, and fails the test. Prevents a later step
+ * from "passing" without testing anything.
+ */
+export function blockOn(entry: Omit<EvidenceEntry, "verdict" | "observed">, reason: string): never {
+  record({ ...entry, verdict: "blocked", observed: `Not executed: ${reason}`, blockedBy: reason });
+  throw new Error(`${entry.check} blocked: ${reason}`);
+}
 
 export const CONFIGURATION =
   "In-process API (createApp + supertest), disposable PostgreSQL fynrox_*_test, NODE_ENV=test, " +
@@ -27,10 +44,12 @@ export const CONFIGURATION =
 export interface Journey {
   app: Express;
   world: SyntheticWorld;
+  /** Synthetic TEST-ONLY password for this run's accounts (from the environment, never stored). */
+  password: string;
 }
 
 export function startJourney(): Journey {
-  return { app: createApp() as Express, world: loadWorld() };
+  return { app: createApp() as Express, world: loadWorld(), password: syntheticPassword() };
 }
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
@@ -43,31 +62,31 @@ async function expectLogin(res: request.Response, what: string, pick: (body: any
 
 /** user-mobile: apps/user-mobile/src/api/auth.ts → POST /auth/login */
 export async function loginUser(j: Journey, email: string): Promise<string> {
-  const res = await request(j.app).post("/auth/login").send({ email, password: j.world.password });
+  const res = await request(j.app).post("/auth/login").send({ email, password: j.password });
   return expectLogin(res, "user", (b) => b?.tokens?.accessToken);
 }
 
 /** coach-mobile: apps/coach-mobile/src/api/professionalAuth.ts → POST /professionals/auth/login */
 export async function loginCoach(j: Journey, email: string): Promise<string> {
-  const res = await request(j.app).post("/professionals/auth/login").send({ email, password: j.world.password });
+  const res = await request(j.app).post("/professionals/auth/login").send({ email, password: j.password });
   return expectLogin(res, "coach", (b) => b?.tokens?.accessToken);
 }
 
 /** admin-web: apps/admin-web/src/lib/auth.tsx → POST /admin/auth/login (MFA is off under NODE_ENV=test) */
 export async function loginAdmin(j: Journey, email: string): Promise<string> {
-  const res = await request(j.app).post("/admin/auth/login").send({ email, password: j.world.password });
+  const res = await request(j.app).post("/admin/auth/login").send({ email, password: j.password });
   return expectLogin(res, "admin", (b) => b?.token);
 }
 
 /** gym-portal: apps/gym-portal/src/lib/auth.tsx → POST /gym-portal/auth/login */
 export async function loginGym(j: Journey, email: string): Promise<string> {
-  const res = await request(j.app).post("/gym-portal/auth/login").send({ email, password: j.world.password });
+  const res = await request(j.app).post("/gym-portal/auth/login").send({ email, password: j.password });
   return expectLogin(res, "gym", (b) => b?.token);
 }
 
 /** creator-portal → POST /influencers/auth/login */
 export async function loginCreator(j: Journey, email: string): Promise<string> {
-  const res = await request(j.app).post("/influencers/auth/login").send({ email, password: j.world.password });
+  const res = await request(j.app).post("/influencers/auth/login").send({ email, password: j.password });
   return expectLogin(res, "creator", (b) => b?.tokens?.accessToken);
 }
 

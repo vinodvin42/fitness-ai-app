@@ -14,6 +14,9 @@
  * connection actually reached, and the harness marker table).
  */
 
+import fs from "node:fs";
+import path from "node:path";
+
 export const HARNESS_OPT_IN_VAR = "FYNROX_CONNECTIVITY";
 /** Database names the harness accepts: fynrox_<anything>_test. */
 export const TEST_DATABASE_NAME = /^fynrox_[a-z0-9_]*_test$/;
@@ -43,6 +46,11 @@ export const REQUIRED_VALUES: Record<string, string> = {
   FOOD_DATA_PROVIDER: "seed", // four built-in barcodes instead of Open Food Facts
   AI_PROVIDER: "mock", // canned text instead of an AI vendor call (lib/aiClient.ts)
   API_INSTANCE_COUNT: "1", // in-memory rate limiter, no Redis
+  // Read at call time from process.env (not validated by env.ts), so a value
+  // picked up from a stray .env could change behaviour mid-run. Pin them.
+  ADMIN_MFA_REQUIRED: "false",
+  SUPER_ADMIN_REASON_REQUIRED: "false",
+  APPROVAL_EXPIRY_DAYS: "7",
 };
 
 /** Hosting-platform markers. Their presence means this is not a local machine. */
@@ -57,6 +65,7 @@ export const TEST_ONLY_SECRETS = [
   "GYM_JWT_SECRET",
   "INFLUENCER_JWT_SECRET",
   "RAZORPAY_WEBHOOK_SECRET",
+  "FYNROX_SYNTHETIC_PASSWORD",
 ] as const;
 export const TEST_ONLY_PREFIX = "test-only-";
 
@@ -129,4 +138,34 @@ export function assertIsolatedEnvironment(env: Record<string, string | undefined
       "Connectivity harness refused to run — this is not an isolated test environment:\n  - " + problems.join("\n  - "),
     );
   }
+}
+
+/**
+ * .env files that Prisma Client or dotenv could load into the process at
+ * runtime (Prisma loads the schema-adjacent .env when a client is created,
+ * without overriding variables that are already set). Their presence is a
+ * blocker: the harness only checks whether they exist and never reads them.
+ */
+export function dotenvFilesPresent(apiRoot: string): string[] {
+  const candidates = [path.join(apiRoot, ".env"), path.join(apiRoot, "prisma", ".env"), path.join(apiRoot, "..", "..", ".env")];
+  return candidates.filter((p) => fs.existsSync(p)).map((p) => path.relative(path.join(apiRoot, "..", ".."), p));
+}
+
+export function assertNoDotenvFiles(apiRoot: string): void {
+  const found = dotenvFilesPresent(apiRoot);
+  if (found.length > 0) {
+    throw new Error(
+      `Connectivity harness refused: ${found.join(", ")} exists. Prisma/dotenv could load it into the run. ` +
+        "Run the harness from a clean clone (no .env files); the file was not read.",
+    );
+  }
+}
+
+/** The harness always runs from apps/api (npm --workspace sets the working directory). Refuses otherwise. */
+export function apiRootFromCwd(): string {
+  const root = process.cwd();
+  if (!fs.existsSync(path.join(root, "vitest.connectivity.config.mts")) || !fs.existsSync(path.join(root, "prisma", "schema.prisma"))) {
+    throw new Error(`Connectivity harness must run from apps/api (current directory: ${root}). Use the npm scripts with --workspace=apps/api.`);
+  }
+  return root;
 }

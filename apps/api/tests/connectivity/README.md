@@ -2,7 +2,8 @@
 
 **Status: prepared, not executed.** The sandbox these files were written in
 has no npm registry access and no Prisma engines, so the journeys have not run
-anywhere yet. Until they run, every cross-app finding remains source-level.
+anywhere yet and have not been type-checked against the project's real
+dependencies. Until they run, every cross-app finding remains source-level.
 
 These journeys check the API end to end on a disposable database, using the same
 endpoints each surface calls. They test the API, its database writes, and
@@ -45,8 +46,10 @@ Verdicts:
    - Accounts are named `TEST-ONLY …` with `.invalid` email addresses.
    - Business values are labelled TEST-ONLY fixtures: a ₹1 plan, a ₹0 coach fee and a 10% creator rate. They are not proposals.
    - It does not touch the real plans, scheduled price changes, coach levels, fees or commission defaults.
-4. **No external side effects.** Payments use the local HMAC mock, there is no email, push or SMS, and AI and food data use local substitutes. Your `apps/api/.env` is ignored during the run.
-5. **No secrets in output.** Evidence and logs redact token- and secret-shaped strings. `world.json` holds a synthetic password for the throwaway run; it stays under the git-ignored `test-results/`.
+4. **No external side effects.** Payments use the local HMAC mock, there is no email, push or SMS, and AI and food data use local substitutes. `DOTENV_CONFIG_PATH` points dotenv at a file that does not exist, and rule 6 stops the run if any `.env` file is present.
+5. **No secrets in output.** Evidence and logs redact token-, secret- and connection-string-shaped strings. The synthetic accounts' password comes from `FYNROX_SYNTHETIC_PASSWORD` (a per-run test-only value the runner generates) and is never written to `world.json` or any log.
+6. **No stray `.env`.** The run stops if `.env`, `apps/api/.env` or `apps/api/prisma/.env` exists, because Prisma Client can load the schema-adjacent `.env` at runtime. The harness checks existence only and never reads the file. A fresh clone has none.
+7. **No stale results.** Every evidence line carries the run id. The report uses only this run's lines, and lists Vitest tests that failed before recording anything. Browser-UI and native-device layers are always reported as not executed.
 
 ## Running it
 

@@ -11,13 +11,19 @@
  *   failed   — observed did not match the intended behaviour.
  *   current-behaviour — no agreed policy exists yet; this records what the
  *              code does today. It is NOT an acceptance pass.
- *   blocked  — the intended acceptance criterion cannot be judged until a
- *              business decision is made (named in `blockedBy`).
+ *   blocked  — the step could not be judged: either a business decision is
+ *              missing, or an earlier step it depends on failed (named in
+ *              `blockedBy`).
+ *
+ * Layer: every entry produced by this harness is "api-integration". Browser
+ * UI and native-device results are never produced here; the report lists
+ * them as not executed.
  */
 import fs from "node:fs";
 import path from "node:path";
 
 export type Verdict = "passed" | "failed" | "current-behaviour" | "blocked";
+export type Layer = "api-integration";
 
 export interface EvidenceEntry {
   scenario: string; // "A" .. "F"
@@ -31,29 +37,50 @@ export interface EvidenceEntry {
   expected: string;
   observed: string;
   verdict: Verdict;
+  /** What this step proves about ownership or isolation, if anything. */
+  isolation?: string;
   blockedBy?: string;
   notes?: string;
 }
 
-export const RESULTS_DIR = path.resolve(__dirname, "..", "..", "..", "test-results", "connectivity");
+export interface StoredEvidence extends EvidenceEntry {
+  at: string;
+  runId: string;
+  layer: Layer;
+  testName: string;
+}
+
+/**
+ * Every entry point (vitest, tsx scripts) runs with apps/api as the working
+ * directory (npm --workspace sets it), so results live in
+ * apps/api/test-results/connectivity. Resolved from the working directory
+ * rather than __dirname so it is the same in Vitest's main process
+ * (globalSetup) and its workers.
+ */
+export const RESULTS_DIR = path.resolve(process.cwd(), "test-results", "connectivity");
 export const EVIDENCE_FILE = path.join(RESULTS_DIR, "evidence.jsonl");
 
-const SECRET_LIKE = /(bearer\s+[a-z0-9._-]+|eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+|test-only-[a-z0-9-]+)/gi;
+const SECRET_LIKE = /(bearer\s+[a-z0-9._-]+|eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+|test-only-[a-z0-9-]+|postgres(ql)?:\/\/[^\s]+)/gi;
 
-/** Strips anything token- or secret-shaped before it is written to disk. */
+/** Strips anything token-, secret- or connection-string-shaped before it is written to disk. */
 export function redact(text: string): string {
   return text.replace(SECRET_LIKE, "[redacted]");
 }
 
-export function record(entry: EvidenceEntry): void {
+export function appendEvidence(entry: EvidenceEntry, meta: { runId: string; testName: string }): void {
   fs.mkdirSync(RESULTS_DIR, { recursive: true });
-  const safe: EvidenceEntry = {
+  const safe: StoredEvidence = {
     ...entry,
     expected: redact(entry.expected),
     observed: redact(entry.observed),
     notes: entry.notes ? redact(entry.notes) : undefined,
+    isolation: entry.isolation ? redact(entry.isolation) : undefined,
+    at: new Date().toISOString(),
+    runId: meta.runId,
+    layer: "api-integration",
+    testName: meta.testName,
   };
-  fs.appendFileSync(EVIDENCE_FILE, JSON.stringify({ at: new Date().toISOString(), ...safe }) + "\n");
+  fs.appendFileSync(EVIDENCE_FILE, JSON.stringify(safe) + "\n");
 }
 
 /** Short, secret-free description of an HTTP response for the `observed` field. */

@@ -1,36 +1,38 @@
 <#
   Batch 0 dependency reconciliation and real project checks (16 Oct 2026).
+  USER-RUN ONLY, from the root of the branch clone, on a machine that can
+  reach the npm registry:
 
-  Run from the root of the branch clone (D:\repo\fitness-ai-app-blueprint),
-  on a machine that can reach the npm registry:
     powershell -ExecutionPolicy Bypass -File scripts\local-verify\verify-batch0.ps1
-  Optional: -SkipBaseline (no comparison with main), -Port 55433
+    Optional: -SkipBaseline   -Port 55433
 
-  Steps and their side effects:
-    1. Records git branch/HEAD/status (names only), node and npm versions.
-    2. npm install --package-lock-only    -> rewrites package-lock.json (font entry)
-    3. npm ci                             -> creates node_modules (downloads from npm)
-    4. If apps/user-mobile has no expo-system-ui:
-       npx expo install expo-system-ui    -> Expo SDK 51 picks the version; edits
-                                             apps/user-mobile/package.json + package-lock.json
-    5. Explains every lockfile change (lockfile-changes.txt). Stops if Expo,
-       React Native or React changed; flags any other existing package whose
-       version moved.
-    6. Deletes node_modules and runs npm ci again -> proves the final lockfile
-       installs cleanly.
-    7. npm run typecheck, npm run lint
-    8. Temporary PostgreSQL (existing PostgreSQL binaries, new folder in %TEMP%,
-       127.0.0.1 only) -> migrations applied to a throwaway database ->
-       npm run test --workspace=apps/api (JUnit results)
-    9. Unless -SkipBaseline: the same typecheck/lint/tests on origin/main in a
-       temporary git worktree (its own npm ci, its own throwaway database),
-       then a comparison: new failures vs failures that already exist on main.
-   10. Stops the temporary server, deletes its folder and the worktree.
+  Commands, in order (each logged with its exit code; output redacted):
+    1. git branch/HEAD/status (file names only); node --version; npm --version
+    2. npm install --package-lock-only --no-audit --no-fund
+         side effect: rewrites package-lock.json (adds the Inter font entry)
+    3. npm ci --no-audit --no-fund
+         side effect: replaces node_modules (npm removes the old one itself)
+    4. only if apps/user-mobile/package.json lacks expo-system-ui:
+       (in apps\user-mobile) npx expo install expo-system-ui
+         side effect: Expo SDK 51 picks the version; edits apps/user-mobile/package.json and package-lock.json
+    5. node scripts\local-verify\lockfile-diff.mjs <before> package-lock.json <out>
+         STOPS if Expo / React Native / React changed; flags any other moved version
+    6. npm ci --no-audit --no-fund   (proves the FINAL lockfile installs cleanly)
+    7. npm run typecheck ; npm run lint
+    8. temporary PostgreSQL (safeguards in _common.ps1), database fynrox_branch_tests_test:
+       npm run db:generate / db:deploy / test --workspace=apps/api  (JUnit)
+    9. unless -SkipBaseline: the same checks on the branch's merge-base with
+       origin/main, in a temporary git worktree (%TEMP%\fynrox-baseline-<runId>,
+       its own npm ci and database fynrox_baseline_tests_test), then
+       node scripts\local-verify\junit-compare.mjs  -> new vs pre-existing failures
+   10. pg_ctl stop (this run's instance); delete its folder after ownership checks;
+       git worktree remove for the exact baseline folder created in step 9.
 
-  Leaves package-lock.json / apps/user-mobile/package.json changes UNCOMMITTED
-  for you to review. Does not push, deploy, or contact Azure/Render.
-  Results: test-results\local-verify\<time>\ (run-log.txt has every command,
-  exit code and redacted output).
+  Setup/infrastructure failures stop the run. Check failures (typecheck,
+  lint, tests) are recorded and the run continues so all results are
+  captured; the final exit code is non-zero if anything failed or did not run.
+  Leaves package-lock.json / apps/user-mobile/package.json changes UNCOMMITTED.
+  Results: test-results\local-verify\<runId>\. Does not push or deploy.
 #>
 param(
   [switch]$SkipBaseline,
@@ -41,16 +43,21 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "_common.ps1")
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$out = Join-Path $repo "test-results\local-verify\$stamp"
+$out = Join-Path $repo "test-results\local-verify\$($script:RunId)"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 $log = Join-Path $out "run-log.txt"
-Set-Content -Path $log -Value "FynroX Batch 0 verification $(Get-Date -Format o)" -Encoding utf8
+Set-Content -Path $log -Value "FynroX Batch 0 verification $($script:RunId) $(Get-Date -Format o)" -Encoding utf8
 
+$steps = @("lockfile reconcile", "npm ci (1)", "lockfile explanation", "npm ci (final lockfile)",
+  "branch typecheck", "branch lint", "branch prisma generate", "branch migrate (throwaway db)", "branch api tests")
+if (-not $SkipBaseline) {
+  $steps += @("baseline worktree", "baseline npm ci", "baseline typecheck", "baseline lint", "baseline prisma generate",
+    "baseline migrate (throwaway db)", "baseline api tests", "test comparison")
+}
 $exit = [ordered]@{}
-$pg = $null
+$pg = @{}
 $worktree = $null
-$notes = New-Object System.Collections.Generic.List[string]
+$worktreeCreated = $false
 
 function Step([string]$key, [string]$title, [string]$dir, [string]$cmd, [string[]]$a) {
   $code = Invoke-Logged $log $title $dir $cmd $a
@@ -58,104 +65,91 @@ function Step([string]$key, [string]$title, [string]$dir, [string]$cmd, [string[
   return $code
 }
 
-function Remove-NodeModules([string]$root) {
-  # Only the workspace install locations npm ci recreates; never anything else.
-  $targets = @(Join-Path $root "node_modules")
-  foreach ($group in @("apps", "packages")) {
-    $dir = Join-Path $root $group
-    if (Test-Path $dir) { Get-ChildItem $dir -Directory | ForEach-Object { $targets += (Join-Path $_.FullName "node_modules") } }
-  }
-  foreach ($t in $targets) { if (Test-Path $t) { Write-Log $log "    removing $t"; Remove-Item -Recurse -Force $t } }
-}
-
 function Invoke-ProjectChecks([string]$label, [string]$root, [string]$dbName) {
   Step "$label typecheck" "[$label] npm run typecheck" $root $script:Npm @("run", "typecheck") | Out-Null
   Step "$label lint" "[$label] npm run lint" $root $script:Npm @("run", "lint") | Out-Null
   $url = New-TempDatabase $log $pg $dbName
   Set-ProjectTestEnv $url
-  Step "$label prisma generate" "[$label] prisma generate" $root $script:Npm @("run", "db:generate", "--workspace=apps/api") | Out-Null
-  $m = Step "$label migrate (throwaway db)" "[$label] prisma migrate deploy on the throwaway database" $root $script:Npm @("run", "db:deploy", "--workspace=apps/api")
-  if ($m -ne 0) { $notes.Add("[$label] migrations failed on the throwaway database; tests not run."); return $null }
-  $junit = Join-Path $root "apps\api\test-results\api-junit.xml"
-  if (Test-Path $junit) { Remove-Item $junit -Force }
-  Step "$label api tests" "[$label] npm run test (apps/api)" $root $script:Npm @("run", "test", "--workspace=apps/api", "--", "--reporter=default", "--reporter=junit", "--outputFile.junit=test-results/api-junit.xml") | Out-Null
-  Clear-ExternalEnv
-  if (Test-Path $junit) {
+  try {
+    if ((Step "$label prisma generate" "[$label] prisma generate" $root $script:Npm @("run", "db:generate", "--workspace=apps/api")) -ne 0) { throw "[$label] prisma generate failed" }
+    if ((Step "$label migrate (throwaway db)" "[$label] prisma migrate deploy on the throwaway database" $root $script:Npm @("run", "db:deploy", "--workspace=apps/api")) -ne 0) { throw "[$label] migrations failed on the throwaway database" }
+    $junit = Join-Path $root "apps\api\test-results\api-junit.xml"
+    if (Test-Path -LiteralPath $junit) { Remove-Item -LiteralPath $junit -Force }
+    Step "$label api tests" "[$label] npm run test (apps/api)" $root $script:Npm @("run", "test", "--workspace=apps/api", "--", "--reporter=default", "--reporter=junit", "--outputFile.junit=test-results/api-junit.xml") | Out-Null
+    if (-not (Test-Path -LiteralPath $junit)) { Add-Failure $log "[$label] no JUnit file was produced"; return $null }
     $copy = Join-Path $out "$label-junit.xml"
-    Copy-Item $junit $copy
+    Copy-Item -LiteralPath $junit -Destination $copy
     return $copy
+  } finally {
+    Clear-RunEnv
   }
-  $notes.Add("[$label] no JUnit file was produced.")
-  return $null
 }
 
 try {
   # 1. record
   foreach ($c in @("git", "node", $script:Npm)) { if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { throw "$c is not on PATH." } }
+  Assert-NoDotenvFiles $repo
   Write-Log $log "node $(node --version); npm $(& $script:Npm --version)"
-  Write-Log $log "branch $(git -C $repo branch --show-current); HEAD $(git -C $repo rev-parse HEAD)"
+  Write-Log $log "repo $repo; branch $(git -C $repo branch --show-current); HEAD $(git -C $repo rev-parse HEAD)"
   git -C $repo status --porcelain=v1 | ForEach-Object { Write-Log $log "  status: $_" }
 
-  # 2-3. reconcile lockfile, install
+  # 2-3. reconcile the lockfile, install
   $lockBefore = Join-Path $out "package-lock.before.json"
-  Copy-Item (Join-Path $repo "package-lock.json") $lockBefore
+  Copy-Item -LiteralPath (Join-Path $repo "package-lock.json") -Destination $lockBefore
   if ((Step "lockfile reconcile" "npm install --package-lock-only" $repo $script:Npm @("install", "--package-lock-only", "--no-audit", "--no-fund")) -ne 0) { throw "lockfile reconciliation failed" }
-  if ((Step "npm ci (1)" "npm ci (installs node_modules, needed for the Expo CLI)" $repo $script:Npm @("ci", "--no-audit", "--no-fund")) -ne 0) { throw "npm ci failed after lockfile reconciliation" }
+  if ((Step "npm ci (1)" "npm ci (installs node_modules; needed for the Expo CLI)" $repo $script:Npm @("ci", "--no-audit", "--no-fund")) -ne 0) { throw "npm ci failed after lockfile reconciliation" }
 
-  # 4. expo-system-ui
-  $mobilePkg = Get-Content -Raw (Join-Path $repo "apps\user-mobile\package.json") | ConvertFrom-Json
-  $hasSystemUi = $mobilePkg.dependencies.PSObject.Properties.Name -contains "expo-system-ui"
-  if ($hasSystemUi) {
+  # 4. expo-system-ui, only if missing
+  $mobilePkg = Get-Content -Raw -LiteralPath (Join-Path $repo "apps\user-mobile\package.json") | ConvertFrom-Json
+  if ($mobilePkg.dependencies.PSObject.Properties.Name -contains "expo-system-ui") {
     Write-Log $log "expo-system-ui already declared ($($mobilePkg.dependencies.'expo-system-ui')); not installing."
   } else {
+    $steps += "expo install expo-system-ui"
     if ((Step "expo install expo-system-ui" "npx expo install expo-system-ui (Expo SDK 51 resolution)" (Join-Path $repo "apps\user-mobile") $script:Npx @("expo", "install", "expo-system-ui")) -ne 0) { throw "expo install failed" }
   }
 
   # 5. explain lockfile changes
   $diffCode = Step "lockfile explanation" "Explain lockfile changes" $repo "node" @((Join-Path $PSScriptRoot "lockfile-diff.mjs"), $lockBefore, (Join-Path $repo "package-lock.json"), (Join-Path $out "lockfile-changes.txt"))
   if ($diffCode -eq 3) { throw "Expo, React Native or React changed version. Stopping. See lockfile-changes.txt." }
-  if ($diffCode -eq 2) { $notes.Add("Some existing packages changed version: each needs an explanation (lockfile-changes.txt).") }
+  if ($diffCode -eq 2) { $exit["lockfile explanation"] = 0; Write-Log $log "NOTE: some existing packages changed version; each needs an explanation (lockfile-changes.txt)." ; $script:Failures.Add("existing packages changed version - investigate lockfile-changes.txt") }
+  elseif ($diffCode -ne 0) { throw "lockfile-diff.mjs failed (exit $diffCode)" }
 
-  # 6. clean install proof
-  Write-Log $log ""
-  Write-Log $log "=== removing node_modules for a clean install"
-  Remove-NodeModules $repo
-  if ((Step "npm ci (clean)" "npm ci from a clean tree with the final lockfile" $repo $script:Npm @("ci", "--no-audit", "--no-fund")) -ne 0) { throw "clean npm ci failed with the final lockfile" }
+  # 6. clean install with the final lockfile (npm ci removes node_modules itself)
+  if ((Step "npm ci (final lockfile)" "npm ci with the final lockfile" $repo $script:Npm @("ci", "--no-audit", "--no-fund")) -ne 0) { throw "npm ci failed with the final lockfile" }
 
   # 7-8. project checks on the branch
-  $pg = Start-TempPostgres $log $Port
+  Start-TempPostgres $log $Port $pg
   $branchJunit = Invoke-ProjectChecks "branch" $repo "fynrox_branch_tests_test"
 
-  # 9. baseline on main
+  # 9. baseline: the commit this branch started from
   if (-not $SkipBaseline) {
-    $worktree = Join-Path $env:TEMP "fynrox-main-baseline-$stamp"
-    if ((Step "baseline worktree" "git worktree add (origin/main, detached)" $repo "git" @("worktree", "add", "--detach", $worktree, "origin/main")) -eq 0) {
-      if ((Step "baseline npm ci" "[main] npm ci" $worktree $script:Npm @("ci", "--no-audit", "--no-fund")) -eq 0) {
-        $mainJunit = Invoke-ProjectChecks "main" $worktree "fynrox_main_tests_test"
-      } else {
-        $notes.Add("[main] npm ci failed; no baseline.")
-      }
-    }
-    Step "test comparison" "Compare branch vs main test results" $repo "node" @((Join-Path $PSScriptRoot "junit-compare.mjs"), "$branchJunit", "$mainJunit", (Join-Path $out "test-comparison.txt")) | Out-Null
+    $base = (git -C $repo merge-base HEAD origin/main).Trim()
+    Write-Log $log "Baseline commit (merge-base with origin/main): $base"
+    $worktree = Join-Path ([System.IO.Path]::GetFullPath($env:TEMP)) "fynrox-baseline-$($script:RunId)"
+    if (Test-Path -LiteralPath $worktree) { throw "BLOCKER: $worktree already exists." }
+    if ((Step "baseline worktree" "git worktree add --detach (merge-base)" $repo "git" @("worktree", "add", "--detach", $worktree, $base)) -ne 0) { throw "could not create the baseline worktree" }
+    $worktreeCreated = $true
+    if ((Step "baseline npm ci" "[baseline] npm ci" $worktree $script:Npm @("ci", "--no-audit", "--no-fund")) -ne 0) { throw "[baseline] npm ci failed" }
+    $baseJunit = Invoke-ProjectChecks "baseline" $worktree "fynrox_baseline_tests_test"
+    $cmpCode = Step "test comparison" "Compare branch vs baseline test results" $repo "node" @((Join-Path $PSScriptRoot "junit-compare.mjs"), "$branchJunit", "$baseJunit", (Join-Path $out "test-comparison.txt"))
+    if ($cmpCode -eq 1) { Write-Log $log "NOTE: the branch has NEW test failures (test-comparison.txt)." }
   } else {
-    $notes.Add("Baseline skipped: failures cannot be separated into pre-existing vs new.")
+    $script:Failures.Add("baseline skipped: failures cannot be separated into pre-existing vs new")
   }
 }
 catch {
-  Write-Log $log ""
-  Write-Log $log "STOPPED: $($_.Exception.Message)"
+  Add-Failure $log "STOPPED: $($_.Exception.Message)"
 }
 finally {
   Stop-TempPostgres $log $pg
-  if ($worktree -and (Test-Path $worktree)) {
-    Invoke-Logged $log "remove baseline worktree" $repo "git" @("worktree", "remove", "--force", $worktree) | Out-Null
+  if ($worktreeCreated -and $worktree -and (Test-Path -LiteralPath $worktree)) {
+    # git removes only the worktree it registered at exactly this path.
+    $rc = Invoke-Logged $log "git worktree remove (this run's baseline folder only)" $repo "git" @("worktree", "remove", "--force", $worktree)
+    if ($rc -ne 0) { Add-Failure $log "baseline worktree not removed: $worktree (remove it with: git worktree remove --force `"$worktree`")" }
   }
-  Clear-ExternalEnv
-  Write-Log $log ""
-  Write-Log $log "Exit codes (0 = success):"
-  foreach ($k in $exit.Keys) { Write-Log $log ("  {0,-34} {1}" -f $k, $exit[$k]) }
-  foreach ($n in $notes) { Write-Log $log "NOTE: $n" }
-  Write-Log $log ""
+  Clear-RunEnv
+  $code = Write-Result $log $exit $steps
   Write-Log $log "Results folder: $out"
-  Write-Log $log "Review, then decide yourself whether to commit: git -C $repo diff -- package.json package-lock.json apps/user-mobile/package.json"
+  Write-Log $log "Review before committing anything: git -C `"$repo`" diff -- package-lock.json apps/user-mobile/package.json"
 }
+exit $code

@@ -6,12 +6,17 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { assertIsolatedEnvironment } from "./isolation";
+import { apiRootFromCwd, assertIsolatedEnvironment, assertNoDotenvFiles } from "./isolation";
 import { EVIDENCE_FILE, RESULTS_DIR } from "./evidence";
 
 export default async function setup(): Promise<void> {
-  process.env.DOTENV_CONFIG_PATH = path.join(__dirname, "__no_dotenv_for_connectivity_harness__");
+  const apiRoot = apiRootFromCwd();
+  process.env.DOTENV_CONFIG_PATH = path.join(apiRoot, "tests", "connectivity", "__no_dotenv_for_connectivity_harness__");
+  assertNoDotenvFiles(apiRoot);
   assertIsolatedEnvironment(process.env);
+  // Anything a library adds to process.env during setup is removed again
+  // afterwards, so the workers start from exactly the runner's environment.
+  const envKeysBefore = new Set(Object.keys(process.env));
 
   // Imported only after the checks above, because these load config/env.ts.
   const { PrismaClient } = await import("@prisma/client");
@@ -25,12 +30,13 @@ export default async function setup(): Promise<void> {
   try {
     await assertHarnessDatabase(client);
     fs.mkdirSync(RESULTS_DIR, { recursive: true });
-    if (fs.existsSync(EVIDENCE_FILE)) fs.rmSync(EVIDENCE_FILE);
+    if (fs.existsSync(EVIDENCE_FILE)) fs.rmSync(EVIDENCE_FILE); // single known file, never a directory
     const world = await seedSyntheticWorld(client, { hashPassword, generateUniqueReferralCode });
     writeWorld(world);
     console.log(`[connectivity] synthetic world ${world.runId} seeded (TEST-ONLY data)`);
   } finally {
     await client.$disconnect();
     await appPrisma.$disconnect();
+    for (const key of Object.keys(process.env)) if (!envKeysBefore.has(key)) delete process.env[key];
   }
 }

@@ -133,3 +133,31 @@ ALTER TABLE "professionals" DROP COLUMN "commissionPct";   -- after carrying non
 ## 6. Rollback reality
 
 Rolling back code never rolls back the database. Migrations here only go forward, and four of them delete or rewrite data. Database rollback means restoring a backup, which is why steps 1–3 come first.
+
+## 7. Sandbox evidence, 16 Oct 2026 (direct SQL, not Prisma Migrate)
+
+**How it was run.**
+- **Tool:** `psql -X -v ON_ERROR_STOP=1 -q -f <migration.sql>`, one migration at a time in folder order, on a throwaway PostgreSQL 16.15 cluster bound to 127.0.0.1.
+- **Not Prisma Migrate.** Prisma's engines cannot be downloaded in that sandbox, so this was direct SQL. No `_prisma_migrations` history and no checksums were recorded, and Prisma's own checks (drift, failed-migration state, P3005) did not run.
+- **Different PostgreSQL major version.** Azure's version is not known here, and the PC has PostgreSQL 17 binaries.
+- **Not evidence for the Prisma workflow.** `scripts/local-verify/verify-migrations.ps1` repeats both checks through `prisma migrate deploy` / `migrate status` on the PC. Until that runs, the Prisma path is unverified.
+
+**Fresh install** (empty database, all 50 branch migrations): 50 applied, 0 failed, 102 tables.
+
+**Upgrade from main.** The steps were:
+- apply main's 46 migrations;
+- load `scripts/local-verify/migration-upgrade/fixture-main.sql` (synthetic TEST-ONLY data);
+- run the read-only `snapshot.sql`;
+- apply the 4 branch-only migrations;
+- run `snapshot.sql` again.
+
+Fixture loading succeeded (exit 0) and is reported separately from the migrations. All 4 migrations applied with 0 failures.
+
+| Migration | Observed on the synthetic data |
+|---|---|
+| `adults_only_remove_guardian` | `guardian_reviews` table dropped together with its row. The under-18 user remains, with no guardian record. |
+| `admin_roles_mfa_approvals` | `analytics`, `content`, `growth`, `user_operations` and `coach_operations` admins **all became `operations`**. For the analytics and content admins this likely widens access: `operations` can view users, professionals, relationships, gyms and growth data, and can raise changes there, most of which apply only after Super Admin approval. What those roles could do on main was not compared. `super_admin`, `finance` and `support` were unchanged. |
+| `plans_grow_prime_price_schedule` | `pro` → Grow ₹299 and `elite` → Prime ₹599, overwriting the fixture's ₹499 and ₹999. Annual plans were switched off. Existing subscriptions were locked at their old price (`priceCents` 49900 / 99900). A ₹299 → ₹349 change was scheduled for 2026-11-30T18:30Z with `noticeSentAt` set. **Two "Grow price change" notifications were inserted** (for the active and the trialing Grow subscribers). The notice says "₹349", but those subscribers are locked at ₹499 in this data. |
+| `coach_levels_fees_commission` | Every coach offering's `priceCents` was **dropped** (₹1,200 / ₹1,500 / ₹900 / ₹2,000 lost). The `commissionPct` column was dropped; the 25% coach was carried into `commission_rates`, and the 20% coaches rely on the default. Only the demo id `coach-alex-rivera` got a level, so **`fx-coach-25` and `fx-coach-20` have no level**. Existing bookings got `commissionPct` 25 and `gstCents` 0. The booking payment got `feeCents` = amount + discount (₹1,500) and `taxCents` 0. |
+
+The logs and before/after snapshots are in the session's scratch evidence folder. The fixture and snapshot files are committed so the same run can be repeated with Prisma on the PC.
