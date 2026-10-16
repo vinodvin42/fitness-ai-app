@@ -65,6 +65,9 @@ describe("mock payment provider guard (boot)", () => {
   const apiRoot = path.resolve(__dirname, "..");
   const syntheticEnv = {
     PATH: process.env.PATH,
+    // Never read a developer's apps/api/.env into these children (dotenv
+    // would add e.g. a local RAZORPAY_KEY_ID and change the outcome).
+    DOTENV_CONFIG_PATH: path.join(apiRoot, "tests", "__no_such_dotenv_file__"),
     DATABASE_URL: "postgresql://synthetic:synthetic@localhost:5432/never_connected",
     JWT_ACCESS_SECRET: "synthetic-test-secret-aaaaaaaa",
     JWT_REFRESH_SECRET: "synthetic-test-secret-bbbbbbbb",

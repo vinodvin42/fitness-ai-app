@@ -1,44 +1,135 @@
-# Migration safety — inventory and proposed path (Batch 0, 16 Oct 2026)
+# Migration safety: inventory, review and proposed path
 
-Status: **proposal only.** Nothing here has been run against any database.
-Every database statement below needs separate approval before it touches a
-real environment.
+Updated 16 Oct 2026 (Batch 0 close-out).
+
+**Status: read-only review and proposal.** No database has been queried or changed, and no migration file has been edited. Every action in section 5 needs separate approval.
 
 ## 1. Hosting targets
 
 | Target | Evidence | Active? | How schema changes reach it |
 |---|---|---|---|
-| Azure App Service + Azure Postgres (`centralindia`) | `AZURE-DEPLOY-RUNBOOK.md` ("Azure is now the live plan", 3 Sep 2026); `apps/user-mobile/eas.json` points the app at `primefit-api-zjcprljmiu7mq.azurewebsites.net`; `.github/workflows/deploy-azure-api.yml` | **Yes**: the user-app build talks to it | `deploy-azure-api.yml` (manual `workflow_dispatch`, any branch) runs `prisma migrate deploy` before building, with no test gate and no backup step |
-| Render web service + Render Postgres (`oregon`) | `render.yaml`; `DEPLOY-RUNBOOK.md` calls it a fallback | **Unknown**: can't be seen from the repo. Check the Render dashboard for a `fynrox-api` service or `primefit-db` database | Was `prisma db push --accept-data-loss` on every deploy. **Now a read-only `prisma migrate status`** (Batch 0), so a deploy stops instead of changing the database |
-| Local / CI | `docker-compose.yml` (Postgres only), `.github/workflows/ci.yml` (throwaway `postgres:16` service) | Yes | `prisma migrate deploy` against a disposable database |
+| Azure App Service + Azure Postgres (`centralindia`) | `AZURE-DEPLOY-RUNBOOK.md` ("Azure is now the live plan", 3 Sep 2026); `apps/user-mobile/eas.json` points at `primefit-api-zjcprljmiu7mq.azurewebsites.net`; `.github/workflows/deploy-azure-api.yml` | **Yes**: the user-app build talks to it | `deploy-azure-api.yml`: manual `workflow_dispatch` from any **pushed** branch. Runs `prisma migrate deploy` before building. No test gate, no backup step |
+| Render web service + Render Postgres (`oregon`) | `render.yaml`; `DEPLOY-RUNBOOK.md` calls it a fallback | **Unknown**: check the Render dashboard for `fynrox-api` / `primefit-db` | Was `prisma db push --accept-data-loss` on every deploy. Now a read-only `prisma migrate status`, so a deploy stops instead of changing the database (Batch 0) |
+| Local / CI | `docker-compose.yml`, `.github/workflows/ci.yml` | Yes | `prisma migrate deploy` against a throwaway database |
 
-Render is kept in place (not deleted) until its usage is confirmed.
+## 2. Exact inventory
 
-## 2. Migration history
+`apps/api/prisma/migrations` holds **51 entries: 50 migration folders plus `migration_lock.toml`.** Each folder has one `migration.sql`. (The earlier audit said "51 migrations"; that was wrong.)
 
-- 51 entries in `apps/api/prisma/migrations` (50 migrations plus `migration_lock.toml`), from `20260831081213_init`.
-- Four migrations exist **only on `blueprint-p1-p2`** (not on `origin/main`). Whether any of them has already been applied to Azure is **unknown**: the Azure deploy workflow can be started from any branch. Check `_prisma_migrations` on the Azure database (read-only) before deciding anything.
+| Where | Migrations | Notes |
+|---|---|---|
+| `origin/main` (`909a7b6`) | 46 | Newest: `20261009100000_figma_v1_features` |
+| `blueprint-p1-p2` (this branch, not on GitHub) | 50 = main's 46 + 4 | The 4 are listed in section 4. Main's 46 are byte-identical here |
+| `origin/figma-v1-ui` (`069d715`, 7 Oct) | 47 | **Diverges from main.** It has 12 migrations main lacks (`20261006090000_figma_v1_gap_features` … `20261008090000_profile_settings_gym_member`) and lacks 11 that main has (`20260928184151_r1_ledgers_privacy_lifecycle_states` … `20260928223345_partner_application_action_item`, plus `20261009100000_figma_v1_features`). Main's `20261009100000_figma_v1_features` appears to repackage the same Figma tables, except `quote_requests`, which exists only on that branch |
+| `origin/claude/ecstatic-fermat-9wf1gj` | 45 | A subset of main |
 
-### Pending SQL review (the four branch-only migrations)
+Full list (50): `20260831081213_init`, `20260903182243_admin_ticket_triage`, `20260904131818_content_images`, `20260905133735_pay01_booking_payments`, `20260914180441_plan_generation_recommendation_engine`, `20260914180530_plan_isactive_default_false`, `20260914192602_user_acquisition_context`, `20260914201302_workout_session_current_exercise_index`, `20260915093550_food_estimate_data_quality_flow`, `20260915124108_checkin_daily_weekly`, `20260915135333_payment_entitlement_activation_tracking`, `20260915135930_relationship_status_add_enum_values`, `20260915135945_relationship_state_machine`, `20260916120000_relationship_end_reason`, `20260917054248_analytics_events`, `20260918060000_subscription_status_add_enum_values`, `20260918060010_subscription_cancel_and_revoke_fields`, `20260918093058_add_password_reset_token`, `20260918093332_onboarding_schedule_equipment_baseline`, `20260918093342_consent_and_safety_escalation`, `20260919083231_credential_expires_at`, `20260920082741_gym_partner_lite`, `20260920082744_admin_action_item_queue`, `20260920082836_acquisition_source_campaign_touchpoint`, `20260920082917_backfill_acquisition_context_touchpoints`, `20260920083029_professional_lifecycle`, `20260920134436_professional_offers`, `20260920143806_add_coach_note`, `20260920143959_relationship_lifecycle_offer_proposed_by_professional`, `20260920144004_relationship_updated_at`, `20260920181028_campaign_gym_relation`, `20260921121844_gym_portal_password`, `20260921122214_influencer_portal_auth`, `20260922132022_meal_plan_generation_engine`, `20260922132134_add_mindfulness_log`, `20260928184151_r1_ledgers_privacy_lifecycle_states`, `20260928191712_guidance_requests`, `20260928191745_assignment_queue_action_item`, `20260928201619_subscription_pending_suspended`, `20260928203522_encrypt_health_data`, `20260928204936_gym_help_requests`, `20260928205041_gym_help_action_item`, `20260928210025_commission_payout_failure_reason`, `20260928223229_public_applications`, `20260928223345_partner_application_action_item`, `20261009100000_figma_v1_features`, `20261015100000_adults_only_remove_guardian`, `20261015110000_admin_roles_mfa_approvals`, `20261015120000_plans_grow_prime_price_schedule`, `20261015130000_coach_levels_fees_commission`.
 
-| Migration | Schema change | Data it changes or deletes | Risk |
+## 3. Applied where? (evidence, not verification)
+
+| Environment | Main's 46 | figma-v1-ui's 12 | The 4 branch-only migrations |
 |---|---|---|---|
-| `20261015100000_adults_only_remove_guardian` | Drops the `guardian_reviews` table and the `GuardianReviewStatus` type | **Deletes all guardian review rows** | Irreversible. The folder name and comment still say "adults 18+ only", which conflicts with the later no-age-limit decision |
-| `20261015110000_admin_roles_mfa_approvals` | Recreates the `AdminRole` enum; adds MFA and approval tables | Maps old roles to new ones (anything other than super_admin, finance or support becomes `operations`) | **Sets the default admin role to `super_admin`**: any admin row inserted without an explicit role gets full privileges |
-| `20261015120000_plans_grow_prime_price_schedule` | Renames tiers pro→grow and elite→prime; adds `quarterly`; adds `subscriptions.priceCents`; adds `plan_price_changes` | **Sets live plan prices to ₹299 / ₹599**, switches off the yearly plans, **inserts the ₹349 Grow price increase for 1 Dec 2026**, and **sends an in-app notice to every current Grow subscriber** | Applying it to production activates a business-policy change and contacts real users. Its own comment calls these values "test data only" |
-| `20261015130000_coach_levels_fees_commission` | Adds coach levels, services, level fees and commission rates | **Drops `professional_service_offerings.priceCents`** (each coach's own price) and `professionals.commissionPct` (carried into overrides only when it isn't 20%). Seeds test fees and a 20% default. Gives levels only to three demo coach ids | **Every real coach's price is deleted, and real coaches get no level, so they are not bookable** until an admin places them |
+| Azure | **Unknown.** Depends on which branch was last deployed | **Unknown.** Possible if `deploy-azure-api.yml` was ever run from `figma-v1-ui` | **Not via the deploy workflow:** this branch was never pushed, and the workflow only deploys pushed refs. A manual `migrate deploy` from a developer machine can't be ruled out from here |
+| Render | Unknown (does it exist?) | Unknown | Same reasoning as Azure |
+| Your PC (`D:\repo\fitness-ai-app`) | n/a: no database, no `node_modules` | n/a | n/a |
 
-Earlier migrations with data-changing statements: `20260920083029_professional_lifecycle` and `20260920144004_relationship_updated_at` (`UPDATE`s only; not reviewed further in this batch).
+**Why the figma-v1-ui split matters.** If Azure's `_prisma_migrations` contains the 12 `figma-v1-ui` names, then deploying `main` or this branch would try to apply `20261009100000_figma_v1_features` on top of tables that already exist. It would likely fail partway. `prisma migrate status` would also report history that is missing locally. **This has to be answered from the Azure database (read-only) before any deploy.**
 
-## 3. Proposed safe path (needs your approval at each numbered step)
+## 4. Risky migrations, one by one
 
-1. **Look, don't touch.** From a trusted machine, run `npx prisma migrate status --schema=apps/api/prisma/schema.prisma` against each real database (Azure; Render if it exists). Save the output. Read-only.
-2. **Backup and restore drill.** Take a point-in-time restore (Azure) or `pg_dump`. Restore it into a throwaway database and confirm row counts. No production writes.
-3. **Rehearse on the copy.** Run `prisma migrate deploy` against the restored copy. Check the business data afterwards (plan prices, scheduled changes, notifications, coach fees and levels).
-4. **Separate business data from schema.** The price, fee, commission, notification and demo-coach statements in the two Package 3/4 migrations are business decisions, not schema. If step 1 shows they have **not** been applied anywhere, edit them out of the migrations and move them to an approved admin action or seed. If they **have** been applied, leave the files alone and write corrective data changes, each approved separately.
-5. **Render, only if it exists.** It was built with `db push`, so it has no migration table, and `migrate status` will now block deploys. Baseline it: compare with `prisma migrate diff --from-url "$RENDER_DATABASE_URL" --to-migrations apps/api/prisma/migrations --shadow-database-url <throwaway>`. Only if they match, run `prisma migrate resolve --applied <name>` for each migration.
-6. **Gate the Azure deploy.** Proposed, not done: require a green CI run for the commit, take a backup before `migrate deploy`, and check the database in `/health` (today it doesn't touch the database).
+The project's own rule (`docs/platform/health-data-encryption.md`, "The drop"): *"An unapplied destructive migration sitting in `prisma/migrations` is applied by the next `prisma migrate deploy` anyone runs."* All four branch-only migrations are in exactly that position.
 
-## 4. Rollback reality
+### 4.1 `20261015100000_adults_only_remove_guardian`
 
-Rolling back code (Render "Rollback", redeploying an older ref on Azure) **never rolls back the database**. Migrations here only go forward, and the four above delete data. A database rollback means restoring a backup. That is why steps 1–3 come first.
+```sql
+ALTER TABLE "guardian_reviews" DROP CONSTRAINT "guardian_reviews_userId_fkey";
+DROP TABLE "guardian_reviews";
+DROP TYPE "GuardianReviewStatus";
+```
+
+- **Applied:** see section 3. Not on any pushed branch.
+- **Data affected:** every guardian-review row is deleted permanently. These may hold guardian contact details and consent decisions about minors.
+- **Business decision embedded:** the header says "FynroX is for adults 18+ only". That was later reversed (commit `f01613d`, no age limit), but this migration still removes the guardian flow.
+- **Proposed correction (needs approval; only valid if section 3 confirms it is unapplied everywhere):**
+  - Replace the `DROP TABLE` with `ALTER TABLE "guardian_reviews" RENAME TO "guardian_reviews_archived_20261015"`, keeping the rows until a retention decision is made.
+  - Correct the header comment.
+  - Alternatively, export the table before applying.
+- **Recovery:** once dropped, only a backup restore brings the rows back. Take a verified backup first.
+
+### 4.2 `20261015110000_admin_roles_mfa_approvals`
+
+```sql
+CASE "role"::text WHEN 'super_admin' THEN 'super_admin' WHEN 'finance' THEN 'finance'
+  WHEN 'support' THEN 'support' ELSE 'operations' END
+ALTER TABLE "admin_users" ALTER COLUMN "role" SET DEFAULT 'super_admin';
+```
+
+- **Permissions affected:**
+  - `user_operations`, `coach_operations`, `content`, `growth` and `analytics` admins all become `operations` and gain whatever that role allows.
+  - **Any admin row inserted without an explicit role becomes `super_admin`**, the highest privilege.
+- **Business decision embedded:** the role mapping (decision D15/D21).
+- **Proposed correction:** set the default to the least-privileged role (`support`), or remove it. Confirm first that every code path creating admins passes a role. List current admins and their mapped roles before applying.
+- **Recovery:** role changes are reversible by hand if the old values are recorded first. Export `admin_users (id, email, role)` before applying.
+
+### 4.3 `20261015120000_plans_grow_prime_price_schedule`
+
+```sql
+UPDATE "subscription_plans" SET "name" = 'Grow', "priceCents" = 29900 WHERE "id" = 'pro';
+UPDATE "subscription_plans" SET "name" = 'Prime', "priceCents" = 59900 WHERE "id" = 'elite';
+INSERT INTO "plan_price_changes" (...) VALUES ('seed-grow-349-2026-12-01', 'pro', 34900, 29900, '2026-11-30T18:30:00.000Z', ...);
+INSERT INTO "notifications" (...) SELECT ... 'From 1 December 2026, Grow will be ₹349 per month ...' FROM "subscriptions" WHERE "planId" = 'pro' AND "status" IN ('active','trialing','past_due');
+```
+
+- **Data affected:**
+  - Live plan prices are overwritten.
+  - Existing subscriptions get `priceCents` backfilled from their current plan price. That part is safe and wanted.
+  - Yearly plans are switched off.
+- **Business decisions embedded** (the same file calls the prices "test data only"):
+  - prices of ₹299 / ₹599;
+  - the ₹349 increase effective 1 Dec 2026;
+  - **an in-app notification to every current Grow subscriber.**
+- **Proposed correction:**
+  - Keep the schema parts: enum renames, the `quarterly` value, the `priceCents` column and its backfill, and the `plan_price_changes` table.
+  - Move steps 4, 6 and 7 (prices, the scheduled increase, the notice) out of the migration. Run them as separately approved admin actions.
+- **Recovery:** prices and the schedule are reversible by admin action, but **sent notifications cannot be unsent.** The schema renames are hard to undo without a backup.
+
+### 4.4 `20261015130000_coach_levels_fees_commission`
+
+```sql
+INSERT INTO "coach_level_fees" ... (180000, 120000, 250000, 200000, 150000, 300000, 250000, 180000, 380000)
+INSERT INTO "commission_rates" ... ('commission-default-start', NULL, 20, ...)
+UPDATE "professionals" SET "coachLevelId" = 'level-1' WHERE "id" IN ('coach-alex-rivera', 'coach-priya-nair');
+UPDATE "bookings" SET "commissionPct" = 20 WHERE "commissionPct" IS NULL;
+ALTER TABLE "professional_service_offerings" DROP COLUMN "priceCents";
+ALTER TABLE "professionals" DROP COLUMN "commissionPct";   -- after carrying non-20% values into overrides
+```
+
+- **Data affected:**
+  - **Every coach's own service price is deleted.**
+  - Each coach's commission column is dropped. Only values other than 20% are kept, as overrides.
+  - Only the three demo coach ids get a level, so **real coaches end up with no level and can't be booked.**
+  - Past bookings get `commissionPct` (copied from the coach, otherwise 20) and GST 0.
+- **Business decisions embedded:** level names, nine level fees, the 20% FynroX commission, the three services and their durations. All are labelled "test data".
+- **Proposed correction:**
+  - Rename `priceCents` to `legacyPriceCents` instead of dropping it, until the fee model is approved.
+  - Move fee, commission and demo-coach assignments to an approved seed or admin action.
+  - Keep the schema and the historical booking backfill.
+- **Recovery:** dropped columns come back only from a backup. Export `professional_service_offerings (id, priceCents)` and `professionals (id, commissionPct)` first.
+
+### 4.5 Data-changing migrations already on main (lower risk)
+
+- `20260920083029_professional_lifecycle`: sets `professionals.lifecycleStatus` from verified credentials. Derived and deterministic.
+- `20260920144004_relationship_updated_at`: `UPDATE relationships SET updatedAt = createdAt WHERE updatedAt IS NULL`. Harmless.
+
+## 5. Proposed safe path (each numbered step needs your approval)
+
+1. **Look, don't touch.** From a trusted machine, read Azure's `_prisma_migrations` (`SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations ORDER BY started_at;`) and run `npx prisma migrate status`. Read-only. This answers sections 3 and the figma-v1-ui question.
+2. **Backup and restore drill.** Take an Azure point-in-time restore or `pg_dump`. Restore it into a throwaway database and compare row counts.
+3. **Rehearse on the copy.** Run `prisma migrate deploy` against the restored copy. Check plan prices, scheduled changes, notifications, coach fees and levels, and admin roles.
+4. **Correct the four migrations, only if step 1 shows they're unapplied everywhere,** as proposed in 4.1–4.4. If any is already applied, leave its file alone and write corrective forward migrations instead, each approved.
+5. **Render, only if it exists:** baseline it. Check `prisma migrate diff --from-url "$RENDER_DATABASE_URL" --to-migrations apps/api/prisma/migrations --shadow-database-url <throwaway>` first, then run `prisma migrate resolve --applied <name>`.
+6. **Gate the Azure deploy (proposal):** require a green CI run, take a backup before `migrate deploy`, and check the database in `/health`.
+
+## 6. Rollback reality
+
+Rolling back code never rolls back the database. Migrations here only go forward, and four of them delete or rewrite data. Database rollback means restoring a backup, which is why steps 1–3 come first.

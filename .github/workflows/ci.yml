@@ -284,7 +284,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: results
+      # Informational only: this job never fails and never replaces the
+      # build-and-test result, which is what blocks a merge.
       - name: Separate existing failures from new ones
+        env:
+          BRANCH_JOB_RESULT: ${{ needs.build-and-test.result }}
+          MAIN_JOB_RESULT: ${{ needs.baseline-main.result }}
         run: |
           python3 - <<'PY'
           import os, glob, xml.etree.ElementTree as ET
@@ -298,7 +303,10 @@ jobs:
                       out.add(f'{case.get("classname")} > {case.get("name")}')
               return out
           branch, main = failed("api-junit-branch"), failed("api-junit-main")
-          lines = ["## API tests: this branch vs main", ""]
+          lines = ["## API tests: this branch vs main", "",
+                   f"Branch job result: **{os.environ.get('BRANCH_JOB_RESULT')}** (this is what passes or fails the check; "
+                   "a crash before tests run, or a lint/typecheck failure, shows here even when the lists below are empty).",
+                   f"Main baseline job result: {os.environ.get('MAIN_JOB_RESULT')}", ""]
           if branch is None or main is None:
               lines.append("Results missing for " + ", ".join(n for n, v in (("branch", branch), ("main", main)) if v is None) + ".")
           else:
