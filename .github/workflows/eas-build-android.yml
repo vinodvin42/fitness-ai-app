@@ -9,10 +9,12 @@ name: Build Android APK (EAS)
 # download link sat on the 22 Sep build through an entire R1 release:
 # the code shipped to main, and nothing carried it into a binary.
 #
-# workflow_dispatch ONLY, matching deploy-azure-api.yml, and for a
-# sharper reason than that one: every run consumes EAS build minutes and
-# signs an artifact with the project's real Android keystore. That is a
-# deliberate act, not something a push to main should trigger.
+# Started by hand (workflow_dispatch) or by pushing an android-build-*
+# tag, never by an ordinary push to main: every run consumes EAS build
+# minutes and signs an artifact with the project's real Android keystore,
+# so it stays a deliberate act. The tag trigger (17 Oct 2026) exists so a
+# build can be started from a terminal with only git access; tag runs use
+# the `preview` profile.
 #
 # What is and is not verified here: the shell in the reporting step was
 # tested directly — the jq extraction against both shapes eas returns,
@@ -36,6 +38,9 @@ on:
         description: "eas.json build profile (only `preview` is defined today)"
         required: true
         default: preview
+  push:
+    tags:
+      - "android-build-*"
 
 permissions:
   contents: read
@@ -91,7 +96,7 @@ jobs:
         run: |
           eas build \
             --platform android \
-            --profile "${{ inputs.profile }}" \
+            --profile "${{ inputs.profile || 'preview' }}" \
             --non-interactive \
             --wait \
             --json > "$RUNNER_TEMP/build.json"
