@@ -2,361 +2,479 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title data-i18n="index.pageTitle">Fynrox — Train, Fuel, Recover, Coached by AI</title>
+  <title>Fynrox — Know what to do next</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta data-i18n-attr="content:index.metaDescription" name="description" content="Fynrox is a training, nutrition, and recovery app with an AI coach grounded in your real data, plus verified human professionals matched to you when you want one. Currently in pilot." />
-  <meta name="theme-color" content="#F6F4EB" />
+  <meta name="description" content="Your workouts, Indian meals, recovery and real coaches in one app. Every day, Fynrox shows you what to do next." />
+  <meta name="theme-color" content="#0a0a0a" />
   <meta name="color-scheme" content="light" />
 
-  <meta data-i18n-attr="content:index.metaOgTitle" property="og:title" content="Fynrox — Train, Fuel, Recover, Coached by AI" />
-  <meta data-i18n-attr="content:index.metaOgDescription" property="og:description" content="Training, nutrition, and recovery tracking with an AI coach grounded in your real data — plus verified human professionals matched to you when you want one." />
+  <meta property="og:title" content="Fynrox — Know what to do next" />
+  <meta property="og:description" content="Your workouts, Indian meals, recovery and real coaches in one app." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
 
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
 
-  <link rel="stylesheet" href="/assets/css/fonts.css" />
-  <link rel="stylesheet" href="/assets/css/styles.css" />
-  <script>document.documentElement.className += " has-js";</script>
+  <!-- This page is built to the Figma homepage design and has its own
+       header, footer and stylesheet; sync-shell.js skips it. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&amp;family=Figtree:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" />
+  <link rel="stylesheet" href="/assets/css/home.css?v=1" />
 </head>
 <body>
-  <a data-i18n="shell.skipToContent" class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="site-header" id="siteHeader">
-    <div class="wrap site-header__inner">
-      <a class="brand" href="/index.html">
-        <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
+  <!-- id="top" here and id="download" on the last section keep links to
+       the old homepage's #top and #download anchors landing in place. -->
+  <header class="site-head is-dark" id="top">
+    <div class="site-head__bar">
+      <a class="brand" href="/">
+        <img class="brand__mark" src="/assets/img/fynrox-mark.png?v=1" width="36" height="36" alt="" />
         <span class="brand__word">Fynrox</span>
       </a>
-      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
-        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span data-i18n="shell.nav.menu">Menu</span>
+      <button class="menu-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="visually-hidden">Menu</span>
       </button>
-      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">
-        <a class="nav__link" href="/index.html" aria-current="page" data-i18n="shell.nav.home">Home</a>
-        <a class="nav__link" href="/how-it-works.html" data-i18n="shell.nav.howItWorks">How it works</a>
-        <a class="nav__link" href="/programs.html" data-i18n="shell.nav.programs">Programs</a>
-        <a class="nav__link" href="/professional-guidance.html" data-i18n="shell.nav.guidance">Guidance</a>
-        <a class="nav__link" href="/pricing.html" data-i18n="shell.nav.pricing">Pricing</a>
-        <a class="nav__link" href="/gyms.html" data-i18n="shell.nav.forGyms">For Gyms</a>
-        <a class="nav__link" href="/creators.html" data-i18n="shell.nav.forCreators">For Creators</a>
-        <a class="nav__link" href="/professionals.html" data-i18n="shell.nav.forProfessionals">For Professionals</a>
-        <a class="nav__link" href="/learn.html" data-i18n="shell.nav.learn">Learn</a>
-        <a class="btn btn--primary btn--sm" href="/early-access.html" data-i18n="shell.nav.cta">Get early access</a>
+      <nav class="topnav" id="primaryNav" aria-label="Primary">
+        <ul class="topnav__links">
+          <li><a href="#app">The app</a></li>
+          <li><a href="#programs">Programs</a></li>
+          <li><a href="#plans">Plans</a></li>
+          <li><a href="#partners">Partners</a></li>
+        </ul>
+        <div class="topnav__actions">
+          <a class="topnav__signin" href="#partner-sign-in">Partner sign in</a>
+          <a class="pill" href="/download.html">Get the app</a>
+        </div>
       </nav>
     </div>
   </header>
 
   <main id="main">
-    <!-- ==================================================================
-         HERO
-         ================================================================== -->
-    <section class="hero" id="top">
-      <div class="hero__bg" aria-hidden="true"></div>
-      <div class="wrap hero__inner">
-        <div class="hero__content">
-          <p class="eyebrow">
-            <span class="eyebrow__mark">FYNROX</span>
-            <span aria-hidden="true">·</span>
-            <span data-i18n="index.yourCompleteWellnessOperating">Your Complete Wellness Operating System</span>
-          </p>
-          <h1 data-i18n="index.trainingNutritionAndRecovery" class="hero__title">
-            Training, nutrition, and recovery — with an AI coach that actually knows your data.
-          </h1>
-          <p data-i18n="index.logWorkoutsAndMeals" class="hero__subtitle">
-            Log workouts and meals, track recovery, and chat with an AI coach grounded in your
-            real training history — not generic advice. When you want a human in the loop, book a
-            verified human professional matched to you when you want one.
-          </p>
-          <div class="hero__actions">
-            <a data-i18n="index.getTheApp" class="btn btn--primary btn--lg" href="/download.html">Get the app</a>
-            <a data-i18n="index.seeWhatsInside" class="btn btn--ghost btn--lg" href="/features.html">See what's inside</a>
-          </div>
-          <p data-i18n="index.onboardingItsFirstPilot" class="hero__note">
-            Onboarding its first pilot testers now — Android via direct APK, iOS via TestFlight.
-          </p>
+    <section class="hero is-dark" aria-labelledby="hero-title">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="hero__inner">
+        <div class="hero__text">
+          <p class="hero__eyebrow">Fitness · Yoga · Nutrition · Recovery · Outcomes</p>
+          <h1 class="hero__title" id="hero-title">Know what to do <span class="accent">next.</span></h1>
+          <p class="hero__lede">Your workouts, Indian meals, recovery and real coaches in one app. Every day, Fynrox shows you the one thing that matters, and why.</p>
+          <a class="store-btn" href="/download.html">
+            <span class="store-btn__glyph" aria-hidden="true"></span>
+            <span class="store-btn__label"><span class="store-btn__pre">Download for</span> <span class="store-btn__name">Android</span></span>
+          </a>
         </div>
 
-        <div class="hero__visual" aria-hidden="true">
-          <div class="hero__media">
-            <img src="/assets/media/hero-poster.jpg" alt="" width="1730" height="1611" fetchpriority="high" />
-            <!-- No src: assets/js/main.js attaches one only on a wide
-                 viewport, with motion allowed and the connection not
-                 metered. Without JavaScript the poster above is the hero. -->
-            <video data-src="/assets/media/hero.mp4" muted loop playsinline preload="none"></video>
-          </div>
-          <div class="float-card float-card--chat">
-            <div class="float-card__head">
-              <span class="dot dot--ai"></span>
-              <span data-i18n="index.fynroxAi" class="float-card__title">Fynrox AI</span>
+        <figure class="stage">
+          <div class="phone" aria-hidden="true">
+            <div class="screen">
+              <span class="screen__island"></span>
+              <div class="scr-head">
+                <div class="scr-head__text">
+                  <p class="scr-date">Today · Tue, 6 Oct</p>
+                  <p class="scr-hello">Hello Arjun,</p>
+                </div>
+                <span class="scr-avatar">AM</span>
+              </div>
+              <div class="scr-card scr-brief">
+                <p class="scr-mono">Your daily brief</p>
+                <p class="scr-brief__text">Readiness is 78/100 today. Lower A fits your plan. Aim for your 150 g protein target.</p>
+              </div>
+              <div class="scr-card scr-workout">
+                <div class="scr-workout__head">
+                  <span class="scr-workout__icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5.83334V14.1667M2.5 7.50001V12.5M15 5.83334V14.1667M17.5 7.50001V12.5M5 10H15" stroke="#0A0A0A" stroke-width="1.83333" stroke-linecap="round"/></svg></span>
+                  <div>
+                    <p class="scr-mono scr-mono--muted">Today’s workout</p>
+                    <p class="scr-workout__name">Lower A</p>
+                  </div>
+                </div>
+                <p class="scr-meta">55 min · Intermediate</p>
+                <span class="scr-btn">Start workout</span>
+              </div>
+              <div class="scr-card scr-nutrition">
+                <div class="ring ring--74">
+                  <svg width="74" height="74" viewBox="0 0 74 74" fill="none"><path d="M37 66.6C53.3477 66.6 66.6 53.3477 66.6 37C66.6 20.6524 53.3477 7.40002 37 7.40002C20.6524 7.40002 7.40002 20.6524 7.40002 37C7.40002 53.3477 20.6524 66.6 37 66.6Z" stroke="#E5E5E5" stroke-width="7.4"/><path d="M66.6 37C66.6 20.6523 53.3477 7.39997 37 7.39997C20.6524 7.39997 7.40002 20.6523 7.40002 37C7.40002 53.3476 20.6524 66.6 37 66.6C53.3477 66.6 66.6 53.3476 66.6 37Z" stroke="#70D4A8" stroke-width="7.4" stroke-linecap="round" stroke-dasharray="102.31 186.02"/></svg>
+                  <span class="ring__label"><b>82 g</b><small>of 150 g</small></span>
+                </div>
+                <div class="scr-nutrition__rows">
+                  <p class="scr-mono scr-mono--muted">Nutrition</p>
+                  <div class="scr-bar">
+                    <p class="scr-bar__row"><span>Protein</span><b>82 / 150 g</b></p>
+                    <span class="scr-bar__track"><span class="scr-bar__fill" style="width: 55%"></span></span>
+                  </div>
+                  <div class="scr-bar">
+                    <p class="scr-bar__row"><span>Calories</span><b>1,180 / 2,000</b></p>
+                    <span class="scr-bar__track"><span class="scr-bar__fill scr-bar__fill--ink" style="width: 59%"></span></span>
+                  </div>
+                </div>
+              </div>
+              <p class="scr-mono scr-mono--muted">Sleep &amp; recovery</p>
+              <div class="scr-card scr-stats">
+                <p class="scr-stat"><span>Sleep</span><b>6h 40m</b><small>You</small></p>
+                <p class="scr-stat"><span>Soreness</span><b>Low</b><small>You</small></p>
+                <p class="scr-stat"><span>Energy</span><b>Good</b><small>You</small></p>
+              </div>
+              <div class="scr-tabs">
+                <span class="is-active">Today</span><span>Workouts</span><span>Food</span><span>Recovery</span><span>More</span>
+              </div>
             </div>
-            <p data-i18n="index.niceWorkOnTodays" class="float-card__body">
-              Nice work on today's session — I'd add a light row of pulls next time to balance
-              out the pressing volume.
-            </p>
           </div>
 
-          <div class="float-card float-card--stat">
-            <div class="float-card__head">
-              <span data-i18n="index.recoveryCheckIn" class="float-card__title">Recovery check-in</span>
+          <div class="float float--protein" aria-hidden="true">
+            <p class="float__title">Protein</p>
+            <div class="ring ring--92">
+              <svg width="92" height="92" viewBox="0 0 92 92" fill="none"><path d="M46 82.8C66.3241 82.8 82.8 66.3241 82.8 46C82.8 25.6759 66.3241 9.20001 46 9.20001C25.6759 9.20001 9.20001 25.6759 9.20001 46C9.20001 66.3241 25.6759 82.8 46 82.8Z" stroke="#E5E5E5" stroke-width="10.35"/><path d="M82.8 46C82.8 25.6759 66.3241 9.19999 46 9.19999C25.6759 9.19999 9.20001 25.6759 9.20001 46C9.20001 66.3241 25.6759 82.8 46 82.8C66.3241 82.8 82.8 66.3241 82.8 46Z" stroke="#70D4A8" stroke-width="10.35" stroke-linecap="round" stroke-dasharray="127.19 231.26"/></svg>
+              <span class="ring__label ring__label--pct">55%</span>
             </div>
-            <ul class="meter-list">
-              <li class="meter">
-                <span data-i18n="index.sleep" class="meter__label">Sleep</span>
-                <span class="meter__bar"><i style="width: 82%"></i></span>
-              </li>
-              <li class="meter">
-                <span data-i18n="index.hrv" class="meter__label">HRV</span>
-                <span class="meter__bar"><i style="width: 64%"></i></span>
-              </li>
-              <li class="meter">
-                <span data-i18n="index.energy" class="meter__label">Energy</span>
-                <span class="meter__bar"><i style="width: 70%"></i></span>
-              </li>
+            <p class="float__stat"><b>82 / 150 g</b><span>68 g to go</span></p>
+          </div>
+
+          <div class="float float--reminder" aria-hidden="true">
+            <p class="float__mono">Medicine reminder</p>
+            <p class="float__name">Vitamin D</p>
+            <p class="float__sub">Reminder at 9:00 pm</p>
+          </div>
+
+          <div class="float float--water" aria-hidden="true">
+            <p class="float__head"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2C8 2 12 6.33333 12 9.33333C12 10.3942 11.5786 11.4116 10.8284 12.1618C10.0783 12.9119 9.06087 13.3333 8 13.3333C6.93913 13.3333 5.92172 12.9119 5.17157 12.1618C4.42143 11.4116 4 10.3942 4 9.33333C4 6.33333 8 2 8 2Z" stroke="#70D4A8" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/></svg>Water today</p>
+            <div class="ring ring--100">
+              <svg width="100" height="100" viewBox="0 0 100 100" fill="none"><path d="M50 90C72.0914 90 90 72.0914 90 50C90 27.9086 72.0914 10 50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90Z" stroke="#E5E5E5" stroke-width="8.75"/><path d="M90 50C90 27.9086 72.0914 10 50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90C72.0914 90 90 72.0914 90 50Z" stroke="#70D4A8" stroke-width="8.75" stroke-linecap="round" stroke-dasharray="157.12 251.38"/></svg>
+              <span class="ring__label ring__label--lg"><b>5 of 8</b><small>glasses</small></span>
+            </div>
+          </div>
+
+          <figcaption class="stage__caption"><span class="visually-hidden">Example of the Fynrox Today screen. </span>Demo data</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section meaning" aria-labelledby="meaning-title">
+      <div class="container">
+        <div class="meaning__card is-dark">
+          <div class="section-head">
+            <div class="section-head__main">
+              <p class="eyebrow">What Fynrox stands for</p>
+              <h2 class="h2" id="meaning-title">Six letters. One complete you.</h2>
+            </div>
+            <p class="section-head__aside">Most apps do one of these. Fynrox connects all of them, so each part makes the others work better.</p>
+          </div>
+          <ul class="letters">
+            <li class="letter"><span class="letter__char">F</span><span class="letter__text"><span class="letter__name">Fitness</span><span class="letter__desc">Training that progresses with you</span></span></li>
+            <li class="letter"><span class="letter__char">Y</span><span class="letter__text"><span class="letter__name">Yoga</span><span class="letter__desc">Mobility, breath and balance</span></span></li>
+            <li class="letter"><span class="letter__char">N</span><span class="letter__text"><span class="letter__name">Nutrition</span><span class="letter__desc">Indian food, logged your way</span></span></li>
+            <li class="letter"><span class="letter__char">R</span><span class="letter__text"><span class="letter__name">Recovery</span><span class="letter__desc">Sleep and rest that count</span></span></li>
+            <li class="letter"><span class="letter__char">O</span><span class="letter__text"><span class="letter__name">Outcomes</span><span class="letter__desc">Results you can actually see</span></span></li>
+            <li class="letter letter--x"><span class="letter__char">X</span><span class="letter__text"><span class="letter__name">The value</span><span class="letter__desc">Everything working together</span></span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="app" aria-labelledby="app-title">
+      <div class="container section__stack app__stack">
+        <div class="section-head__main">
+          <p class="eyebrow">The app</p>
+          <h2 class="h2 app__title" id="app-title">One app instead of five. One clear next step.</h2>
+        </div>
+        <div class="app__rows">
+          <div class="app__row1">
+            <article class="feature feature--dark feature--train is-dark">
+              <div class="feature__text">
+                <p class="eyebrow">Train</p>
+                <h3 class="feature__title">Log sets, reps and weights</h3>
+                <p class="feature__body">A rest timer runs between sets, and each workout is saved to your history.</p>
+              </div>
+              <ul class="sets" aria-hidden="true">
+                <li class="set"><span class="set__n">Set 1</span><span class="set__w">70 kg × 6</span><span class="set__s">Done</span></li>
+                <li class="set"><span class="set__n">Set 2</span><span class="set__w">70 kg × 6</span><span class="set__s">Done</span></li>
+                <li class="set set--now"><span class="set__n">Set 3</span><span class="set__w">70 kg × 6</span><span class="set__s">Now</span></li>
+              </ul>
+            </article>
+            <article class="feature feature--fuel">
+              <p class="eyebrow">Fuel</p>
+              <h3 class="feature__title">Type “2 roti dal”</h3>
+              <p class="feature__body">Describe a meal or snap a photo, then review the estimate before you save it. Scan a barcode for packaged food.</p>
+              <span class="feature__spacer" aria-hidden="true"></span>
+              <p class="meal-row" aria-hidden="true"><span class="meal-row__q">“2 roti dal”</span><span class="meal-row__a">Review, then save</span></p>
+            </article>
+          </div>
+          <div class="app__row2">
+            <article class="feature">
+              <p class="eyebrow">Recover</p>
+              <h3 class="feature__title">Yoga, mobility, breath</h3>
+              <p class="feature__body">Guided yoga, mobility and breathing sessions.</p>
+            </article>
+            <article class="feature">
+              <p class="eyebrow">Progress</p>
+              <h3 class="feature__title">Squat up 7.5 kg</h3>
+              <p class="feature__body">Plain-language progress from your own logs.</p>
+            </article>
+            <article class="feature feature--dark is-dark">
+              <p class="eyebrow">Real coaches</p>
+              <h3 class="feature__title">You decide before you pay</h3>
+              <p class="feature__body">Request guidance and Fynrox matches you with a fitness or nutrition professional. Nothing to pay until a professional accepts.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--dark is-dark" id="programs" aria-labelledby="programs-title">
+      <div class="container section__stack">
+        <div class="section-head">
+          <div class="section-head__main">
+            <p class="eyebrow">Special programs</p>
+            <h2 class="h2" id="programs-title">Built for a goal.</h2>
+          </div>
+          <p class="section-head__aside section-head__aside--narrow">Structured programs for a specific goal, each running for a set number of weeks.</p>
+        </div>
+        <ul class="cards-3">
+          <li class="program">
+            <p class="program__tag">Program 01</p>
+            <h3 class="program__title">Fat Loss</h3>
+            <p class="program__body">A structured plan for losing fat, laid out week by week.</p>
+          </li>
+          <li class="program">
+            <p class="program__tag">Program 02</p>
+            <h3 class="program__title">Strength Training</h3>
+            <p class="program__body">A structured plan for getting stronger on the main lifts.</p>
+          </li>
+          <li class="program">
+            <p class="program__tag">Program 03</p>
+            <h3 class="program__title">Muscle Build</h3>
+            <p class="program__body">A structured plan for building muscle over several weeks.</p>
+          </li>
+        </ul>
+        <p class="programs__note">Program details and prices to be confirmed.</p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="how-title">
+      <div class="container section__stack">
+        <div class="section-head__main">
+          <p class="eyebrow">How it works</p>
+          <h2 class="h2" id="how-title">Start in three steps</h2>
+        </div>
+        <ol class="cards-3">
+          <li class="step">
+            <span class="step__num" aria-hidden="true">1</span>
+            <h3 class="step__title">Tell us your goal</h3>
+            <p class="step__body">Goal, training days, equipment and food preferences, including vegetarian, eggetarian and Jain.</p>
+          </li>
+          <li class="step">
+            <span class="step__num" aria-hidden="true">2</span>
+            <h3 class="step__title">Open Today</h3>
+            <p class="step__body">Daily brief, workout, recovery, next meal, water and reminders, all on one page.</p>
+          </li>
+          <li class="step">
+            <span class="step__num" aria-hidden="true">3</span>
+            <h3 class="step__title">Do it. You stay in control.</h3>
+            <p class="step__body">Fynrox suggests and you decide: your plan changes only when you choose.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section section--dark is-dark" aria-labelledby="privacy-title">
+      <div class="container privacy__grid">
+        <div class="privacy__intro">
+          <p class="eyebrow">Privacy</p>
+          <h2 class="h2" id="privacy-title">Who sees your data</h2>
+          <p class="privacy__lede">What coaches and gyms can see, and what you control.</p>
+        </div>
+        <ul class="privacy__list">
+          <li class="privacy__item">
+            <h3 class="privacy__term">Only your current coach</h3>
+            <p class="privacy__desc">Only a coach you're actively working with can see your data. Access stops when they or Fynrox end or complete the coaching, though their own notes stay with them.</p>
+          </li>
+          <li class="privacy__item">
+            <h3 class="privacy__term">Health data needs your consent</h3>
+            <p class="privacy__desc">Without health-data consent, your coach sees your goals, training level, diet type and session history, plus messages and anything else you send them. With it, they also see your recent workouts, check-ins and body measurements.</p>
+          </li>
+          <li class="privacy__item">
+            <h3 class="privacy__term">You choose the rest, per coach</h3>
+            <p class="privacy__desc">With health-data consent on, food logs are shared by default, and daily steps and sleep and recovery stay off unless you turn them on. Progress photos and AI chats aren't shared with coaches.</p>
+          </li>
+          <li class="privacy__item">
+            <h3 class="privacy__term">Gyms see member counts</h3>
+            <p class="privacy__desc">A gym sees member counts, not your logs.</p>
+          </li>
+          <li class="privacy__item">
+            <h3 class="privacy__term">Change it or take a copy</h3>
+            <p class="privacy__desc">Turn health-data consent off, or request a copy of your data, in the app's Data &amp; Privacy screen. Progress photos and AI chats aren't in the copy.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="plans" aria-labelledby="plans-title">
+      <div class="container section__stack">
+        <div class="section-head__main">
+          <p class="eyebrow">Plans</p>
+          <h2 class="h2" id="plans-title">Simple plans</h2>
+        </div>
+        <ul class="cards-3">
+          <li class="plan">
+            <h3 class="plan__name">Basic</h3>
+            <p class="plan__note">Plan details and pricing to be confirmed.</p>
+          </li>
+          <li class="plan plan--featured">
+            <h3 class="plan__name">Grow</h3>
+            <p class="plan__note">Plan details and pricing to be confirmed.</p>
+          </li>
+          <li class="plan">
+            <h3 class="plan__name">Prime</h3>
+            <p class="plan__note">Plan details and pricing to be confirmed.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="partners" aria-labelledby="partners-title">
+      <div class="container section__stack">
+        <div class="section-head">
+          <div class="section-head__main">
+            <p class="eyebrow">Partners</p>
+            <h2 class="h2" id="partners-title">Grow with Fynrox</h2>
+          </div>
+          <p class="section-head__aside">Register here. We review every application before an account goes live. <span id="partner-sign-in">Already a partner? Sign in as a <a href="https://calm-ground-04d678410.3.azurestaticapps.net/">professional</a>, <a href="/portal/gym/login">gym</a> or <a href="/portal/creator/login">creator</a>.</span></p>
+        </div>
+        <ul class="cards-3">
+          <li class="partner">
+            <p class="eyebrow">Trainers and nutritionists</p>
+            <h3 class="partner__title">Coach with better tools</h3>
+            <ul class="bullets">
+              <li>Client requests matched to you</li>
+              <li>A recent summary of each client's logs, with their consent</li>
             </ul>
-          </div>
+            <a class="btn-ink" href="/professionals.html">Register as a professional</a>
+          </li>
+          <li class="partner">
+            <p class="eyebrow">Gyms</p>
+            <h3 class="partner__title">More than a membership</h3>
+            <ul class="bullets">
+              <li>A digital fitness app for your members</li>
+              <li>Aggregate insights, never personal data</li>
+            </ul>
+            <a class="btn-ink" href="/gyms.html">Register your gym</a>
+          </li>
+          <li class="partner">
+            <p class="eyebrow">Creators and influencers</p>
+            <h3 class="partner__title">Share your own code</h3>
+            <ul class="bullets">
+              <li>Your own referral code and link</li>
+              <li>Sign-up totals for your campaigns</li>
+            </ul>
+            <a class="btn-ink" href="/creators.html">Register as a creator</a>
+          </li>
+        </ul>
+      </div>
+    </section>
 
-          <div class="float-card float-card--set">
-            <div class="float-card__head">
-              <span data-i18n="index.benchPress" class="float-card__title">Bench Press</span>
-              <span data-i18n="index.set34" class="pill pill--set">Set 3/4</span>
-            </div>
-            <p class="float-card__metric">80<span data-i18n="index.kg">kg</span>×&nbsp;8<span data-i18n="index.reps">reps</span></p>
-            <span data-i18n="index.rpe7Rest90s" class="float-card__meta">RPE 7 · rest 90s</span>
-          </div>
+    <section class="section faq" id="faq" aria-labelledby="faq-title">
+      <div class="container faq__stack">
+        <p class="eyebrow">Questions</p>
+        <h2 class="h2" id="faq-title">Before you download</h2>
+        <div class="faq__list">
+          <details class="qa" open>
+            <summary>How much does Fynrox cost?</summary>
+            <p class="qa__a">Plan details and pricing to be confirmed.</p>
+          </details>
+          <details class="qa">
+            <summary>What are the special programs?</summary>
+            <p class="qa__a">Structured programs for a goal such as fat loss, strength or muscle building, each running for a set number of weeks. Program details and prices to be confirmed.</p>
+          </details>
+          <details class="qa">
+            <summary>Does Fynrox give medical advice?</summary>
+            <p class="qa__a">No. Fynrox offers fitness and wellness guidance, not medical advice. If you have a health condition, talk to your doctor before you start.</p>
+          </details>
+          <details class="qa">
+            <summary>Who can see my data?</summary>
+            <p class="qa__a">A coach you're actively working with sees your goals, training level, diet type and session history. With your health-data consent they also see recent workouts, check-ins and body measurements, plus food logs unless you turn them off. Progress photos and AI chats aren't shared with coaches. A gym sees member counts.</p>
+          </details>
+          <details class="qa">
+            <summary>Do I need a smartwatch?</summary>
+            <p class="qa__a">No. You log workouts, meals, water and recovery in the app, so Fynrox works without one.</p>
+          </details>
         </div>
       </div>
     </section>
 
-    <!-- ==================================================================
-         FEATURES (teaser — full list lives on features.html)
-         ================================================================== -->
-    <section class="features" id="features">
-      <div class="wrap">
-        <div class="photo-band reveal">
-          <div class="photo-band__frame">
-            <div class="photo-band__media">
-              <img src="/assets/media/training.jpg" alt="" width="1490" height="1090" loading="lazy" />
-            </div>
-            <span class="photo-band__inset">
-              <img src="/assets/media/detail-chalk.jpg" alt="" width="870" height="680" loading="lazy" />
-            </span>
-          </div>
-          <div>
-            <p data-i18n="index.whatsActuallyInThe" class="section-eyebrow">What's actually in the app</p>
-            <h2 data-i18n="index.threeOfSixReal" class="section-title">Three of six real pieces, working together</h2>
-            <p data-i18n="index.everyCardBelowDescribes" class="section-subtitle">
-              Every card below describes functionality that's genuinely in the current pilot
-              build, not a roadmap slide.
-            </p>
-          </div>
-        </div>
-
-        <div class="feature-grid reveal--stagger">
-          <article class="feature-card" data-accent="mint">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2.5" y="9" width="3" height="6" rx="1"></rect>
-                <rect x="18.5" y="9" width="3" height="6" rx="1"></rect>
-                <path d="M5.5 12h13"></path>
-                <rect x="7.5" y="10.4" width="2.2" height="3.2" rx="0.6"></rect>
-                <rect x="14.3" y="10.4" width="2.2" height="3.2" rx="0.6"></rect>
-              </svg>
-            </div>
-            <h3 data-i18n="index.structuredTrainingBuiltTo" class="feature-card__title">Structured training, built to progress</h3>
-            <p data-i18n="index.followRealTrainingPrograms" class="feature-card__body">
-              Follow real training programs backed by a full exercise library — step-by-step
-              instructions, muscle-group and equipment filters, and smart alternatives. Every set
-              you log (weight, reps, RPE) feeds your workout history and personal records.
-            </p>
-          </article>
-
-          <article class="feature-card" data-accent="violet">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3.2l1.15 2.65L15.8 7l-2.65 1.15L12 10.8l-1.15-2.65L8.2 7l2.65-1.15L12 3.2z"></path>
-                <path d="M5 13.5a2 2 0 012-2h10a2 2 0 012 2v3a2 2 0 01-2 2H9.2L6 21v-2.5H7a2 2 0 01-2-2v-3z"></path>
-              </svg>
-            </div>
-            <h3 data-i18n="index.anAiCoachThat" class="feature-card__title">An AI coach that knows your data</h3>
-            <p data-i18n="index.chatWithFynroxAi" class="feature-card__body">
-              Chat with Fynrox AI from Train, Fuel, or Recover — grounded in your real workouts,
-              nutrition, and progress, not a generic chatbot.
-            </p>
-            <span data-i18n="index.generalFitnessAndWellness" class="feature-card__note">
-              General fitness and wellness guidance only — never a substitute for professional
-              medical advice.
-            </span>
-          </article>
-
-          <article class="feature-card" data-accent="success">
-            <div class="feature-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="8" cy="8" r="2.5"></circle>
-                <circle cx="16" cy="8" r="2.5"></circle>
-                <path d="M3.3 19c.5-3 2.3-4.5 4.5-4.5s4 1.5 4.5 4.5"></path>
-                <path d="M11.7 19c.5-3 2.3-4.5 4.5-4.5s4 1.5 4.5 4.5"></path>
-              </svg>
-            </div>
-            <h3 data-i18n="index.aRealCoachWhen" class="feature-card__title">A real coach, when you want one</h3>
-            <p data-i18n-html="index.askForGuidanceAnd" class="feature-card__body">
-              Ask for guidance and Fynrox matches you with one verified fitness, nutrition,
-              yoga, or sports professional — a human layer on top of the AI, not instead of
-              it. <a href="/professional-guidance.html">How guidance works</a>.
-            </p>
-          </article>
-        </div>
-
-        <p style="margin-top: var(--space-6)">
-          <a data-i18n="index.seeAllSixFeatures" class="btn btn--ghost" href="/features.html">See all six features →</a>
-        </p>
-      </div>
-    </section>
-
-    <!-- ==================================================================
-         PARTNERS TEASER
-         ================================================================== -->
-    <section class="content-section content-section--raised">
-      <div class="wrap">
-        <div class="photo-band photo-band--flip reveal">
-          <div class="photo-band__frame">
-            <div class="photo-band__media">
-              <img src="/assets/media/coach-group.jpg" alt="" width="1024" height="1536" loading="lazy" />
-            </div>
-          </div>
-          <div class="content-section__head">
-            <p data-i18n="index.partnerWithFynrox" class="section-eyebrow">Partner with Fynrox</p>
-            <h2 data-i18n="index.builtForGymsAnd" class="section-title">Built for gyms and coaches too, not just solo users</h2>
-            <p data-i18n="index.twoPartnerProgramsRun" class="section-subtitle">
-              Two partner programs run alongside the consumer app — a gym partner program and a
-              creator/influencer partner program, both commission-based and application-based.
-            </p>
-          </div>
-        </div>
-
-        <div class="step-grid reveal--stagger">
-          <article class="step-card">
-            <h3 data-i18n="index.forGyms" class="step-card__title">For Gyms</h3>
-            <p data-i18n="index.applyToBecomeA" class="step-card__body">
-              Apply to become a partner gym, get a real invite code for your members, and track
-              their onboarding activity from a dedicated gym portal.
-            </p>
-            <p style="margin-top: var(--space-4)">
-              <a data-i18n="index.learnMore" class="btn btn--ghost btn--sm" href="/gyms.html">Learn more →</a>
-            </p>
-          </article>
-          <article class="step-card">
-            <h3 data-i18n="index.forCreators" class="step-card__title">For Creators</h3>
-            <p data-i18n="index.applyToBecomeACreator" class="step-card__body">
-              Apply to become a creator partner, get a real referral/discount code for your
-              audience, and see your referral activity from a dedicated creator portal.
-            </p>
-            <p style="margin-top: var(--space-4)">
-              <a data-i18n="index.learnMore" class="btn btn--ghost btn--sm" href="/creators.html">Learn more →</a>
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================================================================
-         DOWNLOAD (condensed — full detail lives on download.html)
-         ================================================================== -->
-    <section class="download reveal" id="download">
-      <div class="wrap">
-        <div>
-          <p data-i18n="index.getTheApp" class="section-eyebrow">Get the app</p>
-          <h2 data-i18n="index.fynroxIsInPilot" class="section-title">Fynrox is in pilot right now</h2>
-          <p data-i18n="index.itIsntOnAn" class="section-subtitle">
-            It isn't on an app store yet, so the download page walks through exactly how each
-            platform gets it.
-          </p>
-        </div>
-        <p style="margin-top: var(--space-6)">
-          <a data-i18n="index.goToDownload" class="btn btn--primary btn--lg" href="/download.html">Go to Download</a>
-        </p>
-      </div>
-    </section>
-
-    <!-- ==================================================================
-         CTA STRIP
-         ================================================================== -->
-    <section class="cta-strip band-dark">
-      <div class="wrap cta-strip__inner">
-        <div class="coach-stack reveal" aria-hidden="true">
-          <div class="coach-stack__main">
-            <img src="/assets/media/coach-group.jpg" alt="" width="1024" height="1536" loading="lazy" />
-          </div>
-          <div class="coach-stack__portrait">
-            <img src="/assets/media/coach-single.jpg" alt="" width="1122" height="1402" loading="lazy" />
-          </div>
-        </div>
-        <div class="cta-strip__text">
-          <h2 data-i18n="index.trainingNutritionAndRecoveryReady" class="cta-strip__title">Training, nutrition, and recovery — ready when the pilot opens.</h2>
-          <a data-i18n="index.jumpToDownload" class="btn btn--primary btn--lg" href="/download.html">Jump to download</a>
-        </div>
+    <section class="download is-dark" id="download" aria-labelledby="download-title">
+      <div class="download__glow" aria-hidden="true"></div>
+      <div class="container download__inner">
+        <h2 class="download__title" id="download-title">Know what to do <span class="accent">next.</span></h2>
+        <a class="store-btn" href="/download.html">
+          <span class="store-btn__glyph" aria-hidden="true"></span>
+          <span class="store-btn__label"><span class="store-btn__pre">Download for</span> <span class="store-btn__name">Android</span></span>
+        </a>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="wrap footer__inner">
-      <div class="footer__brand">
-        <span class="brand">
-          <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 68 48" width="34" height="24" focusable="false"><path d="M0 0h17l16 24-16 24H0l16-24z"></path><path d="M22 0h17l16 24-16 24H22l16-24z"></path><path class="brand__mark-tail" d="M68 0H51L35 24l16 24h17L52 24z"></path></svg></span>
-          <span class="brand__word">Fynrox</span>
-        </span>
-        <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
-          Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
-          publicly available.
-        </p>
+  <footer class="site-foot is-dark">
+    <div class="container site-foot__inner">
+      <div class="site-foot__top">
+        <div class="site-foot__brand">
+          <a class="site-foot__logo" href="/">
+            <img src="/assets/img/fynrox-mark.png?v=1" width="32" height="32" alt="" />
+            <span class="site-foot__word">Fynrox</span>
+          </a>
+          <p>Fitness · Yoga · Nutrition · Recovery · Outcomes</p>
+          <p><a class="site-foot__mail" href="mailto:support@fynrox.com">support@fynrox.com</a></p>
+        </div>
+        <nav class="site-foot__cols" aria-label="Footer">
+          <div class="site-foot__col">
+            <h2 class="site-foot__title">Product</h2>
+            <ul>
+              <li><a href="#app">The app</a></li>
+              <li><a href="#programs">Programs</a></li>
+              <li><a href="#plans">Plans</a></li>
+            </ul>
+          </div>
+          <div class="site-foot__col">
+            <h2 class="site-foot__title">Partners</h2>
+            <ul>
+              <li><a href="/professionals.html">Professionals</a></li>
+              <li><a href="/gyms.html">Gyms</a></li>
+              <li><a href="/creators.html">Creators</a></li>
+            </ul>
+          </div>
+          <div class="site-foot__col">
+            <h2 class="site-foot__title">Company</h2>
+            <ul>
+              <li><a href="/privacy.html">Privacy policy</a></li>
+              <li><a href="/terms.html">Terms of service</a></li>
+              <li><a href="/support.html">Support</a></li>
+            </ul>
+          </div>
+        </nav>
       </div>
-      <nav class="footer__nav" aria-label="Footer" data-i18n-attr="aria-label:shell.footer.ariaLabel">
-        <div>
-          <p class="footer__col-title" data-i18n="shell.footer.col.product">Product</p>
-          <a class="footer__col-link" href="/features.html" data-i18n="shell.footer.link.features">Features</a>
-          <a class="footer__col-link" href="/how-it-works.html" data-i18n="shell.footer.link.howItWorks">How it works</a>
-          <a class="footer__col-link" href="/programs.html" data-i18n="shell.footer.link.programs">Programs</a>
-          <a class="footer__col-link" href="/pricing.html" data-i18n="shell.footer.link.pricing">Pricing</a>
-          <a class="footer__col-link" href="/download.html" data-i18n="shell.footer.link.download">Download</a>
-        </div>
-        <div>
-          <p class="footer__col-title" data-i18n="shell.footer.col.partners">Partners</p>
-          <a class="footer__col-link" href="/gyms.html" data-i18n="shell.footer.link.forGyms">For Gyms</a>
-          <a class="footer__col-link" href="/creators.html" data-i18n="shell.footer.link.forCreators">For Creators</a>
-          <a class="footer__col-link" href="/professionals.html" data-i18n="shell.footer.link.forProfessionals">For Professionals</a>
-          <a class="footer__col-link" href="/professional-guidance.html" data-i18n="shell.footer.link.professionalGuidance">Professional Guidance</a>
-        </div>
-        <div>
-          <p class="footer__col-title" data-i18n="shell.footer.col.company">Company</p>
-          <a class="footer__col-link" href="/about.html" data-i18n="shell.footer.link.about">About</a>
-          <a class="footer__col-link" href="/learn.html" data-i18n="shell.footer.link.learn">Learn</a>
-          <a class="footer__col-link" href="/faq.html" data-i18n="shell.footer.link.faq">FAQ</a>
-          <a class="footer__col-link" href="/support.html" data-i18n="shell.footer.link.support">Support</a>
-          <a class="footer__col-link" href="/early-access.html" data-i18n="shell.footer.link.earlyAccess">Early access</a>
-        </div>
-        <div>
-          <p class="footer__col-title" data-i18n="shell.footer.col.legalSafety">Legal & safety</p>
-          <a class="footer__col-link" href="/safety.html" data-i18n="shell.footer.link.safetyPrivacy">Safety &amp; Privacy</a>
-          <a class="footer__col-link" href="/privacy.html" data-i18n="shell.footer.link.privacyPolicy">Privacy Policy</a>
-          <a class="footer__col-link" href="/terms.html" data-i18n="shell.footer.link.termsOfService">Terms of Service</a>
-        </div>
-        <div>
-          <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
-          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
-          <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
-        </div>
-      </nav>
-    </div>
-    <div class="wrap footer__bottom">
-      <p data-i18n-html="shell.copyright" class="footer__copy">© <span id="year">2026</span> Fynrox. Not a substitute for professional medical advice.</p>
-      <div class="footer__lang-wrap" data-i18n-picker hidden></div>
+      <div class="site-foot__bottom">
+        <p>© <span id="year">2026</span> Fynrox</p>
+        <p>Fynrox offers fitness and wellness guidance, not medical advice.</p>
+      </div>
     </div>
   </footer>
 
   <script src="/assets/js/config.js"></script>
-  <script src="/assets/js/i18n.js"></script>
   <script src="/assets/js/main.js"></script>
   <script src="/assets/js/cookie-consent.js"></script>
+  <script>
+    // main.js opens and closes the mobile menu; close it after an in-page
+    // jump too, so it isn't left open above the section you jumped to.
+    (function () {
+      var nav = document.getElementById("primaryNav");
+      var toggle = document.getElementById("navToggle");
+      if (!nav || !toggle) return;
+      nav.addEventListener("click", function (event) {
+        var link = event.target.closest && event.target.closest('a[href^="#"]');
+        if (!link || !nav.classList.contains("is-open")) return;
+        nav.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+      });
+    })();
+  </script>
 </body>
 </html>

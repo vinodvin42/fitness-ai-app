@@ -156,8 +156,13 @@ const FOOTER_RE = /[ \t]*<nav class="footer__nav"[^>]*>[\s\S]*?<\/nav>/;
 // the outer one orphaned and grow the file by one line per run.
 const BOTTOM_RE = /[ \t]*<div class="wrap(?: footer__bottom)?">\s*<p[^>]*class="footer__copy"[\s\S]*?<\/div>\s*<\/footer>/;
 
+// index.html is built to the Figma homepage design and carries its own
+// header and footer (styled by assets/css/home.css), so it is skipped:
+// writing this shell into it would put the old nav back on the homepage.
+const SKIP = new Set(["index.html"]);
+
 const changed = [];
-for (const name of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")).sort()) {
+for (const name of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html") && !SKIP.has(f)).sort()) {
   const file = path.join(ROOT, name);
   const src = fs.readFileSync(file, "utf8");
   let out = src;
