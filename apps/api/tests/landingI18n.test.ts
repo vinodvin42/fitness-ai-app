@@ -27,9 +27,16 @@ import { describe, expect, it } from "vitest";
  */
 
 const LANDING = path.join(__dirname, "../../landing");
+// index.html is the Figma-built homepage and is English-only for now: it
+// has no data-i18n keys and does not load i18n.js, so it is left out of
+// these checks, and the old homepage's `index.*` catalogue keys are no
+// longer expected to be reached. Drop it from this set once the homepage
+// is translated again.
+const SKIPPED_PAGES = new Set(["index.html"]);
+const SKIPPED_KEY_PREFIXES = ["index."];
 const PAGES = fs
   .readdirSync(LANDING)
-  .filter((f) => f.endsWith(".html"))
+  .filter((f) => f.endsWith(".html") && !SKIPPED_PAGES.has(f))
   .sort();
 
 /* ------------------------------------------------------------------ */
@@ -283,7 +290,10 @@ describe("landing site translation", () => {
 
   it("has no unreachable keys — copy nobody can see is copy nobody maintains", () => {
     const reached = new Set([...keyed.map((k) => k.key), ...calls.map((c) => c.key)]);
-    expect([...Object.keys(CATALOGUE)].filter((k) => !reached.has(k)), "catalogue keys nothing uses").toEqual([]);
+    const unreached = Object.keys(CATALOGUE).filter(
+      (k) => !reached.has(k) && !SKIPPED_KEY_PREFIXES.some((p) => k.startsWith(p)),
+    );
+    expect(unreached, "catalogue keys nothing uses").toEqual([]);
   });
 
   it("loads i18n.js before the scripts that write into the page", () => {
