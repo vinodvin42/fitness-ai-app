@@ -160,13 +160,16 @@ const BOTTOM_RE = /[ \t]*<div class="wrap(?: footer__bottom)?">\s*<p[^>]*class="
 // header and footer (styled by assets/css/home.css), so it is skipped:
 // writing this shell into it would put the old nav back on the homepage.
 const SKIP = new Set(["index.html"]);
+// The partner pages keep their own header menu (only that audience's
+// sections, sign-in and Apply); their footer is still synced.
+const OWN_NAV = new Set(["professionals.html", "gyms.html", "creators.html"]);
 
 const changed = [];
 for (const name of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html") && !SKIP.has(f)).sort()) {
   const file = path.join(ROOT, name);
   const src = fs.readFileSync(file, "utf8");
   let out = src;
-  if (NAV_RE.test(out)) out = out.replace(NAV_RE, () => navBlock(name));
+  if (!OWN_NAV.has(name) && NAV_RE.test(out)) out = out.replace(NAV_RE, () => navBlock(name));
   if (FOOTER_RE.test(out)) out = out.replace(FOOTER_RE, () => footerBlock());
   if (BOTTOM_RE.test(out)) out = out.replace(BOTTOM_RE, () => bottomBlock());
   if (out !== src) {

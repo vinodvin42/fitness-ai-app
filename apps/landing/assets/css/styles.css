@@ -1715,6 +1715,9 @@ button {
   }
 
   .has-nav-toggle .nav .nav__link {
+    /* Undo the ≤480px `display: none` above: inside the open panel the
+       links are the whole point. */
+    display: block;
     padding: 0.85rem 0.5rem;
     border-bottom: 1px solid var(--border);
   }

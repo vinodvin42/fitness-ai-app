@@ -57,6 +57,11 @@ window.FYNROX_I18N.en = {
   "shell.nav.menu": "Menu",
   "shell.nav.pricing": "Pricing",
   "shell.nav.programs": "Programs",
+  "shell.partnerNav.apply": "Apply now",
+  "shell.partnerNav.commission": "Commission",
+  "shell.partnerNav.goodToKnow": "Good to know",
+  "shell.partnerNav.signIn": "Partner sign in",
+  "shell.partnerNav.why": "Why Fynrox",
   "shell.skipToContent": "Skip to content",
   "shell.trainingNutritionRecoveryAnd": "Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet publicly available.",
 

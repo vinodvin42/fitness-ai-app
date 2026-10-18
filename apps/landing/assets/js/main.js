@@ -87,6 +87,14 @@
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
     });
 
+    // Tapping an in-page link (the partner pages' menus) closes the panel
+    // so the section it jumps to is not hidden behind it.
+    nav.addEventListener("click", function (event) {
+      if (!event.target.closest || !event.target.closest('a[href^="#"]')) return;
+      nav.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    });
+
     // Escape closes it and returns focus, so a keyboard user is not
     // trapped scrolling a panel they cannot dismiss.
     document.addEventListener("keydown", function (event) {
