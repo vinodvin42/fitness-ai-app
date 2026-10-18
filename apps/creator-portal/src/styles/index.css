@@ -8,6 +8,12 @@
  */
 @theme {
   /*
+   * Website look, 18 Oct 2026: ink surfaces and the mint accent (#70D4A8)
+   * that the marketing site and the new mint F logo use, replacing the
+   * charcoal and gold below. Mint is 10.4:1 and text-dim 7.2:1 on the
+   * lightest surface (surface-raised).
+   */
+  /*
    * Brand palette, 3 Oct 2026. These were a mint accent on a blue-black
    * canvas, eyeballed from Figma screenshots and matching nothing the
    * brand actually uses — the consoles still looked like a different
@@ -26,18 +32,18 @@
    *   text-secondary 8.92  accent   6.16   info    6.99
    *   danger 5.21
    */
-  --color-canvas: #1a1a1a;
-  --color-surface: #242424;
-  --color-surface-raised: #2a2a2a;
-  --color-border-subtle: #3d3d3a;
+  --color-canvas: #0a0a0a;
+  --color-surface: #1a1a1a;
+  --color-surface-raised: #1f1f1f;
+  --color-border-subtle: #2e2e2e;
 
-  --color-accent: #da9f3e;
+  --color-accent: #70d4a8;
   --color-danger: #f2776b;
   --color-warning: #e8b45c;
   --color-info: #9db4f0;
 
-  --color-text-primary: #f6f4eb;
-  --color-text-secondary: #cfccc0;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #e5e5e5;
   /*
    * `text-dim` carries exactly the text a low-vision reader most needs:
    * table column headers, row timestamps, the "—" that stands in for an
@@ -54,7 +60,7 @@
    * all three of these consoles. All of them were eyeballed; none had been
    * measured until that pass.
    */
-  --color-text-dim: #a29f95;
+  --color-text-dim: #a3a3a3;
 }
 
 body {

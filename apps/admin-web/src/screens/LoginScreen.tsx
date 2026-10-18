@@ -18,6 +18,7 @@ export function LoginScreen() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,15 +62,31 @@ export function LoginScreen() {
             <label className="mb-1 block text-xs text-text-secondary" htmlFor="password">
               {t("login.password")}
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-md border border-border-subtle bg-surface-raised py-2 pl-3 pr-10 text-sm text-text-primary outline-none focus:border-accent"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                aria-pressed={showPassword}
+                aria-controls="password"
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-text-dim hover:text-text-primary focus-visible:text-accent focus-visible:outline-none"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                  {showPassword && <path d="M3 3l18 18" />}
+                </svg>
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-xs text-danger">{error}</p>}

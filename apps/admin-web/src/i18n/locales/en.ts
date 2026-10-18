@@ -600,7 +600,9 @@ export const en = {
   },
   login: {
     email: "Email",
+    hidePassword: "Hide password",
     password: "Password",
+    showPassword: "Show password",
     superAdminConsole: "Super Admin Console",
   },
   notAvailablePanel: {
