@@ -9,7 +9,15 @@
  *
  * Fonts (Sora / Manrope / JetBrains Mono) are the same three families the
  * app uses, loaded from Google Fonts in index.html's <head>.
+ *
+ * 18 Oct 2026: the inner pages now share the rebuilt homepage's look
+ * (assets/css/home.css): white canvas, ink and mint, Bricolage Grotesque /
+ * Figtree / IBM Plex Mono, a dark header, hero band and footer. The tokens
+ * below carry most of it; the "Homepage look" block at the end of this
+ * file does the rest.
  */
+
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap");
 
 /* ---------------------------------------------------------------------- */
 /* Tokens                                                                  */
@@ -22,16 +30,16 @@
    * surface-high is the DARKEST of the four, so it is the worst case for
    * every text token below; that is the surface the contrast test
    * measures against. */
-  --bg: #F6F4EB;
+  --bg: #F5F5F5;
   --surface: #FFFFFF;
-  --surface-raised: #FFFDF7;
-  --surface-high: #EFEBDC;
-  --border: rgba(26, 26, 26, 0.12);
-  --border-strong: rgba(26, 26, 26, 0.24);
+  --surface-raised: #FFFFFF;
+  --surface-high: #F5F5F5;
+  --border: #E5E5E5;
+  --border-strong: rgba(10, 10, 10, 0.24);
 
   /* Text */
-  --text-primary: #1A1A1A;
-  --text-secondary: #4A4D51;
+  --text-primary: #0A0A0A;
+  --text-secondary: #525252;
   /*
    * Measured, not eyeballed — the same discipline the dark palette
    * learned the hard way. Every value below clears 4.5:1 against all
@@ -50,9 +58,11 @@
    * values themselves. The gold is still the gold — it just does its
    * job as a fill (--accent-fill), where charcoal on it is 7.47:1.
    */
-  --text-muted: #5E6165;
-  /** Ink that sits ON --accent-fill. Charcoal on brand gold, 7.47:1. */
-  --text-on-accent: #1A1A1A;
+  /* 18 Oct 2026 homepage palette: on #F5F5F5 (the darkest surface now)
+   * text-muted is 4.89:1 and accent 5.9:1; ink on mint fill is 11:1. */
+  --text-muted: #6B6B6B;
+  /** Ink that sits ON --accent-fill (mint). */
+  --text-on-accent: #0A0A0A;
 
   /* Brand gold.
    *
@@ -66,11 +76,11 @@
    * test (landingAccentFill in apps/api/tests/landingTheme.test.ts)
    * asserting --accent-fill never appears in a `color:` declaration, so
    * this is enforced rather than remembered. */
-  --accent: #8A5A0E;
-  --accent-alt: #6E4708;
-  --accent-fill: #DA9F3E;
-  --accent-fill-strong: #C68B2A;
-  --accent-soft: rgba(218, 159, 62, 0.18);
+  --accent: #1C6B44;
+  --accent-alt: #145233;
+  --accent-fill: #70D4A8;
+  --accent-fill-strong: #5CC596;
+  --accent-soft: rgba(112, 212, 168, 0.22);
 
   /* AI accent — reserved for AI Coach touchpoints only, same rule the app follows */
   --ai-accent: #5B4BC4;
@@ -97,9 +107,9 @@
   /* Type — Archivo Black for display, Inter for body, JetBrains Mono for
    * data. Archivo Black ships one weight (400) and is already black, so
    * never set font-weight on it; see .u-display. */
-  --font-display: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
-  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Bricolage Grotesque", Figtree, ui-sans-serif, system-ui, sans-serif;
+  --font-body: Figtree, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Spacing (4/8/16/24/32/48 from tokens.ts, extended upward for web sections) */
   --space-1: 0.25rem;
@@ -2108,20 +2118,20 @@ button {
  * 7.47:1, which is legible on charcoal in a way it never was on cream.
  */
 .band-dark {
-  --bg: #1A1A1A;
-  --surface: #242424;
-  --surface-raised: #2A2A2A;
-  --surface-high: #333333;
-  --border: rgba(246, 244, 235, 0.16);
-  --border-strong: rgba(246, 244, 235, 0.3);
-  --text-primary: #F6F4EB;
-  --text-secondary: #CFCCC0;
-  --text-muted: #A8A59B;
-  --accent: #DA9F3E;
-  --accent-alt: #E8B45C;
-  --accent-fill: #DA9F3E;
-  --text-on-accent: #1A1A1A;
-  --accent-soft: rgba(218, 159, 62, 0.2);
+  --bg: #0A0A0A;
+  --surface: #1A1A1A;
+  --surface-raised: #1F1F1F;
+  --surface-high: #2E2E2E;
+  --border: #2E2E2E;
+  --border-strong: rgba(255, 255, 255, 0.3);
+  --text-primary: #FFFFFF;
+  --text-secondary: #E5E5E5;
+  --text-muted: #A3A3A3;
+  --accent: #70D4A8;
+  --accent-alt: #8ADCB9;
+  --accent-fill: #70D4A8;
+  --text-on-accent: #0A0A0A;
+  --accent-soft: rgba(112, 212, 168, 0.2);
 
   background: var(--bg);
   color: var(--text-primary);
@@ -2338,4 +2348,128 @@ button {
   .photo-band {
     padding-bottom: 2.5rem;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Homepage look (18 Oct 2026)                                             */
+/* The inner pages follow the rebuilt homepage (assets/css/home.css): a    */
+/* dark header, hero band and footer, Bricolage headings in sentence case, */
+/* mono section labels with a mint dot, and sentence-case pill buttons.    */
+/* ---------------------------------------------------------------------- */
+
+/* Display type: Bricolage is a variable font with real weights, unlike
+   Archivo Black, so headings set a weight and drop the all-caps. */
+.section-title,
+.page-hero__title,
+.legal h2,
+.hero__title,
+.cta-strip__title,
+.photo-band__title {
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: -0.02em;
+}
+
+.brand__word {
+  font-weight: 700;
+  font-size: 1.375rem;
+}
+
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+  gap: 0.5rem;
+}
+
+.section-eyebrow::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.band-dark .section-eyebrow {
+  color: var(--accent);
+}
+
+.btn {
+  font-size: 0.9375rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The logo is the blue F image now (replacing the chevron SVG). */
+.brand__mark {
+  width: 2rem;
+  height: 2rem;
+}
+
+.brand__mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Dark header, hero band and footer, using the same tokens as .band-dark. */
+.site-header,
+.page-hero,
+.site-footer {
+  --bg: #0A0A0A;
+  --surface: #1A1A1A;
+  --surface-raised: #1F1F1F;
+  --surface-high: #2E2E2E;
+  --border: #2E2E2E;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-muted: #A3A3A3;
+  --accent: #70D4A8;
+  --accent-alt: #8ADCB9;
+  --accent-fill: #70D4A8;
+  --text-on-accent: #0A0A0A;
+  color: var(--text-primary);
+}
+
+.site-header,
+.site-header.is-scrolled {
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: var(--border);
+}
+
+.page-hero,
+.site-footer {
+  background: var(--bg);
+}
+
+.page-hero {
+  border-bottom: 0;
+}
+
+.nav__link {
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.nav__link[aria-current="page"] {
+  color: var(--text-primary);
+}
+
+/* On dark backgrounds the main button is the homepage's mint pill; on
+   light sections it stays ink. */
+.site-header .btn--primary,
+.page-hero .btn--primary,
+.band-dark .btn--primary {
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+  box-shadow: none;
+}
+
+.site-header .btn--primary:hover,
+.page-hero .btn--primary:hover,
+.band-dark .btn--primary:hover {
+  background: #8ADCB9;
 }
