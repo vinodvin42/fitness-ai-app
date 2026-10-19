@@ -1,7 +1,9 @@
 import type {
+  CoachChatBlockState,
   CoachConversationListResponse,
   CoachThreadResponse,
   CoachMessageItem,
+  ReportConversationInput,
   SendCoachMessageInput,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
@@ -27,4 +29,15 @@ export function sendMessage(userId: string, input: SendCoachMessageInput) {
   return apiClient
     .post<CoachMessageItem>(`/professionals/me/conversations/${userId}`, input)
     .then((r) => r.data);
+}
+
+/** Safety (Oct 2026): report a client, or one of their messages, to Fynrox's safety team. */
+export function reportClient(userId: string, input: ReportConversationInput) {
+  return apiClient.post<{ id: string; status: string }>(`/professionals/me/conversations/${userId}/report`, input).then((r) => r.data);
+}
+
+/** Block or unblock a client in chat. While either side has blocked, nobody can send. */
+export function setClientBlocked(userId: string, blocked: boolean) {
+  const url = `/professionals/me/conversations/${userId}/block`;
+  return (blocked ? apiClient.post<CoachChatBlockState>(url) : apiClient.delete<CoachChatBlockState>(url)).then((r) => r.data);
 }

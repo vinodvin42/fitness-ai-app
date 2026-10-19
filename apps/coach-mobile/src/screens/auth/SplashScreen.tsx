@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { BrandMark } from "../../components/BrandMark";
 import { Button } from "../../components/Button";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
@@ -18,6 +19,9 @@ export function SplashScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <View style={styles.mark}>
+          <BrandMark size={88} />
+        </View>
         <Text style={styles.logo}>{`${BRAND_NAME} Coach`}</Text>
         <Text style={styles.tagline}>{t("auth.splash.tagline")}</Text>
       </View>
@@ -33,6 +37,7 @@ export function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: "space-between" },
   content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.lg },
+  mark: { marginBottom: spacing.md },
   logo: { ...typography.metricLarge, fontSize: 32, color: colors.textPrimary, textAlign: "center" },
   tagline: {
     ...typography.body,

@@ -5,6 +5,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -13,10 +14,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import type { CoachMessageItem } from "@fitness-ai-app/types";
+import type { CoachMessageItem, SafetyReportReason } from "@fitness-ai-app/types";
 import { ErrorState } from "../../components/ErrorState";
 import { Button } from "../../components/Button";
-import { fetchThread, sendMessage } from "../../api/coachMessages";
+import { fetchThread, reportClient, sendMessage, setClientBlocked } from "../../api/coachMessages";
+import { ReportSheet } from "../../components/ReportSheet";
 import { extractErrorMessage } from "../../lib/apiError";
 import type { MessagesStackParamList } from "../../navigation/MessagesStack";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
@@ -32,6 +34,12 @@ function timeLabel(iso: string): string {
  * apps/api's coachMessages.service.ts). Opening the thread marks the
  * client's messages read server-side, so the conversation list's unread
  * badge clears on next refetch.
+ *
+ * Safety (Oct 2026; app-store rules for apps where people message each
+ * other): "⋯" reports the client or blocks them; a long press on one of the
+ * client's messages reports that message. While either side has blocked, the
+ * composer is replaced by a short explanation. Messages Fynrox removed after a
+ * report show as "Removed by Fynrox".
  */
 export function ThreadScreen() {
   const { t } = useTranslation();
@@ -40,6 +48,8 @@ export function ThreadScreen() {
   const { userId, fullName } = route.params;
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
+  const [reporting, setReporting] = useState<{ messageId?: string } | null>(null);
+  const firstName = fullName.split(" ")[0];
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-thread", userId],
@@ -58,14 +68,73 @@ export function ThreadScreen() {
   });
 
   const canSend = draft.trim().length > 0 && !mutation.isPending;
+  const blocked = data?.blocked;
+  const isBlocked = Boolean(blocked?.byMe || blocked?.byThem);
+
+  const reportMutation = useMutation({
+    mutationFn: (input: { reason: SafetyReportReason; details: string; messageId?: string }) =>
+      reportClient(userId, { reason: input.reason, details: input.details || undefined, messageId: input.messageId }),
+    onSuccess: () => {
+      setReporting(null);
+      Alert.alert("Report sent", "Thanks for telling us. Fynrox's safety team will review it.");
+    },
+    onError: (err) => Alert.alert("Report not sent", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: (block: boolean) => setClientBlocked(userId, block),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coach-thread", userId] }),
+    onError: (err) => Alert.alert("That didn't work", extractErrorMessage(err, "Please try again.")),
+  });
+
+  const openMenu = () => {
+    Alert.alert(fullName, undefined, [
+      { text: `Report ${firstName}`, onPress: () => setReporting({}) },
+      blocked?.byMe
+        ? { text: "Unblock", onPress: () => blockMutation.mutate(false) }
+        : {
+            text: "Block",
+            style: "destructive",
+            onPress: () =>
+              Alert.alert(
+                `Block ${firstName}?`,
+                "Neither of you will be able to send messages here. Their coaching isn't changed.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Block", style: "destructive", onPress: () => blockMutation.mutate(true) },
+                ],
+              ),
+          },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const onLongPressMessage = (m: CoachMessageItem) => {
+    if (m.sender === "professional" || m.removed) return;
+    Alert.alert("Report this message?", undefined, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Report", onPress: () => setReporting({ messageId: m.id }) },
+    ]);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
-        <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
-          ‹ Messages
-        </Text>
-        <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.xs }}>{fullName}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
+            ‹ Messages
+          </Text>
+          <Pressable
+            onPress={openMenu}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${fullName}: report or block`}
+            hitSlop={8}
+            style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.textPrimary, fontWeight: "700", fontSize: 20 }}>⋯</Text>
+          </Pressable>
+        </View>
+        <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{fullName}</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -85,55 +154,85 @@ export function ThreadScreen() {
                 No messages yet. Say hello to {fullName.split(" ")[0]}.
               </Text>
             ) : (
-              data.messages.map((m: CoachMessageItem) => <MessageBubble key={m.id} message={m} mine={m.sender === "professional"} />)
+              data.messages.map((m: CoachMessageItem) => (
+                <MessageBubble key={m.id} message={m} mine={m.sender === "professional"} onLongPress={() => onLongPressMessage(m)} />
+              ))
             )}
           </ScrollView>
         )}
 
-        <View
-          style={{
-            flexDirection: "row",
-            gap: spacing.sm,
-            padding: spacing.md,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            alignItems: "flex-end",
-          }}
-        >
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={t("messages.placeholder")}
-            placeholderTextColor={colors.textMuted}
-            multiline
+        {isBlocked ? (
+          <View style={{ padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.xs }}>
+            <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+              {blocked?.byMe ? `You blocked ${firstName}. Messages are off in this conversation.` : "Messages are off in this conversation."}
+            </Text>
+            {blocked?.byMe && (
+              <Text
+                onPress={() => blockMutation.mutate(false)}
+                accessibilityRole="button"
+                style={{ color: colors.accent, fontWeight: "600", paddingVertical: spacing.xs }}
+              >
+                Unblock
+              </Text>
+            )}
+          </View>
+        ) : (
+          <View
             style={{
-              flex: 1,
-              color: colors.textPrimary,
-              backgroundColor: colors.surface,
-              borderRadius: radius.sm,
-              borderWidth: 1,
-              borderColor: colors.border,
-              paddingHorizontal: spacing.sm,
-              paddingVertical: spacing.sm,
-              maxHeight: 120,
+              flexDirection: "row",
+              gap: spacing.sm,
+              padding: spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              alignItems: "flex-end",
             }}
-          />
-          <Button
-            label={t("common.send")}
-            onPress={() => mutation.mutate()}
-            loading={mutation.isPending}
-            disabled={!canSend}
-            style={{ height: 44, paddingHorizontal: spacing.md }}
-          />
-        </View>
+          >
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={t("messages.placeholder")}
+              placeholderTextColor={colors.textMuted}
+              multiline
+              style={{
+                flex: 1,
+                color: colors.textPrimary,
+                backgroundColor: colors.surface,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.sm,
+                maxHeight: 120,
+              }}
+            />
+            <Button
+              label={t("common.send")}
+              onPress={() => mutation.mutate()}
+              loading={mutation.isPending}
+              disabled={!canSend}
+              style={{ height: 44, paddingHorizontal: spacing.md }}
+            />
+          </View>
+        )}
       </KeyboardAvoidingView>
+
+      <ReportSheet
+        visible={reporting !== null}
+        subject={reporting?.messageId ? "this message" : firstName}
+        submitting={reportMutation.isPending}
+        onClose={() => setReporting(null)}
+        onSubmit={(reason, details) => reportMutation.mutate({ reason, details, messageId: reporting?.messageId })}
+      />
     </SafeAreaView>
   );
 }
 
-function MessageBubble({ message, mine }: { message: CoachMessageItem; mine: boolean }) {
+function MessageBubble({ message, mine, onLongPress }: { message: CoachMessageItem; mine: boolean; onLongPress: () => void }) {
   return (
-    <View
+    <Pressable
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      accessibilityHint={mine || message.removed ? undefined : "Long press to report this message"}
       style={{
         alignSelf: mine ? "flex-end" : "flex-start",
         maxWidth: "80%",
@@ -145,10 +244,12 @@ function MessageBubble({ message, mine }: { message: CoachMessageItem; mine: boo
         paddingVertical: spacing.sm,
       }}
     >
-      <Text style={{ color: mine ? "#0B0B0F" : colors.textPrimary }}>{message.content}</Text>
+      <Text style={{ color: mine ? "#0B0B0F" : message.removed ? colors.textMuted : colors.textPrimary, fontStyle: message.removed ? "italic" : "normal" }}>
+        {message.content}
+      </Text>
       <Text style={{ color: mine ? "rgba(11,11,15,0.6)" : colors.textMuted, fontSize: 10, marginTop: 2, textAlign: "right" }}>
         {timeLabel(message.createdAt)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
