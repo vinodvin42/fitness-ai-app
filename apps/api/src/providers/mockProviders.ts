@@ -5,12 +5,14 @@ import type {
   DeepLinkProvider,
   DeepLinkTarget,
   FoodDataProvider,
+  ListSettlementsInput,
   PaymentProvider,
   PayoutProvider,
   PayoutRequest,
   PayoutResult,
   ProviderOrder,
   ProviderRefund,
+  ProviderSettlement,
   VerifySignatureInput,
 } from "./types";
 import type { BarcodeLookupResult } from "../lib/openFoodFactsClient";
@@ -60,6 +62,12 @@ export const mockPaymentProvider: PaymentProvider = {
 
   async refund(_providerPaymentId: string, _amountCents: number): Promise<ProviderRefund> {
     return { id: `mock_refund_${crypto.randomUUID().slice(0, 8)}` };
+  },
+
+  // 10.09: test payments move no money, so there are no settlements to a
+  // bank. Empty, never invented rows.
+  async listSettlements(_input: ListSettlementsInput): Promise<ProviderSettlement[]> {
+    return [];
   },
 };
 

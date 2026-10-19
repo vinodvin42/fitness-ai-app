@@ -21,3 +21,10 @@ export const updateWorkoutSettingsSchema = z
   })
   .refine((d) => Object.keys(d).length > 0, { message: "Provide at least one setting to update" });
 export type UpdateWorkoutSettingsInput = z.infer<typeof updateWorkoutSettingsSchema>;
+
+// Batch 3a (18 Oct 2026): rest time for one exercise — same bounds as the
+// default restTimerSeconds above, so either can be the one in force.
+export const exerciseRestSchema = z.object({
+  restSeconds: z.number().int().min(10).max(600),
+});
+export type ExerciseRestInput = z.infer<typeof exerciseRestSchema>;

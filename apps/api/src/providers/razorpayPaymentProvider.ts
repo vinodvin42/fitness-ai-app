@@ -1,7 +1,15 @@
 import crypto from "node:crypto";
 import Razorpay from "razorpay";
 import { env } from "../config/env";
-import type { CreateOrderInput, PaymentProvider, ProviderOrder, ProviderRefund, VerifySignatureInput } from "./types";
+import type {
+  CreateOrderInput,
+  ListSettlementsInput,
+  PaymentProvider,
+  ProviderOrder,
+  ProviderRefund,
+  ProviderSettlement,
+  VerifySignatureInput,
+} from "./types";
 
 /**
  * D4's real implementation. This is the same lazy-construction and
@@ -63,4 +71,40 @@ export const razorpayPaymentProvider: PaymentProvider = {
     const refund = await client.payments.refund(providerPaymentId, { amount: amountCents });
     return { id: (refund as { id?: string }).id ?? null };
   },
+
+  // 10.09 Bank Settlements (Oct 2026). The SDK's settlements.all() calls
+  // GET /v1/settlements (regular settlements, not on-demand ones). Its
+  // TypeScript types describe instant settlements, so the documented
+  // fields are read defensively here.
+  async listSettlements(input: ListSettlementsInput): Promise<ProviderSettlement[]> {
+    if (!client) {
+      if (!this.isConfigured()) throw new Error("Razorpay is not configured");
+      client = new Razorpay({ key_id: env.RAZORPAY_KEY_ID!, key_secret: env.RAZORPAY_KEY_SECRET! });
+    }
+    const res = await client.settlements.all({
+      from: Math.floor(input.from.getTime() / 1000),
+      to: Math.floor(input.to.getTime() / 1000),
+      count: input.count,
+      skip: input.skip,
+    });
+    return (res.items as unknown as RazorpaySettlementItem[]).map((s) => ({
+      id: s.id,
+      amountCents: s.amount ?? 0,
+      feesCents: s.fees ?? 0,
+      taxCents: s.tax ?? 0,
+      utr: s.utr ?? null,
+      status: s.status,
+      createdAt: new Date(s.created_at * 1000),
+    }));
+  },
+};
+
+type RazorpaySettlementItem = {
+  id: string;
+  amount?: number;
+  fees?: number;
+  tax?: number;
+  utr?: string | null;
+  status: string;
+  created_at: number;
 };

@@ -158,7 +158,8 @@ async function loadJourneyData(userId: string): Promise<JourneyData> {
       orderBy: { completedAt: "asc" },
     }),
     prisma.exerciseSetLog.findMany({
-      where: { session: { userId }, weightKg: { not: null } },
+      // Batch 3a (18 Oct 2026): warm-ups count toward neither PRs nor volume.
+      where: { session: { userId }, weightKg: { not: null }, isWarmup: false },
       select: {
         exerciseId: true,
         sessionId: true,

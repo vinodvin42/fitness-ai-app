@@ -46,6 +46,28 @@ function tsTokens(src: string): Record<string, string> {
   return out;
 }
 
+/**
+ * user-mobile's token file holds one palette per theme since the Figma
+ * light/dark rewrite (`export const palettes = { dark: {...}, light: {...} }`),
+ * so its tokens sit one level deeper than `tsTokens` reads. This returns the
+ * `name: "#RRGGBB"` pairs of one scheme's block, found by brace matching.
+ */
+function tsSchemeTokens(src: string, scheme: "dark" | "light"): Record<string, string> {
+  const start = src.indexOf("export const palettes");
+  const at = start < 0 ? -1 : src.indexOf(`\n  ${scheme}: {`, start);
+  if (at < 0) return {};
+  const open = src.indexOf("{", at);
+  let depth = 0;
+  let end = open;
+  for (; end < src.length; end++) {
+    if (src[end] === "{") depth++;
+    else if (src[end] === "}" && --depth === 0) break;
+  }
+  const out: Record<string, string> = {};
+  for (const m of src.slice(open, end).matchAll(/^\s+(\w+):\s*"(#[0-9A-Fa-f]{6})"/gm)) out[m[1]] = m[2];
+  return out;
+}
+
 /** `--name: #rrggbb;` — both the CSS custom properties and Tailwind's @theme. */
 function cssTokens(src: string, prefix: string, block?: string): Record<string, string> {
   // `block` limits the scan to one rule, which a file with more than one
@@ -72,16 +94,21 @@ function cssTokens(src: string, prefix: string, block?: string): Record<string, 
 
 type Palette = { name: string; tokens: Record<string, string>; backgrounds: string[]; text: string[] };
 
+// user-mobile, both themes. Since the Figma light/dark rewrite, text uses
+// the dedicated AA text tokens (accentText, aiText, successText,
+// warningText, dangerText); accent, success, warning, danger, orange,
+// pink and aiAccent are fills only (no `color:` use as text in
+// apps/user-mobile/src). cyan is still used as text once — the pace figure
+// on ActivityTrackerScreen — so it stays on the list.
+const USER_MOBILE_TEXT = ["textPrimary", "textSecondary", "textMuted", "accentText", "aiText", "successText", "warningText", "dangerText", "cyan"];
+
 const PALETTES: Palette[] = [
-  {
-    name: "user-mobile",
-    tokens: tsTokens(read("apps/user-mobile/src/theme/tokens.ts")),
+  ...(["dark", "light"] as const).map((scheme) => ({
+    name: `user-mobile ${scheme}`,
+    tokens: tsSchemeTokens(read("apps/user-mobile/src/theme/tokens.ts"), scheme),
     backgrounds: ["background", "surface", "surfaceRaised", "surfaceHigh"],
-    // Every one of these is used as TEXT somewhere, not only as a fill —
-    // `pink` reached this list because RecipeDetailScreen renders the fat
-    // macro in it at 18px, under the large-text threshold.
-    text: ["textPrimary", "textSecondary", "textMuted", "accent", "accentAlt", "success", "warning", "danger", "orange", "pink", "cyan", "aiAccent"],
-  },
+    text: USER_MOBILE_TEXT,
+  })),
   {
     name: "coach-mobile",
     tokens: tsTokens(read("apps/coach-mobile/src/theme/tokens.ts")),

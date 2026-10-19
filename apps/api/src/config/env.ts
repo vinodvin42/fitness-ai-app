@@ -197,6 +197,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  // Admin forgot password (Oct 2026): where the admin console is served
+  // (e.g. https://www.example.com/app), used to build the emailed reset
+  // link. Without it an admin reset can't be emailed.
+  ADMIN_WEB_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

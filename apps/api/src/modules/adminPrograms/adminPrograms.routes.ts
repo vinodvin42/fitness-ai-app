@@ -3,14 +3,17 @@ import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth
 import { requirePermission } from "../../middleware/adminPermissions";
 import * as adminProgramsService from "./adminPrograms.service";
 import {
+  createArticleSchema,
   createExerciseSchema,
   createProgramSchema,
   createRecipeSchema,
+  listArticlesQuerySchema,
   listContentReviewsQuerySchema,
   listExercisesQuerySchema,
   listProgramsQuerySchema,
   listRecipesQuerySchema,
   reviewContentReviewSchema,
+  updateArticleSchema,
   updateExerciseSchema,
   updateProgramSchema,
   updateRecipeSchema,
@@ -314,6 +317,91 @@ adminProgramsRouter.post(
       const input = reviewContentReviewSchema.parse(req.body);
       const result = await adminProgramsService.rejectContentReview(req.adminUserId as string, req.params.id, input);
       res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ---- Educational Content (05.04), Oct 2026 ---------------------------------
+// No publish route on purpose: an article is published only by approving its
+// review in 05.05 with the expert reviewer named (adminPrograms.service.ts).
+
+adminProgramsRouter.get(
+  "/admin/articles",
+  requireAdminAuth,
+  requirePermission("programs", "view"),
+  async (req, res, next) => {
+    try {
+      const query = listArticlesQuerySchema.parse(req.query);
+      res.status(200).json(await adminProgramsService.listArticles(query));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminProgramsRouter.get(
+  "/admin/articles/:id",
+  requireAdminAuth,
+  requirePermission("programs", "view"),
+  async (req, res, next) => {
+    try {
+      res.status(200).json(await adminProgramsService.getArticle(req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminProgramsRouter.post(
+  "/admin/articles",
+  requireAdminAuth,
+  requirePermission("programs", "create"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = createArticleSchema.parse(req.body);
+      res.status(201).json({ article: await adminProgramsService.createArticle(req.adminUserId as string, input) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminProgramsRouter.patch(
+  "/admin/articles/:id",
+  requireAdminAuth,
+  requirePermission("programs", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = updateArticleSchema.parse(req.body);
+      res.status(200).json({ article: await adminProgramsService.updateArticle(req.adminUserId as string, req.params.id, input) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminProgramsRouter.post(
+  "/admin/articles/:id/submit-review",
+  requireAdminAuth,
+  requirePermission("programs", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      res.status(201).json(await adminProgramsService.submitArticleForReview(req.adminUserId as string, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminProgramsRouter.post(
+  "/admin/articles/:id/unpublish",
+  requireAdminAuth,
+  requirePermission("programs", "approve"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      res.status(200).json({ article: await adminProgramsService.unpublishArticle(req.adminUserId as string, req.params.id) });
     } catch (err) {
       next(err);
     }

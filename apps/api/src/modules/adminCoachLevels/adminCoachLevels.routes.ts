@@ -25,7 +25,7 @@ adminCoachLevelsRouter.get(
   "/admin/coach-levels",
   requireAdminAuth,
   requirePermission("commerce", "view"),
-  async (req: AdminAuthedRequest, res, next) => {
+  async (_req: AdminAuthedRequest, res, next) => {
     try {
       res.status(200).json(await svc.getCoachPricing());
     } catch (err) {

@@ -3,12 +3,29 @@ import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth
 import { requirePermission } from "../../middleware/adminPermissions";
 import {
   highImpactSubscriptionSchema,
+  listSubscriptionsQuerySchema,
   revokeSubscriptionSchema,
   unrevokeSubscriptionSchema,
 } from "./adminSubscriptions.schema";
 import * as subscriptionsService from "../subscriptions/subscriptions.service";
+import * as adminSubscriptionsService from "./adminSubscriptions.service";
 
 export const adminSubscriptionsRouter = Router();
+
+// 06.01 Subscriptions list (Oct 2026) — see adminSubscriptions.service.ts.
+adminSubscriptionsRouter.get(
+  "/admin/subscriptions",
+  requireAdminAuth,
+  requirePermission("commerce", "view"),
+  async (req, res, next) => {
+    try {
+      const query = listSubscriptionsQuerySchema.parse(req.query);
+      res.status(200).json(await adminSubscriptionsService.listSubscriptions(query));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 /**
  * Gap §57 (18 Sep 2026) — real admin force-revoke, the R1 work package's

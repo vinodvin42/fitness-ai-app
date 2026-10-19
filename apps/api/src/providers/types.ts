@@ -44,6 +44,30 @@ export type ProviderRefund = {
   id: string | null;
 };
 
+/**
+ * 10.09 Bank Settlements (Oct 2026): one payout from the payment provider to
+ * the business's bank account. Razorpay: GET /v1/settlements — `amount`,
+ * `fees` and `tax` in paise, `utr` to trace it in the bank statement,
+ * `status` created | processed | failed, `created_at` in Unix seconds.
+ */
+export type ProviderSettlement = {
+  id: string;
+  amountCents: number;
+  feesCents: number;
+  taxCents: number;
+  utr: string | null;
+  status: string;
+  createdAt: Date;
+};
+
+export type ListSettlementsInput = {
+  from: Date;
+  to: Date;
+  /** 1–100 (Razorpay's limit). */
+  count: number;
+  skip: number;
+};
+
 export interface PaymentProvider {
   /** Stable identifier, stored on the Payment row and shown in Admin. */
   readonly name: string;
@@ -57,6 +81,8 @@ export interface PaymentProvider {
    */
   verifySignature(input: VerifySignatureInput): boolean;
   refund(providerPaymentId: string, amountCents: number): Promise<ProviderRefund>;
+  /** 10.09: settlements paid out to the business's bank account, newest first. Read-only. */
+  listSettlements(input: ListSettlementsInput): Promise<ProviderSettlement[]>;
 }
 
 // ---- Payouts (D5) ---------------------------------------------------

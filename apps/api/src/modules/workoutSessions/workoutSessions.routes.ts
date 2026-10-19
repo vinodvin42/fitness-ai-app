@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { logSetSchema, updateProgressSchema } from "./workoutSessions.schema";
+import {
+  addSessionExerciseSchema,
+  logSetSchema,
+  sessionFeelSchema,
+  updateProgressSchema,
+  updateSessionExerciseSchema,
+} from "./workoutSessions.schema";
 import * as workoutSessionsService from "./workoutSessions.service";
+import * as sessionExercisesService from "./sessionExercises.service";
 
 export const workoutSessionsRouter = Router();
 
@@ -70,6 +77,46 @@ workoutSessionsRouter.post("/workout-sessions/:id/complete", requireAuth, async 
 workoutSessionsRouter.post("/workout-sessions/:id/abandon", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await workoutSessionsService.abandonSession(req.params.id, req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Batch 3a (18 Oct 2026): the session's own exercise list and "How did it feel?" ----
+// No writeRateLimit, same as POST /sets: these are in-workout taps.
+
+workoutSessionsRouter.post("/workout-sessions/:id/exercises", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = addSessionExerciseSchema.parse(req.body);
+    res.status(201).json({ exercises: await sessionExercisesService.addSessionExercise(req.params.id, req.userId!, input) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+workoutSessionsRouter.patch("/workout-sessions/:id/exercises/:sessionExerciseId", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = updateSessionExerciseSchema.parse(req.body);
+    res.json({
+      exercises: await sessionExercisesService.updateSessionExercise(req.params.id, req.params.sessionExerciseId, req.userId!, input),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+workoutSessionsRouter.delete("/workout-sessions/:id/exercises/:sessionExerciseId", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ exercises: await sessionExercisesService.removeSessionExercise(req.params.id, req.params.sessionExerciseId, req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+workoutSessionsRouter.patch("/workout-sessions/:id/feel", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = sessionFeelSchema.parse(req.body);
+    res.json(await workoutSessionsService.setSessionFeel(req.params.id, req.userId!, input.feel));
   } catch (err) {
     next(err);
   }

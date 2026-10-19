@@ -1,4 +1,5 @@
 import { prisma } from "../../db/prisma";
+import { ApiHttpError } from "../../middleware/errorHandler";
 import { TRAINING_DAYS, type UpdateWorkoutSettingsInput } from "./workoutSettings.schema";
 
 /**
@@ -123,4 +124,34 @@ export async function updateWorkoutSettings(userId: string, input: UpdateWorkout
   }
   const profile = await loadProfile(userId);
   return toSettings(row as SettingsRow, profile);
+}
+
+// ---- Batch 3a (18 Oct 2026): rest time per exercise (Figma 03b ⋯ "Rest timer") ----
+// Remembered for every session; when absent, the default restTimerSeconds
+// applies. Read back resolved on GET /workout-sessions/:id (`exercises[].restSeconds`).
+
+export async function listExerciseRest(userId: string) {
+  const rows = await prisma.exerciseRestPreference.findMany({
+    where: { userId },
+    select: { exerciseId: true, restSeconds: true, updatedAt: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  return { items: rows };
+}
+
+export async function setExerciseRest(userId: string, exerciseId: string, restSeconds: number) {
+  const exercise = await prisma.exercise.findUnique({ where: { id: exerciseId }, select: { id: true } });
+  if (!exercise) throw new ApiHttpError(404, "exercise_not_found", "Exercise not found");
+  return prisma.exerciseRestPreference.upsert({
+    where: { userId_exerciseId: { userId, exerciseId } },
+    update: { restSeconds },
+    create: { userId, exerciseId, restSeconds },
+    select: { exerciseId: true, restSeconds: true, updatedAt: true },
+  });
+}
+
+/** Back to the default rest; a no-op when there was no choice saved. */
+export async function clearExerciseRest(userId: string, exerciseId: string) {
+  await prisma.exerciseRestPreference.deleteMany({ where: { userId, exerciseId } });
+  return { cleared: true, exerciseId };
 }

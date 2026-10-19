@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { aiCoachRateLimit } from "../../middleware/rateLimit";
-import { sendAiCoachMessageSchema } from "./aiCoach.schema";
+import { aiCoachRateLimit, writeRateLimit } from "../../middleware/rateLimit";
+import { reportAiAnswerSchema, sendAiCoachMessageSchema } from "./aiCoach.schema";
 import * as aiCoachService from "./aiCoach.service";
 
 export const aiCoachRouter = Router();
@@ -40,6 +40,17 @@ aiCoachRouter.get("/ai-coach/usage", requireAuth, async (req: AuthedRequest, res
 aiCoachRouter.delete("/ai-coach/messages", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await aiCoachService.clearConversation(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// AI Safety (Oct 2026): report one of your own AI Coach answers. See
+// aiCoach.service.ts reportAnswer().
+aiCoachRouter.post("/ai-coach/messages/:id/report", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = reportAiAnswerSchema.parse(req.body);
+    res.status(201).json(await aiCoachService.reportAnswer(req.userId!, req.params.id, input));
   } catch (err) {
     next(err);
   }

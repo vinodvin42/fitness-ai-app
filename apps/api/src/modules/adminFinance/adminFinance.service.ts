@@ -2,12 +2,15 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import {
+  BankSettlementsQuery,
   CreateExpenseInput,
   FinanceDateRangeQuery,
   ListExpensesQuery,
   ListInvoicesQuery,
   UpsertTaxConfigInput,
 } from "./adminFinance.schema";
+import { paymentProvider, type ProviderSettlement } from "../../providers";
+import { env } from "../../config/env";
 
 /**
  * **Update, 5 Sep 2026** — two things below are stale as of this pass and
@@ -73,6 +76,12 @@ import {
  * - **10.10 Financial Reports** — `financialReports()`. Re-aggregates
  *   10.01/10.02/10.03's real data into P&L/Cash Flow/Revenue/Expense
  *   tabs — no new computation of its own.
+ *
+ * **Update, Oct 2026 — 10.09 is built as Bank Settlements:** a read-only
+ * view of Razorpay's settlements to the business's bank account
+ * (getBankSettlements at the end of this file), the approach early-stage
+ * teams use before a bank-feed vendor exists. Bank balances and connected
+ * accounts are still not available. The note below is the original one.
  *
  * **What's NOT modeled at all (10.06 Coach Settlements, 10.07 Influencer
  * Payouts, 10.09 Bank/Payment Accounts)** — deliberately no service
@@ -838,5 +847,76 @@ export async function financialReports(query: FinanceDateRangeQuery) {
     // function's comment for why "pendingSettlements"/"pendingPayouts"
     // still belong here.
     notAvailable: ["pendingSettlements", "pendingPayouts", "regionalBreakdown"],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 10.09 Bank Settlements (Oct 2026) — what Razorpay has paid out to the
+// business's bank account, read live from Razorpay (nothing stored, nothing
+// computed on our side beyond totals). Industry practice before a bank-feed
+// vendor (RBI Account Aggregator or a bank's corporate API) is chosen: match
+// gateway settlements by UTR against the bank statement. Test payments
+// (PAYMENT_PROVIDER=mock) move no money, so they show nothing; without
+// Razorpay keys the screen says so instead of showing anything.
+// ---------------------------------------------------------------------------
+
+/** India Standard Time is UTC+5:30 all year. */
+const IST_OFFSET_MS = 330 * 60_000;
+/** Razorpay's per-request maximum; daily settlements over ~3 months fit. */
+const SETTLEMENTS_FETCH_LIMIT = 100;
+
+function istDay(d: Date): string {
+  return new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+function istStartOfDay(day: string): Date {
+  return new Date(Date.parse(`${day}T00:00:00.000Z`) - IST_OFFSET_MS);
+}
+
+export async function getBankSettlements(query: BankSettlementsQuery) {
+  const now = new Date();
+  const toDay = query.to ?? istDay(now);
+  const fromDay = query.from ?? istDay(new Date(istStartOfDay(toDay).getTime() - 29 * 86_400_000));
+  const from = istStartOfDay(fromDay);
+  const to = new Date(istStartOfDay(toDay).getTime() + 86_400_000 - 1000);
+
+  const base = {
+    source: paymentProvider.name === "mock" ? ("mock" as const) : ("razorpay" as const),
+    connected: paymentProvider.isConfigured(),
+    range: { from: fromDay, to: toDay },
+    currency: env.RAZORPAY_CURRENCY,
+    // The Figma's bank-account cards need a bank-feed vendor; not chosen.
+    notAvailable: ["bankBalances"],
+  };
+
+  let settlements: ProviderSettlement[] = [];
+  if (base.connected) {
+    try {
+      settlements = await paymentProvider.listSettlements({ from, to, count: SETTLEMENTS_FETCH_LIMIT, skip: 0 });
+    } catch (err) {
+      const detail = (err as { error?: { description?: string } })?.error?.description;
+      throw new ApiHttpError(502, "razorpay_unavailable", `Couldn't load settlements from Razorpay${detail ? `: ${detail}` : ""}`);
+    }
+  }
+
+  const sum = (rows: ProviderSettlement[], f: (s: ProviderSettlement) => number) => rows.reduce((t, s) => t + f(s), 0);
+  const processed = settlements.filter((s) => s.status === "processed");
+  const pending = settlements.filter((s) => s.status === "created");
+  const failed = settlements.filter((s) => s.status === "failed");
+
+  return {
+    ...base,
+    settlements: [...settlements].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    // True when Razorpay returned its maximum, so older ones in the range may be missing.
+    truncated: settlements.length >= SETTLEMENTS_FETCH_LIMIT,
+    totals: {
+      processedCents: sum(processed, (s) => s.amountCents),
+      processedCount: processed.length,
+      pendingCents: sum(pending, (s) => s.amountCents),
+      pendingCount: pending.length,
+      failedCents: sum(failed, (s) => s.amountCents),
+      failedCount: failed.length,
+      feesCents: sum(settlements, (s) => s.feesCents),
+      taxCents: sum(settlements, (s) => s.taxCents),
+    },
   };
 }

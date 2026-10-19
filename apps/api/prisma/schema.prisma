@@ -425,6 +425,12 @@ model User {
   // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
   // model's own doc comment below.
   coachMessages               CoachMessage[]
+  // Safety & Abuse Reports (08.04, Oct 2026) — see SafetyReport.
+  safetyReportsMade           SafetyReport[]   @relation("SafetyReportReporterUser")
+  safetyReportsAgainst        SafetyReport[]   @relation("SafetyReportReportedUser")
+  coachChatBlocks             CoachChatBlock[]
+  // AI Safety (11.03, Oct 2026) — see AiAnswerReport.
+  aiAnswerReports             AiAnswerReport[]
   // Coupons / Referral rewards / Recovery, added 31 Aug 2026 — see each
   // model's own doc comment below.
   couponRedemptions           CouponRedemption[]
@@ -463,6 +469,8 @@ model User {
   coachNotes                  CoachNote[]
   routines                    Routine[]
   workoutSettings             WorkoutSettings?
+  // Batch 3a (18 Oct 2026): rest time the user chose for one exercise.
+  exerciseRestPreferences     ExerciseRestPreference[]
   activityLogs                ActivityLog[]
   formAnalysisSubmissions     FormAnalysisSubmission[]
   privacyRequests             PrivacyRequest[]
@@ -664,6 +672,12 @@ model Exercise {
   equipment        String
   difficulty       Difficulty
   mediaUrl         String?
+  // Exercise video (Oct 2026) — a JSON object { url, durationSec, credit:
+  // { author, licence, licenceUrl?, sourceUrl?, changes? } }: a hosted
+  // demonstration clip plus the credit its licence needs (e.g. wger clips are
+  // CC BY-SA 4.0 and must be credited next to the video). Validated in
+  // adminPrograms.schema.ts. Null = no video; the app shows the photo(s).
+  video            Json?
   // Exercise Detail's "scrollable instructions" (docs/mobile/03-screen-
   // inventory.md §C trn-06), added 19 Aug 2026. String[] follows the same
   // precedent as OnboardingProfile's goals/allergens/injuries above.
@@ -680,6 +694,8 @@ model Exercise {
   workoutExercises WorkoutExercise[]
   setLogs          ExerciseSetLog[]
   routineExercises RoutineExercise[]
+  sessionExercises WorkoutSessionExercise[]
+  restPreferences  ExerciseRestPreference[]
 
   @@index([createdByAdminId])
   @@map("exercises")
@@ -740,12 +756,74 @@ model WorkoutSession {
   // re-derived from set counts (which a user manually skipping ahead with
   // sets remaining would get wrong).
   currentExerciseIndex Int                  @default(0)
+  // Batch 3a (18 Oct 2026): the user's optional "How did it feel?" after
+  // finishing (Figma 03b log/08). Stored only; nothing adjusts the plan from it.
+  feel                 SessionFeel?
 
-  setLogs ExerciseSetLog[]
+  setLogs   ExerciseSetLog[]
+  // This session's own exercise list (copied from the workout on start;
+  // swaps, added exercises and supersets live here). `currentExerciseIndex`
+  // indexes this list. Sessions started before 18 Oct 2026 have no rows and
+  // read the workout's template instead.
+  exercises WorkoutSessionExercise[]
 
   @@index([userId])
   @@index([workoutId])
   @@map("workout_sessions")
+}
+
+/// Batch 3a (18 Oct 2026) — how a session ended up feeling to the user.
+enum SessionFeel {
+  easy
+  about_right
+  hard
+}
+
+/// Where a session's exercise entry came from.
+enum SessionExerciseSource {
+  plan
+  swapped
+  added
+}
+
+/// One entry of a WorkoutSession's own exercise list (Figma 03b: swaps that
+/// survive a restart, "+ Add exercise", supersets A1/A2). Seeded from the
+/// workout's WorkoutExercise rows when the session starts.
+model WorkoutSessionExercise {
+  id                String                @id @default(uuid())
+  sessionId         String
+  session           WorkoutSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId        String
+  exercise          Exercise              @relation(fields: [exerciseId], references: [id])
+  /// The template row this came from (kept through a swap); null when added.
+  workoutExerciseId String?
+  order             Int
+  phase             WorkoutPhase          @default(main)
+  targetSets        Int
+  targetReps        Int
+  /// "A", "B"… shared by exercises done back to back before resting.
+  supersetGroup     String?
+  source            SessionExerciseSource @default(plan)
+  createdAt         DateTime              @default(now())
+
+  @@index([sessionId])
+  @@map("workout_session_exercises")
+}
+
+/// Batch 3a (18 Oct 2026) — the rest time a user picked for one exercise
+/// (Figma 03b ⋯ menu "Rest timer"). Used in every session; when absent the
+/// rest falls back to WorkoutSettings.restTimerSeconds.
+model ExerciseRestPreference {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  restSeconds Int
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, exerciseId])
+  @@map("exercise_rest_preferences")
 }
 
 model ExerciseSetLog {
@@ -765,6 +843,9 @@ model ExerciseSetLog {
   // flow (which doesn't set them) are unaffected.
   isWarmup   Boolean        @default(false)
   isDropSet  Boolean        @default(false)
+  // Batch 3a (18 Oct 2026): taken to failure. Before this the app's single
+  // "Drop Set / Failure" toggle wrote isDropSet, so older rows can't be split.
+  isFailure  Boolean        @default(false)
   note       String?
   loggedAt   DateTime       @default(now())
 
@@ -948,6 +1029,13 @@ model Recipe {
   // app then simply omits those sections (never invents them).
   ingredients      Json?
   instructions     String[]      @default([])
+  // Recipe video (Oct 2026) — a JSON object { url, durationSec, steps:
+  // [{ step, startSec }] }: one square, muted, overhead video plus where each
+  // numbered method step starts in it, so cooking mode can play one step.
+  // Stored as one value so a video and its step markers are set or cleared
+  // together (validated in adminPrograms.schema.ts). Null = no video; the
+  // app shows the hero image exactly as before.
+  video            Json?
   // 22 Aug 2026 — see Program's own doc comment above for why
   // ContentStatus is draft/published only and why the default is
   // `published`, not `draft`.
@@ -1127,6 +1215,10 @@ enum ContentReviewContentType {
   program
   exercise
   recipe
+  // 05.04 Educational Content (Oct 2026) — articles exist now, and unlike
+  // the three above they can only be published through an approved review
+  // that names the expert who checked them. See Article.
+  article
 }
 
 enum ContentReviewStatus {
@@ -1152,6 +1244,63 @@ model ContentReview {
   @@index([submittedByAdminId])
   @@index([reviewedByAdminId])
   @@map("content_reviews")
+}
+
+// ---------------------------------------------------------------------------
+// 05.04 Educational Content (Oct 2026): the "Learn" library — short articles
+// on training, nutrition, recovery, sleep and mindset, separate from the
+// help centre (HelpArticle answers "how do I use the app"; these teach).
+//
+// Health information, so an article reaches members only through the 05.05
+// review queue: an admin other than the one who submitted it approves it and
+// records the expert who checked it (name and credentials), shown to members
+// as "Reviewed by …". There is no direct publish. The text can't change
+// while a review is pending or while the article is published; editing a
+// draft clears an earlier sign-off, so it needs a fresh review.
+//
+// `body` is plain text: paragraphs separated by blank lines, "## " starts a
+// heading and "- " a bullet. `readMinutes` is computed from the body.
+// `viewCount` counts article opens in the app. No articles are seeded.
+// ---------------------------------------------------------------------------
+
+enum ArticleTopic {
+  training
+  nutrition
+  recovery
+  sleep
+  mindset
+}
+
+enum ArticleAudience {
+  everyone
+  beginner
+  intermediate
+  advanced
+}
+
+model Article {
+  id                        String          @id @default(uuid())
+  slug                      String          @unique
+  title                     String
+  summary                   String
+  body                      String          @db.Text
+  topic                     ArticleTopic
+  audience                  ArticleAudience @default(everyone)
+  readMinutes               Int
+  coverImageUrl             String?
+  status                    ContentStatus   @default(draft)
+  createdByAdminId          String?
+  createdByAdmin            AdminUser?      @relation("ArticleCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  expertReviewerName        String?
+  expertReviewerCredentials String?
+  expertReviewedAt          DateTime?
+  publishedAt               DateTime?
+  viewCount                 Int             @default(0)
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  @@index([status, topic])
+  @@map("articles")
 }
 
 // ---- Nutrition: Recipe -> logged MealLog -----------------------------
@@ -1638,10 +1787,60 @@ model AiCoachMessage {
   // prompt for this reply ([{kind,label,value}]) — what the "Why this?" sheet
   // shows. Null for replies generated before this column existed.
   sources   Json?
+  // Set when staff hid this answer after a report (AI Safety, 11.03). The
+  // app shows "This answer was removed after review" and the answer is left
+  // out of the conversation history sent to the AI.
+  hiddenAt  DateTime?
+  answerReports AiAnswerReport[]
 
   @@unique([userId, clientId])
   @@index([userId, createdAt])
   @@map("ai_coach_messages")
+}
+
+// ---------------------------------------------------------------------------
+// AI Safety / Overrides (admin 11.03), Oct 2026. Google Play requires apps
+// with generative AI to let people report offensive AI output in-app. A user
+// reports one AI Coach answer; the question and answer text are copied at
+// report time, because "Clear conversation" deletes the messages and the
+// evidence must survive. Staff either mark it reviewed (nothing wrong) or
+// hide the answer from the user's chat. One report per answer.
+// ---------------------------------------------------------------------------
+
+enum AiAnswerReportReason {
+  unsafe_or_harmful
+  medically_wrong
+  offensive
+  other
+}
+
+enum AiAnswerReportStatus {
+  open
+  reviewed
+  answer_hidden
+}
+
+model AiAnswerReport {
+  id                String               @id @default(uuid())
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId         String?              @unique
+  message           AiCoachMessage?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  questionText      String?              @db.Text
+  answerText        String               @db.Text
+  reason            AiAnswerReportReason
+  note              String?              @db.Text
+  status            AiAnswerReportStatus @default(open)
+  reviewNote        String?              @db.Text
+  reviewedAt        DateTime?
+  reviewedByAdminId String?
+  reviewedByAdmin   AdminUser?           @relation("AiAnswerReportReviewedBy", fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("ai_answer_reports")
 }
 
 // Module 11 AI Operations, added 27 Aug 2026 — reports/build-plan.html's own
@@ -1724,6 +1923,16 @@ enum SupportTicketCategory {
   billing
   account
   other
+  // 08.03 Complaints (Oct 2026) — a formal complaint. See SupportTicket's
+  // complaint fields below.
+  complaint
+}
+
+// How a complaint was closed (08.03 Complaints, Oct 2026).
+enum ComplaintOutcome {
+  upheld
+  partly_upheld
+  not_upheld
 }
 
 enum SupportTicketPriority {
@@ -1756,7 +1965,24 @@ model SupportTicket {
   // SupportTicketMessage model's own doc comment below.
   messages    SupportTicketMessage[]
 
+  // ---- 08.03 Complaints (Oct 2026) -------------------------------------
+  // A complaint is a ticket with category `complaint`, the way help desks
+  // do it, so it keeps the reply thread. India's Consumer Protection
+  // (E-Commerce) Rules 2020, rule 4(5): acknowledge a complaint within 48
+  // hours and resolve it within one month of receipt. The ticket reference
+  // the app shows on submission is the acknowledgement; `complaintDueAt` is
+  // set when the ticket becomes a complaint (see lib/complaints.ts for how
+  // "one month" is counted). Closing needs an outcome and a resolution
+  // note, which go to the member in the thread.
+  complaintDueAt           DateTime?
+  complaintOutcome         ComplaintOutcome?
+  complaintResolutionNote  String?           @db.Text
+  complaintClosedAt        DateTime?
+  complaintClosedByAdminId String?
+  complaintClosedByAdmin   AdminUser?        @relation("ComplaintClosedBy", fields: [complaintClosedByAdminId], references: [id], onDelete: SetNull)
+
   @@index([userId])
+  @@index([category, status])
   @@map("support_tickets")
 }
 
@@ -2328,6 +2554,11 @@ model AdminUser {
   // list only because that's how every other "who last touched this
   // config row" relation above is shaped.
   aiCoachSettingsUpdated          AiCoachSettings[]
+  safetyReportsResolved           SafetyReport[]               @relation("SafetyReportResolvedBy")
+  aiAnswerReportsReviewed         AiAnswerReport[]             @relation("AiAnswerReportReviewedBy")
+  complaintsClosed                SupportTicket[]              @relation("ComplaintClosedBy")
+  articlesCreated                 Article[]                    @relation("ArticleCreatedBy")
+  passwordResetTokens             AdminPasswordResetToken[]
   // Admin Action Required Queue (R2 Wave 1, 20 Sep 2026) — two relations,
   // same shape as Escalation's `escalatedBy`/`resolvedBy` above: the admin
   // an item is assigned to and the admin who resolved it can legitimately
@@ -2592,6 +2823,10 @@ model Professional {
   // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
   // model's own doc comment below.
   coachMessages    CoachMessage[]
+  // Safety & Abuse Reports (08.04, Oct 2026) — see SafetyReport.
+  safetyReportsMade    SafetyReport[]   @relation("SafetyReportReporterProfessional")
+  safetyReportsAgainst SafetyReport[]   @relation("SafetyReportReportedProfessional")
+  coachChatBlocks      CoachChatBlock[]
   // Coach Settlements, added 31 Aug 2026 — see the CoachSettlement model.
   settlements      CoachSettlement[]
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
@@ -3126,10 +3361,110 @@ model CoachMessage {
   // marked read once the professional loads the thread, and vice versa.
   readAt         DateTime?
   createdAt      DateTime           @default(now())
+  // Set when staff remove the message after a safety report (08.04). The
+  // text is kept for the record; both apps show "Removed by Fynrox".
+  removedAt      DateTime?
+  safetyReports  SafetyReport[]
 
   @@index([userId, professionalId, createdAt])
   @@index([professionalId, userId, createdAt])
   @@map("coach_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Safety & Abuse Reports (admin 08.04) and chat blocking, Oct 2026.
+//
+// App-store rules for apps where people message each other (Apple App Review
+// 1.2, Google Play's user-content policy) require a way to report offensive
+// content and to block abusive users. Coach ↔ client chat (CoachMessage) is
+// that content. A report names who reported (a user or a professional), who
+// is reported (the other party) and, optionally, the exact message. The
+// message text is copied into `messageExcerpt` at report time so the
+// evidence survives even if the message is later removed.
+//
+// Severity is derived from the reason (threats, sexual content and unsafe
+// advice are high) — staff act on high-severity reports first. Outcomes:
+// dismissed, a warning, the message removed (CoachMessage.removedAt — the
+// text is kept for the record but no longer shown), or the account suspended
+// (done with the existing reason-gated suspend action, and only recorded
+// here once it has happened).
+// ---------------------------------------------------------------------------
+
+enum SafetyReportReason {
+  harassment
+  sexual_content
+  threats_or_hate
+  spam_or_scam
+  unsafe_advice
+  impersonation
+  other
+}
+
+enum SafetyReportSeverity {
+  high
+  normal
+}
+
+enum SafetyReportStatus {
+  open
+  actioned
+  dismissed
+}
+
+enum SafetyReportOutcome {
+  dismissed
+  warning
+  message_removed
+  account_suspended
+}
+
+model SafetyReport {
+  id                     String                @id @default(uuid())
+  reporterUserId         String?
+  reporterUser           User?                 @relation("SafetyReportReporterUser", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  reporterProfessionalId String?
+  reporterProfessional   Professional?         @relation("SafetyReportReporterProfessional", fields: [reporterProfessionalId], references: [id], onDelete: SetNull)
+  reportedUserId         String?
+  reportedUser           User?                 @relation("SafetyReportReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  reportedProfessionalId String?
+  reportedProfessional   Professional?         @relation("SafetyReportReportedProfessional", fields: [reportedProfessionalId], references: [id], onDelete: SetNull)
+  messageId              String?
+  message                CoachMessage?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  messageExcerpt         String?               @db.Text
+  reason                 SafetyReportReason
+  details                String?               @db.Text
+  severity               SafetyReportSeverity
+  status                 SafetyReportStatus    @default(open)
+  outcome                SafetyReportOutcome?
+  resolutionNote         String?               @db.Text
+  resolvedAt             DateTime?
+  resolvedByAdminId      String?
+  resolvedByAdmin        AdminUser?            @relation("SafetyReportResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@index([status, severity, createdAt])
+  @@index([reportedUserId])
+  @@index([reportedProfessionalId])
+  @@map("safety_reports")
+}
+
+// One row per side that blocked: a user blocking their coach, or a coach
+// blocking a client. While any row exists for the pair, neither can send a
+// message (coachMessages.service.ts). Blocking doesn't end or refund
+// coaching; that stays a separate action.
+model CoachChatBlock {
+  id             String             @id @default(uuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  blockedBy      CoachMessageSender
+  createdAt      DateTime           @default(now())
+
+  @@unique([userId, professionalId, blockedBy])
+  @@index([professionalId])
+  @@map("coach_chat_blocks")
 }
 
 // ---- Coach Private Notes (R2 Wave 3, 20 Sep 2026) -----------------------
@@ -4924,4 +5259,20 @@ model CommissionRate {
 
   @@index([professionalId, effectiveFrom])
   @@map("commission_rates")
+}
+
+// Admin forgot/reset password (Oct 2026). Same shape as PasswordResetToken:
+// only the token's hash is stored, it expires after 30 minutes and works
+// once. Resetting the password never skips the admin sign-in code (MFA).
+model AdminPasswordResetToken {
+  id          String    @id @default(uuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
+  @@map("admin_password_reset_tokens")
 }

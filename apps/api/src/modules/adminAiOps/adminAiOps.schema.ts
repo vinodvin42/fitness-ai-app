@@ -9,3 +9,30 @@ export const updateAiCoachSettingsSchema = z.object({
 });
 
 export type UpdateAiCoachSettingsInput = z.infer<typeof updateAiCoachSettingsSchema>;
+
+// 11.02 AI Usage & Metrics (Oct 2026): the window in days. Only the three
+// windows the screen offers are accepted.
+export const AI_USAGE_WINDOWS = [7, 30, 90] as const;
+export const aiUsageQuerySchema = z.object({
+  days: z.coerce
+    .number()
+    .int()
+    .refine((d) => (AI_USAGE_WINDOWS as readonly number[]).includes(d), { message: "days must be 7, 30 or 90" })
+    .default(30),
+});
+export type AiUsageQuery = z.infer<typeof aiUsageQuerySchema>;
+
+// 11.03 AI Safety / Overrides (Oct 2026) — see listAiAnswerReports in
+// adminAiOps.service.ts.
+export const listAiAnswerReportsQuerySchema = z.object({
+  status: z.enum(["open", "reviewed", "answer_hidden"]).optional(),
+});
+export type ListAiAnswerReportsQuery = z.infer<typeof listAiAnswerReportsQuerySchema>;
+
+// `reason` is the review note; named `reason` so the admin client's
+// change-reason step recognises it and doesn't ask twice.
+export const resolveAiAnswerReportSchema = z.object({
+  action: z.enum(["reviewed", "hide_answer"]),
+  reason: z.string().trim().min(10).max(1000),
+});
+export type ResolveAiAnswerReportInput = z.infer<typeof resolveAiAnswerReportSchema>;

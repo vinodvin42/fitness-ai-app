@@ -406,11 +406,40 @@ export interface Exercise {
   equipment: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   mediaUrl: string | null;
+  /** Exercise video (Oct 2026). Null/absent = no video; Exercise Detail shows the photo(s). */
+  video?: ExerciseVideo | null;
   instructions: string[];
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   createdByAdminId: string | null;
   updatedAt: string;
+}
+
+/** Licences an exercise clip can carry (apps/api adminPrograms.schema.ts videoLicences). */
+export type VideoLicence = "CC BY-SA 4.0" | "CC BY 4.0" | "CC0" | "Royalty-free" | "Own";
+
+/** A clip's shape (apps/api adminPrograms.schema.ts videoAspects). Absent = 16:9. */
+export type VideoAspect = "16:9" | "9:16" | "1:1";
+
+/**
+ * A hosted exercise demonstration clip (apps/api schema.prisma Exercise.video).
+ * `credit` is what the licence needs shown next to the video; `licenceUrl` and
+ * `sourceUrl` are always present unless the licence is "Own".
+ */
+export interface ExerciseVideo {
+  url: string;
+  durationSec: number;
+  /** Absent = 16:9. Portrait clips are framed whole, not cropped. */
+  aspect?: VideoAspect;
+  /** A still from the clip, shown before it plays. */
+  posterUrl?: string;
+  credit: {
+    author: string;
+    licence: VideoLicence;
+    licenceUrl?: string;
+    sourceUrl?: string;
+    changes?: string;
+  };
 }
 
 /** Exercise + a real, computed "alternatives" list (same muscle group) — see GET /exercises/:id. */
@@ -641,6 +670,8 @@ export interface ExerciseSetLog {
   /** Set/Rest Tracker fields (trn-08) — false/null unless set from that screen. */
   isWarmup: boolean;
   isDropSet: boolean;
+  /** Batch 3a (18 Oct 2026): taken to failure. At most one of isWarmup / isDropSet / isFailure is true. */
+  isFailure?: boolean;
   note: string | null;
   loggedAt: string;
 }
@@ -652,9 +683,66 @@ export interface WorkoutSession {
   status: WorkoutSessionStatus;
   startedAt: string;
   completedAt: string | null;
-  /** U3 (15 Sep 2026) — real, server-persisted resume point. See ActiveWorkoutScreen. */
+  /** U3 (15 Sep 2026) — real, server-persisted resume point. See ActiveWorkoutScreen. Indexes `exercises`. */
   currentExerciseIndex: number;
   setLogs: ExerciseSetLog[];
+  /** Batch 3a (18 Oct 2026): the optional "How did it feel?" once completed. */
+  feel?: SessionFeel | null;
+  /** Batch 3a: this session's own exercise list (GET /workout-sessions/:id only). */
+  exercises?: SessionExercise[];
+}
+
+export type SessionFeel = "easy" | "about_right" | "hard";
+export type SessionExerciseSource = "plan" | "swapped" | "added";
+
+/** One entry of a session's own exercise list. `id` is null only for a finished session from before 18 Oct 2026 (read-only). */
+export interface SessionExercise {
+  id: string | null;
+  exerciseId: string;
+  /** The template row it came from (kept through a swap); null when added. */
+  workoutExerciseId: string | null;
+  order: number;
+  phase: WorkoutPhase;
+  targetSets: number;
+  targetReps: number;
+  /** "A", "B"… shared by exercises done back to back before resting. */
+  supersetGroup: string | null;
+  source: SessionExerciseSource;
+  /** The user's rest choice for this exercise, else their default rest. */
+  restSeconds: number;
+  exercise: Exercise;
+}
+
+/** POST /workout-sessions/:id/exercises — appended to the list. Returns { exercises }. */
+export interface AddSessionExerciseInput {
+  exerciseId: string;
+  targetSets?: number;
+  targetReps?: number;
+}
+
+/** PATCH /workout-sessions/:id/exercises/:sessionExerciseId — swap (before any set), superset, targets or position. Returns { exercises }. */
+export interface UpdateSessionExerciseInput {
+  exerciseId?: string;
+  supersetGroup?: string | null;
+  targetSets?: number;
+  targetReps?: number;
+  order?: number;
+}
+
+export interface SessionExercisesResponse {
+  exercises: SessionExercise[];
+}
+
+/** PATCH /workout-sessions/:id/feel (completed sessions only). */
+export interface SessionFeelInput {
+  feel: SessionFeel | null;
+}
+
+/** GET /users/me/exercise-rest items; PUT /users/me/exercise-rest/:exerciseId { restSeconds: 10–600 }; DELETE resets to the default. */
+export interface ExerciseRestPreference {
+  exerciseId: string;
+  restSeconds: number;
+  updatedAt: string;
 }
 
 export interface LogSetInput {
@@ -665,6 +753,7 @@ export interface LogSetInput {
   rpe?: number;
   isWarmup?: boolean;
   isDropSet?: boolean;
+  isFailure?: boolean;
   note?: string;
 }
 
@@ -685,7 +774,9 @@ export interface WorkoutHistoryEntry {
   completedAt: string | null;
   durationMinutes: number | null;
   totalSets: number;
+  /** Working sets only — warm-ups are left out (Batch 3a, 18 Oct 2026). */
   totalVolumeKg: number;
+  feel?: SessionFeel | null;
 }
 
 /**
@@ -704,6 +795,8 @@ export interface WorkoutCompletionSummary {
   newPersonalRecords: Array<{ exerciseId: string; exerciseName: string; weightKg: number; reps: number }>;
   /** Sets + volume per workout phase actually logged (no per-phase timing exists). */
   phases: Array<{ phase: WorkoutPhase; sets: number; volumeKg: number }>;
+  /** Batch 3a (18 Oct 2026): volume and PRs leave out warm-up sets. The user's optional "How did it feel?". */
+  feel?: SessionFeel | null;
   trainingStreak: { currentStreak: number; longestStreak: number };
 }
 
@@ -725,6 +818,8 @@ export interface Recipe {
   ingredients?: RecipeIngredient[] | null;
   /** Fuel 05 — numbered method steps. Empty when not authored yet. */
   instructions?: string[];
+  /** Recipe video (Oct 2026). Null/absent = no video; Recipe Detail shows the hero image as before. */
+  video?: RecipeVideo | null;
   /** Added 22 Aug 2026 — see `ContentStatus`'s own doc comment. */
   status: ContentStatus;
   createdByAdminId: string | null;
@@ -734,6 +829,23 @@ export interface Recipe {
 export interface RecipeIngredient {
   name: string;
   quantity: string;
+}
+
+/** Where numbered method step `step` (1-based) starts in the recipe video. */
+export interface RecipeVideoStep {
+  step: number;
+  startSec: number;
+}
+
+/**
+ * One square, muted, overhead recipe video (apps/api schema.prisma Recipe.video).
+ * `url` is an https .mp4 or .m3u8; `steps` are in order, each inside `durationSec`;
+ * a step with no marker simply has no "Watch this step" in cooking mode.
+ */
+export interface RecipeVideo {
+  url: string;
+  durationSec: number;
+  steps: RecipeVideoStep[];
 }
 
 /** Profile & Settings 01 "Saved Recipes": GET /saved-recipes items (the recipe plus when it was saved). */
@@ -1215,6 +1327,31 @@ export type SubscriptionDisplayState =
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
 export type BillingCycle = "monthly" | "quarterly" | "annual";
 
+/** 06.01 Subscriptions list row — GET /admin/subscriptions. `priceCents` is the locked subscriber price when `priceLocked`, else the plan's current price. */
+export interface AdminSubscriptionListItem {
+  id: string;
+  status: SubscriptionStatus;
+  user: { id: string; fullName: string; email: string };
+  plan: { id: string; name: string; tier: SubscriptionTier; billingCycle: BillingCycle; priceCents: number };
+  priceCents: number;
+  priceLocked: boolean;
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  createdAt: string;
+}
+
+export interface AdminSubscriptionDirectoryResponse {
+  subscriptions: AdminSubscriptionListItem[];
+  /** How many match the filters; the list holds the newest 500. */
+  matched: number;
+  truncated: boolean;
+  /** Counts over all subscriptions (not the filtered set), by status. */
+  counts: Record<SubscriptionStatus, number>;
+  notAvailable: string[];
+}
+
 export interface SubscriptionPlan {
   id: string;
   tier: SubscriptionTier;
@@ -1471,7 +1608,8 @@ export interface UserDataExport {
 // are admin-console (Phase 6) concerns; from here, a ticket is create +
 // list-your-own only, always starting (and, until Phase 6, staying) `open`.
 
-export type SupportTicketCategory = "bug" | "feature_request" | "billing" | "account" | "other";
+/** "complaint" (08.03 Complaints, Oct 2026) is a formal complaint with a one-month resolve-by date. */
+export type SupportTicketCategory = "bug" | "feature_request" | "billing" | "account" | "other" | "complaint";
 export type SupportTicketPriority = "low" | "normal" | "high";
 export type SupportTicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -1485,6 +1623,29 @@ export interface SupportTicket {
   status: SupportTicketStatus;
   createdAt: string;
   updatedAt: string;
+  /** Present only on complaints (08.03, Oct 2026). */
+  complaint?: MemberComplaintInfo;
+}
+
+export type ComplaintOutcome = "upheld" | "partly_upheld" | "not_upheld";
+
+/** What the member sees about their own complaint. */
+export interface MemberComplaintInfo {
+  /** e.g. "C-1A2B3C4D" — the acknowledgement shown at submission. */
+  reference: string;
+  /** Resolve-by date (one month from receipt, counted conservatively). */
+  dueAt: string | null;
+  outcome: ComplaintOutcome | null;
+  resolutionNote: string | null;
+  closedAt: string | null;
+}
+
+/** GET /help/grievance-officer. Fields are null until the owner supplies them. */
+export interface GrievanceOfficer {
+  name: string | null;
+  designation: string | null;
+  email: string | null;
+  configured: boolean;
 }
 
 /** Matches apps/api's createSupportTicketSchema (Zod). */
@@ -1564,6 +1725,12 @@ export interface AdminUser {
   updatedAt: string;
   /** True once the admin has confirmed an authenticator app. */
   mfaEnabled?: boolean;
+  /**
+   * The role's grants per module (Oct 2026), sent with the signed-in admin
+   * (login, /admin/auth/me) so the console shows only what this role may
+   * open. The server enforces every route regardless.
+   */
+  permissions?: Partial<Record<string, ("view" | "create" | "edit" | "delete" | "export" | "approve")[]>>;
 }
 
 /** Matches apps/api's adminLoginSchema (Zod). `code` is the authenticator code once MFA is set up. */
@@ -1996,6 +2163,14 @@ export interface RelationshipStatusItem {
   serviceType: ProfessionalServiceType;
   status: RelationshipStatus;
   createdAt: string;
+  /** When a declined/expired/completed relationship finished; those are listed for 30 days after this. */
+  endedAt?: string | null;
+  /** When the row last entered `activating` (null for every other status). */
+  activatingSince?: string | null;
+  /** `activating` for longer than the API's stuck threshold (15 min). */
+  stuck?: boolean;
+  /** For `activation_failed` or stuck rows: the captured booking payment that never activated, for support. */
+  paymentId?: string | null;
 }
 
 export interface RelationshipStatusResponse {
@@ -2340,6 +2515,8 @@ export interface CoachMessageItem {
   createdAt: string;
   /** Set once the other party has opened the thread; null while unread. */
   readAt: string | null;
+  /** True when staff removed it after a safety report; `content` is then "Removed by Fynrox". */
+  removed?: boolean;
 }
 
 /** GET /coaching/conversations/:professionalId (user) or /professionals/me/conversations/:userId (coach). */
@@ -2347,6 +2524,83 @@ export interface CoachThreadResponse {
   partnerId: string;
   partnerName: string;
   messages: CoachMessageItem[];
+  /** Blocking (Oct 2026): while either side has blocked, nobody can send. */
+  blocked?: CoachChatBlockState;
+}
+
+/** Who has blocked whom, from the viewer's side. Returned by GET thread and POST/DELETE …/block. */
+export interface CoachChatBlockState {
+  byMe: boolean;
+  byThem: boolean;
+}
+
+// ---- Safety & Abuse Reports (admin 08.04, Oct 2026) ------------------------
+
+export type SafetyReportReason =
+  | "harassment"
+  | "sexual_content"
+  | "threats_or_hate"
+  | "spam_or_scam"
+  | "unsafe_advice"
+  | "impersonation"
+  | "other";
+export type SafetyReportSeverity = "high" | "normal";
+export type SafetyReportStatus = "open" | "actioned" | "dismissed";
+export type SafetyReportOutcome = "dismissed" | "warning" | "message_removed" | "account_suspended";
+
+/** POST …/conversations/:id/report (both apps). Report the other party, or one of their messages. */
+export interface ReportConversationInput {
+  reason: SafetyReportReason;
+  details?: string;
+  messageId?: string;
+}
+
+export interface SafetyReportParty {
+  kind: "user" | "professional";
+  id: string;
+  name: string;
+}
+
+export interface AdminSafetyReportListItem {
+  id: string;
+  reason: SafetyReportReason;
+  severity: SafetyReportSeverity;
+  status: SafetyReportStatus;
+  outcome: SafetyReportOutcome | null;
+  reporter: SafetyReportParty | null;
+  reported: (SafetyReportParty & { accountStatus: "active" | "suspended" }) | null;
+  hasMessage: boolean;
+  excerpt: string | null;
+  createdAt: string;
+  ageHours: number;
+  /** Open for longer than the staff target (`stats.overdueHours`). */
+  overdue: boolean;
+  resolvedAt: string | null;
+  resolvedByName: string | null;
+}
+
+/** GET /admin/safety-reports */
+export interface AdminSafetyReportListResponse {
+  reports: AdminSafetyReportListItem[];
+  stats: { open: number; highOpen: number; overdue: number; actionedThisWeek: number; overdueHours: number };
+}
+
+/** GET /admin/safety-reports/:id — viewing is audit-logged. */
+export interface AdminSafetyReportDetail extends AdminSafetyReportListItem {
+  details: string | null;
+  messageId: string | null;
+  messageExcerpt: string | null;
+  messageRemoved: boolean;
+  resolutionNote: string | null;
+  /** The conversation around the reported message (staff see removed messages' original text, marked removed). */
+  context: Array<{ id: string; sender: CoachMessageSender; content: string; createdAt: string; removed: boolean; reported: boolean }>;
+  priorReportsAgainstReported: number;
+}
+
+/** POST /admin/safety-reports/:id/resolve — `reason` is the resolution note (min 10 characters). */
+export interface ResolveSafetyReportInput {
+  outcome: SafetyReportOutcome;
+  reason: string;
 }
 
 export interface CoachConversationSummary {
@@ -2940,6 +3194,8 @@ export interface AdminExerciseListItem {
   equipment: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   mediaUrl: string | null;
+  /** See `Exercise.video`. */
+  video: ExerciseVideo | null;
   /** Not a table column in the Figma's 05.02, but returned here so the Edit form can prefill without a separate detail request. */
   instructions: string[];
   status: ContentStatus;
@@ -2963,6 +3219,8 @@ export interface CreateAdminExerciseInput {
   difficulty: "beginner" | "intermediate" | "advanced";
   mediaUrl?: string;
   instructions?: string[];
+  /** null clears an existing video on update. */
+  video?: ExerciseVideo | null;
 }
 
 export type UpdateAdminExerciseInput = Partial<CreateAdminExerciseInput>;
@@ -2990,6 +3248,8 @@ export interface AdminRecipeListItem {
   tags: string[];
   /** Hero image URL — see `Recipe.imageUrl`. */
   imageUrl: string | null;
+  /** See `Recipe.video`. */
+  video: RecipeVideo | null;
   status: ContentStatus;
   timesLogged: number;
   creatorName: string | null;
@@ -3015,12 +3275,15 @@ export interface CreateAdminRecipeInput {
   prepTimeMinutes: number;
   tags?: string[];
   imageUrl?: string;
+  /** null clears an existing video on update. */
+  video?: RecipeVideo | null;
 }
 
 export type UpdateAdminRecipeInput = Partial<CreateAdminRecipeInput>;
 
 /** Matches prisma/schema.prisma's ContentReviewContentType/ContentReviewStatus enums. */
-export type ContentReviewContentType = "program" | "exercise" | "recipe";
+/** "article" (05.04 Educational Content, Oct 2026) — approving one needs the expert reviewer. */
+export type ContentReviewContentType = "program" | "exercise" | "recipe" | "article";
 export type ContentReviewStatus = "pending" | "approved" | "rejected";
 
 /**
@@ -3056,6 +3319,9 @@ export interface AdminContentReviewListResponse {
 /** Matches apps/api's reviewContentReviewSchema (Zod) — used for both Approve and Reject. */
 export interface AdminReviewContentReviewInput {
   reviewNotes?: string;
+  /** Required when approving an article: the expert who checked it. */
+  expertReviewerName?: string;
+  expertReviewerCredentials?: string;
 }
 
 // ---- Module 06 — Commerce (06.02 Transactions + 06.03 Payments), added
@@ -3134,6 +3400,8 @@ export interface AdminSupportTicketListItem {
   status: SupportTicketStatus;
   createdAt: string;
   updatedAt: string;
+  /** Set on complaints (08.03); closing happens on the Complaints screen. */
+  complaint?: { reference: string; dueAt: string | null; outcome: ComplaintOutcome | null; closedAt: string | null } | null;
 }
 
 export interface AdminSupportTicketStats {
@@ -3671,6 +3939,63 @@ export interface AiCoachMessage {
   createdAt: string;
   /** Assistant replies only; absent for replies generated before sources were recorded. */
   sources?: AiCoachSource[];
+  /** True when staff hid this answer after a report; `content` is then a short notice. */
+  hidden?: boolean;
+}
+
+// ---- AI Safety / Overrides (admin 11.03, Oct 2026) -------------------------
+
+export type AiAnswerReportReason = "unsafe_or_harmful" | "medically_wrong" | "offensive" | "other";
+export type AiAnswerReportStatus = "open" | "reviewed" | "answer_hidden";
+
+/** POST /ai-coach/messages/:id/report — report one of your own AI Coach answers. */
+export interface ReportAiAnswerInput {
+  reason: AiAnswerReportReason;
+  note?: string;
+}
+
+/** GET /admin/ai-ops/reports (sensitiveData:view). The list carries no message text. */
+export interface AdminAiAnswerReportListResponse {
+  reports: Array<{
+    id: string;
+    reason: AiAnswerReportReason;
+    status: AiAnswerReportStatus;
+    createdAt: string;
+    ageHours: number;
+    hasNote: boolean;
+    /** False once the user cleared their conversation; the report keeps a copy. */
+    answerStillInChat: boolean;
+    reviewedAt: string | null;
+    reviewedByName: string | null;
+  }>;
+  stats: { open: number; reportedThisWeek: number; answersThisWeek: number; reportedShare: number | null };
+  /** Staff changes to the AI: answers hidden, AI Coach switched on or off. */
+  overrides: Array<{ id: string; action: string; at: string; byName: string | null; note: string | null }>;
+  notAvailable: string[];
+}
+
+/** GET /admin/ai-ops/reports/:id — viewing is audit-logged. */
+export interface AdminAiAnswerReportDetail {
+  id: string;
+  reason: AiAnswerReportReason;
+  status: AiAnswerReportStatus;
+  createdAt: string;
+  user: { id: string; fullName: string };
+  question: string | null;
+  answer: string;
+  note: string | null;
+  sources: AiCoachSource[];
+  answerStillInChat: boolean;
+  answerHidden: boolean;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+}
+
+/** POST /admin/ai-ops/reports/:id/resolve — `reason` is the review note (min 10 characters). */
+export interface ResolveAiAnswerReportInput {
+  action: "reviewed" | "hide_answer";
+  reason: string;
 }
 
 /** GET /ai-coach/messages. `truncated` mirrors AdminAuditLog's own "cap it, report the cap honestly" precedent. */
@@ -3719,6 +4044,81 @@ export interface AdminAiCoachSettingsResponse {
 /** Matches apps/api's updateAiCoachSettingsSchema (Zod). */
 export interface AdminUpdateAiCoachSettingsInput {
   isEnabled: boolean;
+}
+
+/** 11.02 AI Usage & Metrics — GET /admin/ai-ops/usage?days=7|30|90. Aggregates only (no names, no message text). */
+export interface AdminAiUsageResponse {
+  days: 7 | 30 | 90;
+  since: string;
+  enabled: boolean;
+  provider: AiProviderStatus;
+  totals: {
+    /** User messages in the window. */
+    questions: number;
+    /** Assistant replies in the window. */
+    answered: number;
+    /** User messages whose reply failed and hasn't been retried successfully. */
+    unanswered: number;
+    /** Replies that used the user's own context (non-empty `sources`). */
+    personalised: number;
+    activeUsers: number;
+    usersEver: number;
+    unansweredRate: number | null;
+    personalisedRate: number | null;
+  };
+  series: Array<{ date: string; questions: number; answered: number; unanswered: number; activeUsers: number }>;
+  notAvailable: string[];
+}
+
+/** 12.07 Notifications — GET /admin/notifications/overview (read-only). */
+export interface AdminNotificationsOverviewResponse {
+  windowDays: number;
+  since: string;
+  inApp: Array<{ kind: NotificationKind; created: number; read: number; readRate: number | null }>;
+  /** push is "registration_only": devices register, but the API sends nothing yet. */
+  channels: Array<{ channel: "in_app" | "push" | "email"; status: "working" | "registration_only" | "configured" | "not_configured" }>;
+  push: { devices: number; usersWithDevice: number; byPlatform: Array<{ platform: string; devices: number }> };
+  preferences: {
+    totalUsers: number;
+    usersWithSavedSettings: number;
+    /** Users who never saved settings use the defaults (all on except marketing). */
+    usersOnDefaults: number;
+    optIns: Array<{ field: string; on: number; rate: number | null }>;
+    quietHoursSet: number;
+    frequencyCapSet: number;
+  };
+  notAvailable: string[];
+}
+
+/** 12.08 Platform Settings — GET /admin/platform-settings. Read-only server configuration; never secrets. */
+export interface AdminPlatformSettingsResponse {
+  general: {
+    environment: "development" | "test" | "production";
+    publicApiUrl: string | null;
+    currency: string;
+    apiInstances: number;
+    sharedRateLimitStore: boolean;
+  };
+  security: {
+    adminMfaRequired: boolean;
+    superAdminReasonRequired: boolean;
+    approvalExpiryDays: number;
+    adminSessionMinutes: number;
+    userAccessTokenMinutes: number;
+    userRefreshTokenDays: number;
+  };
+  integrations: {
+    payments: { provider: "razorpay" | "mock"; configured: boolean };
+    ai: AiProviderStatus;
+    foodData: "openfoodfacts" | "seed";
+    email: { configured: boolean };
+    errorTracking: { configured: boolean };
+  };
+  /** The one database-stored setting; edit it with PATCH /admin/ai-ops/ai-coach. */
+  /** 08.03 Complaints: the grievance officer shown in the app's Help screen. */
+  grievanceOfficer: GrievanceOfficer;
+  aiCoach: { isEnabled: boolean; updatedByAdminName: string | null; updatedAt: string | null };
+  notAvailable: string[];
 }
 
 // ---- Module 10 — Finance, added 26 Aug 2026 ----------------------------
@@ -5259,6 +5659,7 @@ export interface UpdateSetInput {
   rpe?: number | null;
   isWarmup?: boolean;
   isDropSet?: boolean;
+  isFailure?: boolean;
   note?: string | null;
 }
 /** DELETE /workout-sessions/:id/sets/:setId */
@@ -5723,4 +6124,211 @@ export interface CoachMyLevelResponse {
     priceCents: number | null;
     upcoming: { priceCents: number; effectiveFrom: string } | null;
   }>;
+}
+
+// ---------------------------------------------------------------------------
+// 08.03 Complaints (admin), Oct 2026 — GET/POST /admin/complaints. See
+// apps/api's adminSupport.service.ts (Complaints section).
+// ---------------------------------------------------------------------------
+
+export interface AdminComplaintTiming {
+  dueAt: string;
+  /** Whole days until the resolve-by date; null once closed. Negative when overdue. */
+  daysLeft: number | null;
+  overdue: boolean;
+  closedLate: boolean;
+}
+
+export interface AdminComplaintListItem extends AdminComplaintTiming {
+  id: string;
+  reference: string;
+  subject: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  status: SupportTicketStatus;
+  createdAt: string;
+  outcome: ComplaintOutcome | null;
+  closedAt: string | null;
+  closedByName: string | null;
+}
+
+export interface AdminComplaintListResponse {
+  complaints: AdminComplaintListItem[];
+  stats: {
+    open: number;
+    overdue: number;
+    dueWithin7Days: number;
+    closedLast30Days: number;
+    closedOnTimeLast30Days: number;
+    /** Received to closed, for complaints closed in the last 30 days; null when none. */
+    avgDaysToCloseLast30Days: number | null;
+  };
+}
+
+export interface AdminComplaintDetail extends AdminComplaintTiming {
+  id: string;
+  reference: string;
+  subject: string;
+  message: string;
+  status: SupportTicketStatus;
+  priority: SupportTicketPriority;
+  createdAt: string;
+  user: { id: string; fullName: string; email: string; memberSince: string; accountStatus: string };
+  /** Null when the viewer's role can't see Commerce (see billingHidden). */
+  billing: {
+    subscription: {
+      planName: string;
+      status: string;
+      renewsAt: string | null;
+      cancelAtPeriodEnd: boolean;
+      startedAt: string;
+      priceCents: number | null;
+    } | null;
+    payments: { id: string; purpose: string; amountCents: number; currency: string; status: string; createdAt: string }[];
+  } | null;
+  billingHidden: boolean;
+  messages: AdminSupportTicketMessageItem[];
+  events: { id: string; action: string; at: string; byName: string | null; metadata: Record<string, unknown> | null }[];
+  outcome: ComplaintOutcome | null;
+  resolutionNote: string | null;
+  closedAt: string | null;
+  closedByName: string | null;
+}
+
+/** `reason` is the resolution note the member receives (at least 10 characters). */
+export interface CloseComplaintInput {
+  outcome: ComplaintOutcome;
+  reason: string;
+}
+
+// ---------------------------------------------------------------------------
+// 05.04 Educational Content — the Learn library (Oct 2026). Members: GET
+// /learn/articles[/:slug] (published only). Admin: /admin/articles; articles
+// publish only through an approved 05.05 review naming the expert reviewer.
+// ---------------------------------------------------------------------------
+
+export type ArticleTopic = "training" | "nutrition" | "recovery" | "sleep" | "mindset";
+export type ArticleAudience = "everyone" | "beginner" | "intermediate" | "advanced";
+
+export interface ArticleExpertReview {
+  name: string;
+  credentials: string | null;
+  reviewedAt: string;
+}
+
+export interface LearnArticleSummary {
+  slug: string;
+  title: string;
+  summary: string;
+  topic: ArticleTopic;
+  audience: ArticleAudience;
+  readMinutes: number;
+  coverImageUrl: string | null;
+  publishedAt: string | null;
+  reviewedBy: ArticleExpertReview | null;
+}
+
+export interface LearnArticle extends LearnArticleSummary {
+  /** Plain text: blank-line paragraphs, "## " headings, "- " bullets. */
+  body: string;
+}
+
+export interface LearnArticleListResponse {
+  articles: LearnArticleSummary[];
+  /** Topics with at least one published article. */
+  topics: { topic: ArticleTopic; count: number }[];
+}
+
+export interface AdminArticleListItem {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  topic: ArticleTopic;
+  audience: ArticleAudience;
+  readMinutes: number;
+  coverImageUrl: string | null;
+  status: "draft" | "published";
+  authorName: string | null;
+  expertReviewer: ArticleExpertReview | null;
+  /** Latest 05.05 review request, if any ("pending" = waiting in the queue). */
+  reviewStatus: ContentReviewStatus | null;
+  reviewNotes: string | null;
+  publishedAt: string | null;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminArticleListResponse {
+  articles: AdminArticleListItem[];
+  stats: {
+    total: number;
+    published: number;
+    drafts: number;
+    awaitingReview: number;
+    views: number;
+    /** Over published articles; null when none are published. */
+    avgViewsPerPublished: number | null;
+    /** The topic with the most views among published articles; null before any views. */
+    topTopic: { topic: ArticleTopic; views: number } | null;
+  };
+}
+
+export interface AdminArticleDetailResponse {
+  article: AdminArticleListItem & { body: string };
+  reviews: AdminContentReviewListItem[];
+}
+
+export interface AdminCreateArticleInput {
+  title: string;
+  summary: string;
+  body: string;
+  topic: ArticleTopic;
+  audience?: ArticleAudience;
+  coverImageUrl?: string | null;
+}
+
+export type AdminUpdateArticleInput = Partial<AdminCreateArticleInput>;
+
+// ---------------------------------------------------------------------------
+// 10.09 Bank Settlements (Oct 2026) — GET /admin/finance/bank-settlements:
+// Razorpay's settlements to the business's bank account, read live.
+// ---------------------------------------------------------------------------
+
+export interface AdminBankSettlement {
+  id: string;
+  amountCents: number;
+  feesCents: number;
+  taxCents: number;
+  /** Unique Transaction Reference: find this in the bank statement. */
+  utr: string | null;
+  /** Razorpay: "created" (on its way), "processed" (sent to the bank), "failed". */
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminBankSettlementsResponse {
+  /** "mock" = test payments (no money moves, so always empty). */
+  source: "razorpay" | "mock";
+  /** False when Razorpay keys aren't set. */
+  connected: boolean;
+  /** India calendar days, inclusive. */
+  range: { from: string; to: string };
+  currency: string;
+  settlements: AdminBankSettlement[];
+  /** Razorpay's 100-row maximum was reached; narrow the dates. */
+  truncated: boolean;
+  totals: {
+    processedCents: number;
+    processedCount: number;
+    pendingCents: number;
+    pendingCount: number;
+    failedCents: number;
+    failedCount: number;
+    feesCents: number;
+    taxCents: number;
+  };
+  notAvailable: string[];
 }

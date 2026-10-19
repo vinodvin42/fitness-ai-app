@@ -75,7 +75,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
   const workoutRows: unknown[][] = [];
   for (const s of sessions) {
     if (s.setLogs.length === 0) {
-      workoutRows.push([s.id, s.workout?.name ?? "", s.status, s.startedAt, s.completedAt, "", "", "", "", "", ""]);
+      workoutRows.push([s.id, s.workout?.name ?? "", s.status, s.startedAt, s.completedAt, "", "", "", "", "", "", "", s.feel ?? ""]);
     }
     for (const l of s.setLogs) {
       workoutRows.push([
@@ -90,6 +90,9 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
         l.reps,
         l.rpe,
         l.isWarmup,
+        // Batch 3a (18 Oct 2026): set type and the session's "How did it feel?".
+        l.isFailure ? "failure" : l.isDropSet ? "drop" : l.isWarmup ? "warmup" : "working",
+        s.feel ?? "",
       ]);
     }
   }
@@ -101,7 +104,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
   add(
     "workouts.csv",
     "activity",
-    ["session_id", "workout", "status", "started_at", "completed_at", "exercise", "set_number", "weight_kg", "reps", "rpe", "is_warmup"],
+    ["session_id", "workout", "status", "started_at", "completed_at", "exercise", "set_number", "weight_kg", "reps", "rpe", "is_warmup", "set_type", "session_feel"],
     workoutRows,
   );
   add(

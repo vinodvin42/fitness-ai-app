@@ -12,3 +12,10 @@ export const sendAiCoachMessageSchema = z.object({
   clientId: z.string().min(1).max(100).optional(),
 });
 export type SendAiCoachMessageInput = z.infer<typeof sendAiCoachMessageSchema>;
+
+// AI Safety (Oct 2026): report one AI Coach answer. See aiCoach.service.ts reportAnswer().
+export const reportAiAnswerSchema = z.object({
+  reason: z.enum(["unsafe_or_harmful", "medically_wrong", "offensive", "other"]),
+  note: z.string().trim().max(1000).optional(),
+});
+export type ReportAiAnswerInput = z.infer<typeof reportAiAnswerSchema>;

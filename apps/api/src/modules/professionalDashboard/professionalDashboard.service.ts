@@ -3,9 +3,9 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionCents as commissionOn, commissionPctFor, feesInForce } from "../../lib/coachFees";
 import { activeGstPercent } from "../../lib/gst";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { STUCK_ACTIVATING_THRESHOLD_MS } from "../../lib/relationshipActivation";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MINUTE_MS = 60 * 1000;
 
 // Stuck-relationship detection (Wave 3, 20 Sep 2026) — a `Relationship` left
 // at `activating` after a real booking-creation failure (see
@@ -24,8 +24,8 @@ const MINUTE_MS = 60 * 1000;
 // own activation-failure handling uses. Computed at READ time (no scheduler/
 // cron infra exists anywhere in this codebase — same documented precedent
 // as every other "would need a cron" gap) inside this already-polled
-// dashboard endpoint, not a background sweep.
-const STUCK_ACTIVATING_THRESHOLD_MS = 15 * MINUTE_MS;
+// dashboard endpoint, not a background sweep. The value lives in
+// lib/relationshipActivation.ts so the user's own status feed uses the same one.
 
 type TodayBookingRow = {
   id: string;

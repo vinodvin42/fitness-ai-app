@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { recordAudit } from "../../middleware/auditLog";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { isAiCoachEnabledByAdmin } from "../adminAiOps/adminAiOps.service";
 import { getCurrentSubscription } from "../subscriptions/subscriptions.service";
@@ -107,9 +108,17 @@ export interface AiCoachMessageDTO {
   createdAt: Date;
   /** Assistant replies only; absent for replies generated before sources were recorded. */
   sources?: AiCoachSourceDTO[];
+  /** True when staff hid this answer after a report (AI Safety, 11.03). */
+  hidden?: boolean;
 }
 
-function toDTO(m: { id: string; role: string; content: string; createdAt: Date; sources?: unknown }): AiCoachMessageDTO {
+/** What the app shows in place of an answer staff hid after a report. */
+export const HIDDEN_ANSWER_TEXT = "This answer was removed after review.";
+
+function toDTO(m: { id: string; role: string; content: string; createdAt: Date; sources?: unknown; hiddenAt?: Date | null }): AiCoachMessageDTO {
+  if (m.hiddenAt) {
+    return { id: m.id, role: m.role as "user" | "assistant", content: HIDDEN_ANSWER_TEXT, createdAt: m.createdAt, hidden: true };
+  }
   const dto: AiCoachMessageDTO = { id: m.id, role: m.role as "user" | "assistant", content: m.content, createdAt: m.createdAt };
   if (m.role === "assistant" && Array.isArray(m.sources) && m.sources.length > 0) {
     dto.sources = m.sources as unknown as AiCoachSourceDTO[];
@@ -279,8 +288,10 @@ export async function sendMessage(
 
   const [{ prompt: systemPrompt, sources }, history] = await Promise.all([
     buildSystemPrompt(userId),
+    // Hidden answers (AI Safety) are left out of what the AI sees, so a
+    // removed answer can't be repeated or built upon.
     prisma.aiCoachMessage.findMany({
-      where: { userId, failed: false },
+      where: { userId, failed: false, hiddenAt: null },
       orderBy: { createdAt: "desc" },
       take: MAX_HISTORY_MESSAGES,
     }),
@@ -327,4 +338,46 @@ export async function sendMessage(
 export async function clearConversation(userId: string): Promise<{ deleted: number }> {
   const { count } = await prisma.aiCoachMessage.deleteMany({ where: { userId } });
   return { deleted: count };
+}
+
+// ---------------------------------------------------------------------------
+// AI Safety (admin 11.03), Oct 2026 — Google Play requires apps with
+// generative AI to let people report offensive AI output in-app. A user
+// reports one of their own AI Coach answers; the question and answer text
+// are copied into the report because "Clear conversation" deletes the
+// messages. One report per answer: reporting again returns the same report.
+// ---------------------------------------------------------------------------
+export async function reportAnswer(userId: string, messageId: string, input: { reason: "unsafe_or_harmful" | "medically_wrong" | "offensive" | "other"; note?: string }) {
+  const answer = await prisma.aiCoachMessage.findUnique({ where: { id: messageId } });
+  if (!answer || answer.userId !== userId || answer.role !== "assistant") {
+    throw new ApiHttpError(404, "message_not_found", "Answer not found");
+  }
+  const existing = await prisma.aiAnswerReport.findUnique({ where: { messageId }, select: { id: true, status: true, createdAt: true } });
+  if (existing) return existing;
+
+  const question = await prisma.aiCoachMessage.findFirst({
+    where: { userId, role: "user", failed: false, createdAt: { lte: answer.createdAt } },
+    orderBy: { createdAt: "desc" },
+    select: { content: true },
+  });
+
+  const report = await prisma.aiAnswerReport.create({
+    data: {
+      userId,
+      messageId,
+      questionText: question?.content ?? null,
+      answerText: answer.content,
+      reason: input.reason,
+      note: input.note || null,
+    },
+    select: { id: true, status: true, createdAt: true },
+  });
+  await recordAudit({
+    actorId: userId,
+    action: "ai_answer_report.created",
+    entityType: "AiAnswerReport",
+    entityId: report.id,
+    metadata: { reason: input.reason },
+  });
+  return report;
 }

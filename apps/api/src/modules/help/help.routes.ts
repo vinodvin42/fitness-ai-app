@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
 import * as helpService from "./help.service";
+import { getGrievanceOfficer } from "../../config/grievanceOfficer";
 
 export const helpRouter = Router();
 
@@ -32,4 +33,11 @@ helpRouter.get("/help/articles/:slug", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// 08.03 Complaints (Oct 2026): the grievance officer's details, which must
+// be shown on the platform (config/grievanceOfficer.ts). Public, like any
+// contact detail; fields are null until the owner supplies them.
+helpRouter.get("/help/grievance-officer", (_req, res) => {
+  res.json(getGrievanceOfficer());
 });

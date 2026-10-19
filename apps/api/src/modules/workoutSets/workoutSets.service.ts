@@ -23,7 +23,22 @@ async function getEditableSet(sessionId: string, setId: string, userId: string) 
 
 export async function updateSet(sessionId: string, setId: string, userId: string, input: UpdateSetInput) {
   const setLog = await getEditableSet(sessionId, setId, userId);
-  return prisma.exerciseSetLog.update({ where: { id: setLog.id }, data: input });
+  return prisma.exerciseSetLog.update({ where: { id: setLog.id }, data: withOneSetType(input) });
+}
+
+/**
+ * Batch 3a (18 Oct 2026): turning one set type on (warm-up / drop / failure)
+ * turns the other two off, so a partial edit can't leave a set as two types.
+ */
+export function withOneSetType(input: UpdateSetInput): UpdateSetInput {
+  const on = (["isWarmup", "isDropSet", "isFailure"] as const).find((k) => input[k] === true);
+  if (!on) return input;
+  return {
+    isWarmup: false,
+    isDropSet: false,
+    isFailure: false,
+    ...input,
+  };
 }
 
 export async function deleteSet(sessionId: string, setId: string, userId: string) {

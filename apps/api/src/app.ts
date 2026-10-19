@@ -38,6 +38,7 @@ import { adminPaymentsRouter } from "./modules/adminPayments/adminPayments.route
 import { adminSubscriptionsRouter } from "./modules/adminSubscriptions/adminSubscriptions.routes";
 import { adminPlansRouter } from "./modules/adminPlans/adminPlans.routes";
 import { adminSupportRouter } from "./modules/adminSupport/adminSupport.routes";
+import { adminSafetyReportsRouter } from "./modules/adminSafetyReports/adminSafetyReports.routes";
 import { adminSafetyRouter } from "./modules/adminSafety/adminSafety.routes";
 import { adminAuditLogsRouter } from "./modules/adminAuditLogs/adminAuditLogs.routes";
 import { adminAnalyticsEventsRouter } from "./modules/adminAnalyticsEvents/adminAnalyticsEvents.routes";
@@ -63,6 +64,8 @@ import { setApprovalReplayApp } from "./lib/makerChecker";
 import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
 import { privacyRequestsRouter } from "./modules/privacyRequests/privacyRequests.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
+import { adminNotificationsRouter } from "./modules/adminNotifications/adminNotifications.routes";
+import { adminPlatformSettingsRouter } from "./modules/adminPlatformSettings/adminPlatformSettings.routes";
 import { adminActionQueueRouter } from "./modules/adminActionQueue/adminActionQueue.routes";
 import { professionalAuthRouter } from "./modules/professionalAuth/professionalAuth.routes";
 import { influencerAuthRouter } from "./modules/influencerAuth/influencerAuth.routes";
@@ -75,6 +78,7 @@ import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
 import { dataSharingRouter } from "./modules/dataSharing/dataSharing.routes";
 import { helpRouter } from "./modules/help/help.routes";
+import { learnRouter } from "./modules/learn/learn.routes";
 import { coachMessagesRouter } from "./modules/coachMessages/coachMessages.routes";
 import { professionalOffersRouter } from "./modules/professionalOffers/professionalOffers.routes";
 import { guidanceRequestsRouter } from "./modules/guidanceRequests/guidanceRequests.routes";
@@ -280,6 +284,8 @@ export function createApp() {
   // for why 08.02/08.03/08.04 aren't built this pass, and for the
   // reasoning behind picking this over Module 07 — Growth this cycle.
   app.use("/", adminSupportRouter);
+  // 08.04 Safety & Abuse Reports (Oct 2026) — see adminSafetyReports.service.ts.
+  app.use("/", adminSafetyReportsRouter);
   // BR-SAF-004 Safety Escalations (added 18 Sep 2026) — Module 08's real
   // second queue, alongside 08.02 Escalations just above. See
   // adminSafety.service.ts's own doc comment.
@@ -382,6 +388,10 @@ export function createApp() {
   // module. See adminAiOps.service.ts's own doc comment for what's still
   // honestly not built.
   app.use("/", adminAiOpsRouter);
+  // 12.07 Notifications and 12.08 Platform Settings (Oct 2026): read-only
+  // views of what really exists — see each module's service comment.
+  app.use("/", adminNotificationsRouter);
+  app.use("/", adminPlatformSettingsRouter);
   // Coach marketplace (Phase 5) — see docs/coach/07-open-questions-gaps.md's
   // "Phase 5 started" entry.
   app.use("/", professionalAuthRouter);
@@ -411,6 +421,8 @@ export function createApp() {
   app.use("/", coachingRouter);
   app.use("/", dataSharingRouter);
   app.use("/", helpRouter);
+  // 05.04 Educational Content (Oct 2026): the app's Learn library.
+  app.use("/", learnRouter);
   // Coach ↔ Client Messaging (31 Aug 2026) — mixed auth per route (User
   // Bearer for /coaching/conversations*, Professional Bearer for
   // /professionals/me/conversations*). See coachMessages.service.ts.

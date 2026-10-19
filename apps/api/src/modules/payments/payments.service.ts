@@ -459,6 +459,26 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
           entityId: payment.id,
           metadata: { offeringId: offering.id, reason: err instanceof ApiHttpError ? err.code : "unknown_error" },
         });
+        // 18 Oct 2026 (owner-approved B1): say so on the relationship too, so
+        // the user's status feed shows "Coaching didn't start" with this
+        // payment's id instead of an open-ended `activating` (or, when the
+        // slot check failed before activation began, `awaiting_payment` for a
+        // payment that was in fact captured). Still not retryable — that is a
+        // separate, unapproved policy change. Best-effort: the booking
+        // failure above stays the error the caller sees.
+        try {
+          await prisma.relationship.updateMany({
+            where: {
+              userId: payment.userId,
+              professionalId: offering.professionalId,
+              status: { in: ["awaiting_payment", "activating"] },
+              ...(offering.serviceType ? { serviceType: offering.serviceType } : {}),
+            },
+            data: { status: "activation_failed" },
+          });
+        } catch {
+          // The audit row above already records the unfulfilled booking for follow-up.
+        }
         throw err;
       }
     } else {

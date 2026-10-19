@@ -62,7 +62,8 @@ export function listMeasurements(userId: string) {
  */
 export async function getPersonalRecords(userId: string) {
   const setLogs = await prisma.exerciseSetLog.findMany({
-    where: { session: { userId }, weightKg: { not: null } },
+    // Batch 3a (18 Oct 2026): warm-ups never count as a personal record.
+    where: { session: { userId }, weightKg: { not: null }, isWarmup: false },
     include: { exercise: true },
     orderBy: { loggedAt: "asc" },
   });

@@ -221,6 +221,9 @@ export function replayApprovedRequest(params: {
     const res = new ServerResponse(req);
     const chunks: Buffer[] = [];
     let settled = false;
+    // `let`, not `const`: `finish` below reads it and may run before the timer
+    // is set (a response that ends at once), which a const would make a TDZ error.
+    // eslint-disable-next-line prefer-const
     let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       if (settled) return;

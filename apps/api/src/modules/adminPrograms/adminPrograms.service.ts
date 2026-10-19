@@ -1,15 +1,21 @@
+import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { articleSlug, readMinutesFor } from "../../lib/articleText";
 import {
+  CreateArticleInput,
   CreateExerciseInput,
   CreateProgramInput,
   CreateRecipeInput,
+  ListArticlesQuery,
   ListContentReviewsQuery,
   ListExercisesQuery,
   ListProgramsQuery,
   ListRecipesQuery,
   ReviewContentReviewInput,
+  UpdateArticleInput,
   UpdateExerciseInput,
   UpdateProgramInput,
   UpdateRecipeInput,
@@ -286,6 +292,7 @@ type ExerciseRow = {
   difficulty: string;
   mediaUrl: string | null;
   instructions: string[];
+  video: Prisma.JsonValue | null;
   status: string;
   createdByAdminId: string | null;
   createdByAdmin: { fullName: string } | null;
@@ -304,6 +311,7 @@ function toExerciseListItem(e: ExerciseRow) {
     difficulty: e.difficulty,
     mediaUrl: e.mediaUrl,
     instructions: e.instructions,
+    video: e.video ?? null,
     status: e.status,
     programUsageCount: programIds.size,
     creatorName: e.createdByAdmin?.fullName ?? null,
@@ -360,7 +368,7 @@ async function getExerciseOrThrow(id: string): Promise<ExerciseRow> {
 
 export async function createExercise(actorAdminId: string, input: CreateExerciseInput) {
   const exercise = await prisma.exercise.create({
-    data: { ...input, status: "draft", createdByAdminId: actorAdminId },
+    data: { ...input, video: jsonOrDbNull(input.video), status: "draft", createdByAdminId: actorAdminId },
   });
   await recordAudit({
     actorAdminId,
@@ -374,7 +382,7 @@ export async function createExercise(actorAdminId: string, input: CreateExercise
 
 export async function updateExercise(actorAdminId: string, id: string, input: UpdateExerciseInput) {
   await getExerciseOrThrow(id);
-  await prisma.exercise.update({ where: { id }, data: input });
+  await prisma.exercise.update({ where: { id }, data: { ...input, video: jsonOrDbNull(input.video) } });
   await recordAudit({ actorAdminId, action: "exercise.update", entityType: "Exercise", entityId: id, metadata: input });
   return toExerciseListItem(await getExerciseOrThrow(id));
 }
@@ -414,6 +422,8 @@ type RecipeRow = {
   prepTimeMinutes: number;
   tags: string[];
   imageUrl: string | null;
+  instructions: string[];
+  video: Prisma.JsonValue | null;
   status: string;
   createdByAdminId: string | null;
   createdByAdmin: { fullName: string } | null;
@@ -438,6 +448,7 @@ function toRecipeListItem(r: RecipeRow) {
     prepTimeMinutes: r.prepTimeMinutes,
     tags: r.tags,
     imageUrl: r.imageUrl,
+    video: r.video ?? null,
     status: r.status,
     timesLogged: r._count.mealLogs,
     creatorName: r.createdByAdmin?.fullName ?? null,
@@ -482,9 +493,33 @@ async function getRecipeOrThrow(id: string): Promise<RecipeRow> {
   return recipe as RecipeRow;
 }
 
+// Recipe video — a step marker must point at a step the recipe actually
+// has (its numbered instructions). The shape itself is checked by
+// recipeVideoSchema; this needs the row, so it lives here.
+function assertVideoStepsExist(video: CreateRecipeInput["video"], instructions: string[]) {
+  const missing = video?.steps.find((s) => s.step > instructions.length);
+  if (missing) {
+    throw new ApiHttpError(
+      400,
+      "video_step_out_of_range",
+      `The video marks step ${missing.step}, but this recipe has ${instructions.length} method step${instructions.length === 1 ? "" : "s"}`,
+    );
+  }
+}
+
+// undefined leaves the column alone; null stores SQL NULL (not JSON null), so
+// "no video" is one state. Used for Recipe.video and Exercise.video.
+function jsonOrDbNull(value: object | null | undefined) {
+  if (value === undefined) return undefined;
+  return value === null ? Prisma.DbNull : (value as Prisma.InputJsonValue);
+}
+
 export async function createRecipe(actorAdminId: string, input: CreateRecipeInput) {
+  // A new recipe has no method steps yet (the CMS doesn't author them), so
+  // only a video without step markers can be attached on create.
+  assertVideoStepsExist(input.video, []);
   const recipe = await prisma.recipe.create({
-    data: { ...input, status: "draft", createdByAdminId: actorAdminId },
+    data: { ...input, video: jsonOrDbNull(input.video), status: "draft", createdByAdminId: actorAdminId },
   });
   await recordAudit({
     actorAdminId,
@@ -497,8 +532,9 @@ export async function createRecipe(actorAdminId: string, input: CreateRecipeInpu
 }
 
 export async function updateRecipe(actorAdminId: string, id: string, input: UpdateRecipeInput) {
-  await getRecipeOrThrow(id);
-  await prisma.recipe.update({ where: { id }, data: input });
+  const existing = await getRecipeOrThrow(id);
+  assertVideoStepsExist(input.video, existing.instructions);
+  await prisma.recipe.update({ where: { id }, data: { ...input, video: jsonOrDbNull(input.video) } });
   await recordAudit({ actorAdminId, action: "recipe.update", entityType: "Recipe", entityId: id, metadata: input });
   return toRecipeListItem(await getRecipeOrThrow(id));
 }
@@ -528,12 +564,13 @@ export async function unpublishRecipe(actorAdminId: string, id: string) {
 // "why this is real now, why Educational Content still isn't" reasoning.
 // ============================================================================
 
-type ContentTypeName = "program" | "exercise" | "recipe";
+type ContentTypeName = "program" | "exercise" | "recipe" | "article";
 
 const CONTENT_TYPE_LABELS: Record<ContentTypeName, string> = {
   program: "Program",
   exercise: "Exercise",
   recipe: "Recipe",
+  article: "Article",
 };
 
 type ContentReviewRow = {
@@ -570,6 +607,10 @@ async function resolveContent(
   if (contentType === "exercise") {
     return prisma.exercise.findUnique({ where: { id: contentId }, select: { name: true, status: true } });
   }
+  if (contentType === "article") {
+    const article = await prisma.article.findUnique({ where: { id: contentId }, select: { title: true, status: true } });
+    return article ? { name: article.title, status: article.status } : null;
+  }
   return prisma.recipe.findUnique({ where: { id: contentId }, select: { name: true, status: true } });
 }
 
@@ -580,6 +621,10 @@ async function resolveContent(
 async function publishByContentType(actorAdminId: string, contentType: ContentTypeName, contentId: string) {
   if (contentType === "program") return publishProgram(actorAdminId, contentId);
   if (contentType === "exercise") return publishExercise(actorAdminId, contentId);
+  if (contentType === "article") {
+    // Articles publish only through approveContentReview, which passes the expert.
+    throw new ApiHttpError(400, "expert_reviewer_required", "Approving an article needs the expert reviewer's name and credentials");
+  }
   return publishRecipe(actorAdminId, contentId);
 }
 
@@ -704,7 +749,18 @@ export async function approveContentReview(actorAdminId: string, id: string, inp
     );
   }
 
-  await publishByContentType(actorAdminId, review.contentType as ContentTypeName, review.contentId);
+  if (review.contentType === "article") {
+    // 05.04: a health article is published only with the expert who checked it.
+    if (!input.expertReviewerName || !input.expertReviewerCredentials) {
+      throw new ApiHttpError(400, "expert_reviewer_required", "Approving an article needs the expert reviewer's name and credentials");
+    }
+    await publishArticleFromReview(actorAdminId, review.contentId, {
+      name: input.expertReviewerName,
+      credentials: input.expertReviewerCredentials,
+    });
+  } else {
+    await publishByContentType(actorAdminId, review.contentType as ContentTypeName, review.contentId);
+  }
 
   const updated = (await prisma.contentReview.update({
     where: { id },
@@ -754,4 +810,232 @@ export async function rejectContentReview(actorAdminId: string, id: string, inpu
   });
 
   return { review: await toContentReviewItem(updated) };
+}
+
+// ============================================================================
+// 05.04 Educational Content (docs/admin/03-screen-inventory.md §05.04), Oct
+// 2026 — the Learn library's articles. See schema.prisma's Article for the
+// rules: no direct publish (only an approved 05.05 review that names the
+// expert who checked it), no text changes while a review is pending or while
+// published, and editing a draft's text clears an earlier sign-off.
+// ============================================================================
+
+type ArticleRow = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  body: string;
+  topic: string;
+  audience: string;
+  readMinutes: number;
+  coverImageUrl: string | null;
+  status: string;
+  createdByAdminId: string | null;
+  createdByAdmin: { fullName: string } | null;
+  expertReviewerName: string | null;
+  expertReviewerCredentials: string | null;
+  expertReviewedAt: Date | null;
+  publishedAt: Date | null;
+  viewCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const ARTICLE_INCLUDE = { createdByAdmin: { select: { fullName: true } } } as const;
+const ARTICLE_TEXT_FIELDS = ["title", "summary", "body"] as const;
+
+async function getArticleOrThrow(id: string): Promise<ArticleRow> {
+  const article = await prisma.article.findUnique({ where: { id }, include: ARTICLE_INCLUDE });
+  if (!article) throw new ApiHttpError(404, "not_found", "Article not found");
+  return article as ArticleRow;
+}
+
+async function latestArticleReviews(ids: string[]) {
+  if (ids.length === 0) return new Map<string, { status: string; reviewNotes: string | null }>();
+  const reviews = (await prisma.contentReview.findMany({
+    where: { contentType: "article", contentId: { in: ids } },
+    orderBy: { createdAt: "desc" },
+    select: { contentId: true, status: true, reviewNotes: true },
+  })) as Array<{ contentId: string; status: string; reviewNotes: string | null }>;
+  const latest = new Map<string, { status: string; reviewNotes: string | null }>();
+  for (const r of reviews) if (!latest.has(r.contentId)) latest.set(r.contentId, { status: r.status, reviewNotes: r.reviewNotes });
+  return latest;
+}
+
+function toArticleListItem(a: ArticleRow, review: { status: string; reviewNotes: string | null } | undefined) {
+  return {
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    summary: a.summary,
+    topic: a.topic,
+    audience: a.audience,
+    readMinutes: a.readMinutes,
+    coverImageUrl: a.coverImageUrl,
+    status: a.status,
+    authorName: a.createdByAdmin?.fullName ?? null,
+    expertReviewer:
+      a.expertReviewerName && a.expertReviewedAt
+        ? { name: a.expertReviewerName, credentials: a.expertReviewerCredentials, reviewedAt: a.expertReviewedAt }
+        : null,
+    // The latest 05.05 review request: "pending" means it's waiting in the queue.
+    reviewStatus: review?.status ?? null,
+    reviewNotes: review?.reviewNotes ?? null,
+    publishedAt: a.publishedAt,
+    viewCount: a.viewCount,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+  };
+}
+
+export async function listArticles(query: ListArticlesQuery) {
+  const where: Record<string, unknown> = {};
+  if (query.search) {
+    where.OR = [
+      { title: { contains: query.search, mode: "insensitive" } },
+      { summary: { contains: query.search, mode: "insensitive" } },
+    ];
+  }
+  const rows = (await prisma.article.findMany({ where, include: ARTICLE_INCLUDE, orderBy: { updatedAt: "desc" }, take: 500 })) as ArticleRow[];
+  const reviews = await latestArticleReviews(rows.map((r) => r.id));
+  const items = rows.map((r) => toArticleListItem(r, reviews.get(r.id)));
+
+  // Stats cover the search-scoped set, before the filters below — same
+  // "stable superset" convention as the other directories in this file.
+  const stats = {
+    total: items.length,
+    published: items.filter((i) => i.status === "published").length,
+    drafts: items.filter((i) => i.status === "draft").length,
+    awaitingReview: items.filter((i) => i.reviewStatus === "pending").length,
+    views: items.reduce((sum, i) => sum + i.viewCount, 0),
+    // The Figma's "avg views per item" and "top topic", over published articles.
+    avgViewsPerPublished: (() => {
+      const published = items.filter((i) => i.status === "published");
+      return published.length > 0 ? Math.round(published.reduce((sum, i) => sum + i.viewCount, 0) / published.length) : null;
+    })(),
+    topTopic: (() => {
+      const byTopic = new Map<string, number>();
+      for (const i of items) if (i.status === "published") byTopic.set(i.topic, (byTopic.get(i.topic) ?? 0) + i.viewCount);
+      const top = [...byTopic.entries()].sort((a, b) => b[1] - a[1])[0];
+      return top && top[1] > 0 ? { topic: top[0], views: top[1] } : null;
+    })(),
+  };
+  const filtered = items.filter(
+    (i) =>
+      (query.status ? i.status === query.status : true) &&
+      (query.topic ? i.topic === query.topic : true) &&
+      (query.audience ? i.audience === query.audience : true),
+  );
+  return { articles: filtered, stats };
+}
+
+export async function getArticle(id: string) {
+  const a = await getArticleOrThrow(id);
+  const reviews = (await prisma.contentReview.findMany({
+    where: { contentType: "article", contentId: id },
+    include: CONTENT_REVIEW_INCLUDE,
+    orderBy: { createdAt: "desc" },
+  })) as ContentReviewRow[];
+  return {
+    article: { ...toArticleListItem(a, reviews[0] ? { status: reviews[0].status, reviewNotes: reviews[0].reviewNotes } : undefined), body: a.body },
+    reviews: await Promise.all(reviews.map(toContentReviewItem)),
+  };
+}
+
+export async function createArticle(actorAdminId: string, input: CreateArticleInput) {
+  const id = randomUUID();
+  const created = await prisma.article.create({
+    data: {
+      id,
+      slug: articleSlug(input.title, id),
+      title: input.title,
+      summary: input.summary,
+      body: input.body,
+      topic: input.topic,
+      audience: input.audience,
+      readMinutes: readMinutesFor(input.body),
+      coverImageUrl: input.coverImageUrl ?? null,
+      createdByAdminId: actorAdminId,
+    },
+  });
+  await recordAudit({ actorAdminId, action: "article.create", entityType: "Article", entityId: created.id, metadata: { topic: input.topic } });
+  return (await getArticle(created.id)).article;
+}
+
+export async function updateArticle(actorAdminId: string, id: string, input: UpdateArticleInput) {
+  const a = await getArticleOrThrow(id);
+  const textChanged = ARTICLE_TEXT_FIELDS.some((f) => input[f] !== undefined && input[f] !== a[f]);
+  if (textChanged) {
+    if (a.status === "published") {
+      throw new ApiHttpError(409, "unpublish_to_edit", "Unpublish this article before changing its text; it then needs a fresh review");
+    }
+    const pending = await prisma.contentReview.findFirst({ where: { contentType: "article", contentId: id, status: "pending" } });
+    if (pending) {
+      throw new ApiHttpError(409, "review_pending", "This article is waiting for review; its text can't change until the review is done");
+    }
+  }
+
+  const data: Record<string, unknown> = {};
+  for (const f of ["title", "summary", "body", "topic", "audience", "coverImageUrl"] as const) {
+    if (input[f] !== undefined && input[f] !== a[f]) data[f] = input[f];
+  }
+  if (Object.keys(data).length === 0) return (await getArticle(id)).article;
+  if (data.body !== undefined) data.readMinutes = readMinutesFor(String(data.body));
+  if (textChanged && a.expertReviewedAt) {
+    // The sign-off was for the old text.
+    data.expertReviewerName = null;
+    data.expertReviewerCredentials = null;
+    data.expertReviewedAt = null;
+  }
+
+  await prisma.article.update({ where: { id }, data });
+  await recordAudit({
+    actorAdminId,
+    action: "article.update",
+    entityType: "Article",
+    entityId: id,
+    metadata: { fields: Object.keys(data).filter((k) => k !== "readMinutes"), clearedExpertReview: Boolean(textChanged && a.expertReviewedAt) },
+  });
+  return (await getArticle(id)).article;
+}
+
+export async function submitArticleForReview(actorAdminId: string, id: string) {
+  return submitForReview(actorAdminId, "article", id);
+}
+
+/** Called only from approveContentReview, with the expert the approver named. */
+async function publishArticleFromReview(actorAdminId: string, id: string, expert: { name: string; credentials: string }) {
+  const a = await getArticleOrThrow(id);
+  if (a.status === "published") {
+    throw new ApiHttpError(409, "article_already_published", "This article is already published");
+  }
+  const now = new Date();
+  await prisma.article.update({
+    where: { id },
+    data: {
+      status: "published",
+      publishedAt: now,
+      expertReviewerName: expert.name,
+      expertReviewerCredentials: expert.credentials,
+      expertReviewedAt: now,
+    },
+  });
+  await recordAudit({
+    actorAdminId,
+    action: "article.publish",
+    entityType: "Article",
+    entityId: id,
+    metadata: { expertReviewerName: expert.name, expertReviewerCredentials: expert.credentials },
+  });
+}
+
+export async function unpublishArticle(actorAdminId: string, id: string) {
+  const a = await getArticleOrThrow(id);
+  if (a.status === "draft") {
+    throw new ApiHttpError(409, "article_already_draft", "This article is already a draft");
+  }
+  await prisma.article.update({ where: { id }, data: { status: "draft" } });
+  await recordAudit({ actorAdminId, action: "article.unpublish", entityType: "Article", entityId: id });
+  return (await getArticle(id)).article;
 }

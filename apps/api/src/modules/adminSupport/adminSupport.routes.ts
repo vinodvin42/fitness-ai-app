@@ -2,7 +2,9 @@ import { Router } from "express";
 import { requireAdminAuth, AdminAuthedRequest } from "../../middleware/adminAuth";
 import { requirePermission } from "../../middleware/adminPermissions";
 import {
+  closeComplaintSchema,
   escalateSupportTicketSchema,
+  listComplaintsQuerySchema,
   listEscalationsQuerySchema,
   listSupportTicketsQuerySchema,
   resolveEscalationSchema,
@@ -129,6 +131,49 @@ adminSupportRouter.post(
       const input = resolveEscalationSchema.parse(req.body);
       const escalation = await adminSupportService.resolveEscalation(req.adminUserId as string, req.params.id, input);
       res.status(200).json({ escalation });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// 08.03 Complaints (Oct 2026) — see the Complaints section of
+// adminSupport.service.ts.
+adminSupportRouter.get(
+  "/admin/complaints",
+  requireAdminAuth,
+  requirePermission("support", "view"),
+  async (req, res, next) => {
+    try {
+      const query = listComplaintsQuerySchema.parse(req.query);
+      res.status(200).json(await adminSupportService.listComplaints(query));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminSupportRouter.get(
+  "/admin/complaints/:id",
+  requireAdminAuth,
+  requirePermission("support", "view"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      res.status(200).json(await adminSupportService.getComplaint(req.adminUserId as string, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+adminSupportRouter.post(
+  "/admin/complaints/:id/close",
+  requireAdminAuth,
+  requirePermission("support", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = closeComplaintSchema.parse(req.body);
+      res.status(200).json(await adminSupportService.closeComplaint(req.adminUserId as string, req.params.id, input));
     } catch (err) {
       next(err);
     }

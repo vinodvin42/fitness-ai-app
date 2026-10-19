@@ -2,8 +2,13 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { COMPLAINT_OUTCOME_LABELS, complaintDueDate, complaintReference } from "../../lib/complaints";
+import { hasPermission } from "../../middleware/adminPermissions";
+import { createNotification } from "../notifications/notifications.service";
 import {
+  CloseComplaintInput,
   EscalateSupportTicketInput,
+  ListComplaintsQuery,
   ListEscalationsQuery,
   ListSupportTicketsQuery,
   ResolveEscalationInput,
@@ -121,6 +126,12 @@ import {
  * unmodeled (no ownership concept exists anywhere in this schema) and
  * stays in `notAvailable` on its own.
  *
+ * **Update, Oct 2026: both are now built.** 08.04 is
+ * modules/adminSafetyReports (reports and blocking from coach ↔ client
+ * chat); 08.03 is the Complaints section at the end of this file (a
+ * `complaint` ticket category with a one-month resolve-by date and an
+ * outcome). The reasoning below is the original Sep 2026 note.
+ *
  * **08.03 Complaints and 08.04 Safety/Abuse Reports remain genuinely NOT
  * built.** Both are a meaningfully different, heavier shape of gap than
  * Escalations turned out to be — not "an annotation on an existing
@@ -169,6 +180,10 @@ type SupportTicketRow = {
   createdAt: Date;
   updatedAt: Date;
   user: { id: string; fullName: string; email: string };
+  // 08.03 Complaints (Oct 2026).
+  complaintDueAt?: Date | null;
+  complaintOutcome?: string | null;
+  complaintClosedAt?: Date | null;
 };
 
 function toListItem(t: SupportTicketRow) {
@@ -184,6 +199,17 @@ function toListItem(t: SupportTicketRow) {
     status: t.status,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
+    // 08.03 Complaints: the reference staff and the member quote, and where
+    // it stands. Closing happens on the Complaints screen, with an outcome.
+    complaint:
+      t.category === "complaint"
+        ? {
+            reference: complaintReference(t.id),
+            dueAt: t.complaintDueAt ?? null,
+            outcome: t.complaintOutcome ?? null,
+            closedAt: t.complaintClosedAt ?? null,
+          }
+        : null,
   };
 }
 
@@ -295,8 +321,21 @@ export async function getSupportTicketDetail(id: string) {
 export async function updateSupportTicket(adminId: string, id: string, input: UpdateSupportTicketInput) {
   const ticket = await getSupportTicketOrThrow(id);
 
+  // 08.03 Complaints (Oct 2026): a complaint is closed only through
+  // closeComplaint (an outcome and a note the member receives), and a
+  // closed complaint's record stays as it was.
+  if (ticket.category === "complaint") {
+    if (ticket.complaintClosedAt) {
+      throw new ApiHttpError(409, "complaint_closed", "This complaint is closed; its record can't be changed");
+    }
+    const staysComplaint = input.category === undefined || input.category === "complaint";
+    if (staysComplaint && (input.status === "resolved" || input.status === "closed")) {
+      throw new ApiHttpError(409, "use_complaint_close", "Close a complaint from the Complaints screen, with an outcome");
+    }
+  }
+
   const changes: Record<string, { from: string; to: string }> = {};
-  const data: Record<string, string> = {};
+  const data: Record<string, string | Date | null> = {};
   for (const field of ["status", "priority", "category"] as const) {
     const next = input[field];
     if (next !== undefined && next !== ticket[field]) {
@@ -304,6 +343,11 @@ export async function updateSupportTicket(adminId: string, id: string, input: Up
       data[field] = next;
     }
   }
+
+  // Becoming a complaint starts the one-month clock from when the member
+  // first wrote in; leaving it (a misfiled ticket) clears the date.
+  if (data.category === "complaint") data.complaintDueAt = ticket.complaintDueAt ?? complaintDueDate(ticket.createdAt);
+  else if (data.category && ticket.category === "complaint") data.complaintDueAt = null;
 
   if (Object.keys(data).length === 0) {
     // Every requested field already matches its current value — nothing
@@ -542,4 +586,232 @@ export async function addSupportTicketMessage(
   });
 
   return toMessageItem(message as SupportTicketMessageRow);
+}
+
+// ---------------------------------------------------------------------------
+// 08.03 Complaints (docs/admin/03-screen-inventory.md §08.03), Oct 2026.
+// A complaint is a support ticket with category `complaint` (the member
+// files it from the app's support form), so it keeps the reply thread.
+// India's Consumer Protection (E-Commerce) Rules 2020, rule 4(5): acknowledge
+// within 48 hours (the reference the app shows at once) and resolve within
+// one month (`complaintDueAt`, see lib/complaints.ts).
+//
+// The dossier shows the member's latest subscription and recent payments
+// only to roles that can see Commerce; support staff see the complaint and
+// thread without the billing facts. Closing needs an outcome and a note; the
+// note is posted in the member's thread and they're notified.
+// ---------------------------------------------------------------------------
+
+type ComplaintRow = SupportTicketRow & {
+  complaintResolutionNote: string | null;
+  complaintClosedByAdmin: { fullName: string } | null;
+};
+
+const COMPLAINT_INCLUDE = {
+  user: { select: { id: true, fullName: true, email: true } },
+  complaintClosedByAdmin: { select: { fullName: true } },
+} as const;
+
+const DAY_MS = 86_400_000;
+
+function complaintTiming(t: { createdAt: Date; complaintDueAt?: Date | null; complaintClosedAt?: Date | null }, now: Date) {
+  const dueAt = t.complaintDueAt ?? complaintDueDate(t.createdAt);
+  const closedAt = t.complaintClosedAt ?? null;
+  return {
+    dueAt,
+    daysLeft: closedAt ? null : Math.ceil((dueAt.getTime() - now.getTime()) / DAY_MS),
+    overdue: !closedAt && dueAt.getTime() < now.getTime(),
+    closedLate: Boolean(closedAt && closedAt.getTime() > dueAt.getTime()),
+  };
+}
+
+/** "C-1A2B3C4D" or "1a2b3c4d" → the id prefix it stands for; null if it isn't a reference. */
+function referencePrefix(search: string): string | null {
+  const m = /^(?:c-?)?([0-9a-f]{8})$/i.exec(search.trim());
+  return m ? m[1].toLowerCase() : null;
+}
+
+export async function listComplaints(query: ListComplaintsQuery) {
+  const now = new Date();
+  const where: Record<string, unknown> = { category: "complaint" };
+  if (query.search) {
+    const prefix = referencePrefix(query.search);
+    where.OR = [
+      ...(prefix ? [{ id: { startsWith: prefix } }] : []),
+      { subject: { contains: query.search, mode: "insensitive" } },
+      { message: { contains: query.search, mode: "insensitive" } },
+      { user: { fullName: { contains: query.search, mode: "insensitive" } } },
+      { user: { email: { contains: query.search, mode: "insensitive" } } },
+    ];
+  }
+  const rows = (await prisma.supportTicket.findMany({
+    where,
+    include: COMPLAINT_INCLUDE,
+    orderBy: { createdAt: "asc" },
+    take: 1000,
+  })) as ComplaintRow[];
+
+  const items = rows.map((r) => ({
+    id: r.id,
+    reference: complaintReference(r.id),
+    subject: r.subject,
+    userId: r.user.id,
+    userFullName: r.user.fullName,
+    userEmail: r.user.email,
+    status: r.status,
+    createdAt: r.createdAt,
+    ...complaintTiming(r, now),
+    outcome: r.complaintOutcome ?? null,
+    closedAt: r.complaintClosedAt ?? null,
+    closedByName: r.complaintClosedByAdmin?.fullName ?? null,
+  }));
+
+  const open = items.filter((i) => !i.closedAt);
+  const closedRecent = items.filter((i) => i.closedAt && now.getTime() - i.closedAt.getTime() <= 30 * DAY_MS);
+  const stats = {
+    open: open.length,
+    overdue: open.filter((i) => i.overdue).length,
+    dueWithin7Days: open.filter((i) => !i.overdue && (i.daysLeft ?? 0) <= 7).length,
+    closedLast30Days: closedRecent.length,
+    closedOnTimeLast30Days: closedRecent.filter((i) => !i.closedLate).length,
+    // The Figma's "avg resolution days": received to closed, for complaints
+    // closed in the last 30 days; null when none were.
+    avgDaysToCloseLast30Days:
+      closedRecent.length > 0
+        ? Math.round(
+            (closedRecent.reduce((t, i) => t + ((i.closedAt as Date).getTime() - i.createdAt.getTime()), 0) / closedRecent.length / DAY_MS) * 10,
+          ) / 10
+        : null,
+  };
+
+  // Open ones by deadline (most urgent first), then closed ones, latest first.
+  const filtered = items
+    .filter((i) => (query.status === "open" ? !i.closedAt : query.status === "closed" ? Boolean(i.closedAt) : true))
+    .sort((a, b) => {
+      if (!a.closedAt && !b.closedAt) return a.dueAt.getTime() - b.dueAt.getTime();
+      if (!a.closedAt) return -1;
+      if (!b.closedAt) return 1;
+      return b.closedAt.getTime() - a.closedAt.getTime();
+    });
+
+  return { complaints: filtered, stats };
+}
+
+export async function getComplaint(adminId: string, id: string) {
+  const now = new Date();
+  const t = (await prisma.supportTicket.findUnique({
+    where: { id },
+    include: { ...COMPLAINT_INCLUDE, user: { select: { id: true, fullName: true, email: true, createdAt: true, status: true } } },
+  })) as (ComplaintRow & { user: { id: string; fullName: string; email: string; createdAt: Date; status: string } }) | null;
+  if (!t || t.category !== "complaint") throw new ApiHttpError(404, "complaint_not_found", "Complaint not found");
+
+  // Billing facts only for roles that may see Commerce (read live, not from
+  // the token, so a demoted admin loses it at once).
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminId }, select: { role: true } });
+  const canSeeBilling = hasPermission(admin?.role, "commerce", "view");
+  let billing = null;
+  if (canSeeBilling) {
+    const [subscription, payments] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { userId: t.userId },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, renewsAt: true, cancelAtPeriodEnd: true, createdAt: true, priceCents: true, plan: { select: { name: true } } },
+      }),
+      prisma.payment.findMany({
+        where: { userId: t.userId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, purpose: true, amountCents: true, currency: true, status: true, createdAt: true },
+      }),
+    ]);
+    billing = {
+      subscription: subscription
+        ? {
+            planName: subscription.plan.name,
+            status: subscription.status,
+            renewsAt: subscription.renewsAt,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            startedAt: subscription.createdAt,
+            priceCents: subscription.priceCents,
+          }
+        : null,
+      payments,
+    };
+  }
+
+  const events = (await prisma.auditLog.findMany({
+    where: { entityType: "SupportTicket", entityId: id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, action: true, createdAt: true, metadata: true, actorAdmin: { select: { fullName: true } } },
+  })) as Array<{ id: string; action: string; createdAt: Date; metadata: unknown; actorAdmin: { fullName: string } | null }>;
+
+  return {
+    id: t.id,
+    reference: complaintReference(t.id),
+    subject: t.subject,
+    message: t.message,
+    status: t.status,
+    priority: t.priority,
+    createdAt: t.createdAt,
+    ...complaintTiming(t, now),
+    user: { id: t.user.id, fullName: t.user.fullName, email: t.user.email, memberSince: t.user.createdAt, accountStatus: t.user.status },
+    billing,
+    billingHidden: !canSeeBilling,
+    messages: await getMessagesForTicket(id),
+    events: events.map((e) => ({
+      id: e.id,
+      action: e.action,
+      at: e.createdAt,
+      byName: e.actorAdmin?.fullName ?? null,
+      metadata: (e.metadata as Record<string, unknown> | null) ?? null,
+    })),
+    outcome: t.complaintOutcome ?? null,
+    resolutionNote: t.complaintResolutionNote,
+    closedAt: t.complaintClosedAt ?? null,
+    closedByName: t.complaintClosedByAdmin?.fullName ?? null,
+  };
+}
+
+export async function closeComplaint(adminId: string, id: string, input: CloseComplaintInput) {
+  const t = await prisma.supportTicket.findUnique({ where: { id }, select: { id: true, userId: true, category: true, createdAt: true, complaintDueAt: true } });
+  if (!t || t.category !== "complaint") throw new ApiHttpError(404, "complaint_not_found", "Complaint not found");
+
+  const now = new Date();
+  // Claim-once: two admins closing at the same moment can't both succeed.
+  const claimed = await prisma.supportTicket.updateMany({
+    where: { id, complaintClosedAt: null },
+    data: {
+      status: "closed",
+      complaintOutcome: input.outcome,
+      complaintResolutionNote: input.reason,
+      complaintClosedAt: now,
+      complaintClosedByAdminId: adminId,
+    },
+  });
+  if (claimed.count === 0) throw new ApiHttpError(409, "complaint_already_closed", "This complaint has already been closed");
+
+  const reference = complaintReference(id);
+  const label = COMPLAINT_OUTCOME_LABELS[input.outcome];
+  const { closedLate } = complaintTiming({ ...t, complaintClosedAt: now }, now);
+
+  // The reply the member reads, in the same thread as the rest of it.
+  await prisma.supportTicketMessage.create({
+    data: { ticketId: id, sender: "admin", senderAdminId: adminId, body: `Complaint ${reference} closed. Outcome: ${label}.\n\n${input.reason}` },
+  });
+  await recordAudit({
+    actorAdminId: adminId,
+    action: "complaint.closed",
+    entityType: "SupportTicket",
+    entityId: id,
+    reason: input.reason,
+    metadata: { outcome: input.outcome, closedLate },
+  });
+  await createNotification(t.userId, {
+    kind: "system",
+    title: "Your complaint has been closed",
+    body: `Reference ${reference}. Outcome: ${label}. Our reply is in your ticket.`,
+    deepLink: `fynrox://support/tickets?ticketId=${id}`,
+  });
+
+  return { id, reference, status: "closed", outcome: input.outcome, closedAt: now, closedLate };
 }

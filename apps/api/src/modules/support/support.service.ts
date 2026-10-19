@@ -2,6 +2,8 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { complaintDueDate, complaintReference, formatComplaintDate } from "../../lib/complaints";
+import { createNotification } from "../notifications/notifications.service";
 import { CreateSupportTicketInput, SendSupportTicketMessageInput } from "./support.schema";
 
 /**
@@ -13,15 +15,72 @@ import { CreateSupportTicketInput, SendSupportTicketMessageInput } from "./suppo
  * Reminder), and only an admin (Phase 6, not built yet) should ever move
  * it out of `open`.
  */
+type MemberTicketRow = {
+  id: string;
+  userId: string;
+  category: string;
+  subject: string;
+  message: string;
+  priority: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  complaintDueAt: Date | null;
+  complaintOutcome: string | null;
+  complaintResolutionNote: string | null;
+  complaintClosedAt: Date | null;
+};
+
+/**
+ * The member's view of a ticket. For a complaint (08.03, Oct 2026) it adds
+ * the reference and the resolve-by date; which admin closed it stays
+ * staff-side.
+ */
+function toMemberTicket(t: MemberTicketRow) {
+  const base = {
+    id: t.id,
+    userId: t.userId,
+    category: t.category,
+    subject: t.subject,
+    message: t.message,
+    priority: t.priority,
+    status: t.status,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  };
+  if (t.category !== "complaint") return base;
+  return {
+    ...base,
+    complaint: {
+      reference: complaintReference(t.id),
+      dueAt: t.complaintDueAt,
+      outcome: t.complaintOutcome,
+      resolutionNote: t.complaintResolutionNote,
+      closedAt: t.complaintClosedAt,
+    },
+  };
+}
+
 export async function listMyTickets(userId: string) {
-  return prisma.supportTicket.findMany({
+  const rows = await prisma.supportTicket.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+  return (rows as MemberTicketRow[]).map(toMemberTicket);
 }
 
 export async function createTicket(userId: string, input: CreateSupportTicketInput) {
-  const ticket = await prisma.supportTicket.create({ data: { userId, ...input } });
+  // 08.03 Complaints (Oct 2026): a complaint gets its resolve-by date at
+  // receipt (lib/complaints.ts) and is triaged high.
+  const isComplaint = input.category === "complaint";
+  const receivedAt = new Date();
+  const ticket = await prisma.supportTicket.create({
+    data: {
+      userId,
+      ...input,
+      ...(isComplaint ? { createdAt: receivedAt, priority: "high", complaintDueAt: complaintDueDate(receivedAt) } : {}),
+    },
+  });
 
   await recordAudit({
     actorId: userId,
@@ -45,11 +104,22 @@ export async function createTicket(userId: string, input: CreateSupportTicketInp
     type: "support_ticket_open",
     entityType: "SupportTicket",
     entityId: ticket.id,
-    severity: "low",
+    severity: isComplaint ? "medium" : "low",
     metadata: { category: ticket.category, priority: ticket.priority },
   });
 
-  return ticket;
+  // The written acknowledgement rule 4(5) asks for, kept in the member's
+  // notifications as well as on screen.
+  if (isComplaint && ticket.complaintDueAt) {
+    await createNotification(userId, {
+      kind: "system",
+      title: "We've received your complaint",
+      body: `Reference ${complaintReference(ticket.id)}. We'll resolve it by ${formatComplaintDate(ticket.complaintDueAt)} and reply in your ticket.`,
+      deepLink: `fynrox://support/tickets?ticketId=${ticket.id}`,
+    });
+  }
+
+  return toMemberTicket(ticket as MemberTicketRow);
 }
 
 // ---- Support Ticket Messages (added 3 Sep 2026) ------------------------
@@ -88,7 +158,7 @@ export async function getMyTicketDetail(userId: string, ticketId: string) {
     orderBy: { createdAt: "asc" },
   });
 
-  return { ticket, messages: (messages as SupportTicketMessageRow[]).map(toMessageItem) };
+  return { ticket: toMemberTicket(ticket as MemberTicketRow), messages: (messages as SupportTicketMessageRow[]).map(toMessageItem) };
 }
 
 export async function addMyTicketMessage(userId: string, ticketId: string, input: SendSupportTicketMessageInput) {

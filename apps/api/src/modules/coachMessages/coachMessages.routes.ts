@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { sendCoachMessageSchema } from "./coachMessages.schema";
+import { reportConversationSchema, sendCoachMessageSchema } from "./coachMessages.schema";
 import * as coachMessagesService from "./coachMessages.service";
 
 /**
@@ -97,3 +97,57 @@ coachMessagesRouter.post(
     }
   },
 );
+
+// Safety & Abuse Reports and blocking (Oct 2026) — report the other party (or
+// one of their messages), and block or unblock them. See
+// coachMessages.service.ts reportPartner / blockPartner.
+
+coachMessagesRouter.post("/coaching/conversations/:professionalId/report", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = reportConversationSchema.parse(req.body);
+    res.status(201).json(await coachMessagesService.reportPartner(req.userId!, req.params.professionalId, "user", input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachMessagesRouter.post("/coaching/conversations/:professionalId/block", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    res.status(200).json(await coachMessagesService.blockPartner(req.userId!, req.params.professionalId, "user"));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachMessagesRouter.delete("/coaching/conversations/:professionalId/block", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    res.status(200).json(await coachMessagesService.unblockPartner(req.userId!, req.params.professionalId, "user"));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachMessagesRouter.post("/professionals/me/conversations/:userId/report", requireProfessionalAuth, writeRateLimit, async (req: ProfessionalAuthedRequest, res, next) => {
+  try {
+    const input = reportConversationSchema.parse(req.body);
+    res.status(201).json(await coachMessagesService.reportPartner(req.params.userId, req.professionalId as string, "professional", input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachMessagesRouter.post("/professionals/me/conversations/:userId/block", requireProfessionalAuth, writeRateLimit, async (req: ProfessionalAuthedRequest, res, next) => {
+  try {
+    res.status(200).json(await coachMessagesService.blockPartner(req.params.userId, req.professionalId as string, "professional"));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachMessagesRouter.delete("/professionals/me/conversations/:userId/block", requireProfessionalAuth, writeRateLimit, async (req: ProfessionalAuthedRequest, res, next) => {
+  try {
+    res.status(200).json(await coachMessagesService.unblockPartner(req.params.userId, req.professionalId as string, "professional"));
+  } catch (err) {
+    next(err);
+  }
+});

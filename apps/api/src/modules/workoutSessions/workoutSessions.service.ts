@@ -1,10 +1,22 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
+import { captureException } from "../../lib/sentry";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { hasAccess } from "../programPurchases/programPurchases.service";
 import { getStreaks } from "../progress/progress.service";
 import { LogSetInput } from "./workoutSessions.schema";
+import { ensureSessionExercises, listSessionExercises } from "./sessionExercises.service";
+
+/**
+ * Batch 3a (owner-approved 18 Oct 2026): warm-up sets do not count toward
+ * volume or personal bests anywhere (history, summary, progress PRs, timeline)
+ * — trainingAnalytics already worked this way. Figma 03b: "W sets don't count
+ * toward volume or personal bests". Set counts still include them.
+ */
+export function workingVolumeKg(logs: ReadonlyArray<{ weightKg: number | null; reps: number; isWarmup?: boolean }>): number {
+  return logs.reduce((sum, log) => (log.isWarmup ? sum : sum + (log.weightKg ?? 0) * log.reps), 0);
+}
 
 /**
  * The Active Workout loop (docs/mobile/03-screen-inventory.md §C trn-07):
@@ -57,8 +69,12 @@ export async function startSession(userId: string, workoutId: string) {
     throw new ApiHttpError(402, "program_not_purchased", "Purchase this program before starting its workouts");
   }
 
-  const session = await prisma.workoutSession.create({
-    data: { userId, workoutId },
+  // Batch 3a: the session gets its own copy of the exercise list (swaps, added
+  // exercises and supersets change this copy, never the shared template).
+  const session = await prisma.$transaction(async (tx) => {
+    const created = await tx.workoutSession.create({ data: { userId, workoutId } });
+    await ensureSessionExercises(tx, created.id, workoutId);
+    return created;
   });
 
   await recordAudit({
@@ -96,8 +112,20 @@ export async function logSet(sessionId: string, userId: string, input: LogSetInp
 
   // §8 "workout.set.logged" — no recordAudit exists here today (a set log
   // is high-volume, not an admin-compliance-relevant mutation), so this is
-  // the first tracking of any kind for this action.
-  await trackEvent(userId, "workout.set.logged", { workoutSessionId: session.id, exerciseId: input.exerciseId, setLogId: setLog.id });
+  // the first tracking of any kind for this action. The set row is already
+  // committed, so an analytics failure must not turn this save into an error
+  // response (the client would retry and store the set twice): it is logged
+  // and reported instead (lib/analytics.ts: call sites never fail on tracking).
+  try {
+    await trackEvent(userId, "workout.set.logged", { workoutSessionId: session.id, exerciseId: input.exerciseId, setLogId: setLog.id });
+  } catch (err) {
+    console.error("trackEvent workout.set.logged failed:", err);
+    try {
+      captureException(err); // reporting must not fail the save either
+    } catch {
+      // the console line above keeps the failure observable
+    }
+  }
 
   return setLog;
 }
@@ -169,11 +197,27 @@ export async function abandonSession(sessionId: string, userId: string) {
 }
 
 export async function getSession(sessionId: string, userId: string) {
-  await getOwnedSession(sessionId, userId);
-  return prisma.workoutSession.findUnique({
+  const owned = await getOwnedSession(sessionId, userId);
+  const session = await prisma.workoutSession.findUnique({
     where: { id: sessionId },
     include: { setLogs: { orderBy: { loggedAt: "asc" } } },
   });
+  if (!session) throw new ApiHttpError(404, "session_not_found", "Workout session not found");
+  // Batch 3a: the session's own exercise list, each with its resolved rest seconds.
+  return { ...session, exercises: await listSessionExercises(owned) };
+}
+
+/**
+ * Batch 3a: the optional "How did it feel?" on Workout Complete (Figma 03b
+ * log/08). Only for the user's own completed session; null clears it.
+ */
+export async function setSessionFeel(sessionId: string, userId: string, feel: "easy" | "about_right" | "hard" | null) {
+  const session = await getOwnedSession(sessionId, userId);
+  if (session.status !== "completed") {
+    throw new ApiHttpError(409, "session_not_completed", "You can rate a workout once it's finished");
+  }
+  const updated = await prisma.workoutSession.update({ where: { id: session.id }, data: { feel }, select: { id: true, feel: true } });
+  return updated;
 }
 
 // Workout History (docs/mobile/03-screen-inventory.md §C trn-11): every
@@ -204,11 +248,12 @@ export async function listHistory(userId: string) {
       status: string;
       startedAt: Date;
       completedAt: Date | null;
-      setLogs: { weightKg: number | null; reps: number }[];
+      feel: string | null;
+      setLogs: { weightKg: number | null; reps: number; isWarmup: boolean }[];
       workout: { id: string; name: string; program: { name: string } };
     }) => {
       const totalSets = s.setLogs.length;
-      const totalVolumeKg = s.setLogs.reduce((sum, log) => sum + (log.weightKg ?? 0) * log.reps, 0);
+      const totalVolumeKg = workingVolumeKg(s.setLogs);
       const durationMinutes = s.completedAt
         ? Math.round((s.completedAt.getTime() - s.startedAt.getTime()) / 60000)
         : null;
@@ -223,6 +268,7 @@ export async function listHistory(userId: string) {
         durationMinutes,
         totalSets,
         totalVolumeKg,
+        feel: s.feel,
       };
     },
   );
@@ -250,7 +296,7 @@ export async function listHistory(userId: string) {
  * tracked, so none is reported.
  */
 export function phaseBreakdown(
-  setLogs: Array<{ exerciseId: string; weightKg: number | null; reps: number }>,
+  setLogs: Array<{ exerciseId: string; weightKg: number | null; reps: number; isWarmup?: boolean }>,
   phaseByExercise: Map<string, "warmup" | "main" | "cooldown">,
 ) {
   const out = new Map<"warmup" | "main" | "cooldown", { sets: number; volumeKg: number }>();
@@ -258,7 +304,7 @@ export function phaseBreakdown(
     const phase = phaseByExercise.get(log.exerciseId) ?? "main";
     const cur = out.get(phase) ?? { sets: 0, volumeKg: 0 };
     cur.sets += 1;
-    cur.volumeKg += (log.weightKg ?? 0) * log.reps;
+    if (!log.isWarmup) cur.volumeKg += (log.weightKg ?? 0) * log.reps;
     out.set(phase, cur);
   }
   return (["warmup", "main", "cooldown"] as const)
@@ -284,10 +330,11 @@ export async function getSessionSummary(sessionId: string, userId: string) {
     exercise: { name: string };
     weightKg: number | null;
     reps: number;
+    isWarmup: boolean;
   }> = session.setLogs;
 
   const totalSets = setLogs.length;
-  const totalVolumeKg = setLogs.reduce((sum: number, log) => sum + (log.weightKg ?? 0) * log.reps, 0);
+  const totalVolumeKg = workingVolumeKg(setLogs);
   const durationMinutes = session.completedAt
     ? Math.round((session.completedAt.getTime() - session.startedAt.getTime()) / 60000)
     : null;
@@ -295,7 +342,7 @@ export async function getSessionSummary(sessionId: string, userId: string) {
   // Best weight logged for each exercise IN this session.
   const sessionBestByExercise = new Map<string, { exerciseId: string; exerciseName: string; weightKg: number; reps: number }>();
   for (const log of setLogs) {
-    if (log.weightKg == null) continue;
+    if (log.weightKg == null || log.isWarmup) continue;
     const current = sessionBestByExercise.get(log.exerciseId);
     if (!current || log.weightKg > current.weightKg) {
       sessionBestByExercise.set(log.exerciseId, {
@@ -314,6 +361,7 @@ export async function getSessionSummary(sessionId: string, userId: string) {
       session: { userId, id: { not: sessionId } },
       exerciseId: { in: Array.from(sessionBestByExercise.keys()) },
       weightKg: { not: null },
+      isWarmup: false,
     },
     select: { exerciseId: true, weightKg: true },
   });
@@ -349,6 +397,7 @@ export async function getSessionSummary(sessionId: string, userId: string) {
     durationMinutes,
     newPersonalRecords,
     phases,
+    feel: session.feel,
     trainingStreak: {
       currentStreak: trainingStreak?.currentStreak ?? 0,
       longestStreak: trainingStreak?.longestStreak ?? 0,

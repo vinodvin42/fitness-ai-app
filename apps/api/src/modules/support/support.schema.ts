@@ -5,7 +5,9 @@ import { z } from "zod";
 // prisma/schema.prisma for what's deliberately not here (`priority`
 // server-defaults rather than being user-set; `status`/`assignee`/a
 // message thread are Phase 6 admin-console concerns).
-export const supportTicketCategorySchema = z.enum(["bug", "feature_request", "billing", "account", "other"]);
+// "complaint" (08.03 Complaints, Oct 2026) starts the one-month complaint
+// clock — see support.service.ts createTicket().
+export const supportTicketCategorySchema = z.enum(["bug", "feature_request", "billing", "account", "other", "complaint"]);
 
 export const createSupportTicketSchema = z.object({
   category: supportTicketCategorySchema.default("other"),

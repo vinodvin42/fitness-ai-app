@@ -47,7 +47,7 @@ export type AdminModule =
 
 export type AdminAction = "view" | "create" | "edit" | "delete" | "export" | "approve";
 
-type ModulePermissions = Partial<Record<AdminModule, AdminAction[]>>;
+export type ModulePermissions = Partial<Record<AdminModule, AdminAction[]>>;
 
 const ALL_ROLES = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"] as const;
 
@@ -205,6 +205,15 @@ function isKnownRole(role: string | undefined): role is KnownAdminRole {
  * by any role with `users: view`, request or no request. An unrecognized
  * role is treated the same fail-closed way as `requirePermission`.
  */
+/**
+ * The whole grant set for a role (Oct 2026): sent with the signed-in admin so
+ * the console can show only the modules this role may open. The server still
+ * enforces every route with requirePermission; this only shapes the menu.
+ */
+export function permissionsFor(role: string | undefined): ModulePermissions {
+  return isKnownRole(role) ? PERMISSION_MATRIX[role] : {};
+}
+
 export function hasPermission(role: string | undefined, module: AdminModule, action: AdminAction): boolean {
   if (!isKnownRole(role)) return false;
   const granted = PERMISSION_MATRIX[role]?.[module] ?? [];

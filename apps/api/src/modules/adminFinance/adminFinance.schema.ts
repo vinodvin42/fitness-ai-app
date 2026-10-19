@@ -54,3 +54,11 @@ export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
 export type UpsertTaxConfigInput = z.infer<typeof upsertTaxConfigSchema>;
+
+// 10.09 Bank Settlements (Oct 2026). Dates are India calendar days
+// (YYYY-MM-DD); the default is the last 30 days.
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+export const bankSettlementsQuerySchema = z
+  .object({ from: isoDay.optional(), to: isoDay.optional() })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, { message: "'from' must be on or before 'to'" });
+export type BankSettlementsQuery = z.infer<typeof bankSettlementsQuerySchema>;

@@ -13,7 +13,16 @@ import {
 } from "../../lib/twoFactor";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { AdminChangePasswordInput, AdminLoginInput, AdminMfaConfirmInput } from "./adminAuth.schema";
+import {
+  AdminChangePasswordInput,
+  AdminForgotPasswordInput,
+  AdminLoginInput,
+  AdminMfaConfirmInput,
+  AdminResetPasswordInput,
+} from "./adminAuth.schema";
+import { generatePasswordResetToken, hashPasswordResetToken, passwordResetTokenExpiry } from "../../lib/jwt";
+import { isEmailConfigured, sendEmail } from "../../lib/mailer";
+import { BRAND_NAME } from "@fitness-ai-app/config";
 
 /**
  * Admin console auth (Phase 6, 20 Aug 2026; authenticator-app MFA added
@@ -291,4 +300,69 @@ export async function changeAdminPassword(adminUserId: string, input: AdminChang
     entityType: "AdminUser",
     entityId: adminUserId,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Admin forgot/reset password (Oct 2026). Mirrors the app's flow
+// (auth.service.ts forgotPassword/resetPassword): a random token, only its
+// hash stored, 30 minutes, one use. The reply never says whether an account
+// exists. Only active admins get a link. Resetting the password does not skip
+// the sign-in code: an admin with MFA still needs it, and a lost authenticator
+// is reset by a Super Admin (Admin Users → Reset sign-in code).
+// The link needs ADMIN_WEB_URL (where the console is served) and SMTP.
+// ---------------------------------------------------------------------------
+
+export function isAdminResetEmailConfigured(): boolean {
+  return isEmailConfigured() && Boolean(env.ADMIN_WEB_URL);
+}
+
+export async function requestAdminPasswordReset(input: AdminForgotPasswordInput): Promise<{ emailSent: boolean }> {
+  const emailReady = isAdminResetEmailConfigured();
+  const admin = await prisma.adminUser.findFirst({ where: { email: { equals: input.email, mode: "insensitive" } } });
+  if (!admin || admin.status !== "active") return { emailSent: emailReady };
+
+  const rawToken = generatePasswordResetToken();
+  await prisma.adminPasswordResetToken.create({
+    data: { adminUserId: admin.id, tokenHash: hashPasswordResetToken(rawToken), expiresAt: passwordResetTokenExpiry() },
+  });
+  await recordAudit({ actorAdminId: admin.id, action: "admin.password_reset_requested", entityType: "AdminUser", entityId: admin.id });
+  if (!emailReady) return { emailSent: false };
+
+  const link = `${env.ADMIN_WEB_URL!.replace(/\/+$/, "")}/reset-password?token=${rawToken}`;
+  try {
+    await sendEmail({
+      to: admin.email,
+      subject: `Reset your ${BRAND_NAME} admin password`,
+      text: [
+        `We received a request to reset the password for your ${BRAND_NAME} admin account.`,
+        ``,
+        `Reset it here: ${link}`,
+        ``,
+        `This link expires in 30 minutes and works once. You'll still need your sign-in code after resetting.`,
+        `If you didn't ask for this, ignore this email: your password hasn't changed.`,
+      ].join("\n"),
+    });
+    return { emailSent: true };
+  } catch {
+    return { emailSent: false };
+  }
+}
+
+export async function resetAdminPassword(input: AdminResetPasswordInput): Promise<void> {
+  const record = await prisma.adminPasswordResetToken.findUnique({ where: { tokenHash: hashPasswordResetToken(input.token) } });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    throw new ApiHttpError(400, "invalid_reset_token", "This reset link is invalid or has expired");
+  }
+  const admin = await prisma.adminUser.findUnique({ where: { id: record.adminUserId }, select: { id: true, status: true } });
+  if (!admin || admin.status !== "active") {
+    throw new ApiHttpError(400, "invalid_reset_token", "This reset link is invalid or has expired");
+  }
+  // Claim-once, so two tabs can't both use the same link.
+  const claimed = await prisma.adminPasswordResetToken.updateMany({ where: { id: record.id, usedAt: null }, data: { usedAt: new Date() } });
+  if (claimed.count === 0) throw new ApiHttpError(409, "reset_token_already_used", "This reset link has already been used");
+
+  await prisma.adminUser.update({ where: { id: admin.id }, data: { passwordHash: await hashPassword(input.newPassword) } });
+  // Any other outstanding links for this admin stop working too.
+  await prisma.adminPasswordResetToken.updateMany({ where: { adminUserId: admin.id, usedAt: null }, data: { usedAt: new Date() } });
+  await recordAudit({ actorAdminId: admin.id, action: "admin.password_reset_completed", entityType: "AdminUser", entityId: admin.id });
 }

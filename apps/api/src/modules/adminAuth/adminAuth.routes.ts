@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { adminChangePasswordSchema, adminLoginSchema, adminMfaConfirmSchema, adminMfaSetupSchema } from "./adminAuth.schema";
+import {
+  adminChangePasswordSchema,
+  adminForgotPasswordSchema,
+  adminLoginSchema,
+  adminMfaConfirmSchema,
+  adminMfaSetupSchema,
+  adminResetPasswordSchema,
+} from "./adminAuth.schema";
 import * as adminAuthService from "./adminAuth.service";
 import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth";
-import { requirePermission } from "../../middleware/adminPermissions";
-import { authRateLimit } from "../../middleware/rateLimit";
+import { permissionsFor, requirePermission } from "../../middleware/adminPermissions";
+import { authRateLimit, writeRateLimit } from "../../middleware/rateLimit";
 
 export const adminAuthRouter = Router();
 
@@ -18,7 +25,7 @@ adminAuthRouter.post("/admin/auth/login", authRateLimit, async (req, res, next) 
       return;
     }
     res.status(200).json({
-      adminUser: adminAuthService.toPublicAdminUser(result.adminUser),
+      adminUser: { ...adminAuthService.toPublicAdminUser(result.adminUser), permissions: permissionsFor(result.adminUser.role) },
       token: result.token,
       tokenExpiresAt: result.tokenExpiresAt,
     });
@@ -34,7 +41,8 @@ adminAuthRouter.post("/admin/auth/login", authRateLimit, async (req, res, next) 
 adminAuthRouter.get("/admin/auth/me", requireAdminAuth, async (req: AdminAuthedRequest, res, next) => {
   try {
     const adminUser = await adminAuthService.getAdminUserById(req.adminUserId as string);
-    res.status(200).json({ adminUser: adminAuthService.toPublicAdminUser(adminUser) });
+    // The role's grants shape the console menu (see permissionsFor).
+    res.status(200).json({ adminUser: { ...adminAuthService.toPublicAdminUser(adminUser), permissions: permissionsFor(adminUser.role) } });
   } catch (err) {
     next(err);
   }
@@ -76,7 +84,7 @@ adminAuthRouter.post("/admin/auth/mfa/confirm", authRateLimit, async (req, res, 
     const input = adminMfaConfirmSchema.parse(req.body);
     const { adminUser, token, tokenExpiresAt, recoveryCodes } = await adminAuthService.confirmAdminMfaSetup(input);
     res.status(200).json({
-      adminUser: adminAuthService.toPublicAdminUser(adminUser),
+      adminUser: { ...adminAuthService.toPublicAdminUser(adminUser), permissions: permissionsFor(adminUser.role) },
       token,
       tokenExpiresAt,
       // Shown once. Each works one time in place of a code.
@@ -101,3 +109,33 @@ adminAuthRouter.post(
     }
   },
 );
+
+// Admin forgot/reset password (Oct 2026). See requestAdminPasswordReset in
+// adminAuth.service.ts. Signed-out routes. Rate-limited like the app's own
+// forgot/reset (writeRateLimit), so reset requests don't use up an admin's
+// sign-in attempts. The reply is the same whether or not the email belongs to
+// an admin.
+adminAuthRouter.post("/admin/auth/forgot-password", writeRateLimit, async (req, res, next) => {
+  try {
+    const input = adminForgotPasswordSchema.parse(req.body);
+    const { emailSent } = await adminAuthService.requestAdminPasswordReset(input);
+    res.status(200).json({
+      emailSent,
+      message: emailSent
+        ? "If that email belongs to an admin account, a reset link is on its way. It works for 30 minutes."
+        : "If that email belongs to an admin account, a reset was requested, but email isn't set up on this server. Ask a Super Admin to reset your password.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminAuthRouter.post("/admin/auth/reset-password", writeRateLimit, async (req, res, next) => {
+  try {
+    const input = adminResetPasswordSchema.parse(req.body);
+    await adminAuthService.resetAdminPassword(input);
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});

@@ -42,3 +42,15 @@ export const adminChangePasswordSchema = z.object({
 });
 
 export type AdminChangePasswordInput = z.infer<typeof adminChangePasswordSchema>;
+
+// Admin forgot/reset password (Oct 2026). Same password rules as
+// adminChangePasswordSchema above.
+export const adminForgotPasswordSchema = z.object({
+  email: z.string().trim().email(),
+});
+export const adminResetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8).max(72),
+});
+export type AdminForgotPasswordInput = z.infer<typeof adminForgotPasswordSchema>;
+export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;

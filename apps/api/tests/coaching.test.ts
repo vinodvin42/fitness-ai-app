@@ -229,7 +229,8 @@ describe("Coach relationship accept/decline (gap §56)", () => {
     await prisma.$disconnect();
   });
 
-  it("declines a requested relationship with a real endReason and ends it", async () => {
+  // 18 Oct 2026: a decline is `declined` (shown to the user for 30 days), no longer `ended`.
+  it("declines a requested relationship with a real endReason and marks it declined", async () => {
     const relationship = await prisma.relationship.create({
       data: { userId, professionalId, serviceType: "nutrition", status: "requested" },
     });
@@ -240,10 +241,10 @@ describe("Coach relationship accept/decline (gap §56)", () => {
       .send({ reason: "Not currently taking new nutrition clients" });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ended");
+    expect(res.body.status).toBe("declined");
 
     const dbRow = await prisma.relationship.findUnique({ where: { id: relationship.id } });
-    expect(dbRow?.status).toBe("ended");
+    expect(dbRow?.status).toBe("declined");
     expect(dbRow?.endReason).toBe("Not currently taking new nutrition clients");
     expect(dbRow?.endedAt).not.toBeNull();
   });

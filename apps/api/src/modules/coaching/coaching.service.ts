@@ -3,6 +3,11 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
+import {
+  FINISHED_RELATIONSHIP_STATUSES,
+  FINISHED_RELATIONSHIP_WINDOW_MS,
+  STUCK_ACTIVATING_THRESHOLD_MS,
+} from "../../lib/relationshipActivation";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from "../../lib/coachFees";
 import { activeGstPercent, gstOnTop } from "../../lib/gst";
@@ -415,8 +420,12 @@ export async function claimRelationship(
     // reclaim attempt's updateMany actually matches the row) — a genuine
     // new request against a previously-ended pairing, needing its own
     // coach review again; any other status is left untouched.
+    // `declined` is reclaimed too (18 Oct 2026, declines stopped being
+    // `ended`): createOrder's and createBooking's gates only refuse
+    // `requested`, so a declined row handed back as-is would let the user
+    // pay a coach who said no.
     const reclaimed = await prisma.relationship.updateMany({
-      where: { userId, professionalId, serviceType, status: "ended" },
+      where: { userId, professionalId, serviceType, status: { in: ["ended", "declined"] } },
       data: { status: "requested", endedAt: null, endReason: null },
     });
 
@@ -462,7 +471,9 @@ export async function acceptRelationship(professionalId: string, relationshipId:
 
 /**
  * The decline counterpart to `acceptRelationship()` above — moves a
- * `requested` relationship straight to `ended` (with a real `endReason`)
+ * `requested` relationship straight to `declined` (was `ended` until 18 Oct
+ * 2026, which made the request vanish from the user's status screen; the
+ * coach's free-text `endReason` is still stored but never shown to the user)
  * rather than through `accepted` first, same atomic ownership+status-filtered
  * `updateMany` claim. Declining is deliberately only possible while a
  * relationship is still `requested`: once a coach has accepted, a booking
@@ -485,13 +496,13 @@ export async function declineRelationship(
 
   const result = await prisma.relationship.updateMany({
     where: { id: relationshipId, professionalId, status: "requested" },
-    data: { status: "ended", endedAt: new Date(), endReason: reason ?? "declined_by_professional" },
+    data: { status: "declined", endedAt: new Date(), endReason: reason ?? "declined_by_professional" },
   });
   if (result.count === 0) {
     throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
   }
 
-  return { id: relationshipId, status: "ended" };
+  return { id: relationshipId, status: "declined" };
 }
 
 type PendingRelationshipRow = {
@@ -749,6 +760,8 @@ type RelationshipStatusRow = {
   serviceType: string;
   status: string;
   createdAt: Date;
+  updatedAt: Date;
+  endedAt: Date | null;
   professional: { id: string; fullName: string };
 };
 
@@ -765,14 +778,37 @@ type RelationshipStatusRow = {
  * with this professional" looks like today, same as before this status
  * screen existed; a past-relationships history view isn't part of this
  * required screen and isn't built here (no design source names one).
+ *
+ * 18 Oct 2026 (owner-approved, Figma Professional 05b/06/12):
+ *  - Finished outcomes (`declined`, `expired`, `completed`) are returned for
+ *    FINISHED_RELATIONSHIP_WINDOW_MS (30 days) after `endedAt`, so a coach's
+ *    decline no longer just vanishes. The coach's reason is never returned.
+ *  - `activating` rows carry `activatingSince` and `stuck` (past
+ *    STUCK_ACTIVATING_THRESHOLD_MS, the same cut-off the professional
+ *    dashboard uses to queue an admin item).
+ *  - `activation_failed` and stuck rows carry `paymentId`: the user's latest
+ *    captured, never-activated booking payment for that coach, created no
+ *    later than the row's last status change — so support can find it.
  */
-export async function listRelationshipStatus(userId: string) {
+export async function listRelationshipStatus(userId: string, now: Date = new Date()) {
+  const finishedSince = new Date(now.getTime() - FINISHED_RELATIONSHIP_WINDOW_MS);
   const relationships = await prisma.relationship.findMany({
-    where: { userId, status: { not: "ended" } },
+    where: {
+      userId,
+      OR: [
+        { status: { notIn: ["ended", ...FINISHED_RELATIONSHIP_STATUSES] } },
+        { status: { in: [...FINISHED_RELATIONSHIP_STATUSES] }, endedAt: { gte: finishedSince } },
+      ],
+    },
     include: { professional: { select: { id: true, fullName: true } } },
     orderBy: { createdAt: "desc" },
   });
   const rows = relationships as RelationshipStatusRow[];
+
+  const stuckCutoff = now.getTime() - STUCK_ACTIVATING_THRESHOLD_MS;
+  const isStuck = (r: RelationshipStatusRow) => r.status === "activating" && r.updatedAt.getTime() < stuckCutoff;
+  const needsPayment = rows.filter((r) => r.status === "activation_failed" || isStuck(r));
+  const paymentByRelationship = await unactivatedBookingPayments(userId, needsPayment);
 
   return {
     relationships: rows.map((r) => ({
@@ -782,8 +818,39 @@ export async function listRelationshipStatus(userId: string) {
       serviceType: r.serviceType,
       status: r.status,
       createdAt: r.createdAt,
+      endedAt: r.endedAt,
+      activatingSince: r.status === "activating" ? r.updatedAt : null,
+      stuck: isStuck(r),
+      paymentId: paymentByRelationship.get(r.id) ?? null,
     })),
   };
+}
+
+/**
+ * For each relationship, the newest booking Payment this user paid for that
+ * coach which never reached `activatedAt`, created no later than the
+ * relationship's last status change (the order is always created before the
+ * relationship moves to awaiting_payment/activating/activation_failed).
+ */
+async function unactivatedBookingPayments(userId: string, rows: RelationshipStatusRow[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (rows.length === 0) return out;
+  const payments: Array<{ id: string; referenceId: string; createdAt: Date }> = await prisma.payment.findMany({
+    where: { userId, purpose: "booking", status: "paid", activatedAt: null },
+    select: { id: true, referenceId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  if (payments.length === 0) return out;
+  const offerings: Array<{ id: string; professionalId: string }> = await prisma.professionalServiceOffering.findMany({
+    where: { id: { in: payments.map((p) => p.referenceId) } },
+    select: { id: true, professionalId: true },
+  });
+  const coachByOffering = new Map(offerings.map((o) => [o.id, o.professionalId] as const));
+  for (const r of rows) {
+    const match = payments.find((p) => coachByOffering.get(p.referenceId) === r.professionalId && p.createdAt <= r.updatedAt);
+    if (match) out.set(r.id, match.id);
+  }
+  return out;
 }
 
 type RelationshipTeamRow = {

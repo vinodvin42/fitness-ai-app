@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // `SupportTicket`'s three real enums (prisma/schema.prisma) — see
 // adminSupport.service.ts's top comment for the full module scope.
-export const supportTicketCategories = ["bug", "feature_request", "billing", "account", "other"] as const;
+export const supportTicketCategories = ["bug", "feature_request", "billing", "account", "other", "complaint"] as const;
 export const supportTicketPriorities = ["low", "normal", "high"] as const;
 export const supportTicketStatuses = ["open", "in_progress", "resolved", "closed"] as const;
 
@@ -64,3 +64,21 @@ export const sendAdminSupportTicketMessageSchema = z.object({
   body: z.string().trim().min(1, "Message can't be empty").max(4000),
 });
 export type SendAdminSupportTicketMessageInput = z.infer<typeof sendAdminSupportTicketMessageSchema>;
+
+// 08.03 Complaints (Oct 2026) — see the Complaints section of
+// adminSupport.service.ts.
+export const complaintOutcomes = ["upheld", "partly_upheld", "not_upheld"] as const;
+
+export const listComplaintsQuerySchema = z.object({
+  status: z.enum(["open", "closed"]).optional(),
+  search: z.string().trim().max(200).optional(),
+});
+export type ListComplaintsQuery = z.infer<typeof listComplaintsQuerySchema>;
+
+// `reason` is the resolution note the member receives; named `reason` so
+// the admin client's change-reason step recognises it and doesn't ask twice.
+export const closeComplaintSchema = z.object({
+  outcome: z.enum(complaintOutcomes),
+  reason: z.string().trim().min(10).max(4000),
+});
+export type CloseComplaintInput = z.infer<typeof closeComplaintSchema>;

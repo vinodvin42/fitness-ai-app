@@ -1,3 +1,4 @@
+import { BillingCycle, SubscriptionStatus, SubscriptionTier } from "@prisma/client";
 import { z } from "zod";
 import { MIN_REASON_LENGTH } from "../../lib/highImpactAction";
 
@@ -33,3 +34,13 @@ export const highImpactSubscriptionSchema = z.object({
   confirmation: z.string().trim(),
 });
 export type HighImpactSubscriptionInput = z.infer<typeof highImpactSubscriptionSchema>;
+
+// 06.01 Subscriptions list (Oct 2026). Filters use the Prisma enums
+// themselves, so a new status or tier can never drift from the database.
+export const listSubscriptionsQuerySchema = z.object({
+  status: z.nativeEnum(SubscriptionStatus).optional(),
+  tier: z.nativeEnum(SubscriptionTier).optional(),
+  billingCycle: z.nativeEnum(BillingCycle).optional(),
+  search: z.string().trim().max(200).optional(),
+});
+export type ListSubscriptionsQuery = z.infer<typeof listSubscriptionsQuerySchema>;

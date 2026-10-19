@@ -3,6 +3,7 @@ import { AdminAuthedRequest, requireAdminAuth } from "../../middleware/adminAuth
 import { requirePermission } from "../../middleware/adminPermissions";
 import * as adminFinanceService from "./adminFinance.service";
 import {
+  bankSettlementsQuerySchema,
   createExpenseSchema,
   financeDateRangeQuerySchema,
   listExpensesQuerySchema,
@@ -165,6 +166,22 @@ adminFinanceRouter.get(
     try {
       const query = financeDateRangeQuerySchema.parse(req.query);
       res.status(200).json(await adminFinanceService.financialReports(query));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// 10.09 Bank Settlements (Oct 2026) — Razorpay's payouts to the bank,
+// read-only. See getBankSettlements in adminFinance.service.ts.
+adminFinanceRouter.get(
+  "/admin/finance/bank-settlements",
+  requireAdminAuth,
+  requirePermission("commerce", "view"),
+  async (req, res, next) => {
+    try {
+      const query = bankSettlementsQuerySchema.parse(req.query);
+      res.status(200).json(await adminFinanceService.getBankSettlements(query));
     } catch (err) {
       next(err);
     }
