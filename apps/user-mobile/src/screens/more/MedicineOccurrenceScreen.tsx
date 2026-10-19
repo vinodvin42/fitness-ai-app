@@ -12,10 +12,11 @@ import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { useToast } from "../../components/Toast";
 import { useAuth } from "../../context/AuthContext";
-import { clearMedicationDose, fetchDueMedications, fetchMedications, logMedicationDose } from "../../api/medications";
+import { clearMedicationDose, fetchDueMedications, fetchMedications } from "../../api/medications";
 import { extractErrorMessage } from "../../lib/apiError";
 import { BRAND_NAME } from "../../lib/brand";
-import { cancelSnoozeNotification, scheduleSnoozeNotification } from "../../lib/medicationNotifications";
+import { cancelSnoozeNotification } from "../../lib/medicationNotifications";
+import { logDoseWithReminder, MEDICINE_SNOOZE_MINUTES } from "../../lib/medicationDoseActions";
 import {
   formatClockTz,
   formatLongDate,
@@ -30,7 +31,7 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "MedicineOccurrence">;
 
-const SNOOZE_MINUTES = 10;
+const SNOOZE_MINUTES = MEDICINE_SNOOZE_MINUTES;
 
 type Phase = "due" | "snoozed" | "taken" | "skipped";
 
@@ -107,17 +108,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["medications"] });
 
   const log = useMutation({
-    mutationFn: async (status: MedicationDoseStatus) => {
-      const remindAt = new Date(Date.now() + SNOOZE_MINUTES * 60_000);
-      const saved = await logMedicationDose(medicationId, {
-        scheduledFor: dose!.scheduledFor,
-        status,
-        snoozedUntil: status === "snoozed" ? remindAt.toISOString() : undefined,
-      });
-      if (status === "snoozed" && med) await scheduleSnoozeNotification(med, dose!.scheduledFor, remindAt);
-      else await cancelSnoozeNotification(medicationId, dose!.scheduledFor);
-      return saved;
-    },
+    mutationFn: (status: MedicationDoseStatus) => logDoseWithReminder(medicationId, dose!.scheduledFor, status, med),
     onSuccess: (_d, status) => {
       setCorrecting(false);
       invalidate();

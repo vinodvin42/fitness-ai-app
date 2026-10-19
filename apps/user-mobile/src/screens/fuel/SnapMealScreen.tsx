@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { CameraPermissionDenied } from "../../components/CameraPermissionDenied";
 import { createFoodEstimate } from "../../api/nutrition";
@@ -43,6 +44,10 @@ export function SnapMealScreen({ route, navigation }: Props) {
   const [capturing, setCapturing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // This screen opens without the tab bar, so the two positioned footers own
+  // the bottom inset themselves (the camera/photo fills the screen edge to edge).
+  const insets = useSafeAreaInsets();
+  const footerStyle = [styles.footer, { bottom: spacing.xl + insets.bottom }];
 
   const accept = (p: Photo | null) => {
     if (!p) {
@@ -121,7 +126,7 @@ export function SnapMealScreen({ route, navigation }: Props) {
     return (
       <View style={styles.container}>
         <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFillObject} resizeMode="contain" />
-        <View style={styles.footer}>
+        <View style={footerStyle}>
           {submitting ? (
             <View style={styles.banner}>
               <ActivityIndicator color={colors.accent} />
@@ -164,7 +169,7 @@ export function SnapMealScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFillObject} facing="back" />
-      <View style={styles.footer}>
+      <View style={footerStyle}>
         {error ? (
           <View style={styles.banner}>
             <Text style={[styles.bannerText, { color: colors.dangerText }]}>{error}</Text>

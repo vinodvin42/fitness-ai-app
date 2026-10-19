@@ -108,7 +108,7 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
   const devices = data ?? [];
   const allowed = new Set(devices.flatMap((d) => d.permissions));
 
-  const openHealthConnect = () => navigation.getParent()?.navigate("More", { screen: "HealthConnect" });
+  const openHealthConnect = () => navigation.getParent()?.navigate("More", { screen: "HealthConnect", initial: false });
 
   return (
     <RecoverShell

@@ -89,7 +89,7 @@ export function ProfileScreen({ navigation }: Props) {
       title: "My Programs",
       icon: "dumbbell",
       value: programs.data ? `${programs.data.length} program${programs.data.length === 1 ? "" : "s"}` : undefined,
-      onPress: () => tabs()?.navigate("Train", { screen: "MyPrograms" }),
+      onPress: () => tabs()?.navigate("Train", { screen: "MyPrograms", initial: false }),
     },
     {
       title: "Saved Recipes",

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { SupportTicketMessage } from "@fitness-ai-app/types";
+import type { ComplaintOutcome, SupportTicketMessage } from "@fitness-ai-app/types";
 import { ErrorState } from "../../components/ErrorState";
 import { Button } from "../../components/Button";
 import { Pill } from "../../components/Pill";
@@ -24,6 +24,12 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { CATEGORY_LABEL, STATUS_LABEL, STATUS_TONE } from "./SupportScreen";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SupportTicketDetail">;
+
+const COMPLAINT_OUTCOME_LABEL: Record<ComplaintOutcome, string> = {
+  upheld: "upheld",
+  partly_upheld: "partly upheld",
+  not_upheld: "not upheld",
+};
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
@@ -99,6 +105,16 @@ export function SupportTicketDetailScreen({ route, navigation }: Props) {
             <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
               {CATEGORY_LABEL[ticket.category]} · Opened {new Date(ticket.createdAt).toLocaleDateString()}
             </Text>
+            {ticket.complaint ? (
+              <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
+                Reference {ticket.complaint.reference}
+                {ticket.complaint.closedAt
+                  ? ` · Closed${ticket.complaint.outcome ? `: ${COMPLAINT_OUTCOME_LABEL[ticket.complaint.outcome]}` : ""}`
+                  : ticket.complaint.dueAt
+                    ? ` · Resolve by ${new Date(ticket.complaint.dueAt).toLocaleDateString()}`
+                    : ""}
+              </Text>
+            ) : null}
           </>
         )}
       </View>

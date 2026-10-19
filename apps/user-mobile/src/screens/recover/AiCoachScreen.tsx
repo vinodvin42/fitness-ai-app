@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +17,7 @@ import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NavigationProp } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { AiCoachMessage } from "@fitness-ai-app/types";
+import type { AiAnswerReportReason, AiCoachMessage } from "@fitness-ai-app/types";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { AiLimitReached } from "../../components/AiLimitReached";
@@ -30,10 +31,12 @@ import {
   fetchAiCoachMessages,
   fetchAiCoachUsage,
   fetchAiProviderStatus,
+  reportAiAnswer,
   sendAiCoachMessage,
 } from "../../api/aiCoach";
 import { useAuth } from "../../context/AuthContext";
 import { clearDraft, loadDraft, newClientId, saveDraft, type AiCoachDraft } from "../../lib/aiCoachDraft";
+import { draftOwner } from "../../lib/ownedDrafts";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
@@ -88,10 +91,26 @@ function AssistantAvatar() {
   );
 }
 
-function MessageBubble({ message, onWhy }: { message: AiCoachMessage; onWhy: (m: AiCoachMessage) => void }) {
+const AI_REPORT_REASONS: { key: AiAnswerReportReason; label: string }[] = [
+  { key: "unsafe_or_harmful", label: "Unsafe or harmful" },
+  { key: "medically_wrong", label: "Medically wrong" },
+  { key: "offensive", label: "Offensive" },
+  { key: "other", label: "Something else" },
+];
+
+function MessageBubble({
+  message,
+  onWhy,
+  onReport,
+}: {
+  message: AiCoachMessage;
+  onWhy: (m: AiCoachMessage) => void;
+  onReport: (m: AiCoachMessage) => void;
+}) {
   const { colors: theme } = useTheme();
   const isUser = message.role === "user";
-  const hasSources = !isUser && (message.sources?.length ?? 0) > 0;
+  const hasSources = !isUser && !message.hidden && (message.sources?.length ?? 0) > 0;
+  const canReport = !isUser && !message.hidden;
   return (
     <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
       {!isUser && <AssistantAvatar />}
@@ -101,21 +120,45 @@ function MessageBubble({ message, onWhy }: { message: AiCoachMessage; onWhy: (m:
           isUser ? [styles.bubbleUser, { backgroundColor: theme.accent }] : styles.bubbleAssistant,
         ]}
       >
-        <Text style={isUser ? [styles.bubbleTextUser, { color: theme.textOnAccent }] : styles.bubbleTextAssistant}>
+        <Text
+          style={
+            isUser
+              ? [styles.bubbleTextUser, { color: theme.textOnAccent }]
+              : message.hidden
+                ? [styles.bubbleTextAssistant, { color: colors.textMuted, fontStyle: "italic" }]
+                : styles.bubbleTextAssistant
+          }
+        >
           {message.content}
         </Text>
-        {hasSources ? (
-          <Pressable
-            onPress={() => onWhy(message)}
-            accessibilityRole="button"
-            accessibilityLabel="Why this?"
-            accessibilityHint="Shows what information this reply was based on"
-            style={styles.whyLink}
-            hitSlop={8}
-          >
-            <Text style={styles.whyText}>Why this?</Text>
-            <Icon name="info" size={13} color={colors.aiAccent} />
-          </Pressable>
+        {hasSources || canReport ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.md }}>
+            {hasSources ? (
+              <Pressable
+                onPress={() => onWhy(message)}
+                accessibilityRole="button"
+                accessibilityLabel="Why this?"
+                accessibilityHint="Shows what information this reply was based on"
+                style={styles.whyLink}
+                hitSlop={8}
+              >
+                <Text style={styles.whyText}>Why this?</Text>
+                <Icon name="info" size={13} color={colors.aiAccent} />
+              </Pressable>
+            ) : null}
+            {canReport ? (
+              <Pressable
+                onPress={() => onReport(message)}
+                accessibilityRole="button"
+                accessibilityLabel="Report this answer"
+                accessibilityHint="Tell Fynrox this answer is unsafe, wrong or offensive"
+                style={styles.whyLink}
+                hitSlop={8}
+              >
+                <Text style={[styles.whyText, { color: colors.textMuted }]}>Report</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
         <Text style={[styles.timeLabel, isUser && { color: theme.textOnAccent, opacity: 0.8 }]}>
           {formatTime(message.createdAt)}
@@ -153,9 +196,32 @@ export function AiCoachScreen({ navigation }: Props) {
   // Set when a send fails; the failed text stays in `draft` so nothing is lost.
   const [sendFailure, setSendFailure] = useState<null | "unavailable" | "quota">(null);
   const [failedDraft, setFailedDraft] = useState<AiCoachDraft | null>(null);
-  // Idempotency key of the draft currently in the composer (null = a fresh message).
-  const clientIdRef = useRef<string | null>(null);
+  // Idempotency key of the draft currently in the composer (null = a fresh message), bound to its user.
+  const clientIdRef = useRef<{ userId: string; clientId: string } | null>(null);
   const [whyMessage, setWhyMessage] = useState<AiCoachMessage | null>(null);
+  // AI Safety (Oct 2026): Google Play requires a way to report AI output in-app.
+  const [reportMessage, setReportMessage] = useState<AiCoachMessage | null>(null);
+  const [reportReason, setReportReason] = useState<AiAnswerReportReason | null>(null);
+  const [reportNote, setReportNote] = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const openReport = (m: AiCoachMessage) => {
+    setReportReason(null);
+    setReportNote("");
+    setReportMessage(m);
+  };
+  const submitReport = async () => {
+    if (!reportMessage || !reportReason) return;
+    setReportSending(true);
+    try {
+      await reportAiAnswer(reportMessage.id, { reason: reportReason, note: reportNote.trim() || undefined });
+      setReportMessage(null);
+      Alert.alert("Report sent", "Thanks. Fynrox's team will review this answer.");
+    } catch {
+      Alert.alert("Report not sent", "Please check your connection and try again.");
+    } finally {
+      setReportSending(false);
+    }
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -180,16 +246,18 @@ export function AiCoachScreen({ navigation }: Props) {
   // Restore an unsent draft saved by a previous failed send (survives app restarts).
   useEffect(() => {
     let alive = true;
-    loadDraft().then((d) => {
+    if (!user?.id) return;
+    const owner = draftOwner(user.id);
+    loadDraft(owner).then((d) => {
       if (!alive || !d) return;
-      clientIdRef.current = d.clientId;
+      clientIdRef.current = { userId: owner.userId, clientId: d.clientId };
       setDraft((cur) => (cur ? cur : d.text));
       setFailedDraft(d);
     });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const scrollToEnd = () => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
@@ -201,9 +269,12 @@ export function AiCoachScreen({ navigation }: Props) {
   const send = async (text: string, fromComposer: boolean) => {
     const trimmed = text.trim();
     if (!trimmed || isSending) return;
-    const clientId = fromComposer ? (clientIdRef.current ?? newClientId()) : newClientId();
+    // Captured before the request: a late result is saved only for this user (lib/ownedDrafts.ts).
+    const owner = user?.id ? draftOwner(user.id) : null;
+    const reuse = fromComposer && owner && clientIdRef.current?.userId === owner.userId ? clientIdRef.current.clientId : null;
+    const clientId = reuse ?? newClientId();
     if (fromComposer) {
-      clientIdRef.current = clientId;
+      clientIdRef.current = owner ? { userId: owner.userId, clientId } : null;
       setDraft("");
     }
     setSendFailure(null);
@@ -214,7 +285,7 @@ export function AiCoachScreen({ navigation }: Props) {
       if (fromComposer) {
         clientIdRef.current = null;
         setFailedDraft(null);
-        await clearDraft();
+        if (owner) await clearDraft(owner);
       }
       await queryClient.invalidateQueries({ queryKey: ["ai-coach", "messages"] });
       queryClient.invalidateQueries({ queryKey: ["ai-coach", "usage"] });
@@ -228,7 +299,7 @@ export function AiCoachScreen({ navigation }: Props) {
         setDraft(trimmed);
         const saved: AiCoachDraft = { text: trimmed, clientId, savedAt: new Date().toISOString() };
         setFailedDraft(saved);
-        await saveDraft(saved);
+        if (owner) await saveDraft(owner, saved);
       }
       if (isQuota) {
         setLimitDismissed(false);
@@ -303,7 +374,7 @@ export function AiCoachScreen({ navigation }: Props) {
           setLimitDismissed(true);
           parentNav()?.navigate("Today");
         }}
-        onUpgrade={() => parentNav()?.navigate("More", { screen: "Subscription" })}
+        onUpgrade={() => parentNav()?.navigate("More", { screen: "Subscription", initial: false })}
       />
     );
   }
@@ -444,7 +515,7 @@ export function AiCoachScreen({ navigation }: Props) {
             ref={listRef}
             data={messages}
             keyExtractor={(m) => m.id}
-            renderItem={({ item }) => <MessageBubble message={item} onWhy={setWhyMessage} />}
+            renderItem={({ item }) => <MessageBubble message={item} onWhy={setWhyMessage} onReport={openReport} />}
             contentContainerStyle={styles.threadContent}
             onContentSizeChange={scrollToEnd}
             ListEmptyComponent={
@@ -519,16 +590,6 @@ export function AiCoachScreen({ navigation }: Props) {
 
         <View style={styles.composerRow}>
           <View style={styles.composerPill}>
-            <Pressable
-              disabled
-              accessibilityRole="button"
-              accessibilityLabel="Attach"
-              accessibilityHint="Attachments aren't available yet"
-              accessibilityState={{ disabled: true }}
-              style={styles.composerIcon}
-            >
-              <Icon name="plus" size={20} color={colors.textMuted} />
-            </Pressable>
             <TextInput
               style={styles.composerInput}
               placeholder="Ask Fynrox AI anything…"
@@ -541,16 +602,6 @@ export function AiCoachScreen({ navigation }: Props) {
               editable={!isSending && !limitReached}
               accessibilityLabel="Message to AI Coach"
             />
-            <Pressable
-              disabled
-              accessibilityRole="button"
-              accessibilityLabel="Voice input"
-              accessibilityHint="Voice input isn't available yet"
-              accessibilityState={{ disabled: true }}
-              style={styles.composerIcon}
-            >
-              <Icon name="mic" size={19} color={colors.textMuted} />
-            </Pressable>
           </View>
           <Pressable
             onPress={() => send(draft, true)}
@@ -566,6 +617,58 @@ export function AiCoachScreen({ navigation }: Props) {
 
         <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
       </KeyboardAvoidingView>
+
+      <BottomSheet visible={reportMessage != null} onClose={() => setReportMessage(null)} title="Report this answer">
+        <View style={{ gap: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+            Fynrox's team will review it. If it shouldn't have been said, it will be removed from your chat.
+          </Text>
+          <View accessibilityRole="radiogroup" style={{ gap: spacing.xs }}>
+            {AI_REPORT_REASONS.map((r) => {
+              const selected = reportReason === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  onPress={() => setReportReason(r.key)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  style={{
+                    minHeight: 48,
+                    justifyContent: "center",
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: selected ? colors.accent : colors.border,
+                    backgroundColor: selected ? colors.accentSoft : colors.surface,
+                  }}
+                >
+                  <Text style={{ color: colors.textPrimary, fontFamily: selected ? fonts.bodySemi : fonts.body, fontSize: 15 }}>{r.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            value={reportNote}
+            onChangeText={setReportNote}
+            placeholder="What was wrong? (optional)"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={1000}
+            accessibilityLabel="What was wrong, optional"
+            style={{
+              minHeight: 72,
+              color: colors.textPrimary,
+              backgroundColor: colors.surface,
+              borderRadius: radius.sm,
+              borderWidth: 1,
+              borderColor: colors.outline,
+              padding: spacing.sm,
+              textAlignVertical: "top",
+            }}
+          />
+          <Button label="Send report" onPress={submitReport} loading={reportSending} disabled={!reportReason || reportSending} />
+        </View>
+      </BottomSheet>
 
       <ReasoningSheet
         visible={whyMessage != null}
@@ -701,13 +804,12 @@ const styles = themed(() => StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
   },
-  composerIcon: { width: 32, height: 40, alignItems: "center", justifyContent: "center", opacity: 0.6 },
   composerInput: {
     flex: 1,
     maxHeight: 120,
     color: colors.textPrimary,
     fontSize: 14,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 10,
   },
   sendButton: {

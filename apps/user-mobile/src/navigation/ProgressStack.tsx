@@ -4,6 +4,7 @@ import type { Recommendation } from "@fitness-ai-app/types";
 import { ProgressOverviewScreen } from "../screens/more/ProgressOverviewScreen";
 import { LogMeasurementScreen } from "../screens/more/LogMeasurementScreen";
 import { MeasurementHistoryScreen } from "../screens/more/MeasurementHistoryScreen";
+import { MeasurementCompareScreen } from "../screens/progress/MeasurementCompareScreen";
 import { StreakTrackerScreen } from "../screens/more/StreakTrackerScreen";
 import { ProgressPhotosScreen } from "../screens/more/ProgressPhotosScreen";
 import { CheckInScreen } from "../screens/more/CheckInScreen";
@@ -44,6 +45,8 @@ export type ProgressStackParamList = {
   Progress: undefined;
   LogMeasurement: undefined;
   MeasurementHistory: undefined;
+  // Figma 06b measure-05: two logged dates side by side.
+  MeasurementCompare: undefined;
   StreakTracker: undefined;
   ProgressPhotos: undefined;
   // U5 (15 Sep 2026) — the required "Daily / weekly Check-In" screen, see
@@ -66,6 +69,7 @@ export function ProgressStack() {
       <Stack.Screen name="BodyComposition" component={BodyCompositionScreen} />
       <Stack.Screen name="LogMeasurement" component={LogMeasurementScreen} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} />
+      <Stack.Screen name="MeasurementCompare" component={MeasurementCompareScreen} />
       <Stack.Screen name="StreakTracker" component={StreakTrackerScreen} />
       <Stack.Screen name="ProgressPhotos" component={ProgressPhotosScreen} />
       <Stack.Screen name="CheckIn" component={CheckInScreen} />

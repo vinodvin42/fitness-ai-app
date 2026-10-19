@@ -31,7 +31,7 @@ export function SavedRecipesScreen({ navigation }: Props) {
       ) : items.length === 0 ? (
         <View style={{ gap: spacing.md }}>
           <EmptyState title="No saved recipes yet" subtitle="Tap the heart on any recipe to keep it here." />
-          <Button label="Browse recipes" onPress={() => tabs()?.navigate("Fuel", { screen: "Recipes" })} />
+          <Button label="Browse recipes" onPress={() => tabs()?.navigate("Fuel", { screen: "Recipes", initial: false })} />
         </View>
       ) : (
         <View style={{ gap: spacing.sm }}>
@@ -44,7 +44,7 @@ export function SavedRecipesScreen({ navigation }: Props) {
               tintSoft="rgba(236,72,153,0.16)"
               title={r.name}
               subtitle={`${r.calories} kcal · ${r.prepTimeMinutes} min`}
-              onPress={() => tabs()?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: r.id } })}
+              onPress={() => tabs()?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: r.id }, initial: false })}
               right={
                 <Pressable
                   onPress={() => saved.toggle(r.id)}

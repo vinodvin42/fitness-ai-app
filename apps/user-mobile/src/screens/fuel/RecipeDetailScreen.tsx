@@ -5,11 +5,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
+import { RecipeVideo } from "../../components/RecipeVideo";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { fetchRecipeDetail } from "../../api/programs";
 import { logMeal } from "../../api/nutrition";
 import { useSavedRecipes } from "../../api/savedRecipes";
 import { extractErrorMessage } from "../../lib/apiError";
+import { hasVideo } from "../../lib/recipeVideo";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
@@ -25,6 +27,11 @@ type Props = NativeStackScreenProps<FuelStackParamList, "RecipeDetail">;
  * ticks on the checklist are a local "got it" aid, not saved. Logging copies
  * the recipe's macros into a new MealLog server-side (POST /meal-logs with
  * recipeId).
+ *
+ * Recipe video (Oct 2026): a recipe with a video shows it in place of the
+ * hero, square, with the hero image as its poster. It loads only on tap and
+ * plays muted (components/RecipeVideo.tsx). Without one, the hero is exactly
+ * as before.
  */
 export function RecipeDetailScreen({ route, navigation }: Props) {
   const { recipeId } = route.params;
@@ -99,7 +106,9 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           </Pressable>
         </View>
 
-        {recipe.imageUrl ? (
+        {hasVideo(recipe) ? (
+          <RecipeVideo video={recipe.video} poster={recipe.imageUrl} label="recipe video" />
+        ) : recipe.imageUrl ? (
           <Image
             source={{ uri: recipe.imageUrl }}
             style={{ width: "100%", height: 190, borderRadius: radius.card, backgroundColor: colors.surfaceRaised }}
@@ -171,7 +180,19 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
         {steps.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>Instructions</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>Instructions</Text>
+              <Pressable
+                onPress={() => navigation.navigate("RecipeCookMode", { recipeId: recipe.id })}
+                accessibilityRole="button"
+                accessibilityLabel="Start cooking, one step at a time"
+                hitSlop={6}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, borderRadius: radius.pill, backgroundColor: theme.accentSoft, paddingHorizontal: 12, paddingVertical: 6 }}
+              >
+                <Icon name="play" size={12} color={theme.accentText} />
+                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Start cooking</Text>
+              </Pressable>
+            </View>
             {steps.map((step, i) => (
               <View key={i} style={{ gap: 2 }}>
                 <Text style={{ color: theme.accentText, fontSize: 13, fontFamily: fonts.bodySemi }}>Step {i + 1}</Text>

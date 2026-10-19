@@ -10,6 +10,7 @@ import { Avatar } from "../../components/Avatar";
 import { Icon, IconName } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { fetchPlans } from "../../api/subscriptions";
+import { fetchLearnArticles } from "../../api/learn";
 import { BRAND_NAME } from "../../lib/brand";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -37,6 +38,9 @@ export function MoreScreen({ navigation }: Props) {
   const { user, logout } = useAuth();
   const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans, staleTime: 5 * 60_000 });
   const tabs = () => navigation.getParent<NavigationProp<MainTabsParamList>>();
+  // Learn (05.04, Oct 2026) appears only once at least one article is published.
+  const learn = useQuery({ queryKey: ["learn", "articles", "all"], queryFn: () => fetchLearnArticles(), staleTime: 5 * 60_000 });
+  const hasLearn = (learn.data?.articles.length ?? 0) > 0;
 
   // Paid tiers only (the free tier isn't something to "compare to"), cheapest first.
   const planNames = Array.from(
@@ -51,7 +55,7 @@ export function MoreScreen({ navigation }: Props) {
     planNames.length === 2 ? `Compare ${planNames[0]} & ${planNames[1]}` : planNames.length > 2 ? "Compare plans" : "Explore plans";
 
   const primary: MoreRow[] = [
-    { label: "My Schedule", icon: "calendar", tint: colors.accent, badge: "Today", onPress: () => tabs()?.navigate("Today", { screen: "Schedule" }) },
+    { label: "My Schedule", icon: "calendar", tint: colors.accent, badge: "Today", onPress: () => tabs()?.navigate("Today", { screen: "Schedule", initial: false }) },
     { label: t("more.rows.progress.label"), icon: "trending-up", tint: colors.success, onPress: () => navigation.navigate("ProgressSection") },
     {
       label: "Body Composition",
@@ -62,7 +66,7 @@ export function MoreScreen({ navigation }: Props) {
     { label: "Your Lifetime", icon: "trophy", tint: colors.accent, badge: "New", onPress: () => navigation.navigate("TimelineOverview") },
     { label: "Coach", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
     { label: "Add Reminder", icon: "bell", tint: colors.aiAccent, onPress: () => navigation.navigate("ReminderForm", {}) },
-    { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace" }) },
+    { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace", initial: false }) },
   ];
 
   const secondary: MoreRow[] = [
@@ -73,6 +77,7 @@ export function MoreScreen({ navigation }: Props) {
     { label: t("more.rows.purchases.label"), icon: "calendar", tint: colors.cyan, onPress: () => navigation.navigate("Purchases") },
     { label: t("more.rows.referral.label"), icon: "sparkles", tint: colors.pink, onPress: () => navigation.navigate("Referral") },
     { label: t("more.rows.settings.label"), icon: "settings", tint: colors.textSecondary, onPress: () => navigation.navigate("SettingsHub") },
+    ...(hasLearn ? [{ label: "Learn", icon: "file-text" as const, tint: colors.success, onPress: () => navigation.navigate("Learn") }] : []),
     { label: "Support", icon: "info", tint: colors.cyan, onPress: () => navigation.navigate("Support") },
   ];
 

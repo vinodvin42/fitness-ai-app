@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -8,10 +8,14 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
+import { ExerciseMotion } from "../../components/ExerciseMotion";
+import { MediaVideo } from "../../components/MediaVideo";
+import { VideoCredit } from "../../components/VideoCredit";
 import { useToast } from "../../components/Toast";
 import { fetchExerciseDetail } from "../../api/programs";
 import { fetchRoutines, ROUTINES_KEY, updateRoutine } from "../../api/routines";
 import { extractErrorMessage } from "../../lib/apiError";
+import { creditLine, hasExerciseVideo, playerShape } from "../../lib/exerciseVideo";
 import { BRAND_NAME } from "../../lib/brand";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -24,9 +28,15 @@ type Props = NativeStackScreenProps<TrainStackParamList, "ExerciseDetail">;
  * target muscle chip, numbered step-by-step form guide, an alternative card
  * and the Add to Workout / Try Alternative actions.
  *
- * Only real data is rendered. `Exercise.mediaUrl` is a still photo (no video
- * content or player exists in this build), so the media area shows the photo
- * or an honest empty note. The design's "Common Mistakes", "Pro Tips" and
+ * Only real data is rendered. An exercise with a video (Exercise.video, Oct
+ * 2026) shows it framed by its shape (portrait clips whole, in a 4:5 box; see
+ * lib/exerciseVideo.ts playerShape), its own still as the poster, tap to play,
+ * muted and looping, with its credit line
+ * underneath (a licensed clip without a full credit isn't shown at all). Without
+ * one, `Exercise.mediaUrl` is a still photo: for the seeded free-exercise-db
+ * photos the media area alternates the start and end stills
+ * (components/ExerciseMotion); any other photo shows as a still, and no
+ * photo gets an honest empty note. The design's "Common Mistakes", "Pro Tips" and
  * secondary-muscle chips have no backing data and are not shown. "Add to
  * Workout" appends the exercise to one of the user's saved routines (the
  * app's editable workouts); "Try Alternative" opens the real same-muscle-
@@ -90,12 +100,23 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
     <ScreenContainer title="Exercise Detail">
       <BackButton onPress={() => navigation.goBack()} />
 
-      {exercise.mediaUrl ? (
-        <Image
-          source={{ uri: exercise.mediaUrl }}
-          style={{ width: "100%", height: 220, borderRadius: radius.card, backgroundColor: colors.surfaceRaised }}
-          resizeMode="cover"
-        />
+      {hasExerciseVideo(exercise) ? (
+        <View style={{ gap: spacing.xs }}>
+          <MediaVideo
+            video={exercise.video}
+            {...playerShape(exercise.video)}
+            poster={exercise.video.posterUrl ?? null}
+            loop
+            hasSound={false}
+            label={`${exercise.name} video`}
+          />
+          {(() => {
+            const credit = creditLine(exercise.video);
+            return credit ? <VideoCredit credit={credit} /> : null;
+          })()}
+        </View>
+      ) : exercise.mediaUrl ? (
+        <ExerciseMotion mediaUrl={exercise.mediaUrl} exerciseName={exercise.name} height={220} />
       ) : (
         <View
           style={{

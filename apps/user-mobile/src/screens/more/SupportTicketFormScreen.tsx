@@ -20,7 +20,11 @@ type Props = NativeStackScreenProps<MoreStackParamList, "SupportTicketForm">;
 // separate flows that would only differ by which chip is pre-selected.
 // Values only; the labels live in the catalogue under
 // `ticket.category.*`, keyed by the same value.
-const CATEGORIES: SupportTicketCategory[] = ["bug", "feature_request", "billing", "account", "other"];
+const CATEGORIES: SupportTicketCategory[] = ["bug", "feature_request", "billing", "account", "other", "complaint"];
+
+function formatDueDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
 
 /**
  * New Support Ticket (docs/mobile/03-screen-inventory.md §L) — not its
@@ -46,8 +50,20 @@ export function SupportTicketFormScreen({ navigation, route }: Props) {
     if (!canSubmit) return;
     setIsSubmitting(true);
     try {
-      await createTicket({ category, subject: subject.trim(), message: message.trim() });
+      const ticket = await createTicket({ category, subject: subject.trim(), message: message.trim() });
       await queryClient.invalidateQueries({ queryKey: ["support", "tickets"] });
+      if (ticket.complaint) {
+        // The acknowledgement (08.03 Complaints): the reference and the
+        // resolve-by date, shown at once and also sent as a notification.
+        Alert.alert(
+          "Complaint received",
+          `Your reference is ${ticket.complaint.reference}.${
+            ticket.complaint.dueAt ? ` We'll resolve it by ${formatDueDate(ticket.complaint.dueAt)} and reply in this ticket.` : ""
+          }`,
+        );
+        navigation.replace("SupportTicketDetail", { ticketId: ticket.id });
+        return;
+      }
       navigation.goBack();
     } catch (err) {
       Alert.alert("Couldn't submit ticket", extractErrorMessage(err, "Check your connection and try again."));
@@ -70,6 +86,12 @@ export function SupportTicketFormScreen({ navigation, route }: Props) {
             />
           ))}
         </View>
+        {category === "complaint" ? (
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: spacing.sm }}>
+            A formal complaint. You'll get a reference number straight away, and we'll resolve it within one month. Tell us what
+            happened, when, and what you'd like us to do.
+          </Text>
+        ) : null}
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>

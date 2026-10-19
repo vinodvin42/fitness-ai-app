@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, ScrollView, Switch, Text, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { Edge } from "react-native-safe-area-context";
 import { Icon, IconName } from "../../components/Icon";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 
@@ -51,12 +52,14 @@ interface ShellProps {
   /** Pinned content under the scroll area (e.g. a primary CTA). */
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
+  /** Safe-area edges to pad. Screens shown without the tab bar (focused tasks) add "bottom". */
+  edges?: Edge[];
 }
 
 /** Safe-area + header + scroll column for Recover sub-screens. */
-export function RecoverShell({ title, subtitle, centered, onBack, right, children, footer, contentStyle }: ShellProps) {
+export function RecoverShell({ title, subtitle, centered, onBack, right, children, footer, contentStyle, edges = ["top"] }: ShellProps) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={edges}>
       <View
         style={{
           width: "100%",

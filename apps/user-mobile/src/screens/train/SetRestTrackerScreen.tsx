@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ExerciseSetLog } from "@fitness-ai-app/types";
+import type { ExerciseSetLog, WorkoutSession } from "@fitness-ai-app/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "../../components/Icon";
@@ -13,8 +13,9 @@ import { displayToKg, kgToDisplay, useWorkoutSettings } from "../../api/workoutS
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchWorkoutSession, logWorkoutSet } from "../../api/workoutSessions";
 import { extractErrorMessage } from "../../lib/apiError";
-import { sortExercisesByPhase } from "../../lib/workoutExercises";
-import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
+import { useSwaps } from "../../lib/exerciseSwaps";
+import { buildSessionExerciseList } from "../../lib/sessionExerciseList";
+import { nextSetNumber, setLogsFor, withSetLog } from "../../lib/setNumbering";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -71,16 +72,15 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
   });
 
   const swaps = useSwaps(workoutId);
-  const currentExercise = useMemo(() => {
-    if (!workout) return undefined;
-    return sortExercisesByPhase(applySwaps(workout.exercises, swaps))[exerciseIndex];
-  }, [workout, exerciseIndex, swaps]);
+  // Batch 3b: the same list Active Workout uses (it passes exerciseIndex into it).
+  const currentExercise = useMemo(
+    () => buildSessionExerciseList(workout, session, swaps)[exerciseIndex],
+    [workout, session, exerciseIndex, swaps],
+  );
 
   const exerciseSetLogs = useMemo(() => {
     if (!session || !currentExercise) return [];
-    return session.setLogs
-      .filter((s) => s.exerciseId === currentExercise.exercise.id)
-      .sort((a, b) => a.setNumber - b.setNumber);
+    return setLogsFor(session.setLogs, currentExercise.exercise.id);
   }, [session, currentExercise]);
 
   const [reps, setReps] = useState("");
@@ -88,6 +88,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
   const [rpe, setRpe] = useState<number | undefined>(undefined);
   const [isWarmup, setIsWarmup] = useState(false);
   const [isDropSet, setIsDropSet] = useState(false);
+  const [isFailure, setIsFailure] = useState(false);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timerKey, setTimerKey] = useState(0);
@@ -120,20 +121,24 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
     if (!reps) return;
     setIsSubmitting(true);
     try {
-      await logWorkoutSet(sessionId, {
+      const created = await logWorkoutSet(sessionId, {
         exerciseId: currentExercise.exercise.id,
-        setNumber: exerciseSetLogs.length + 1,
+        setNumber: nextSetNumber(exerciseSetLogs), // highest recorded + 1, shared with Active Workout (lib/setNumbering.ts)
         reps: parseInt(reps, 10),
         weightKg: weight ? displayToKg(parseFloat(weight), weightUnit) : undefined,
         rpe,
         isWarmup,
         isDropSet,
+        isFailure,
         note: note.trim() || undefined,
       });
+      // Into the shared session data right away, so the next number is right even if the refetch below fails.
+      queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
       await queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
       setRpe(undefined);
       setIsWarmup(false);
       setIsDropSet(false);
+      setIsFailure(false);
       setNote("");
       setTimerKey((k) => k + 1); // remounts RestTimer so it auto-restarts a fresh countdown
     } catch (err) {
@@ -144,7 +149,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
   };
 
   const lastSet = exerciseSetLogs.length > 0 ? exerciseSetLogs[exerciseSetLogs.length - 1] : undefined;
-  const currentSetNumber = exerciseSetLogs.length + 1;
+  const currentSetNumber = nextSetNumber(exerciseSetLogs);
   const totalSets = currentExercise.targetSets;
   const rpeColor = (n: number) => (n <= 4 ? colors.success : n <= 7 ? theme.accent : colors.danger);
   const rpeBg = (n: number) => (n <= 4 ? colors.successSoft : n <= 7 ? theme.accentSoft : colors.dangerSoft);
@@ -217,8 +222,10 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
 
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           {[
-            { label: "Warm-up Set", on: isWarmup, toggle: () => setIsWarmup((v) => !v) },
-            { label: "Drop Set / Failure", on: isDropSet, toggle: () => setIsDropSet((v) => !v) },
+            // Batch 3b: one type per set; turning one on turns the others off.
+            { label: "Warm-up Set", on: isWarmup, toggle: () => { setIsWarmup((v) => !v); setIsDropSet(false); setIsFailure(false); } },
+            { label: "Drop Set", on: isDropSet, toggle: () => { setIsDropSet((v) => !v); setIsWarmup(false); setIsFailure(false); } },
+            { label: "To Failure", on: isFailure, toggle: () => { setIsFailure((v) => !v); setIsWarmup(false); setIsDropSet(false); } },
           ].map((t) => (
             <Pressable
               key={t.label}
@@ -328,14 +335,14 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                   </Pressable>
                 </View>
               ))}
-              {exerciseSetLogs.some((s) => s.isWarmup || s.isDropSet || s.note) ? (
+              {exerciseSetLogs.some((s) => s.isWarmup || s.isDropSet || s.isFailure || s.note) ? (
                 <View style={{ marginTop: 6, gap: 2 }}>
                   {exerciseSetLogs
-                    .filter((s) => s.isWarmup || s.isDropSet || s.note)
+                    .filter((s) => s.isWarmup || s.isDropSet || s.isFailure || s.note)
                     .map((s) => (
                       <Text key={s.id} style={{ color: colors.textMuted, fontSize: 13 }}>
-                        Set {s.setNumber}: {[s.isWarmup ? "warm-up" : null, s.isDropSet ? "drop set" : null].filter(Boolean).join(", ")}
-                        {s.note ? `${s.isWarmup || s.isDropSet ? " · " : ""}“${s.note}”` : ""}
+                        Set {s.setNumber}: {[s.isWarmup ? "warm-up" : null, s.isDropSet ? "drop set" : null, s.isFailure ? "to failure" : null].filter(Boolean).join(", ")}
+                        {s.note ? `${s.isWarmup || s.isDropSet || s.isFailure ? " · " : ""}“${s.note}”` : ""}
                       </Text>
                     ))}
                 </View>

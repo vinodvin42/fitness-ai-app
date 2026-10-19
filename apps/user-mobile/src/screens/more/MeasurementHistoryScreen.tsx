@@ -11,10 +11,16 @@ import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { SkeletonCard } from "../../components/Skeleton";
-import { BodySilhouette, Callout } from "../../components/ProgressCharts";
+import { BodyMap, type BodyMapValue } from "../../components/BodyMap";
+import { MeasurementPartSheet } from "../../components/MeasurementPartSheet";
+import { HowToMeasureSheet } from "../../components/HowToMeasureSheet";
+import { SegmentedControl } from "../../components/SegmentedControl";
+import { fetchOnboardingProfile } from "../../api/users";
+import { BACK_SPOTS, FRONT_SPOTS, MEASUREMENT_PARTS, pickPart, type MeasurementPartKey } from "../../lib/measurementParts";
 import { fetchMeasurements } from "../../api/progress";
 import { useMeasureUnits } from "../../lib/measureUnits";
 import { FieldPick, fieldChange, pickArms, pickCalves, pickThighs, signed } from "../../lib/measurementFields";
+import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
@@ -39,8 +45,9 @@ const ROWS: RowDef[] = [
 ];
 
 /**
- * Body Measurements (Figma Progress 03): a silhouette with the latest value
- * called out per region, a "Measurements History" list (latest value + the
+ * Body Measurements (Figma Progress 03, and 06b measure-01/02/03/06): a
+ * front/back body map with the latest value and last change per part (tap a
+ * part for its history), a link to Compare dates, a "Measurements History" list (latest value + the
  * change versus the previous logged value of that region), and a Progress
  * Summary. Nothing is estimated: a region you have never measured shows "-"
  * on the figure and is left out of the list.
@@ -48,24 +55,37 @@ const ROWS: RowDef[] = [
 export function MeasurementHistoryScreen({ navigation }: Props) {
   const units = useMeasureUnits();
   const { width } = useWindowDimensions();
+  const { colors: theme } = useTheme();
   const [showEntries, setShowEntries] = useState(false);
+  const [view, setView] = useState<"front" | "back">("front");
+  const [openPart, setOpenPart] = useState<MeasurementPartKey | null>(null);
+  const [howTo, setHowTo] = useState<{ focus: MeasurementPartKey | null } | null>(null);
+  const { data: profile } = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["progress", "measurements"], queryFn: fetchMeasurements });
 
   const rows = data ?? [];
-  const figW = Math.min(Math.min(width, layout.maxContentWidth) - layout.screenPadding * 2 - spacing.md * 2, 230);
-  const L = (cm: number | undefined | null) => (cm == null ? null : `${units.len(cm)} ${units.lenUnit}`);
+  const mapW = Math.min(width, layout.maxContentWidth) - layout.screenPadding * 2 - spacing.sm * 2;
 
   const latestRow = rows.reduce<BodyMeasurement | null>((a, r) => (!a || r.loggedAt > a.loggedAt ? r : a), null);
-  const ch = (pick: FieldPick) => fieldChange(rows, pick).latest?.value;
-
-  const callouts: Callout[] = [
-    { side: "left", ax: 100, ay: 90, label: "Shoulders", value: L(ch((m) => m.shouldersCm)) },
-    { side: "right", ax: 192, ay: 118, label: "Chest", value: L(ch((m) => m.chestCm)) },
-    { side: "right", ax: 213, ay: 156, label: "Biceps", value: L(ch(pickArms)) },
-    { side: "left", ax: 118, ay: 194, label: "Waist", value: L(ch((m) => m.waistCm)) },
-    { side: "right", ax: 190, ay: 232, label: "Hips", value: L(ch((m) => m.hipsCm)) },
-    { side: "left", ax: 128, ay: 290, label: "Thighs", value: L(ch(pickThighs)) },
-  ];
+  const mapValues: Partial<Record<MeasurementPartKey, BodyMapValue>> = {};
+  for (const key of Object.keys(MEASUREMENT_PARTS) as MeasurementPartKey[]) {
+    const c = fieldChange(rows, pickPart(key));
+    if (!c.latest) continue;
+    const d = c.delta == null ? null : Math.round((units.len(c.latest.value) - units.len(c.previous!.value)) * 10) / 10;
+    mapValues[key] = {
+      value: `${units.len(c.latest.value)} ${units.lenUnit}`,
+      change: d == null ? null : d === 0 ? "—" : `${d < 0 ? "↓" : "↑"}${Math.abs(d).toFixed(1)}`,
+    };
+  }
+  // Opening one sheet from another: let the first close before the second slides up.
+  const showHowTo = (focus: MeasurementPartKey | null) => {
+    if (openPart === null) {
+      setHowTo({ focus });
+      return;
+    }
+    setOpenPart(null);
+    setTimeout(() => setHowTo({ focus }), 350);
+  };
 
   // Progress summary: waist + hips, first vs latest logged value of each.
   const waist = fieldChange(rows, (m) => m.waistCm);
@@ -106,9 +126,37 @@ export function MeasurementHistoryScreen({ navigation }: Props) {
         />
       ) : (
         <>
-          <Card style={{ alignItems: "center", paddingVertical: spacing.md }}>
-            <BodySilhouette width={figW} callouts={callouts} />
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
+            <View style={{ width: 160 }}>
+              <SegmentedControl
+                options={[
+                  { value: "front", label: "Front" },
+                  { value: "back", label: "Back" },
+                ]}
+                value={view}
+                onChange={setView}
+              />
+            </View>
+            {rows.length >= 2 ? (
+              <Pressable
+                onPress={() => navigation.navigate("MeasurementCompare")}
+                accessibilityRole="button"
+                accessibilityLabel="Compare two dates"
+                style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 7 }}
+              >
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Compare dates</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Card style={{ paddingVertical: spacing.md, paddingHorizontal: spacing.sm }}>
+            <BodyMap width={mapW} spots={view === "front" ? FRONT_SPOTS : BACK_SPOTS} values={mapValues} onSelect={setOpenPart} />
           </Card>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>
+            Tap a part to see its history.{" "}
+            <Text onPress={() => showHowTo(null)} accessibilityRole="link" style={{ color: theme.accentText, fontFamily: fonts.bodySemi }}>
+              How to measure
+            </Text>
+          </Text>
 
           <Text style={{ color: colors.textSecondary, ...typography.label }}>Measurements History</Text>
           <View style={{ gap: spacing.sm }}>
@@ -204,6 +252,14 @@ export function MeasurementHistoryScreen({ navigation }: Props) {
             : null}
         </>
       )}
+      <MeasurementPartSheet
+        part={openPart}
+        rows={rows}
+        heightCm={profile?.heightCm ?? null}
+        onHowTo={(k) => showHowTo(k)}
+        onClose={() => setOpenPart(null)}
+      />
+      <HowToMeasureSheet visible={howTo !== null} focus={howTo?.focus ?? null} onClose={() => setHowTo(null)} />
     </ScreenContainer>
   );
 }

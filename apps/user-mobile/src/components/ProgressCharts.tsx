@@ -128,22 +128,31 @@ const BODY = "#3a3a42";
  * callouts are drawn as dashed leader lines to a label + value; a callout
  * with `value: null` is rendered as "-" so a missing measurement is visible.
  */
+/** The figure itself, in the 300×380 space (shared with the Body Measurements map). */
+export function BodyShapes({ fill = BODY }: { fill?: string }) {
+  return (
+    <>
+      <Circle cx={150} cy={38} r={22} fill={fill} />
+      <Rect x={142} y={58} width={16} height={16} rx={4} fill={fill} />
+      <Path d="M98 82 Q150 70 202 82 L196 150 L184 196 L192 238 L108 238 L116 196 L104 150 Z" fill={fill} />
+      <Line x1={94} y1={96} x2={68} y2={172} stroke={fill} strokeWidth={22} strokeLinecap="round" />
+      <Line x1={68} y1={172} x2={60} y2={236} stroke={fill} strokeWidth={18} strokeLinecap="round" />
+      <Line x1={206} y1={96} x2={232} y2={172} stroke={fill} strokeWidth={22} strokeLinecap="round" />
+      <Line x1={232} y1={172} x2={240} y2={236} stroke={fill} strokeWidth={18} strokeLinecap="round" />
+      <Line x1={130} y1={246} x2={126} y2={320} stroke={fill} strokeWidth={34} strokeLinecap="round" />
+      <Line x1={126} y1={320} x2={124} y2={366} stroke={fill} strokeWidth={24} strokeLinecap="round" />
+      <Line x1={170} y1={246} x2={174} y2={320} stroke={fill} strokeWidth={34} strokeLinecap="round" />
+      <Line x1={174} y1={320} x2={176} y2={366} stroke={fill} strokeWidth={24} strokeLinecap="round" />
+    </>
+  );
+}
+
 export function BodySilhouette({ width: rawWidth, callouts = [] }: { width: number; callouts?: Callout[] }) {
   const width = Math.max(rawWidth, 40);
   const h = (width * 380) / 300;
   return (
     <Svg width={width} height={h} viewBox="0 0 300 380">
-      <Circle cx={150} cy={38} r={22} fill={BODY} />
-      <Rect x={142} y={58} width={16} height={16} rx={4} fill={BODY} />
-      <Path d="M98 82 Q150 70 202 82 L196 150 L184 196 L192 238 L108 238 L116 196 L104 150 Z" fill={BODY} />
-      <Line x1={94} y1={96} x2={68} y2={172} stroke={BODY} strokeWidth={22} strokeLinecap="round" />
-      <Line x1={68} y1={172} x2={60} y2={236} stroke={BODY} strokeWidth={18} strokeLinecap="round" />
-      <Line x1={206} y1={96} x2={232} y2={172} stroke={BODY} strokeWidth={22} strokeLinecap="round" />
-      <Line x1={232} y1={172} x2={240} y2={236} stroke={BODY} strokeWidth={18} strokeLinecap="round" />
-      <Line x1={130} y1={246} x2={126} y2={320} stroke={BODY} strokeWidth={34} strokeLinecap="round" />
-      <Line x1={126} y1={320} x2={124} y2={366} stroke={BODY} strokeWidth={24} strokeLinecap="round" />
-      <Line x1={170} y1={246} x2={174} y2={320} stroke={BODY} strokeWidth={34} strokeLinecap="round" />
-      <Line x1={174} y1={320} x2={176} y2={366} stroke={BODY} strokeWidth={24} strokeLinecap="round" />
+      <BodyShapes />
       {callouts.map((c, i) => {
         const tx = c.side === "left" ? 6 : 294;
         const anchor = c.side === "left" ? "start" : "end";

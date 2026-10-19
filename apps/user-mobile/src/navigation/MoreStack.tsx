@@ -1,7 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { NavigatorScreenParams } from "@react-navigation/native";
-import type { BookingConfirmation, ConsentType, HelpArticleCategory, Medication, ProfessionalServiceType, Reminder, SupportTicketCategory, TimelineEvent } from "@fitness-ai-app/types";
+import type { ArticleTopic, BookingConfirmation, ConsentType, HelpArticleCategory, Medication, ProfessionalServiceType, Reminder, SupportTicketCategory, TimelineEvent } from "@fitness-ai-app/types";
 import { MoreScreen } from "../screens/more/MoreScreen";
 import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
@@ -19,6 +19,7 @@ import { TimelineReportScreen } from "../screens/timeline/TimelineReportScreen";
 import { RemindersScreen } from "../screens/more/RemindersScreen";
 import { ReminderFormScreen } from "../screens/more/ReminderFormScreen";
 import { SettingsHubScreen } from "../screens/more/SettingsHubScreen";
+import { SuggestionsSettingsScreen } from "../screens/more/SuggestionsSettingsScreen";
 import { LanguageSelectionScreen } from "../screens/more/LanguageSelectionScreen";
 import { NotificationSettingsScreen } from "../screens/more/NotificationSettingsScreen";
 import { SecurityScreen } from "../screens/more/SecurityScreen";
@@ -31,6 +32,8 @@ import { NotificationPermissionScreen } from "../screens/more/NotificationPermis
 import { DownloadDataScreen } from "../screens/more/DownloadDataScreen";
 import { HelpArticleListScreen } from "../screens/more/HelpArticleListScreen";
 import { HelpArticleScreen } from "../screens/more/HelpArticleScreen";
+import { LearnScreen } from "../screens/more/LearnScreen";
+import { LearnArticleScreen } from "../screens/more/LearnArticleScreen";
 import { ReferralScreen } from "../screens/more/ReferralScreen";
 import { ProfessionalRelationshipScreen } from "../screens/coaching/ProfessionalRelationshipScreen";
 import { RequestGuidanceScreen } from "../screens/coaching/RequestGuidanceScreen";
@@ -151,6 +154,8 @@ export type MoreStackParamList = {
   Reminders: undefined;
   ReminderForm: { reminder?: Reminder };
   SettingsHub: undefined;
+  // Figma 02b settings/suggestions (Oct 2026): when the Today daily review appears.
+  SuggestionsSettings: undefined;
   LanguageSelection: undefined;
   NotificationSettings: undefined;
   // Settings 14 / 16 / 13 (row 2).
@@ -158,6 +163,9 @@ export type MoreStackParamList = {
   DownloadData: undefined;
   HelpArticleList: { category: HelpArticleCategory; title: string };
   HelpArticle: { slug: string };
+  // 05.04 Educational Content (Oct 2026): the Learn library.
+  Learn: { topic?: ArticleTopic } | undefined;
+  LearnArticle: { slug: string };
   Security: { focus?: "delete" } | undefined;
   // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
   // PrivacySettingsScreen.tsx's own doc comment.
@@ -217,12 +225,15 @@ export function MoreStack() {
       <Stack.Screen name="Reminders" component={RemindersScreen} />
       <Stack.Screen name="ReminderForm" component={ReminderFormScreen} />
       <Stack.Screen name="SettingsHub" component={SettingsHubScreen} />
+      <Stack.Screen name="SuggestionsSettings" component={SuggestionsSettingsScreen} />
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="NotificationPermission" component={NotificationPermissionScreen} />
       <Stack.Screen name="DownloadData" component={DownloadDataScreen} />
       <Stack.Screen name="HelpArticleList" component={HelpArticleListScreen} />
       <Stack.Screen name="HelpArticle" component={HelpArticleScreen} />
+      <Stack.Screen name="Learn" component={LearnScreen} />
+      <Stack.Screen name="LearnArticle" component={LearnArticleScreen} />
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="ConsentWithdrawn" component={ConsentWithdrawnScreen} />

@@ -81,7 +81,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
 
   // Keep on-device notifications in step with the reminder switches (same rule as the Reminders list).
   const reminders = remindersQ.data;
-  useReminderSync(reminders, () => navigation.getParent()?.navigate("More", { screen: "NotificationPermission" }));
+  useReminderSync(reminders, () => navigation.getParent()?.navigate("More", { screen: "NotificationPermission", initial: false }));
 
   const toggle = useMutation({
     mutationFn: async ({ item, on }: { item: AgendaItem; on: boolean }) => {
@@ -113,10 +113,10 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
   );
   const historyCount = doneDoses.length + doneWorkouts.length;
 
-  const addReminder = () => tabs.navigate("More", { screen: "ReminderForm", params: {} });
+  const addReminder = () => tabs.navigate("More", { screen: "ReminderForm", params: {}, initial: false });
   const openItem = (item: AgendaItem) => {
-    if (item.kind === "reminder" && item.reminder) tabs.navigate("More", { screen: "ReminderForm", params: { reminder: item.reminder } });
-    else if (item.kind === "medication") tabs.navigate("More", { screen: "MedicineDue" });
+    if (item.kind === "reminder" && item.reminder) tabs.navigate("More", { screen: "ReminderForm", params: { reminder: item.reminder }, initial: false });
+    else if (item.kind === "medication") tabs.navigate("More", { screen: "MedicineDue", initial: false });
     else if (item.kind === "routine") navigation.navigate("Routines");
   };
 

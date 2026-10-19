@@ -1,6 +1,9 @@
 import React from "react";
+import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { TodayStack } from "./TodayStack";
 import type { TodayStackParamList } from "./TodayStack";
@@ -13,7 +16,8 @@ import type { RecoverStackParamList } from "./RecoverStack";
 import { MoreStack } from "./MoreStack";
 import type { MoreStackParamList } from "./MoreStack";
 import { Icon } from "../components/Icon";
-import { TAB_ICONS, TAB_LABEL_KEYS } from "./tabConfig";
+import { FOCUSED_TASK_ROUTES, TAB_ICONS, TAB_LABEL_KEYS } from "./tabConfig";
+import { TAB_BAR_CONTENT_HEIGHT, tabBarBottomPadding } from "./tabBarMetrics";
 import { colors, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -58,6 +62,8 @@ const Tab = createBottomTabNavigator<MainTabsParamList>();
 export function MainTabs() {
   const { t } = useTranslation();
   const { colors: theme } = useTheme();
+  // The bar grows by the bottom safe area (home indicator, gesture bar); without one it stays 70 / 10 as before.
+  const tabBarBottom = tabBarBottomPadding(useSafeAreaInsets().bottom, Platform.OS);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -68,13 +74,15 @@ export function MainTabs() {
         // taller so a 13px label still clears the bottom edge under its icon.
         tabBarLabelStyle: { ...typography.tabLabel, marginTop: -2 },
         tabBarItemStyle: { paddingTop: 8 },
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 70,
-          paddingBottom: 10,
-        },
+        tabBarStyle: FOCUSED_TASK_ROUTES.has(getFocusedRouteNameFromRoute(route) ?? "")
+          ? { display: "none" }
+          : {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
+              borderTopWidth: 1,
+              height: TAB_BAR_CONTENT_HEIGHT + tabBarBottom,
+              paddingBottom: tabBarBottom,
+            },
         tabBarIcon: ({ color, focused }) => (
           <Icon name={TAB_ICONS[route.name]} color={color} size={22} strokeWidth={focused ? 2.4 : 2} />
         ),

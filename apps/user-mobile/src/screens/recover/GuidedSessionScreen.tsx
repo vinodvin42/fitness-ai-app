@@ -127,7 +127,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
 
   if (!routine) {
     return (
-      <RecoverShell title="Session" onBack={() => navigation.goBack()}>
+      <RecoverShell edges={["top", "bottom"]} title="Session" onBack={() => navigation.goBack()}>
         <EmptyState title="Routine not found" actionLabel="Back to library" onAction={() => navigation.navigate("YogaLibrary")} />
       </RecoverShell>
     );
@@ -149,7 +149,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
 
   if (run.done) {
     return (
-      <RecoverShell title="Session complete" onBack={() => navigation.navigate("YogaLibrary")}>
+      <RecoverShell edges={["top", "bottom"]} title="Session complete" onBack={() => navigation.navigate("YogaLibrary")}>
         <Card style={{ alignItems: "center", gap: spacing.sm }}>
           <View
             style={{
@@ -226,7 +226,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
 
   if (mindful) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
         <ScrollView
           contentContainerStyle={{
             width: "100%",
@@ -286,6 +286,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
 
   return (
     <RecoverShell
+      edges={["top", "bottom"]}
       title={routine.title}
       subtitle={`Guided session · ${routine.kind === "mobility" ? "Step" : "Pose"} ${run.step + 1} of ${steps.length}`}
       onBack={() => setConfirmEnd(true)}

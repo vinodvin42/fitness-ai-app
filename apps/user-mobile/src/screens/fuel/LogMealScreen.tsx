@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { LogMealInput, MealType, RecentFood, SavedMeal } from "@fitness-ai-app/types";
@@ -20,8 +19,11 @@ import {
   logMeal,
 } from "../../api/nutrition";
 import { fetchRecipes } from "../../api/programs";
+import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
+import { clearOwnedDraft, draftOwner, readOwnedDraft, writeOwnedDraft } from "../../lib/ownedDrafts";
+import { exitTaskToHome } from "../../navigation/taskExits";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
@@ -30,7 +32,6 @@ type Props = NativeStackScreenProps<FuelStackParamList, "LogMeal">;
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 const MEAL_LABELS: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
-const DRAFT_KEY = "logMeal.draft.v1";
 // A retry that finds an identical meal logged this recently after the failed attempt treats the save as having gone through.
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
@@ -44,6 +45,10 @@ interface MealDraft {
   /** ISO time of the first (failed) save attempt — shown as "Today, 1:30 PM" and used for the duplicate check. */
   attemptedAt?: string;
 }
+
+/** The draft's field values, to tell whether what is on screen is exactly what was saved on the device. */
+const draftSnapshot = (d: Omit<MealDraft, "attemptedAt">) =>
+  JSON.stringify([d.mealType, d.name, d.calories, d.protein, d.carbs, d.fat]);
 
 /** Quick-log calories: 4 kcal/g protein and carbs, 9 kcal/g fat. */
 export function caloriesFromMacros(proteinG: number, carbsG: number, fatG: number): number {
@@ -76,6 +81,8 @@ export function LogMealScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { colors: theme } = useTheme();
+  const { user } = useAuth();
+  const userId = user?.id;
   const [mealType, setMealType] = useState<MealType>(route.params?.mealType ?? defaultMealType());
   const [query, setQuery] = useState("");
   const [isEstimating, setIsEstimating] = useState(false);
@@ -91,18 +98,24 @@ export function LogMealScreen({ route, navigation }: Props) {
   // Fuel 08 — set when POST /meal-logs fails; the form below IS the draft, so nothing is cleared.
   const [saveFailed, setSaveFailed] = useState(false);
   const [attemptedAt, setAttemptedAt] = useState<string | null>(null);
+  // Snapshot of the draft confirmed written to (or restored from) this device; null when none is confirmed.
+  const [persistedSnapshot, setPersistedSnapshot] = useState<string | null>(null);
+  // Ignores a late local-save result from an earlier attempt.
+  const draftSaveSeq = useRef(0);
+  // "Saved on this device" is claimed only while the form still equals that confirmed snapshot.
+  const draftOnDevice =
+    persistedSnapshot !== null && persistedSnapshot === draftSnapshot({ mealType, name, calories, protein, carbs, fat });
 
   const recentQuery = useQuery({ queryKey: ["recentFoods"], queryFn: () => fetchRecentFoods(6) });
   const savedQuery = useQuery({ queryKey: ["savedMeals"], queryFn: fetchSavedMeals });
   const recipesQuery = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes, enabled: query.trim().length > 0 });
 
-  // Restore a draft that survived a failed save (kept on-device in AsyncStorage).
+  // Restore a draft that survived a failed save (kept on-device, per account: lib/ownedDrafts.ts).
   useEffect(() => {
-    if (route.params?.barcodePrefill) return;
-    AsyncStorage.getItem(DRAFT_KEY)
-      .then((raw) => {
-        if (!raw) return;
-        const d = JSON.parse(raw) as MealDraft;
+    if (route.params?.barcodePrefill || !userId) return;
+    readOwnedDraft<MealDraft>("meal", draftOwner(userId))
+      .then((d) => {
+        if (!d) return;
         setMealType(d.mealType);
         setName(d.name);
         setCalories(d.calories);
@@ -111,10 +124,11 @@ export function LogMealScreen({ route, navigation }: Props) {
         setFat(d.fat);
         setAttemptedAt(d.attemptedAt ?? null);
         setShowDetails(true);
+        setPersistedSnapshot(draftSnapshot(d));
         setSaveFailed(true);
       })
       .catch(() => undefined);
-  }, []);
+  }, [userId]);
 
   const barcodePrefill = route.params?.barcodePrefill;
   useEffect(() => {
@@ -213,6 +227,8 @@ export function LogMealScreen({ route, navigation }: Props) {
     if (!canSubmit) return;
     setIsSubmitting(true);
     const input = buildInput();
+    // Captured before the request: a late result is saved only for this user (lib/ownedDrafts.ts).
+    const owner = userId ? draftOwner(userId) : null;
     const startedAt = isRetry && attemptedAt ? attemptedAt : new Date().toISOString();
     try {
       let alreadySaved = false;
@@ -246,17 +262,27 @@ export function LogMealScreen({ route, navigation }: Props) {
           .catch(() => undefined);
       }
       await refreshAfterLog();
-      AsyncStorage.removeItem(DRAFT_KEY).catch(() => undefined);
+      if (owner) clearOwnedDraft("meal", owner).catch(() => undefined);
+      draftSaveSeq.current++;
+      setPersistedSnapshot(null);
       setSaveFailed(false);
       setAttemptedAt(null);
       clearForm();
-      navigation.navigate("FuelDashboard");
+      exitTaskToHome(navigation, "FuelDashboard");
     } catch {
       // Keep every field as typed and persist it on-device so leaving the screen doesn't lose it.
       setSaveFailed(true);
       setAttemptedAt(startedAt);
       const draft: MealDraft = { mealType, name, calories, protein, carbs, fat, attemptedAt: startedAt };
-      AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft)).catch(() => undefined);
+      // The form keeps every field in memory either way; the on-device copy is claimed only once confirmed.
+      const seq = ++draftSaveSeq.current;
+      setPersistedSnapshot(null);
+      if (owner)
+        writeOwnedDraft("meal", owner, draft)
+          .then((saved) => {
+            if (seq === draftSaveSeq.current) setPersistedSnapshot(saved ? draftSnapshot(draft) : null);
+          })
+          .catch(() => undefined);
     } finally {
       setIsSubmitting(false);
     }
@@ -314,6 +340,7 @@ export function LogMealScreen({ route, navigation }: Props) {
     const f = toInt(fat);
     return (
       <ScreenContainer
+        edges={["top", "bottom"]}
         title="Log Meal"
         subtitle={`${MEAL_LABELS[mealType]} · Today, ${formatTimeOfDay(when)}`}
         right={backChip}
@@ -329,7 +356,11 @@ export function LogMealScreen({ route, navigation }: Props) {
           <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
             We couldn't confirm the save. This meal hasn't been added to your diary or daily totals.
           </Text>
-          <Text style={{ color: colors.textPrimary, ...typography.label }}>Your draft is safe on this device.</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.label }}>
+            {draftOnDevice
+              ? "Your draft is saved on this device."
+              : "Your entries are kept on this screen for now. They may be lost if you leave this screen or close the app."}
+          </Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta }}>Check your connection, then try again.</Text>
         </View>
 
@@ -381,9 +412,12 @@ export function LogMealScreen({ route, navigation }: Props) {
           <Text style={{ color: theme.textOnAccent, ...typography.h3 }}>{isSubmitting ? "Retrying…" : "Retry saving meal"}</Text>
         </Pressable>
         <Button label="Edit draft" variant="secondary" onPress={() => setSaveFailed(false)} />
-        <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
-          You can leave this screen. Your draft stays on this device.
-        </Text>
+        {/* Same rule as the card line above: reassure about leaving only while the on-device copy is confirmed. */}
+        {draftOnDevice ? (
+          <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+            You can leave this screen. Your draft stays on this device.
+          </Text>
+        ) : null}
       </ScreenContainer>
     );
   }
@@ -475,7 +509,7 @@ export function LogMealScreen({ route, navigation }: Props) {
   const recent = recentQuery.data ?? [];
 
   return (
-    <ScreenContainer title="Log Food" subtitle="Select meal to log" right={backChip}>
+    <ScreenContainer edges={["top", "bottom"]} title="Log Food" subtitle="Select meal to log" right={backChip}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
         {MEAL_TYPES.map((mt) => (
           <Chip key={mt} label={MEAL_LABELS[mt]} selected={mealType === mt} onPress={() => setMealType(mt)} />
@@ -552,7 +586,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           <TakeRow
             icon="camera"
             title="Take Photo"
-            subtitle="Snap a meal to log it instantly"
+            subtitle="Snap a meal, check the estimate, then log it"
             onPress={() => navigation.navigate("SnapMeal", { mealType })}
           />
 

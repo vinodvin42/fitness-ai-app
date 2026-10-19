@@ -24,3 +24,30 @@ export const TAB_LABEL_KEYS: Record<TabRoute, string> = {
   Recover: "nav.recover",
   More: "nav.more",
 };
+
+/**
+ * Focused tasks (Oct 2026): these stack routes open without the tab bar,
+ * so a workout, guided player, checkout or meal entry is finished or left
+ * on purpose rather than by an accidental tab tap. Names are the existing
+ * route ids in each tab's stack; screens without a tab bar must pad their
+ * own bottom safe area.
+ */
+export const FOCUSED_TASK_ROUTES: ReadonlySet<string> = new Set([
+  // Train
+  "ActiveWorkout",
+  "SetRestTracker",
+  "ExerciseSwap",
+  "WorkoutComplete",
+  // Recover
+  "GuidedSession",
+  "GuidedBreathing",
+  // More
+  "Checkout",
+  "PaymentResult",
+  // Fuel
+  "LogMeal",
+  "ConfirmFoodEstimate",
+  "BarcodeScanner",
+  "SnapMeal",
+  "RecipeCookMode",
+]);

@@ -1,7 +1,11 @@
 import type {
+  AddSessionExerciseInput,
   DeleteResult,
   ExerciseSetLog,
   LogSetInput,
+  SessionExercisesResponse,
+  SessionFeel,
+  UpdateSessionExerciseInput,
   UpdateSetInput,
   WorkoutCompletionSummary,
   WorkoutHistoryEntry,
@@ -55,4 +59,28 @@ export function updateWorkoutSet(sessionId: string, setId: string, input: Update
 
 export function deleteWorkoutSet(sessionId: string, setId: string) {
   return apiClient.delete<DeleteResult>(`/workout-sessions/${sessionId}/sets/${setId}`).then((r) => r.data);
+}
+
+// ---- Batch 3b (18 Oct 2026): the session's own exercise list and "How did it feel?" ----
+
+/** "+ Add exercise" — appended to the session's list. */
+export function addSessionExercise(sessionId: string, input: AddSessionExerciseInput) {
+  return apiClient.post<SessionExercisesResponse>(`/workout-sessions/${sessionId}/exercises`, input).then((r) => r.data.exercises);
+}
+
+/** Swap (before any set), superset letter, targets or position. */
+export function updateSessionExercise(sessionId: string, sessionExerciseId: string, input: UpdateSessionExerciseInput) {
+  return apiClient
+    .patch<SessionExercisesResponse>(`/workout-sessions/${sessionId}/exercises/${sessionExerciseId}`, input)
+    .then((r) => r.data.exercises);
+}
+
+/** Only before any of that exercise's sets are logged (409 exercise_has_sets otherwise). */
+export function removeSessionExercise(sessionId: string, sessionExerciseId: string) {
+  return apiClient.delete<SessionExercisesResponse>(`/workout-sessions/${sessionId}/exercises/${sessionExerciseId}`).then((r) => r.data.exercises);
+}
+
+/** Completed sessions only; null clears it. */
+export function setSessionFeel(sessionId: string, feel: SessionFeel | null) {
+  return apiClient.patch<{ id: string; feel: SessionFeel | null }>(`/workout-sessions/${sessionId}/feel`, { feel }).then((r) => r.data);
 }

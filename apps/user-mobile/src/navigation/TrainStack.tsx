@@ -60,7 +60,8 @@ export type TrainStackParamList = {
   ExerciseDetail: { exerciseId: string };
   WorkoutHistory: undefined;
   // Train 09 - client-side swap of one WorkoutExercise (see lib/exerciseSwaps.ts).
-  ExerciseSwap: { workoutId: string; workoutExerciseId: string; exerciseId: string };
+  // Batch 3b: with sessionId + sessionExerciseId the swap is saved on the session's own list.
+  ExerciseSwap: { workoutId: string; workoutExerciseId: string; exerciseId: string; sessionId?: string; sessionExerciseId?: string };
   // Wave B (Oct 2026): Train 12-16, 18 + set edit/delete.
   TrainingAnalytics: undefined;
   Routines: undefined;

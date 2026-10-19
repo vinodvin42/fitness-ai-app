@@ -77,7 +77,7 @@ export function TimelineReportScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Journey Report" eyebrow={BRAND_NAME} subtitle="Longitudinal Health Legacy Analysis">
+    <ScreenContainer title="Journey Report" eyebrow={BRAND_NAME} subtitle="Your progress over time">
       <BackButton onPress={() => navigation.goBack()} />
       {isError ? (
         <ErrorState onRetry={() => refetch()} />

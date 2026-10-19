@@ -258,7 +258,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
           </Card>
 
           <Pressable
-            onPress={() => tabs.navigate("Recover", { screen: "ConnectedDevices" })}
+            onPress={() => tabs.navigate("Recover", { screen: "ConnectedDevices", initial: false })}
             accessibilityRole="button"
             accessibilityLabel="Wearable heart rate zones: connect a wearable"
           >

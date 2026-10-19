@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState,
 import { AppState } from "react-native";
 import type { DeleteAccountInput, LoginInput, SignupInput, UpdateProfileInput, User } from "@fitness-ai-app/types";
 import { clearPersistedCache } from "../lib/queryClient";
+import { clearDraftsForSignOutWithin, initDrafts, setActiveDraftUser } from "../lib/ownedDrafts";
 import { registerForPushNotifications, unregisterPushNotifications } from "../lib/pushRegistration";
 import { clearTokens, getStoredTokens, storeTokens } from "../api/client";
 import { fetchMe, loginRequest, logoutRequest, signupRequest, verifyTwoFactorLoginRequest } from "../api/auth";
@@ -124,6 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isBiometricHardwareReady(),
         getBiometricLockEnabled(),
         getBiometricLockIdleTimeoutMinutes(),
+        // Before any user is set: retry interrupted draft cleanups, delete legacy ownerless drafts. Never throws.
+        initDrafts(),
       ]);
       setIsBiometricHardwareReadyState(hwReady);
       setIsBiometricLockEnabledState(lockEnabled);
@@ -150,6 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Register this device for push once a fully-onboarded user is signed in.
   // Never throws and never blocks anything — see lib/pushRegistration.ts.
   const signedInUserId = user?.id;
+  // Local drafts are only ever returned to the signed-in user (lib/ownedDrafts.ts).
+  useEffect(() => {
+    setActiveDraftUser(signedInUserId ?? null);
+  }, [signedInUserId]);
   useEffect(() => {
     if (!signedInUserId || !onboardingCompleted) return;
     registerForPushNotifications().catch(() => undefined);
@@ -224,6 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // Explicit sign-out clears this user's local drafts first, so the cleanup marker is saved before the
+    // tokens go. Never throws. This step waits at most SIGN_OUT_CLEANUP_WAIT_MS, then logout moves on; only this
+    // step is bounded (push unregister, server revoke, token and cache clearing below are not: session-handling
+    // batch). A failed or unfinished cleanup is retried at the next start-up; the drafts are unreadable from the
+    // moment it is requested.
+    if (user?.id) await clearDraftsForSignOutWithin(user.id);
     // Best-effort, and BEFORE tokens are cleared (the DELETE is authenticated).
     await unregisterPushNotifications().catch(() => undefined);
     const { refreshToken } = await getStoredTokens();
@@ -260,6 +273,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async (input: DeleteAccountInput) => {
     await deleteAccountRequest(input);
+    // Only after the server confirmed the deletion. signOutLocally (also used after an ordinary password
+    // change) keeps drafts owner-only, so this is the one place deletion clears them.
+    if (user?.id) await clearDraftsForSignOutWithin(user.id);
     await signOutLocally();
   };
 

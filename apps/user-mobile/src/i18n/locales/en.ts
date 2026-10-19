@@ -229,10 +229,30 @@ export const en = {
         awaiting_payment: "Awaiting payment",
         activating: "Starting your coaching…",
         active: "Active",
+        // States off the main path (Figma Professional 05b/06/12). GET
+        // /coaching/relationships/status can return any non-ended status.
+        offered: "A coach has been suggested — waiting for their reply",
+        declined: "The coach couldn't take this on",
+        expired: "This request expired",
+        activation_failed: "Coaching didn't start",
+        changing: "Changing coach",
+        completed: "Completed",
       },
       requestedNote:
         "Nothing's wrong — the coach hasn't reviewed your request yet. You'll be able to continue as soon as they accept.",
       notActiveNote: "Your coaching hasn't started yet — it starts once this reaches Active.",
+      offeredNote: "Nothing to do yet. You'll be able to continue once the coach accepts.",
+      declinedNote: "You can ask for another coach.",
+      expiredNote: "It wasn't completed in time. You can ask again.",
+      activationFailedNote: "Something went wrong starting your coaching after payment. Contact support and we'll sort it out.",
+      changingNote: "Your change of coach is being arranged.",
+      completedNote: "This coaching has finished.",
+      stuckStatus: "Taking longer than usual",
+      stuckNote: "Your coaching hasn't started yet. If it doesn't start soon, contact support and we'll sort it out.",
+      paymentId: "Payment ID: {{id}}",
+      earlier: "Earlier",
+      askAgain: "Ask for a coach",
+      contactSupport: "Contact support",
       continueToPayment: "Continue to payment",
     },
     change: {
@@ -297,6 +317,7 @@ export const en = {
       billing: "Billing",
       account: "Account",
       other: "Other",
+      complaint: "Complaint",
     },
   },
 

@@ -89,7 +89,7 @@ export function reportHtml(r: JourneyReport): string {
   .muted,.disc{color:#71717a;font-size:11px}
 </style></head><body>
 <h1>${esc(BRAND_NAME)} Journey Report</h1>
-<div class="sub">Longitudinal Health Legacy Analysis<br>Generated ${esc(fmtDate(r.generatedAt))} · Period: ${esc(fmtDate(r.periodStart))} - ${esc(fmtDate(r.periodEnd))}</div>
+<div class="sub">Your progress over time<br>Generated ${esc(fmtDate(r.generatedAt))} · Period: ${esc(fmtDate(r.periodStart))} - ${esc(fmtDate(r.periodEnd))}</div>
 <div class="summary">${esc(r.summaryTitle)}</div>
 ${sections}
 <p class="disc">Measured = entered by you or synced from a device. Estimated = derived from your logs.</p>

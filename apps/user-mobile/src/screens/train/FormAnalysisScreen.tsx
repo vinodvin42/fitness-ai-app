@@ -229,7 +229,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
             I agree to video processing for form feedback. I will review the clip before submitting it.
           </Text>
         </Pressable>
-        <Pressable onPress={() => tabs.navigate("More", { screen: "PrivacySettings" })} accessibilityRole="link" hitSlop={8}>
+        <Pressable onPress={() => tabs.navigate("More", { screen: "PrivacySettings", initial: false })} accessibilityRole="link" hitSlop={8}>
           <Text style={{ color: theme.accentText, ...typography.meta }}>Review video processing and retention details</Text>
         </Pressable>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>

@@ -4,6 +4,7 @@ import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
+import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
@@ -58,14 +59,16 @@ export function CheckoutScreen({ route, navigation }: Props) {
 
   if (quote.isLoading) {
     return (
-      <ScreenContainer title={t("checkout.title")}>
+      <ScreenContainer edges={["top", "bottom"]} title={t("checkout.title")}>
+        <BackButton onPress={() => navigation.goBack()} />
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (quote.isError || !quote.data) {
     return (
-      <ScreenContainer title={t("checkout.title")}>
+      <ScreenContainer edges={["top", "bottom"]} title={t("checkout.title")}>
+        <BackButton onPress={() => navigation.goBack()} />
         <ErrorState onRetry={quote.refetch} />
       </ScreenContainer>
     );
@@ -80,7 +83,9 @@ export function CheckoutScreen({ route, navigation }: Props) {
   const busy = purchase.isPurchasing;
 
   return (
-    <ScreenContainer title={t("checkout.title")} subtitle={q.itemName}>
+    <ScreenContainer edges={["top", "bottom"]} title={t("checkout.title")} subtitle={q.itemName}>
+      {/* Hidden only while an order is being created or a payment verified (`busy`, reset in finally). */}
+      {busy ? null : <BackButton onPress={() => navigation.goBack()} />}
       <Card>
         <Row label={q.itemName} value={money(q.listPriceCents)} />
         {q.discountCents > 0 ? (

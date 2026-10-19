@@ -34,6 +34,22 @@ function serviceLabelKey(serviceType: string) {
 // same as "no relationship" looked before this screen existed).
 const STEPS: RelationshipStatus[] = ["requested", "accepted", "awaiting_payment", "activating", "active"];
 
+// Oct 2026 (Figma Professional 05b/06/12): the status endpoint returns every
+// non-ended status, so each one gets real copy. Finished outcomes (the API
+// keeps them for 30 days; a coach's decline is `declined`) are listed under
+// "Earlier"; the rest stay with the in-flight request. `stuck` activating rows
+// and `activation_failed` rows show the payment ID and open a billing ticket.
+const PAST: ReadonlySet<RelationshipStatus> = new Set(["declined", "expired", "completed"]);
+const NOTE_KEY: Partial<Record<RelationshipStatus, string>> = {
+  requested: "coaching.relationship.requestedNote",
+  offered: "coaching.relationship.offeredNote",
+  declined: "coaching.relationship.declinedNote",
+  expired: "coaching.relationship.expiredNote",
+  activation_failed: "coaching.relationship.activationFailedNote",
+  changing: "coaching.relationship.changingNote",
+  completed: "coaching.relationship.completedNote",
+};
+
 function statusPresentation(status: RelationshipStatus): { color: string; icon: IconName } {
   switch (status) {
     case "requested":
@@ -44,6 +60,18 @@ function statusPresentation(status: RelationshipStatus): { color: string; icon: 
       return { color: colors.warningText, icon: "clock" };
     case "activating":
       return { color: colors.warningText, icon: "refresh-cw" };
+    case "offered":
+      return { color: colors.aiText, icon: "sparkles" };
+    case "changing":
+      return { color: colors.warningText, icon: "swap" };
+    case "activation_failed":
+      return { color: colors.dangerText, icon: "alert-triangle" };
+    case "declined":
+      return { color: colors.textSecondary, icon: "circle-x" };
+    case "expired":
+      return { color: colors.textSecondary, icon: "clock" };
+    case "completed":
+      return { color: colors.successText, icon: "check-check" };
     case "active":
     default:
       return { color: colors.successText, icon: "check" };
@@ -104,7 +132,8 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
   const findCoach = () =>
     COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance");
 
-  const inFlight = data.relationships.filter((r) => r.status !== "active");
+  const inFlight = data.relationships.filter((r) => r.status !== "active" && !PAST.has(r.status));
+  const past = data.relationships.filter((r) => PAST.has(r.status));
   const active = data.relationships.filter((r) => r.status === "active");
 
   return (
@@ -133,6 +162,24 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                       ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })
                       : undefined
                   }
+                  onContactSupport={
+                    r.status === "activation_failed" || r.stuck
+                      ? () => navigation.navigate("SupportTicketForm", { category: "billing" })
+                      : undefined
+                  }
+                />
+              ))}
+            </View>
+          ) : null}
+
+          {past.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("coaching.relationship.earlier")}</Text>
+              {past.map((r) => (
+                <RelationshipStatusCard
+                  key={r.relationshipId}
+                  item={r}
+                  onAskAgain={r.status === "declined" || r.status === "expired" ? findCoach : undefined}
                 />
               ))}
             </View>
@@ -180,12 +227,17 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
 function RelationshipStatusCard({
   item,
   onContinuePayment,
+  onAskAgain,
+  onContactSupport,
 }: {
   item: RelationshipStatusItem;
   onContinuePayment?: () => void;
+  onAskAgain?: () => void;
+  onContactSupport?: () => void;
 }) {
   const { t } = useTranslation();
-  const presentation = statusPresentation(item.status);
+  // A stuck `activating` row reads like a failure (the API flags it after 15 minutes).
+  const presentation = item.stuck ? statusPresentation("activation_failed") : statusPresentation(item.status);
   const currentIndex = STEPS.indexOf(item.status);
 
   return (
@@ -193,31 +245,43 @@ function RelationshipStatusCard({
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
         <Icon name={presentation.icon} size={18} color={presentation.color} />
         <Text style={{ color: presentation.color, ...typography.label }}>
-          {t(`coaching.relationship.status.${item.status}`)}
+          {item.stuck ? t("coaching.relationship.stuckStatus") : t(`coaching.relationship.status.${item.status}`)}
         </Text>
       </View>
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{item.professionalFullName}</Text>
       <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{t(serviceLabelKey(item.serviceType))}</Text>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.md }}>
-        {STEPS.map((step, i) => (
-          <Pill
-            key={step}
-            label={t(`coaching.relationship.step.${step}`)}
-            tone={i < currentIndex ? "success" : i === currentIndex ? "warning" : "neutral"}
-            icon={i < currentIndex ? "check" : undefined}
-          />
-        ))}
-      </View>
+      {/* The stepper only describes the main path; off-path states would show it all grey. */}
+      {currentIndex >= 0 ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.md }}>
+          {STEPS.map((step, i) => (
+            <Pill
+              key={step}
+              label={t(`coaching.relationship.step.${step}`)}
+              tone={i < currentIndex ? "success" : i === currentIndex ? "warning" : "neutral"}
+              icon={i < currentIndex ? "check" : undefined}
+            />
+          ))}
+        </View>
+      ) : null}
 
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
-        {item.status === "requested"
-          ? t("coaching.relationship.requestedNote")
-          : t("coaching.relationship.notActiveNote")}
+        {item.stuck ? t("coaching.relationship.stuckNote") : t(NOTE_KEY[item.status] ?? "coaching.relationship.notActiveNote")}
       </Text>
+      {item.paymentId ? (
+        <Text selectable style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+          {t("coaching.relationship.paymentId", { id: item.paymentId })}
+        </Text>
+      ) : null}
 
       {onContinuePayment ? (
         <Button label={t("coaching.relationship.continueToPayment")} onPress={onContinuePayment} style={{ marginTop: spacing.md }} />
+      ) : null}
+      {onContactSupport ? (
+        <Button label={t("coaching.relationship.contactSupport")} onPress={onContactSupport} style={{ marginTop: spacing.md }} />
+      ) : null}
+      {onAskAgain ? (
+        <Button label={t("coaching.relationship.askAgain")} variant="secondary" onPress={onAskAgain} style={{ marginTop: spacing.md }} />
       ) : null}
     </Card>
   );

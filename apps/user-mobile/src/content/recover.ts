@@ -1,3 +1,4 @@
+import { YOGA_PROGRAM_ROUTINES } from "./yogaFoundations";
 /**
  * Bundled static content for Recover 06-11 (yoga / mobility / breathing /
  * mindful practice). There is no content API for this - routines live in the
@@ -201,7 +202,8 @@ export const GUIDED_ROUTINES: GuidedRoutine[] = [
 ];
 
 export function getRoutine(id: string): GuidedRoutine | undefined {
-  return GUIDED_ROUTINES.find((r) => r.id === id);
+  // Yoga Foundations sessions (content/yogaFoundations.ts) open like any other routine.
+  return GUIDED_ROUTINES.find((r) => r.id === id) ?? YOGA_PROGRAM_ROUTINES.find((r) => r.id === id);
 }
 
 export function routineSeconds(r: GuidedRoutine): number {

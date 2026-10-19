@@ -154,7 +154,7 @@ export function HealthConnectScreen({ navigation }: Props) {
           })
       )}
 
-      <Button label="Connected devices" variant="secondary" onPress={() => navigation.getParent()?.navigate("Recover", { screen: "ConnectedDevices" })} />
+      <Button label="Connected devices" variant="secondary" onPress={() => navigation.getParent()?.navigate("Recover", { screen: "ConnectedDevices", initial: false })} />
 
       <BottomSheet
         visible={connecting != null}

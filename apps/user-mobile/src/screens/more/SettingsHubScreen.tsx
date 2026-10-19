@@ -17,6 +17,10 @@ import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { RecoverShell } from "../recover/parts";
 import { GroupHeader, RowGroup, SettingRow, ToggleRow } from "./profileParts";
+import { useDailyReviewStore } from "../../lib/dailyReviewStore";
+import type { SuggestionMode } from "../../lib/dailySuggestions";
+
+const SUGGESTION_MODE_SHORT: Record<SuggestionMode, string> = { ask: "Ask me", weekly: "Weekly", off: "Off" };
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
 
@@ -46,6 +50,7 @@ export function SettingsHubScreen({ navigation }: Props) {
   const plan = useQuery({ queryKey: ["subscriptions", "current"], queryFn: fetchCurrentSubscription });
   const devices = useQuery({ queryKey: ["devices"], queryFn: fetchDevices });
   const [largerText, setLargerText] = useLocalFlag(LARGER_TEXT_KEY, true);
+  const suggestions = useDailyReviewStore();
   const [hrSync, setHrSync] = useLocalFlag(HR_SYNC_KEY, false);
 
   const hasDevice = (devices.data ?? []).length > 0;
@@ -120,6 +125,12 @@ export function SettingsHubScreen({ navigation }: Props) {
           title="Notification Preferences"
           value={user?.notificationsEnabled === false ? "Off" : "On"}
           onPress={() => navigation.navigate("NotificationSettings")}
+        />
+        <SettingRow
+          icon="sparkles"
+          title="Suggestions"
+          value={suggestions.ready ? SUGGESTION_MODE_SHORT[suggestions.mode] : undefined}
+          onPress={() => navigation.navigate("SuggestionsSettings")}
         />
         <ToggleRow
           icon="volume-2"

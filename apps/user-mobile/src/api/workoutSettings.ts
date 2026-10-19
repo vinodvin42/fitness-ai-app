@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { UpdateWorkoutSettingsInput, WorkoutSettings, WorkoutWeightUnit } from "@fitness-ai-app/types";
+import type { ExerciseRestPreference, UpdateWorkoutSettingsInput, WorkoutSettings, WorkoutWeightUnit } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 export const WORKOUT_SETTINGS_KEY = ["workoutSettings"] as const;
@@ -15,6 +15,16 @@ export function updateWorkoutSettings(input: UpdateWorkoutSettingsInput) {
 /** Shared read of the user's workout settings; consumers fall back to defaults while loading/failed. */
 export function useWorkoutSettings() {
   return useQuery({ queryKey: WORKOUT_SETTINGS_KEY, queryFn: fetchWorkoutSettings, staleTime: 5 * 60 * 1000 });
+}
+
+/** Batch 3b (18 Oct 2026): rest time for one exercise, used in every session (10–600 s). */
+export function setExerciseRest(exerciseId: string, restSeconds: number) {
+  return apiClient.put<ExerciseRestPreference>(`/users/me/exercise-rest/${exerciseId}`, { restSeconds }).then((r) => r.data);
+}
+
+/** Back to the default rest from Workout settings. */
+export function clearExerciseRest(exerciseId: string) {
+  return apiClient.delete(`/users/me/exercise-rest/${exerciseId}`).then((r) => r.data);
 }
 
 const KG_PER_LB = 0.45359237;

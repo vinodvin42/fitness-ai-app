@@ -26,12 +26,20 @@ import { fetchReadiness } from "../../api/recovery";
 import { fetchNotifications } from "../../api/notifications";
 import { fetchMeasurements } from "../../api/progress";
 import { fetchWorkoutDetail } from "../../api/programs";
-import { fetchDueMedications, localDateString } from "../../api/medications";
+import { fetchDueMedications, fetchMedications, localDateString } from "../../api/medications";
+import { useWorkoutSettings } from "../../api/workoutSettings";
+import { fetchGymMe, GYM_ME_KEY } from "../../api/gym";
+import { useToast } from "../../components/Toast";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
 import { DAILY_TARGETS } from "../../lib/nutritionTargets";
+import { WATER_GOAL_GLASSES, WATER_QUICK_ADD_GLASSES, ML_PER_GLASS, waterTotalText } from "../../lib/hydration";
+import { useMeasureUnits } from "../../lib/measureUnits";
+import { MEAL_LABEL as MED_MEAL_LABEL } from "../../lib/medicationReminder";
+import { logDoseWithReminder, MEDICINE_SNOOZE_MINUTES } from "../../lib/medicationDoseActions";
+import { fmtGymRange, gymDayShort } from "../../lib/gymFormat";
 import { openNotificationDeepLink } from "../../lib/deepLink";
-import { GUIDED_ROUTINES, routineSeconds } from "../../content/recover";
+import { useDailyReview } from "../../lib/useDailyReview";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { TodayLoadingView, TodayOfflineView } from "./TodayStates";
@@ -43,10 +51,7 @@ type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabsParamList>
 >;
 
-const WATER_GOAL_GLASSES = 8; // same placeholder as FuelScreen's own — see gap §25
 const BRIEF_DISMISSED_KEY = "today.brief.dismissedOn";
-/** The suggested mobility routine behind the Recovery Routine row (see content/recover.ts). */
-const MOBILITY_ROUTINE_ID = "shoulder-hamstring-mobility";
 const COACH_NOTE_MAX_AGE_MS = 7 * 86_400_000;
 
 function isToday(isoDate: string): boolean {
@@ -70,6 +75,10 @@ function nextMealType(): MealType {
 }
 
 const MEAL_LABEL: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };
+
+/** Date.getDay() order, matching WorkoutSettings.trainingDays keys. */
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -162,6 +171,24 @@ export function TodayScreen({ navigation }: Props) {
         .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor))[0],
     [dueMeds],
   );
+  // Figma Today 10: once nothing is left to take today, confirm the latest dose taken.
+  const lastTakenMedication = useMemo(
+    () =>
+      (dueMeds?.items ?? [])
+        .filter((d) => d.status === "taken" && d.loggedAt)
+        .sort((a, b) => (b.loggedAt as string).localeCompare(a.loggedAt as string))[0],
+    [dueMeds],
+  );
+  const { data: medications } = useQuery({ queryKey: ["medications"], queryFn: fetchMedications, enabled: !!nextMedication });
+  const nextMedicationDetail = medications?.find((m) => m.id === nextMedication?.medicationId);
+  // Only a linked, active partner gym; 404 gym_not_linked simply hides the card.
+  const { data: gym } = useQuery({ queryKey: GYM_ME_KEY, queryFn: fetchGymMe, retry: false });
+  const { data: workoutSettings } = useWorkoutSettings();
+  const units = useMeasureUnits();
+  const toast = useToast();
+  // Figma 02b: one daily review card, only when a trigger fires (lib/dailySuggestions.ts).
+  // It replaces the always-on optional mobility row (owner decision, 18 Oct 2026).
+  const dailyReview = useDailyReview();
   const coachNote = useMemo(
     () =>
       (recentInbox?.items ?? []).find(
@@ -172,7 +199,6 @@ export function TodayScreen({ navigation }: Props) {
   const [isLoggingWater, setIsLoggingWater] = useState(false);
   const [briefDismissed, setBriefDismissed] = useState(true); // hidden until storage says otherwise (no flash)
   const [whyWorkoutOpen, setWhyWorkoutOpen] = useState(false);
-  const [whyRoutineOpen, setWhyRoutineOpen] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(BRIEF_DISMISSED_KEY)
@@ -198,6 +224,25 @@ export function TodayScreen({ navigation }: Props) {
     () => (history ?? []).find((h) => h.status === "in_progress" && isToday(h.startedAt)),
     [history],
   );
+  // Figma Today 10: today's finished session replaces the "start" card.
+  const completedToday = useMemo(
+    () =>
+      (history ?? [])
+        .filter((h) => h.status === "completed" && h.completedAt && isToday(h.completedAt))
+        .sort((a, b) => (b.completedAt as string).localeCompare(a.completedAt as string))[0],
+    [history],
+  );
+  // Figma Today 11: a rest day is a day outside the user's own training days
+  // (Workout settings, else onboarding). No days set means no rest-day claim.
+  const trainingDays = workoutSettings?.trainingDays ?? [];
+  const todayKey = DAY_KEYS[new Date().getDay()];
+  const isRestDay = !inProgressToday && !completedToday && trainingDays.length > 0 && !trainingDays.includes(todayKey);
+  const trainingDaysText = [...trainingDays]
+    .sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b))
+    .map((d) => gymDayShort(d))
+    .join(", ");
+  const holiday = gym?.announcement?.kind === "holiday" ? gym.announcement : null;
+  const showGymCard = !!gym && gym.gym.active && (gym.today.closed || !!holiday || isRestDay);
 
   const mealType = nextMealType();
   const remaining = useMemo(() => {
@@ -236,10 +281,25 @@ export function TodayScreen({ navigation }: Props) {
     return { current, target, pct };
   }, [onboardingProfile, measurements]);
 
-  const onAddGlass = async () => {
+  const [medicationBusy, setMedicationBusy] = useState<"taken" | "snoozed" | null>(null);
+  const onMedicationAction = async (status: "taken" | "snoozed") => {
+    if (!nextMedication) return;
+    setMedicationBusy(status);
+    try {
+      await logDoseWithReminder(nextMedication.medicationId, nextMedication.scheduledFor, status, nextMedicationDetail);
+      await queryClient.invalidateQueries({ queryKey: ["medications"] });
+      toast.show(status === "taken" ? "Marked as taken" : `Snoozed for ${MEDICINE_SNOOZE_MINUTES} minutes`, "success");
+    } catch (err) {
+      toast.show(extractErrorMessage(err, "Couldn't save this entry."), "error");
+    } finally {
+      setMedicationBusy(null);
+    }
+  };
+
+  const onAddWater = async (glasses: number) => {
     setIsLoggingWater(true);
     try {
-      await logWater({ glasses: 1 });
+      await logWater({ glasses });
       await queryClient.invalidateQueries({ queryKey: ["waterLogs", "today"] });
     } catch (err) {
       Alert.alert("Couldn't log water", extractErrorMessage(err, "Check your connection and try again."));
@@ -261,11 +321,11 @@ export function TodayScreen({ navigation }: Props) {
   const fullName = user?.fullName ?? "";
   const firstName = fullName.split(" ")[0] || "there";
   const rationale = nextWorkout?.plan.rationale ?? null;
-  const openCoach = () => navigation.navigate("Recover", { screen: "AiCoach" });
-  const openRecovery = () => navigation.navigate("Recover", { screen: "Recovery" });
+  const openCoach = () => navigation.navigate("Recover", { screen: "AiCoach", initial: false });
+  const openRecovery = () => navigation.navigate("Recover", { screen: "Recovery", initial: false });
   const score = readiness?.score ?? null;
   const metrics = readiness?.metrics ?? null;
-  const workoutPath = (workoutId: string) => () => navigation.navigate("Train", { screen: "WorkoutDetail", params: { workoutId } });
+  const workoutPath = (workoutId: string) => () => navigation.navigate("Train", { screen: "WorkoutDetail", params: { workoutId }, initial: false });
 
   // Daily brief assembled only from real values; falls back to the AI Coach prompt when there's nothing to say.
   const briefText = useMemo(() => {
@@ -285,8 +345,6 @@ export function TodayScreen({ navigation }: Props) {
     return false;
   }, [score, readiness?.band, nextWorkout?.workout]);
 
-  const routine = GUIDED_ROUTINES.find((r) => r.id === MOBILITY_ROUTINE_ID);
-  const routineMinutes = routine ? Math.max(1, Math.round(routineSeconds(routine) / 60)) : 10;
 
   // ---- Figma 08: offline ------------------------------------------------
   if (isOffline) {
@@ -330,20 +388,6 @@ export function TodayScreen({ navigation }: Props) {
           }
         />
       ) : null}
-      <ReasoningSheet
-        visible={whyRoutineOpen}
-        onClose={() => setWhyRoutineOpen(false)}
-        title="Why this routine?"
-        heading="Optional, low-intensity movement"
-        rationale={`Gentle mobility work is an easy way to keep your body moving between sessions. It's offered every day as an optional extra and isn't tailored to an injury or condition.${
-          metrics?.soreness != null ? ` You logged soreness ${metrics.soreness}/5 for your latest check-in.` : ""
-        }`}
-        rows={routine ? [{ label: "Routine", value: `${routine.title} · ${routineMinutes} min` }] : []}
-        action={{
-          label: "Start routine",
-          onPress: () => navigation.navigate("Recover", { screen: "GuidedSession", params: { routineId: MOBILITY_ROUTINE_ID } }),
-        }}
-      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -375,6 +419,20 @@ export function TodayScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("Notifications")}
           />
         </View>
+
+        {/* Daily review (Figma 02b today/01) */}
+        {dailyReview.suggestions.length > 0 ? (
+          <View style={{ ...cardStyle, borderColor: theme.accent }}>
+            <Eyebrow color={theme.accentText}>✦ DAILY REVIEW · 1 MIN</Eyebrow>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>
+              {dailyReview.suggestions.length === 1 ? "1 suggestion for today" : `${dailyReview.suggestions.length} suggestions for today`}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              {dailyReview.suggestions.map((s) => s.title).join(" · ")}. Nothing changes unless you say yes.
+            </Text>
+            <PrimaryAction label="Review (1 min)" onPress={() => navigation.navigate("DailyReview")} />
+          </View>
+        ) : null}
 
         {/* AI daily brief */}
         {!briefDismissed ? (
@@ -451,7 +509,7 @@ export function TodayScreen({ navigation }: Props) {
                 <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Log recovery ›</Text>
               </Pressable>
               <Pressable
-                onPress={() => navigation.navigate("Recover", { screen: "ConnectedDevices" })}
+                onPress={() => navigation.navigate("Recover", { screen: "ConnectedDevices", initial: false })}
                 accessibilityRole="button"
                 accessibilityLabel="Connect a device"
                 hitSlop={8}
@@ -480,9 +538,63 @@ export function TodayScreen({ navigation }: Props) {
                 navigation.navigate("Train", {
                   screen: "ActiveWorkout",
                   params: { workoutId: inProgressToday.workoutId, sessionId: inProgressToday.id },
+                  // Workouts home stays underneath, so Back, Finish and Discard also work when the tab was never opened.
+                  initial: false,
                 })
               }
             />
+          </View>
+        ) : completedToday ? (
+          <View style={cardStyle}>
+            <Eyebrow color={colors.successText}>WORKOUT COMPLETED</Eyebrow>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>{completedToday.workoutName}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+              {[
+                completedToday.durationMinutes != null ? `${completedToday.durationMinutes} min` : null,
+                completedToday.totalVolumeKg > 0
+                  ? `${Math.round(units.wt(completedToday.totalVolumeKg)).toLocaleString()} ${units.wtUnit}`
+                  : null,
+                `finished ${formatTimeOfDay(new Date(completedToday.completedAt as string))}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
+            <Pressable
+              onPress={() => navigation.navigate("Train", { screen: "WorkoutHistory", initial: false })}
+              accessibilityRole="button"
+              accessibilityLabel="View workout history"
+              hitSlop={8}
+            >
+              <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>View history ›</Text>
+            </Pressable>
+          </View>
+        ) : isRestDay ? (
+          <View style={cardStyle}>
+            <Eyebrow color={theme.accent}>REST DAY</Eyebrow>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>No workout planned today</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              Your training days are {trainingDaysText}. A short walk or gentle yoga is optional.
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={() => navigation.navigate("Recover", { screen: "YogaLibrary", initial: false })}
+                accessibilityRole="button"
+                accessibilityLabel="Browse gentle yoga and mobility"
+                hitSlop={8}
+              >
+                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Gentle yoga ›</Text>
+              </Pressable>
+              {nextWorkout?.workout ? (
+                <Pressable
+                  onPress={workoutPath(nextWorkout.workout.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Train anyway: ${nextWorkout.workout.name}`}
+                  hitSlop={8}
+                >
+                  <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Train anyway</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         ) : nextWorkout?.workout ? (
           <View style={cardStyle}>
@@ -530,6 +642,43 @@ export function TodayScreen({ navigation }: Props) {
           </View>
         ) : null}
 
+        {/* My gym: only when today's hours or a holiday notice matter */}
+        {showGymCard && gym ? (
+          <Pressable
+            onPress={() => navigation.navigate("More", { screen: "MyGym", initial: false })}
+            accessibilityRole="button"
+            accessibilityLabel={`My gym, ${gym.gym.name}`}
+            style={cardStyle}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Eyebrow color={theme.accent}>MY GYM</Eyebrow>
+                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 15 }} numberOfLines={1}>
+                  {gym.gym.name}
+                  {gym.location ? ` · ${gym.location.name}` : ""}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Today ({gymDayShort(gym.today.day)})</Text>
+              <Text style={{ color: gym.today.closed ? colors.warningText : colors.textPrimary, ...typography.label, fontSize: 13 }}>
+                {gym.today.closed || (gym.today.opensAt && gym.today.closesAt)
+                  ? fmtGymRange(gym.today.opensAt, gym.today.closesAt, gym.today.closed)
+                  : "Hours not listed"}
+              </Text>
+            </View>
+            {holiday ? (
+              <View style={{ gap: 2 }}>
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>{holiday.title}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+                  {holiday.body}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
+
         {/* Upcoming meal */}
         <View style={cardStyle}>
           <Pressable
@@ -557,14 +706,14 @@ export function TodayScreen({ navigation }: Props) {
           ) : null}
           <View style={{ flexDirection: "row", gap: 12 }}>
             <Pressable
-              onPress={() => navigation.navigate("Fuel", { screen: "LogMeal", params: { mealType } })}
+              onPress={() => navigation.navigate("Fuel", { screen: "LogMeal", params: { mealType }, initial: false })}
               accessibilityRole="button"
               accessibilityLabel="Log meal"
             >
               <Text style={{ color: colors.successText, ...typography.label, fontSize: 13 }}>Log Meal</Text>
             </Pressable>
             <Pressable
-              onPress={() => navigation.navigate("Fuel", { screen: "Recipes" })}
+              onPress={() => navigation.navigate("Fuel", { screen: "Recipes", initial: false })}
               accessibilityRole="button"
               accessibilityLabel="See recipes"
             >
@@ -590,95 +739,142 @@ export function TodayScreen({ navigation }: Props) {
           ) : isWaterError ? (
             <ErrorState message="Couldn't load today's hydration." onRetry={() => refetchWater()} />
           ) : (
-            <View style={rowStyle}>
+            <View style={{ ...rowStyle, alignItems: "flex-start" }}>
               <Icon name="droplet" size={24} color={theme.accent} />
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Hydration</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Water</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                  {totalGlasses} / {WATER_GOAL_GLASSES} glasses logged
+                  {waterTotalText(totalGlasses, units.waterUnit)} of {waterTotalText(WATER_GOAL_GLASSES, units.waterUnit)} logged
                 </Text>
                 <ProgressBar pct={(totalGlasses / WATER_GOAL_GLASSES) * 100} color={theme.accent} />
+                {totalGlasses >= WATER_GOAL_GLASSES ? (
+                  <Text style={{ color: colors.successText, fontSize: 13 }}>You reached today's water goal.</Text>
+                ) : null}
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+                  {WATER_QUICK_ADD_GLASSES.map((glasses) => {
+                    const amount = units.waterText(glasses * ML_PER_GLASS);
+                    return (
+                      <Pressable
+                        key={glasses}
+                        onPress={() => onAddWater(glasses)}
+                        disabled={isLoggingWater}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add ${amount} of water`}
+                        accessibilityState={{ disabled: isLoggingWater, busy: isLoggingWater }}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: theme.accent,
+                          backgroundColor: glasses === WATER_QUICK_ADD_GLASSES[0] ? theme.accentSoft : colors.surface,
+                          borderRadius: radius.sm,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          opacity: isLoggingWater ? 0.5 : 1,
+                        }}
+                      >
+                        <Text style={{ color: glasses === WATER_QUICK_ADD_GLASSES[0] ? theme.accentText : colors.textPrimary, ...typography.label, fontSize: 13 }}>
+                          + {amount}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-              <Pressable
-                onPress={onAddGlass}
-                disabled={isLoggingWater}
-                accessibilityRole="button"
-                accessibilityLabel="Add one glass of water"
-                accessibilityState={{ disabled: isLoggingWater, busy: isLoggingWater }}
-                hitSlop={4}
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  borderWidth: 1,
-                  borderColor: theme.accent,
-                  backgroundColor: colors.surface,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: isLoggingWater ? 0.5 : 1,
-                }}
-              >
-                <Icon name="plus" size={20} color={colors.textPrimary} />
-              </Pressable>
             </View>
           )}
-
-          <View style={rowStyle}>
-            <Icon name="heart" size={24} color={theme.accent} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Recovery Routine</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-                ✦ Optional: gentle mobility for {routineMinutes} min tonight. Skip any movement that feels uncomfortable.
-              </Text>
-            </View>
-            <View style={{ alignItems: "center", gap: 8 }}>
-              <Pressable
-                onPress={() => navigation.navigate("Recover", { screen: "GuidedSession", params: { routineId: MOBILITY_ROUTINE_ID } })}
-                accessibilityRole="button"
-                accessibilityLabel="Accept the suggested mobility routine"
-                style={{ borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.accentSoft, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 6 }}
-              >
-                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Accept</Text>
-              </Pressable>
-              <Pressable onPress={() => setWhyRoutineOpen(true)} accessibilityRole="button" accessibilityLabel="Why this routine?" hitSlop={8}>
-                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Why?</Text>
-              </Pressable>
-            </View>
-          </View>
 
           {nextMedication ? (
             <View style={{ ...rowStyle, alignItems: "flex-start" }}>
               <Icon name="pill" size={22} color={colors.warning} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>{nextMedication.name}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                  Reminder at {formatTimeOfDay(new Date(nextMedication.scheduledFor))}
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 }}>
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate("More", {
+                      screen: "MedicineOccurrence",
+                      initial: false,
+                      params: { medicationId: nextMedication.medicationId, scheduledFor: nextMedication.scheduledFor },
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${nextMedication.name}, open reminder`}
+                  hitSlop={4}
+                >
+                  <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>{nextMedication.name}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                    {nextMedication.status === "snoozed" && nextMedication.snoozedUntil
+                      ? `Snoozed until ${formatTimeOfDay(new Date(nextMedication.snoozedUntil))}`
+                      : [
+                          formatTimeOfDay(new Date(nextMedication.scheduledFor)),
+                          nextMedicationDetail?.mealTiming ? MED_MEAL_LABEL[nextMedicationDetail.mealTiming].toLowerCase() : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                  </Text>
+                </Pressable>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
                   <Pressable
-                    onPress={() =>
-                      navigation.navigate("More", {
-                        screen: "MedicineOccurrence",
-                        params: { medicationId: nextMedication.medicationId, scheduledFor: nextMedication.scheduledFor },
-                      })
-                    }
+                    onPress={() => onMedicationAction("taken")}
+                    disabled={medicationBusy != null}
                     accessibilityRole="button"
-                    accessibilityLabel="View medicine reminder"
-                    style={{ borderWidth: 1, borderColor: theme.accent, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 6 }}
+                    accessibilityLabel={`Mark ${nextMedication.name} as taken`}
+                    accessibilityState={{ disabled: medicationBusy != null, busy: medicationBusy === "taken" }}
+                    style={{
+                      backgroundColor: theme.accent,
+                      borderRadius: radius.sm,
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                      opacity: medicationBusy != null ? 0.5 : 1,
+                    }}
                   >
-                    <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>View</Text>
+                    <Text style={{ color: theme.textOnAccent, ...typography.label, fontSize: 13 }}>Mark taken</Text>
                   </Pressable>
+                  {/* Snoozing only makes sense once the reminder is due, and not twice in a row. */}
+                  {nextMedication.status === "pending" && new Date(nextMedication.scheduledFor).getTime() <= Date.now() ? (
+                    <Pressable
+                      onPress={() => onMedicationAction("snoozed")}
+                      disabled={medicationBusy != null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Snooze ${nextMedication.name} for ${MEDICINE_SNOOZE_MINUTES} minutes`}
+                      accessibilityState={{ disabled: medicationBusy != null, busy: medicationBusy === "snoozed" }}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        borderRadius: radius.sm,
+                        paddingHorizontal: 14,
+                        paddingVertical: 6,
+                        opacity: medicationBusy != null ? 0.5 : 1,
+                      }}
+                    >
+                      <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Snooze</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
-                    onPress={() => navigation.navigate("More", { screen: "MedicationList" })}
+                    onPress={() => navigation.navigate("More", { screen: "MedicationList", initial: false })}
                     accessibilityRole="button"
                     accessibilityLabel="View all reminders"
                     hitSlop={8}
+                    style={{ marginLeft: 4 }}
                   >
-                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>View all reminders →</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>All reminders →</Text>
                   </Pressable>
                 </View>
               </View>
             </View>
+          ) : lastTakenMedication ? (
+            <Pressable
+              onPress={() => navigation.navigate("More", { screen: "MedicationList", initial: false })}
+              accessibilityRole="button"
+              accessibilityLabel={`${lastTakenMedication.name} taken. View all reminders`}
+              style={rowStyle}
+            >
+              <Icon name="pill" size={22} color={colors.success} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>
+                  {lastTakenMedication.name} taken · {formatTimeOfDay(new Date(lastTakenMedication.loggedAt as string))}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Nothing else due today.</Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+            </Pressable>
           ) : null}
 
           {coachNote ? (
@@ -717,7 +913,7 @@ export function TodayScreen({ navigation }: Props) {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
                   <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>{weightGoal.pct.toFixed(1)}% of weight goal</Text>
                   <Pressable
-                    onPress={() => navigation.navigate("More", { screen: "ProgressSection", params: { screen: "MeasurementHistory" } })}
+                    onPress={() => navigation.navigate("More", { screen: "ProgressSection", params: { screen: "MeasurementHistory" }, initial: false })}
                     accessibilityRole="button"
                     accessibilityLabel="View weight goal details"
                     hitSlop={8}

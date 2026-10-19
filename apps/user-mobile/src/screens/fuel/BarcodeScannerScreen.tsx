@@ -12,6 +12,7 @@ import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
+import { exitTaskToHome } from "../../navigation/taskExits";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "BarcodeScanner">;
 
@@ -25,8 +26,9 @@ type Props = NativeStackScreenProps<FuelStackParamList, "BarcodeScanner">;
  * pre-filled instead. The lookup response carries no verification flag, so
  * unlike the Figma there is no "Verified" tag — the sheet says where the data
  * is from ("Open Food Facts") and whether it is per serving or per 100 g.
- * A barcode the database doesn't know is an honest dead end offering manual
- * logging. Camera not granted -> CameraPermissionDenied (Fuel 10).
+ * A barcode the database doesn't know gets its own screen (Figma Fuel 13):
+ * add it from the label (Log Meal) or search your own foods, or scan again.
+ * Figma's "send photos" option has no backend and is left out. Camera not granted -> CameraPermissionDenied (Fuel 10).
  */
 export function BarcodeScannerScreen({ route, navigation }: Props) {
   const { mealType } = route.params;
@@ -38,9 +40,11 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
   const [torch, setTorch] = useState(false);
   const [product, setProduct] = useState<BarcodeProduct | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [notFound, setNotFound] = useState<string | null>(null);
 
   const scanAgain = () => {
     setProduct(null);
+    setNotFound(null);
     setHandled(false);
   };
 
@@ -51,14 +55,7 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
     try {
       const lookup = await lookupBarcode(result.data);
       if (!lookup.found) {
-        Alert.alert(
-          "Product not found",
-          "Open Food Facts doesn't have this barcode yet — try again, or log this meal manually instead.",
-          [
-            { text: "Scan again", onPress: scanAgain },
-            { text: "Log manually", onPress: () => navigation.navigate("LogMeal", { mealType }) },
-          ],
-        );
+        setNotFound(result.data);
         return;
       }
       setProduct(lookup.product);
@@ -94,7 +91,7 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
         queryClient.invalidateQueries({ queryKey: ["mealLogs", "today"] }),
         queryClient.invalidateQueries({ queryKey: ["recentFoods"] }),
       ]);
-      navigation.navigate("FuelDashboard");
+      exitTaskToHome(navigation, "FuelDashboard");
     } catch (err) {
       Alert.alert("Couldn't add this food", extractErrorMessage(err, "Check your connection and try again."));
     } finally {
@@ -136,6 +133,64 @@ export function BarcodeScannerScreen({ route, navigation }: Props) {
         onManual={() => navigation.navigate("LogMeal", { mealType })}
         onBack={() => navigation.goBack()}
       />
+    );
+  }
+
+  if (notFound) {
+    // Fuel 13 — the lookup worked, the product just isn't listed.
+    const option = (title: string, body: string, action: string, onPress: () => void) => (
+      <View style={styles.optionCard}>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{title}</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14, lineHeight: 20 }}>{body}</Text>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={action}
+          style={{ alignSelf: "flex-start", borderRadius: radius.pill, backgroundColor: theme.accent, paddingHorizontal: 14, paddingVertical: 8, marginTop: 4 }}
+        >
+          <Text style={{ color: theme.textOnAccent, ...typography.label }}>{action}</Text>
+        </Pressable>
+      </View>
+    );
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, padding: spacing.md }}>
+          <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={10} style={styles.headerBtn}>
+            <Icon name="arrow-left" size={22} color={colors.textPrimary} />
+          </Pressable>
+          <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h3, fontSize: 16 }}>
+            Barcode Scanner
+          </Text>
+        </View>
+        <View style={{ paddingHorizontal: spacing.md, gap: spacing.md }}>
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }}>We couldn't find this product</Text>
+            <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14 }}>
+              Barcode {notFound} isn't in Open Food Facts yet.
+            </Text>
+          </View>
+          {option(
+            "Add it from the label",
+            "Enter the name and the nutrition printed on the pack.",
+            "Enter from label",
+            () => navigation.navigate("LogMeal", { mealType }),
+          )}
+          {option(
+            "Or search instead",
+            "Search your recent foods, saved meals and recipes by name.",
+            "Search foods",
+            () => navigation.navigate("LogMeal", { mealType }),
+          )}
+          <Pressable
+            onPress={scanAgain}
+            accessibilityRole="button"
+            accessibilityLabel="Scan again"
+            style={{ height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Scan again</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -315,4 +370,12 @@ const styles = themed(() => StyleSheet.create({
     gap: spacing.md,
   },
   grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong },
+  optionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
 }));

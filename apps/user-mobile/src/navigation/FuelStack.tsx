@@ -4,6 +4,7 @@ import type { FoodEstimate, MealType } from "@fitness-ai-app/types";
 import { FuelScreen } from "../screens/fuel/FuelScreen";
 import { RecipesScreen } from "../screens/fuel/RecipesScreen";
 import { RecipeDetailScreen } from "../screens/fuel/RecipeDetailScreen";
+import { RecipeCookModeScreen } from "../screens/fuel/RecipeCookModeScreen";
 import { LogMealScreen } from "../screens/fuel/LogMealScreen";
 import { ConfirmFoodEstimateScreen } from "../screens/fuel/ConfirmFoodEstimateScreen";
 import { NutritionCalendarScreen } from "../screens/fuel/NutritionCalendarScreen";
@@ -45,6 +46,8 @@ export type FuelStackParamList = {
   FuelDashboard: undefined;
   Recipes: undefined;
   RecipeDetail: { recipeId: string };
+  // Figma Fuel 16/17: one recipe step per screen, then a "Ready to eat" finish.
+  RecipeCookMode: { recipeId: string };
   LogMeal: { mealType?: MealType; barcodePrefill?: BarcodePrefill } | undefined;
   ConfirmFoodEstimate: { estimate: FoodEstimate };
   NutritionCalendar: undefined;
@@ -64,6 +67,7 @@ export function FuelStack() {
       <Stack.Screen name="FuelDashboard" component={FuelScreen} />
       <Stack.Screen name="Recipes" component={RecipesScreen} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
+      <Stack.Screen name="RecipeCookMode" component={RecipeCookModeScreen} />
       <Stack.Screen name="LogMeal" component={LogMealScreen} />
       <Stack.Screen name="ConfirmFoodEstimate" component={ConfirmFoodEstimateScreen} />
       <Stack.Screen name="NutritionCalendar" component={NutritionCalendarScreen} />

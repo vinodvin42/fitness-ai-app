@@ -15,12 +15,12 @@ import { formatTimeOfDay } from "../../lib/format";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { DAILY_TARGETS } from "../../lib/nutritionTargets";
+import { ML_PER_GLASS, WATER_GOAL_GLASSES, waterTotalText } from "../../lib/hydration";
+import { useMeasureUnits } from "../../lib/measureUnits";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "FuelDashboard">;
 
-const WATER_GOAL_GLASSES = 8; // placeholder goal (no per-user hydration goal is modeled)
-const ML_PER_GLASS = 250;
 
 // Figma Fuel 01 order: the timeline reads in the order people usually eat.
 const TIMELINE: Array<{ type: MealType; label: string }> = [
@@ -86,6 +86,7 @@ export function FuelScreen({ navigation }: Props) {
     // Notifications live in the Today stack; jump across tabs.
     (navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined)?.navigate("Today", {
       screen: "Notifications",
+      initial: false,
     });
   };
 
@@ -138,7 +139,10 @@ export function FuelScreen({ navigation }: Props) {
   };
 
   const kcalLeft = Math.max(0, DAILY_TARGETS.calories - totals.calories);
-  const goalLitres = ((WATER_GOAL_GLASSES * ML_PER_GLASS) / 1000).toFixed(1);
+  // Same units as Today (litres or oz, from the member's settings).
+  const units = useMeasureUnits();
+  const waterGoalText = waterTotalText(WATER_GOAL_GLASSES, units.waterUnit);
+  const waterTodayText = waterTotalText(totalGlasses, units.waterUnit);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -243,20 +247,20 @@ export function FuelScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Water Intake</Text>
                 <Text style={{ color: colors.textMuted, ...typography.meta }}>
-                  Goal: {WATER_GOAL_GLASSES} glasses ({goalLitres}L)
+                  Goal: {waterGoalText} a day
                 </Text>
               </View>
               <Text
-                accessibilityLabel={`${totalGlasses} of ${WATER_GOAL_GLASSES} glasses of water logged today`}
+                accessibilityLabel={`${waterTodayText} of ${waterGoalText} of water logged today`}
                 style={{ color: colors.textPrimary, fontSize: 18, fontFamily: fonts.displayBold }}
               >
-                {totalGlasses}/{WATER_GOAL_GLASSES}
+                {waterTodayText}
               </Text>
               <Pressable
                 onPress={onAddGlass}
                 disabled={isLoggingWater}
                 accessibilityRole="button"
-                accessibilityLabel="Add one glass of water"
+                accessibilityLabel={`Add one glass of water (${ML_PER_GLASS} ml)`}
                 hitSlop={8}
                 style={{
                   width: 32,

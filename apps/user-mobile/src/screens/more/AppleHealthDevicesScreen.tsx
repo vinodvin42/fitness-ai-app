@@ -114,7 +114,7 @@ export function AppleHealthDevicesScreen({ navigation }: Props) {
 
   const hasDevices = devices.length > 0;
   const allowed = (perms: DevicePermission[]) => hasDevices && devices.every((d) => perms.every((p) => d.permissions.includes(p)));
-  const openRecover = (screen: "AddDevice" | "ConnectedDevices") => navigation.getParent()?.navigate("Recover", { screen });
+  const openRecover = (screen: "AddDevice" | "ConnectedDevices") => navigation.getParent()?.navigate("Recover", { screen, initial: false });
 
   return (
     <RecoverShell centered title={`${providerName} & devices`} onBack={() => navigation.goBack()}>

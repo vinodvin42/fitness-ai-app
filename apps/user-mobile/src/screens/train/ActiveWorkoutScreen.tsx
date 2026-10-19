@@ -1,45 +1,95 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { ExerciseSetLog, WorkoutSession } from "@fitness-ai-app/types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
-import { useWorkoutSettings } from "../../api/workoutSettings";
-import { fetchWorkoutDetail } from "../../api/programs";
+import { SetQuickEditSheet } from "../../components/SetQuickEditSheet";
+import { ExerciseMenuSheet, type ExerciseMenuItem } from "../../components/ExerciseMenuSheet";
+import { PlateCalculatorSheet } from "../../components/PlateCalculatorSheet";
+import { SetEditSheet } from "../../components/SetEditSheet";
+import { AddExerciseSheet } from "../../components/AddExerciseSheet";
+import { clearExerciseRest, setExerciseRest, useWorkoutSettings } from "../../api/workoutSettings";
+import { fetchExercises, fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
 import { fetchOnboardingProfile } from "../../api/users";
 import {
   abandonWorkoutSession,
   completeWorkoutSession,
+  fetchSessionSummary,
+  fetchWorkoutHistory,
   fetchWorkoutSession,
+  addSessionExercise,
   logWorkoutSet,
+  removeSessionExercise,
+  updateSessionExercise,
   updateSessionProgress,
 } from "../../api/workoutSessions";
 import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
 import { readinessFactorLabel } from "../../lib/readinessFactors";
-import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
-import { applySwaps, clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
+import { phaseLabel } from "../../lib/workoutExercises";
+import { clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
+import { buildSessionExerciseList } from "../../lib/sessionExerciseList";
+import { afterWorkingSet, nextFreeLetter, supersetLabel } from "../../lib/supersets";
+import { nextSetNumber, setLogsFor, withSetLog } from "../../lib/setNumbering";
+import {
+  formatSetValues,
+  formatWeight,
+  isBarbell,
+  loadingStepKg,
+  previousSessionId,
+  setRowLabels,
+  warmUpSets,
+  type SetValues,
+} from "../../lib/fastLogging";
+import { formatMmSs } from "../../lib/format";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
+import { exitTaskToHome } from "../../navigation/taskExits";
 
 const column = { width: "100%" as const, maxWidth: layout.maxContentWidth, alignSelf: "center" as const };
 
 type Props = NativeStackScreenProps<TrainStackParamList, "ActiveWorkout">;
 
-const RPE_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+/**
+ * Runs one navigation call with the leave prompt switched off, then re-arms
+ * it. `beforeRemove` fires synchronously inside the call (@react-navigation/core
+ * 6.4.17, useOnAction → shouldPreventRemove), so resetting in `finally` also
+ * covers a call that ends up not removing this screen.
+ */
+export function leaveWithoutPrompt(allowLeave: { current: boolean }, go: () => void) {
+  allowLeave.current = true;
+  try {
+    go();
+  } finally {
+    allowLeave.current = false;
+  }
+}
 
 interface LoggedSet {
+  id: string;
   setNumber: number;
   reps: number;
   weightKg?: number;
   rpe?: number;
+  isWarmup: boolean;
+  isDropSet: boolean;
+  isFailure: boolean;
 }
+
+/** A working set's type (warm-ups come from the generator). Batch 3b: drop and failure are separate. */
+type SetType = "normal" | "drop" | "failure";
+const REST_CHOICES = [30, 45, 60, 90, 120, 150, 180, 240];
+
+/** Which row the quick-edit sheet is changing: the next set, or one generated warm-up. */
+type QuickEditTarget = { kind: "active" } | { kind: "warmup"; index: number };
 
 function formatElapsed(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -93,9 +143,10 @@ function formatElapsed(totalSeconds: number): string {
  * any sets already logged stay real, still count toward PRs/streaks
  * exactly as before), `["workoutHistory"]` is invalidated so Today's
  * Continue Workout card and Workout History both immediately stop
- * treating it as in-progress, and the screen pops back to the root of this
- * stack (`navigation.popToTop()`, the same pattern Workout Complete's
- * "Back to Train" already uses).
+ * treating it as in-progress, and the screen returns to Workouts home
+ * (`exitTaskToHome`, navigation/taskExits.ts, the same exit Workout
+ * Complete's "Back to Training" uses; it also works when this screen is
+ * the only one in the stack).
  *
  * U3 (15 Sep 2026): **real connectivity/app-kill recovery.** Each logged
  * set was already durably persisted server-side the moment it was logged
@@ -110,14 +161,34 @@ function formatElapsed(totalSeconds: number): string {
  * before advancing, so a heuristic re-derived from set counts (wrong for a
  * user who deliberately skips remaining sets and moves on) isn't needed;
  * (2) a one-time hydration effect below reads `session.currentExerciseIndex`
- * and `session.setLogs` on load and seeds `exerciseIndex`/`loggedSets` from
- * them — this also just naturally handles a fresh, never-touched session
- * (empty setLogs → exerciseIndex 0, loggedSets `[]`), so it isn't a
- * resume-only code path. `elapsedSeconds` already correctly re-derived
+ * on load and seeds `exerciseIndex` from it — this also just naturally
+ * handles a fresh, never-touched session (exerciseIndex 0), so it isn't a
+ * resume-only code path. The logged sets are not copied into local state:
+ * they are read from the shared session data on every render (Oct 2026,
+ * lib/setNumbering.ts), and logging waits until this hydration has run.
+ * `elapsedSeconds` already correctly re-derived
  * from `session.startedAt` before this pass (line below) — no change
  * needed there. `paused` stays deliberately NOT server-persisted, same
  * reasoning as before: it's a real control of THIS SCREEN's local timer,
  * not a workout-session status.
+ *
+ * Oct 2026, Figma 03b fast logging: the card is now a set table (SET ·
+ * PREVIOUS · KG · REPS · ✓). The next set is pre-filled from this visit's last
+ * numbered set, else the same set in the last completed session of this
+ * workout, else the target reps, so ✓ is usually the only tap; tapping a
+ * number opens the quick-edit sheet (steppers, "Same as last set", optional
+ * RPE) and tapping a logged row opens the existing edit/delete sheet. The ⋯
+ * menu holds warm-up generation (logged with isWarmup), replace exercise,
+ * the Set & Rest Tracker, the rest timer and, for barbells, the plate
+ * calculator. Still one exercise at a time (Figma shows every exercise on one
+ * sheet).
+ *
+ * Batch 3b (18 Oct 2026): the exercise list is the session's own list from
+ * the API (lib/sessionExerciseList.ts; the Set/Rest Tracker builds it the same
+ * way), so swaps survive a restart; "+ Add exercise", "Superset with…" (A1 then
+ * A2, rest after the last — lib/supersets.ts), "Remove from this workout"
+ * (before any set) and a per-exercise rest choice change it. The next set can
+ * be Normal, Drop set or To failure (quick-edit sheet; labels D / F).
  */
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
@@ -126,7 +197,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
   const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
   const [whyOpen, setWhyOpen] = useState(false);
-  useWorkoutSettings(); // warm the cache so the rest timer starts at the user's configured length
+  // Also warms the cache so the rest timer starts at the user's configured length.
+  const { data: workoutSettings } = useWorkoutSettings();
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
@@ -137,18 +209,38 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     queryFn: () => fetchWorkoutSession(sessionId),
   });
 
-  // Train 09: client-side exercise swaps (no backend endpoint) layered over the fetched workout.
+  // Batch 3b (18 Oct 2026): the session's own list from the API (swaps, added exercises, supersets);
+  // sessions without one fall back to the template + this device's client-side swaps (Train 09).
   const swaps = useSwaps(workoutId);
-  const orderedExercises = useMemo(() => {
-    if (!workout) return [];
-    return sortExercisesByPhase(applySwaps(workout.exercises, swaps));
-  }, [workout, swaps]);
+  const orderedExercises = useMemo(() => buildSessionExerciseList(workout, session, swaps), [workout, session, swaps]);
+
+  // Figma 03b "PREVIOUS": the last completed session of this same workout.
+  const { data: history } = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
+  const prevSessionId = previousSessionId(history, workoutId, sessionId);
+  const { data: previousSession } = useQuery({
+    queryKey: ["workoutSession", prevSessionId],
+    queryFn: () => fetchWorkoutSession(prevSessionId as string),
+    enabled: !!prevSessionId,
+  });
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
-  const [loggedSets, setLoggedSets] = useState<LoggedSet[]>([]);
-  const [reps, setReps] = useState("");
-  const [weight, setWeight] = useState("");
+  // The next set's numbers. null = use the pre-filled defaults (last set, else last time, else the target).
+  const [draft, setDraft] = useState<{ weight: string; reps: string } | null>(null);
   const [rpe, setRpe] = useState<number | undefined>(undefined);
+  const [pendingWarmups, setPendingWarmups] = useState<SetValues[]>([]);
+  const [warmupsAddedFrom, setWarmupsAddedFrom] = useState<number | null>(null);
+  const [extraSets, setExtraSets] = useState(0);
+  const [quickEdit, setQuickEdit] = useState<QuickEditTarget | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [platesOpen, setPlatesOpen] = useState(false);
+  const [editingSet, setEditingSet] = useState<ExerciseSetLog | null>(null);
+  // Batch 3b: the next set's type, and the sheets for add / superset / rest.
+  const [setType, setSetType] = useState<SetType>("normal");
+  const [addOpen, setAddOpen] = useState(false);
+  const [supersetOpen, setSupersetOpen] = useState(false);
+  const [restOpen, setRestOpen] = useState(false);
+  const [listBusy, setListBusy] = useState(false);
+  const exerciseLibrary = useQuery({ queryKey: ["exercises"], queryFn: fetchExercises, enabled: addOpen });
   const [isSubmittingSet, setIsSubmittingSet] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -164,15 +256,9 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (hasHydrated || orderedExercises.length === 0 || !session) return;
     const resumeIndex = Math.min(session.currentExerciseIndex, orderedExercises.length - 1);
     const resumeExercise = orderedExercises[resumeIndex];
-    const resumedSets: LoggedSet[] = resumeExercise
-      ? session.setLogs
-          .filter((l) => l.exerciseId === resumeExercise.exercise.id)
-          .sort((a, b) => a.setNumber - b.setNumber)
-          .map((l) => ({ setNumber: l.setNumber, reps: l.reps, weightKg: l.weightKg ?? undefined, rpe: l.rpe ?? undefined }))
-      : [];
+    const resumedSetCount = resumeExercise ? setLogsFor(session.setLogs, resumeExercise.exercise.id).length : 0;
     setExerciseIndex(resumeIndex);
-    setLoggedSets(resumedSets);
-    const resumedForReal = resumeIndex > 0 || resumedSets.length > 0;
+    const resumedForReal = resumeIndex > 0 || resumedSetCount > 0;
     setWasResumed(resumedForReal);
     setHasHydrated(true);
 
@@ -181,7 +267,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     // active data" moment, see this screen's own top comment), never on a
     // fresh session that naturally hydrates to index 0 / empty sets.
     if (resumedForReal) {
-      trackClientEvent("workout.sync_recovered", { workoutSessionId: session.id }, { resumeIndex, resumedSetCount: resumedSets.length });
+      trackClientEvent("workout.sync_recovered", { workoutSessionId: session.id }, { resumeIndex, resumedSetCount });
     }
   }, [hasHydrated, orderedExercises, session]);
 
@@ -206,8 +292,74 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     return () => clearInterval(id);
   }, [timerStarted, paused]);
 
+  // Focused task (Oct 2026): leaving an active workout is deliberate.
+  // Removal actions on this stack (Android back, goBack/pop/replace…) ask
+  // first. "Leave for now" leaves with the session still in progress: logged
+  // sets are saved server-side, but unlogged inputs and the rest timer are
+  // screen state and are cleared. "Discard workout" runs the existing
+  // abandon flow. Finishing and abandoning go through `leaveWithoutPrompt`,
+  // and while the workout is still loading or failed, back works as before.
+  const allowLeave = useRef(false);
+  const guardReady = useRef(false);
+  guardReady.current = Boolean(workout);
+  const abandonRef = useRef<() => void>(() => undefined);
+  useEffect(
+    () =>
+      navigation.addListener("beforeRemove", (e) => {
+        if (allowLeave.current || !guardReady.current) return;
+        e.preventDefault();
+        Alert.alert(
+          "Leave workout?",
+          "Your logged sets stay saved and the workout stays open. Anything you haven't logged yet and the rest timer will be cleared, and time away counts toward the workout's duration.",
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Discard workout", style: "destructive", onPress: () => abandonRef.current() },
+            { text: "Leave for now", onPress: () => leaveWithoutPrompt(allowLeave, () => navigation.dispatch(e.data.action)) },
+          ],
+        );
+      }),
+    [navigation],
+  );
+
   const currentExercise = orderedExercises[exerciseIndex];
+  // This exercise's recorded sets, read from the shared session data (the same cache the Set/Rest Tracker reads
+  // and writes), so a set logged or deleted there shows here too and a number is never reused.
+  const loggedSets: LoggedSet[] = useMemo(
+    () =>
+      currentExercise && session
+        ? setLogsFor(session.setLogs, currentExercise.exercise.id).map((l) => ({
+            id: l.id,
+            setNumber: l.setNumber,
+            reps: l.reps,
+            weightKg: l.weightKg ?? undefined,
+            rpe: l.rpe ?? undefined,
+            isWarmup: l.isWarmup,
+            isDropSet: l.isDropSet,
+            isFailure: !!l.isFailure,
+          }))
+        : [],
+    [currentExercise, session],
+  );
   const isLastExercise = exerciseIndex === orderedExercises.length - 1;
+
+  // Per-exercise screen state starts fresh on each exercise (logged sets live in the session data).
+  const currentExerciseId = currentExercise?.exercise.id;
+  useEffect(() => {
+    setDraft(null);
+    setRpe(undefined);
+    setPendingWarmups([]);
+    setWarmupsAddedFrom(null);
+    setExtraSets(0);
+    setSetType("normal");
+  }, [currentExerciseId]);
+
+  // Personal-best badge: the same "beats every earlier session" rule Workout Complete uses, read mid-session.
+  const hasLoggedSets = (session?.setLogs.length ?? 0) > 0;
+  const { data: liveSummary } = useQuery({
+    queryKey: ["workoutSessions", sessionId, "summary", "live"],
+    queryFn: () => fetchSessionSummary(sessionId),
+    enabled: hasLoggedSets,
+  });
 
   if (isError) {
     return (
@@ -225,25 +377,70 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     );
   }
 
-  const onLogSet = async () => {
-    if (!currentExercise || !reps || paused) return;
+  // ---- Fast logging (Figma 03b): one row per set, pre-filled so ✓ is usually the only tap.
+  const exerciseId = currentExercise?.exercise.id ?? "";
+  const rowLabels = setRowLabels(loggedSets);
+  const workingLogged = loggedSets.filter((s) => !s.isWarmup);
+  // Numbered sets only (no warm-ups or drop sets), so "previous" and the pre-fill line up with the 1..n labels.
+  const numberedLogged = workingLogged.filter((s) => !s.isDropSet && !s.isFailure);
+  const lastWorking = numberedLogged[numberedLogged.length - 1];
+  const previousWorking = previousSession
+    ? setLogsFor(previousSession.setLogs, exerciseId).filter((l) => !l.isWarmup && !l.isDropSet && !l.isFailure)
+    : [];
+  const previousFor = (workingNumber: number): SetValues | undefined => {
+    const p = previousWorking[workingNumber - 1];
+    return p ? { weightKg: p.weightKg ?? undefined, reps: p.reps } : undefined;
+  };
+  const nextWorkingNumber = numberedLogged.length + 1;
+  const lastTime = previousFor(nextWorkingNumber);
+  const prefill = lastWorking ? { weightKg: lastWorking.weightKg, reps: lastWorking.reps } : lastTime;
+  const active = draft ?? {
+    weight: prefill?.weightKg != null ? formatWeight(prefill.weightKg) : "",
+    reps: String(prefill?.reps ?? currentExercise?.targetReps ?? ""),
+  };
+  const activeReps = parseInt(active.reps, 10);
+  const pr = liveSummary?.newPersonalRecords.find((r) => r.exerciseId === exerciseId);
+  const prSetId = pr ? workingLogged.find((s) => s.weightKg === pr.weightKg && s.reps === pr.reps)?.id : undefined;
+
+  const onLogSet = async (warmupIndex?: number) => {
+    // Waits for the session to load and this screen's resume to run, so the number comes from the recorded sets.
+    if (!currentExercise || paused || !hasHydrated || !session) return;
+    const warmup = warmupIndex != null ? pendingWarmups[warmupIndex] : undefined;
+    const reps = warmup ? warmup.reps : activeReps;
+    if (!(reps > 0)) return;
     setIsSubmittingSet(true);
     try {
-      const setNumber = loggedSets.length + 1;
-      const parsedReps = parseInt(reps, 10);
-      const parsedWeight = weight ? parseFloat(weight) : undefined;
-      await logWorkoutSet(sessionId, {
+      const created = await logWorkoutSet(sessionId, {
         exerciseId: currentExercise.exercise.id,
-        setNumber,
-        reps: parsedReps,
-        weightKg: parsedWeight,
-        rpe,
+        setNumber: nextSetNumber(loggedSets),
+        reps,
+        weightKg: warmup ? warmup.weightKg : active.weight ? parseFloat(active.weight) : undefined,
+        rpe: warmup ? undefined : rpe,
+        isWarmup: warmup ? true : undefined,
+        isDropSet: !warmup && setType === "drop" ? true : undefined,
+        isFailure: !warmup && setType === "failure" ? true : undefined,
       });
-      setLoggedSets((prev) => [...prev, { setNumber, reps: parsedReps, weightKg: parsedWeight, rpe }]);
+      // Into the shared session data right away (both screens number from it), then refetched for the server's copy.
+      queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
       queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
-      setReps("");
-      setRpe(undefined);
-      setShowRestTimer(true);
+      queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary", "live"] });
+      if (warmup) {
+        setPendingWarmups((ws) => ws.filter((_, i) => i !== warmupIndex));
+      } else {
+        setDraft(null);
+        setRpe(undefined);
+        setSetType("normal");
+        // Supersets (Figma 03b log/03): A1 -> A2 without rest; rest after the last partner, then back to A1.
+        const counts = new Map<string, number>();
+        for (const l of session.setLogs) if (!l.isWarmup) counts.set(l.exerciseId, (counts.get(l.exerciseId) ?? 0) + 1);
+        counts.set(currentExercise.exercise.id, workingLogged.length + 1);
+        const next = afterWorkingSet(orderedExercises, exerciseIndex, (id) => counts.get(id) ?? 0);
+        setShowRestTimer(next.rest);
+        if (next.nextIndex !== exerciseIndex) {
+          setExerciseIndex(next.nextIndex);
+          updateSessionProgress(sessionId, next.nextIndex).catch(() => undefined);
+        }
+      }
     } catch (err) {
       Alert.alert("Couldn't log that set", extractErrorMessage(err, "Check your connection and try again."));
     } finally {
@@ -258,7 +455,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       try {
         await completeWorkoutSession(sessionId);
         clearSwaps(workoutId);
-        navigation.replace("WorkoutComplete", { sessionId, workoutName: workout.name });
+        leaveWithoutPrompt(allowLeave, () => navigation.replace("WorkoutComplete", { sessionId, workoutName: workout.name }));
       } catch (err) {
         Alert.alert("Couldn't finish workout", extractErrorMessage(err, "Check your connection and try again."));
       } finally {
@@ -274,10 +471,6 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       // what the server can recover on the next load.
       await updateSessionProgress(sessionId, nextIndex);
       setExerciseIndex(nextIndex);
-      setLoggedSets([]);
-      setReps("");
-      setWeight("");
-      setRpe(undefined);
     } catch (err) {
       Alert.alert("Couldn't move to the next exercise", extractErrorMessage(err, "Check your connection and try again."));
     } finally {
@@ -287,12 +480,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const onAbandon = () => {
     Alert.alert(
-      "Abandon this workout?",
-      "Any sets you've already logged are kept, but this session won't count as completed. This can't be undone.",
+      "Discard this workout?",
+      "Sets you've already logged stay saved, but this workout will be closed and won't count as completed. This can't be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Abandon Workout",
+          text: "Discard workout",
           style: "destructive",
           onPress: async () => {
             setIsAbandoning(true);
@@ -300,9 +493,9 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
               await abandonWorkoutSession(sessionId);
               clearSwaps(workoutId);
               await queryClient.invalidateQueries({ queryKey: ["workoutHistory"] });
-              navigation.popToTop();
+              leaveWithoutPrompt(allowLeave, () => exitTaskToHome(navigation, "TrainDashboard"));
             } catch (err) {
-              Alert.alert("Couldn't abandon workout", extractErrorMessage(err, "Check your connection and try again."));
+              Alert.alert("Couldn't discard workout", extractErrorMessage(err, "Check your connection and try again."));
             } finally {
               setIsAbandoning(false);
             }
@@ -311,13 +504,173 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       ],
     );
   };
+  abandonRef.current = onAbandon;
 
-  const setsRemaining = currentExercise ? Math.max(0, currentExercise.targetSets - loggedSets.length) : 0;
+  // Warm-ups don't use up the target; "+ Add set" raises it for this visit.
+  const targetSets = (currentExercise?.targetSets ?? 0) + extraSets;
+  const setsRemaining = currentExercise ? Math.max(0, targetSets - workingLogged.length) : 0;
+  const equipment = currentExercise?.exercise.equipment ?? "";
+  const defaultRest = workoutSettings?.restTimerSeconds ?? 60;
+  const restSeconds = currentExercise?.restSeconds ?? defaultRest;
+  const sessionExerciseId = currentExercise?.sessionExerciseId ?? null;
+  const groupLabel = supersetLabel(orderedExercises, exerciseIndex);
+  // Exercises this one can be linked with: any other entry not already in a superset.
+  const supersetCandidates = orderedExercises
+    .map((e, i) => ({ e, i }))
+    .filter(({ e, i }) => i !== exerciseIndex && !e.supersetGroup && !!e.sessionExerciseId);
+
+  /**
+   * Batch 3b: a change to the session's list (add, superset, remove) returns the
+   * whole list; it goes into the shared session cache and the screen stays on
+   * the same exercise even if its position moved.
+   */
+  const applyListChange = async (change: () => Promise<WorkoutSession["exercises"]>, failure: string) => {
+    setListBusy(true);
+    try {
+      const keepId = currentExercise?.exercise.id;
+      const exercises = await change();
+      queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => (s ? { ...s, exercises } : s));
+      const newIndex = Math.max(0, exercises ? exercises.findIndex((e) => e.exerciseId === keepId) : exerciseIndex);
+      const clamped = Math.min(newIndex === -1 ? exerciseIndex : newIndex, Math.max(0, (exercises?.length ?? 1) - 1));
+      if (clamped !== exerciseIndex) {
+        setExerciseIndex(clamped);
+        updateSessionProgress(sessionId, clamped).catch(() => undefined);
+      }
+    } catch (err) {
+      Alert.alert(failure, extractErrorMessage(err, "Check your connection and try again."));
+    } finally {
+      setListBusy(false);
+    }
+  };
+
+  const onAddExercise = (exerciseId: string) => {
+    setAddOpen(false);
+    void applyListChange(() => addSessionExercise(sessionId, { exerciseId }), "Couldn't add that exercise");
+  };
+
+  const onSupersetWith = (partnerIndex: number) => {
+    const partner = orderedExercises[partnerIndex];
+    const letter = nextFreeLetter(orderedExercises);
+    if (!sessionExerciseId || !partner?.sessionExerciseId || !letter) return;
+    setSupersetOpen(false);
+    void applyListChange(async () => {
+      await updateSessionExercise(sessionId, sessionExerciseId, { supersetGroup: letter });
+      // The partner moves right after this exercise, so A1 and A2 are done back to back.
+      const target = partnerIndex > exerciseIndex ? exerciseIndex + 1 : exerciseIndex;
+      return updateSessionExercise(sessionId, partner.sessionExerciseId as string, { supersetGroup: letter, order: target });
+    }, "Couldn't link the superset");
+  };
+
+  const onRemoveFromSuperset = () => {
+    if (!sessionExerciseId) return;
+    void applyListChange(() => updateSessionExercise(sessionId, sessionExerciseId, { supersetGroup: null }), "Couldn't change the superset");
+  };
+
+  const onRemoveExercise = () => {
+    if (!sessionExerciseId || !currentExercise) return;
+    Alert.alert("Remove this exercise?", `${currentExercise.exercise.name} is taken out of this workout only. Your plan doesn't change.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          const removedIndex = exerciseIndex;
+          void (async () => {
+            setListBusy(true);
+            try {
+              const exercises = await removeSessionExercise(sessionId, sessionExerciseId);
+              queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => (s ? { ...s, exercises } : s));
+              // The server keeps the user on the exercise that now sits at this position.
+              setExerciseIndex(Math.min(removedIndex, Math.max(0, exercises.length - 1)));
+            } catch (err) {
+              Alert.alert("Couldn't remove that exercise", extractErrorMessage(err, "Check your connection and try again."));
+            } finally {
+              setListBusy(false);
+            }
+          })();
+        },
+      },
+    ]);
+  };
+
+  const onChooseRest = async (seconds: number | null) => {
+    if (!currentExercise) return;
+    setRestOpen(false);
+    try {
+      if (seconds == null) await clearExerciseRest(currentExercise.exercise.id);
+      else await setExerciseRest(currentExercise.exercise.id, seconds);
+      await queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
+    } catch (err) {
+      Alert.alert("Couldn't save the rest time", extractErrorMessage(err, "Check your connection and try again."));
+    }
+  };
+
+  const onAddWarmups = () => {
+    const working = parseFloat(active.weight);
+    if (!(working > 0)) {
+      Alert.alert("Add a working weight first", "Warm-up sets are worked out from the weight of your first working set.");
+      return;
+    }
+    const sets = warmUpSets(working, loadingStepKg(equipment));
+    if (sets.length === 0) {
+      Alert.alert("No warm-ups needed", `${formatWeight(working)} kg is too light to split into lighter warm-up sets.`);
+      return;
+    }
+    setPendingWarmups(sets);
+    setWarmupsAddedFrom(working);
+  };
+
+  const menuItems: ExerciseMenuItem[] = [
+    ...(workingLogged.length === 0 && pendingWarmups.length === 0
+      ? [{ key: "warmups", label: "Add warm-up sets", icon: "flame" as const, onPress: onAddWarmups }]
+      : []),
+    ...(currentExercise && loggedSets.length === 0
+      ? [
+          {
+            key: "replace",
+            label: "Replace exercise",
+            icon: "swap" as const,
+            onPress: () =>
+              navigation.navigate("ExerciseSwap", {
+                workoutId,
+                workoutExerciseId: currentExercise.id,
+                exerciseId: currentExercise.exercise.id,
+                // Batch 3b: with a session list the swap is saved on the server (survives a restart).
+                ...(sessionExerciseId ? { sessionId, sessionExerciseId } : {}),
+              }),
+          },
+        ]
+      : []),
+    ...(sessionExerciseId && !currentExercise?.supersetGroup && supersetCandidates.length > 0
+      ? [{ key: "superset", label: "Superset with…", icon: "swap" as const, onPress: () => setSupersetOpen(true) }]
+      : []),
+    ...(sessionExerciseId && currentExercise?.supersetGroup
+      ? [{ key: "unsuperset", label: `Remove from superset ${currentExercise.supersetGroup}`, icon: "x" as const, onPress: onRemoveFromSuperset }]
+      : []),
+    {
+      key: "notes",
+      label: "Notes & set details",
+      icon: "pencil",
+      onPress: () => navigation.navigate("SetRestTracker", { workoutId, sessionId, exerciseIndex }),
+    },
+    {
+      key: "rest",
+      label: "Rest timer",
+      icon: "clock",
+      value: `${restSeconds} s`,
+      // Batch 3b: with a session list the choice is saved for this exercise; otherwise it just starts the timer.
+      onPress: () => (sessionExerciseId ? setRestOpen(true) : setShowRestTimer(true)),
+    },
+    ...(isBarbell(equipment) ? [{ key: "plates", label: "Plate calculator", icon: "sliders" as const, onPress: () => setPlatesOpen(true) }] : []),
+    ...(sessionExerciseId && loggedSets.length === 0 && orderedExercises.length > 1
+      ? [{ key: "remove", label: "Remove from this workout", icon: "trash" as const, onPress: onRemoveExercise }]
+      : []),
+  ];
   const upNext = orderedExercises.slice(exerciseIndex + 1);
   const score = readiness.data?.score ?? null;
   const context = profile.data?.equipmentContext ?? null;
   const modeTitle = context === "full_gym" ? "Gym Mode" : context ? "Home Mode" : null;
-  const currentSetNumber = Math.min(loggedSets.length + 1, currentExercise?.targetSets ?? 1);
+  const currentSetNumber = Math.min(workingLogged.length + 1, targetSets || 1);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -444,138 +797,220 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             gap: spacing.sm,
           }}
         >
-          <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h1, fontSize: 20 }}>{currentExercise?.exercise.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Text style={{ flex: 1, color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
             {setsRemaining > 0 ? (
               <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
-                Set {currentSetNumber} of {currentExercise?.targetSets}
+                Set {currentSetNumber} of {targetSets}
               </Text>
             ) : (
               <Text style={{ color: colors.successText, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
             )}
+            <Pressable
+              onPress={() => setMenuOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`More actions for ${currentExercise?.exercise.name ?? "this exercise"}`}
+              hitSlop={10}
+              style={{ paddingHorizontal: 4 }}
+            >
+              <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 20 }}>⋯</Text>
+            </Pressable>
           </View>
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-            Target: {currentExercise?.targetSets} Sets × {currentExercise?.targetReps} Reps
-          </Text>
+          {groupLabel && currentExercise?.supersetGroup ? (
+            <View style={{ alignSelf: "flex-start", borderRadius: radius.pill, backgroundColor: theme.accentSoft, paddingHorizontal: 10, paddingVertical: 3 }}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+                Superset {currentExercise.supersetGroup} · {groupLabel} · rest after the last one
+              </Text>
+            </View>
+          ) : null}
+          <Pressable onLongPress={() => setMenuOpen(true)} accessibilityRole="text" delayLongPress={350}>
+            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 20 }}>{currentExercise?.exercise.name}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
+              Rest {formatMmSs(restSeconds)}
+              {equipment ? ` · ${equipment}` : ""} · {currentExercise?.targetSets} × {currentExercise?.targetReps}
+            </Text>
+          </Pressable>
 
-          {loggedSets.length > 0 ? (
-            <View style={{ gap: 4, marginTop: 4 }}>
-              {loggedSets.map((s) => (
-                <View key={s.setNumber} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                    Set {s.setNumber}: {s.weightKg ? `${s.weightKg}kg × ` : ""}
-                    {s.reps} reps
-                  </Text>
-                  <Text style={{ color: colors.successText, fontSize: 13 }}>✓ Logged{s.rpe ? ` (effort ${s.rpe}/10)` : ""}</Text>
-                </View>
-              ))}
+          {warmupsAddedFrom != null && pendingWarmups.length > 0 ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.sm,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.warning,
+                backgroundColor: colors.warningSoft,
+                padding: spacing.sm + 2,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 14 }}>
+                  {pendingWarmups.length} warm-up set{pendingWarmups.length === 1 ? "" : "s"} added
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                  About 40%, 65% and 85% of {formatWeight(warmupsAddedFrom)} kg. Tap a value to change it.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setPendingWarmups([]);
+                  setWarmupsAddedFrom(null);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Undo warm-up sets"
+                hitSlop={8}
+                style={{ borderRadius: radius.pill, backgroundColor: colors.surfaceRaised, paddingHorizontal: 12, paddingVertical: 6 }}
+              >
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Undo</Text>
+              </Pressable>
             </View>
           ) : null}
 
-          {setsRemaining > 0 ? (
-            <>
-              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, marginTop: 4 }}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Weight (kg)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="—"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="decimal-pad"
-                    value={weight}
-                    onChangeText={setWeight}
-                    accessibilityLabel="Weight in kilograms"
-                  />
-                </View>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Reps</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="—"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    value={reps}
-                    onChangeText={setReps}
-                    accessibilityLabel="Reps"
-                  />
-                </View>
+          <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+            {previousWorking.length > 0
+              ? "Last time's numbers are pre-filled. Tap ✓ to log, or tap a number to change it."
+              : "Tap ✓ to log, or tap a number to change it."}
+          </Text>
+
+          {/* Set table: SET · PREVIOUS · KG · REPS · ✓ */}
+          <View style={{ gap: 6 }}>
+            <View style={tableStyles.row}>
+              <Text style={[tableStyles.head, tableStyles.setCol]}>SET</Text>
+              <Text style={[tableStyles.head, tableStyles.prevCol]}>PREVIOUS</Text>
+              <Text style={[tableStyles.head, tableStyles.numCol]}>KG</Text>
+              <Text style={[tableStyles.head, tableStyles.numCol]}>REPS</Text>
+              <Text style={[tableStyles.head, tableStyles.checkCol]}>✓</Text>
+            </View>
+
+            {loggedSets.map((s, i) => {
+              const label = rowLabels[i];
+              const working = /^\d+$/.test(label) ? previousFor(parseInt(label, 10)) : undefined;
+              const isPr = s.id === prSetId;
+              return (
                 <Pressable
-                  onPress={onLogSet}
-                  disabled={!reps || paused || isSubmittingSet}
+                  key={s.id}
+                  onPress={() => setEditingSet(session?.setLogs.find((l) => l.id === s.id) ?? null)}
                   accessibilityRole="button"
-                  accessibilityLabel="Log set"
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: radius.md,
-                    backgroundColor: theme.accent,
-                    opacity: !reps || paused ? 0.4 : 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  accessibilityLabel={`${label === "W" ? "Warm-up" : label === "D" ? "Drop set" : `Set ${label}`}, ${formatSetValues(s)}, logged${isPr ? ", personal best" : ""}. Edit`}
+                  style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: colors.successSoft, paddingVertical: 4 }]}
                 >
-                  {isSubmittingSet ? <ActivityIndicator color={theme.textOnAccent} /> : <Icon name="check" size={22} color={theme.textOnAccent} strokeWidth={3} />}
+                  <Text style={[tableStyles.label, tableStyles.setCol, label === "W" ? { color: colors.warningText } : label === "D" ? { color: colors.aiText } : null]}>
+                    {label}
+                  </Text>
+                  <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
+                    {formatSetValues(working)}
+                  </Text>
+                  <Text style={[tableStyles.value, tableStyles.numCol]}>{s.weightKg != null ? formatWeight(s.weightKg) : "—"}</Text>
+                  <Text style={[tableStyles.value, tableStyles.numCol]}>{s.reps}</Text>
+                  <View style={[tableStyles.checkCol, { alignItems: "center" }]}>
+                    {isPr ? (
+                      <Icon name="trophy" size={18} color={colors.warning} />
+                    ) : (
+                      <Icon name="check" size={18} color={colors.successText} strokeWidth={3} />
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            {pendingWarmups.map((w, i) => (
+              <View key={`warmup-${i}`} style={tableStyles.row}>
+                <Text style={[tableStyles.label, tableStyles.setCol, { color: colors.warningText }]}>W</Text>
+                <Text style={[tableStyles.prev, tableStyles.prevCol]}>—</Text>
+                <Pressable
+                  onPress={() => setQuickEdit({ kind: "warmup", index: i })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Warm-up weight ${w.weightKg ?? "none"} kilograms. Change`}
+                  style={[tableStyles.cell, tableStyles.numCol]}
+                >
+                  <Text style={tableStyles.value}>{w.weightKg != null ? formatWeight(w.weightKg) : "—"}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setQuickEdit({ kind: "warmup", index: i })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Warm-up reps ${w.reps}. Change`}
+                  style={[tableStyles.cell, tableStyles.numCol]}
+                >
+                  <Text style={tableStyles.value}>{w.reps}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => onLogSet(i)}
+                  disabled={paused || isSubmittingSet || !hasHydrated}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log warm-up set, ${formatSetValues(w)}`}
+                  style={[tableStyles.checkButton, tableStyles.checkCol, { opacity: paused || !hasHydrated ? 0.4 : 1 }]}
+                >
+                  <Icon name="check" size={18} color={colors.textPrimary} strokeWidth={3} />
                 </Pressable>
               </View>
+            ))}
 
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                <Text style={{ color: colors.textMuted, fontSize: 13 }}>How hard was it? (1–10)</Text>
-                <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{rpe ? `${rpe}/10 — ${rpeLabel(rpe)}` : "Optional"}</Text>
+            {setsRemaining > 0 ? (
+              <View style={tableStyles.row}>
+                <Text style={[tableStyles.label, tableStyles.setCol, setType !== "normal" ? { color: colors.aiText } : null]}>
+                  {setType === "drop" ? "D" : setType === "failure" ? "F" : nextWorkingNumber}
+                </Text>
+                <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
+                  {formatSetValues(lastTime)}
+                </Text>
+                <Pressable
+                  onPress={() => setQuickEdit({ kind: "active" })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Weight ${active.weight || "none"} kilograms. Change`}
+                  style={[tableStyles.cell, tableStyles.numCol, { borderColor: theme.accent }]}
+                >
+                  <Text style={tableStyles.value}>{active.weight || "—"}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setQuickEdit({ kind: "active" })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reps ${active.reps || "none"}. Change`}
+                  style={[tableStyles.cell, tableStyles.numCol, { borderColor: theme.accent }]}
+                >
+                  <Text style={tableStyles.value}>{active.reps || "—"}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => onLogSet()}
+                  disabled={!(activeReps > 0) || paused || isSubmittingSet || !hasHydrated}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log set ${nextWorkingNumber}`}
+                  style={[
+                    tableStyles.checkButton,
+                    tableStyles.checkCol,
+                    { backgroundColor: theme.accent, opacity: !(activeReps > 0) || paused || !hasHydrated ? 0.4 : 1 },
+                  ]}
+                >
+                  {isSubmittingSet ? (
+                    <ActivityIndicator color={theme.textOnAccent} />
+                  ) : (
+                    <Icon name="check" size={18} color={theme.textOnAccent} strokeWidth={3} />
+                  )}
+                </Pressable>
               </View>
-              <View style={{ flexDirection: "row", gap: 4 }}>
-                {RPE_SCALE.map((n) => (
-                  <Pressable
-                    key={n}
-                    onPress={() => setRpe(rpe === n ? undefined : n)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Effort ${n} of 10`}
-                    accessibilityState={{ selected: rpe === n }}
-                    hitSlop={{ top: 2, bottom: 2 }}
-                    style={{
-                      flex: 1,
-                      // 44 + 2 px slop = 48 px tall: tapped mid-set, often with sweaty hands.
-                      height: 44,
-                      borderRadius: 8,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: rpe === n ? theme.accent : n <= (rpe ?? 0) ? theme.accentSoft : colors.surfaceRaised,
-                    }}
-                  >
-                    <Text style={{ color: rpe === n ? theme.textOnAccent : colors.textSecondary, fontSize: 13, fontFamily: fonts.bodySemi }}>{n}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
+            ) : null}
+          </View>
+
+          {setsRemaining > 0 && rpe ? (
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+              RPE {rpe} — {rpeLabel(rpe)}
+            </Text>
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: 4 }}>
-            {currentExercise && loggedSets.length === 0 ? (
-              <Button
-                label="Swap Exercise"
-                variant="secondary"
-                onPress={() =>
-                  navigation.navigate("ExerciseSwap", {
-                    workoutId,
-                    workoutExerciseId: currentExercise.id,
-                    exerciseId: currentExercise.exercise.id,
-                  })
-                }
-                style={{ flex: 1, height: 38 }}
-              />
-            ) : null}
-            <Button
-              label="Set & Rest Tracker"
-              variant="secondary"
-              onPress={() => navigation.navigate("SetRestTracker", { workoutId, sessionId, exerciseIndex })}
-              style={{ flex: 1, height: 38 }}
-            />
-          </View>
+          <Pressable
+            onPress={() => setExtraSets((n) => n + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Add set"
+            style={{ height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 14 }}>+ Add set</Text>
+          </Pressable>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>W warm-up · 1–{currentExercise?.targetSets} working · D drop set · F to failure</Text>
         </View>
 
         {showRestTimer ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
-            <RestTimer key={loggedSets.length} layout="compact" onDismiss={() => setShowRestTimer(false)} />
+            <RestTimer key={`${exerciseIndex}-${loggedSets.length}`} layout="compact" defaultSeconds={restSeconds} onDismiss={() => setShowRestTimer(false)} />
           </View>
         ) : null}
 
@@ -613,6 +1048,28 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             ))}
           </>
         ) : null}
+
+        {/* Batch 3b: "+ Add exercise" (Figma 03b log/01) — only with a session list to add to. */}
+        {session?.exercises && session.exercises.length > 0 && session.exercises[0].id ? (
+          <Pressable
+            onPress={() => setAddOpen(true)}
+            disabled={listBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Add exercise"
+            style={{
+              height: 48,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: theme.accent,
+              backgroundColor: theme.accentSoft,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: listBusy ? 0.5 : 1,
+            }}
+          >
+            <Text style={{ color: theme.accentText, ...typography.label, fontSize: 15 }}>+ Add exercise</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.sm }}>
@@ -641,6 +1098,97 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         rows={(readiness.data?.components ?? []).map((c) => ({ label: readinessFactorLabel(c.key), value: `${Math.round(c.score)}/100` }))}
         caveat={readiness.data?.basis ?? "Based on your logged data"}
       />
+
+      <SetQuickEditSheet
+        visible={quickEdit !== null}
+        title={
+          quickEdit?.kind === "warmup"
+            ? `Warm-up · ${currentExercise?.exercise.name ?? ""}`
+            : `Set ${nextWorkingNumber} · ${currentExercise?.exercise.name ?? ""}`
+        }
+        value={
+          quickEdit?.kind === "warmup" && pendingWarmups[quickEdit.index]
+            ? {
+                weight: pendingWarmups[quickEdit.index].weightKg != null ? formatWeight(pendingWarmups[quickEdit.index].weightKg as number) : "",
+                reps: String(pendingWarmups[quickEdit.index].reps),
+              }
+            : { ...active, rpe }
+        }
+        lastSet={quickEdit?.kind === "active" && lastWorking ? { weightKg: lastWorking.weightKg, reps: lastWorking.reps } : undefined}
+        lastTime={quickEdit?.kind === "active" ? lastTime : undefined}
+        showRpe={quickEdit?.kind === "active"}
+        setType={quickEdit?.kind === "active" ? setType : undefined}
+        onDone={(v) => {
+          if (quickEdit?.kind === "warmup") {
+            const index = quickEdit.index;
+            const next = { weightKg: v.weight ? parseFloat(v.weight) : undefined, reps: parseInt(v.reps, 10) };
+            setPendingWarmups((ws) => ws.map((w, i) => (i === index ? next : w)));
+          } else {
+            setDraft({ weight: v.weight, reps: v.reps });
+            setRpe(v.rpe);
+            if (v.setType) setSetType(v.setType);
+          }
+          setQuickEdit(null);
+        }}
+        onClose={() => setQuickEdit(null)}
+      />
+      <ExerciseMenuSheet
+        visible={menuOpen}
+        title={currentExercise?.exercise.name ?? "Exercise"}
+        items={menuItems}
+        onClose={() => setMenuOpen(false)}
+      />
+      <ExerciseMenuSheet
+        visible={supersetOpen}
+        title="Superset with…"
+        items={supersetCandidates.map(({ e, i }) => ({
+          key: e.exercise.id,
+          label: e.exercise.name,
+          icon: "dumbbell" as const,
+          value: i > exerciseIndex ? "Later" : "Earlier",
+          onPress: () => onSupersetWith(i),
+        }))}
+        footnote="Do both back to back, then rest. The other exercise moves right after this one."
+        onClose={() => setSupersetOpen(false)}
+      />
+      <ExerciseMenuSheet
+        visible={restOpen}
+        title={`Rest for ${currentExercise?.exercise.name ?? "this exercise"}`}
+        items={[
+          ...REST_CHOICES.map((sec) => ({
+            key: String(sec),
+            label: formatMmSs(sec),
+            icon: (sec === restSeconds ? "check" : "clock") as "check" | "clock",
+            onPress: () => void onChooseRest(sec),
+          })),
+          { key: "default", label: `Use my default (${formatMmSs(defaultRest)})`, icon: "refresh-cw" as const, onPress: () => void onChooseRest(null) },
+        ]}
+        footnote="Saved for this exercise in every workout."
+        onClose={() => setRestOpen(false)}
+      />
+      <AddExerciseSheet
+        visible={addOpen}
+        exercises={exerciseLibrary.data}
+        loading={exerciseLibrary.isLoading}
+        excludeIds={orderedExercises.map((e) => e.exercise.id)}
+        onPick={onAddExercise}
+        onClose={() => setAddOpen(false)}
+      />
+      <PlateCalculatorSheet
+        visible={platesOpen}
+        initialKg={parseFloat(active.weight) || undefined}
+        onUse={(kg) => setDraft({ weight: formatWeight(kg), reps: active.reps })}
+        onClose={() => setPlatesOpen(false)}
+      />
+      <SetEditSheet
+        sessionId={sessionId}
+        set={editingSet}
+        title={editingSet?.isWarmup ? "Edit warm-up set" : "Edit set"}
+        onClose={() => {
+          setEditingSet(null);
+          queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary", "live"] });
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -653,15 +1201,31 @@ function rpeLabel(n: number): string {
   return "Max effort";
 }
 
-const styles = themed(() => ({
-  input: {
-    height: 50,
-    borderRadius: radius.md,
+/** Set table columns (Figma log/01): SET · PREVIOUS · KG · REPS · ✓. */
+const tableStyles = themed(() => ({
+  row: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40 },
+  head: { color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.4 },
+  setCol: { width: 30, textAlign: "center" },
+  prevCol: { flex: 1 },
+  numCol: { width: 64, textAlign: "center" },
+  checkCol: { width: 40, textAlign: "center" },
+  label: { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15 },
+  prev: { color: colors.textSecondary, fontSize: 13 },
+  value: { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15, textAlign: "center" },
+  cell: {
+    height: 38,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceRaised,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-    fontSize: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkButton: {
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: "center",
+    justifyContent: "center",
   },
 } as const));

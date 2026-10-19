@@ -2,11 +2,11 @@
   "expo": {
     "name": "Fynrox",
     "slug": "23primefit-user-mobile",
-    "version": "0.5.0",
-    "icon": "./assets/icon.png",
+    "version": "0.6.0",
     "orientation": "portrait",
     "scheme": "fynrox",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -33,6 +33,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-notifications",
@@ -66,9 +69,6 @@
         "projectId": "7a954e3d-e225-4ed0-8e01-02cbe63f59e4"
       }
     },
-    "owner": "vinodvin42",
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "owner": "vinodvin42"
   }
 }

@@ -105,8 +105,8 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
   const next = progress.nextProgram;
   const openCoaches = () =>
     COACH_BROWSING_ENABLED
-      ? parent?.navigate("More", { screen: "CoachDiscovery", params: { serviceType: "fitness" } })
-      : parent?.navigate("More", { screen: "RequestGuidance" });
+      ? parent?.navigate("More", { screen: "CoachDiscovery", params: { serviceType: "fitness" }, initial: false })
+      : parent?.navigate("More", { screen: "RequestGuidance", initial: false });
 
   return (
     <ScreenContainer title="Program Complete">
@@ -175,7 +175,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
       </View>
 
       <Pressable
-        onPress={() => parent?.navigate("More", { screen: "TimelineOverview" })}
+        onPress={() => parent?.navigate("More", { screen: "TimelineOverview", initial: false })}
         accessibilityRole="button"
         accessibilityLabel="Open your Life Timeline"
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: spacing.sm }}

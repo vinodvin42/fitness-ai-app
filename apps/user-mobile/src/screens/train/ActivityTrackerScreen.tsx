@@ -40,6 +40,8 @@ type Mode = "gps" | "manual";
 type PermState = "unknown" | "denied";
 
 const isWeb = Platform.OS === "web";
+/** No accepted fix for this long while running counts as a lost signal. */
+const GPS_LOST_MS = 20_000;
 
 function weekLabel(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -52,6 +54,12 @@ function weekLabel(iso: string): string {
  * source "tracked" with an encoded route. It only records while the app is open
  * (no background location). Web, or "Track manually": a stopwatch with the
  * distance typed in, saved as "manual". History comes from /activities.
+ *
+ * Oct 2026 (Figma Train 22/23): while running, no accepted GPS fix for
+ * GPS_LOST_MS shows a "GPS signal lost" card (time keeps recording; distance
+ * and pace wait for the signal, then the gap is joined with a straight line,
+ * which is what TrackAccumulator does). Finishing shows a run summary
+ * (date, distance, duration, pace or speed, elevation, splits) before Save.
  */
 export function ActivityTrackerScreen({ navigation, route }: Props) {
   const { kind } = route.params;
@@ -78,14 +86,20 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const [notes, setNotes] = useState("");
   const [distanceError, setDistanceError] = useState<string | null>(null);
   const [range, setRange] = useState<ActivitySummaryRange>("12w");
+  const lastFixAtRef = useRef(0);
+  const [signalLost, setSignalLost] = useState(false);
 
   // Wall-clock based so backgrounding the app doesn't lose time.
   useEffect(() => {
     if (phase !== "running") return;
     const id = setInterval(() => {
       setElapsedMs(accumulatedRef.current + (segmentStartRef.current ? Date.now() - segmentStartRef.current : 0));
+      setSignalLost(mode === "gps" && accRef.current.snapshot().points > 0 && Date.now() - lastFixAtRef.current > GPS_LOST_MS);
     }, 500);
     return () => clearInterval(id);
+  }, [phase, mode]);
+  useEffect(() => {
+    if (phase !== "running") setSignalLost(false);
   }, [phase]);
 
   const stopWatching = () => {
@@ -95,6 +109,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const startWatching = async () => {
     stopWatching();
     accRef.current.breakSegment();
+    lastFixAtRef.current = Date.now();
     const sub = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 1500 },
       (loc) => {
@@ -105,7 +120,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
           accuracy: loc.coords.accuracy,
           altitude: loc.coords.altitude,
         };
-        accRef.current.add(fix);
+        if (accRef.current.add(fix).accepted) lastFixAtRef.current = Date.now();
         const snap = accRef.current.snapshot();
         setLive({ distanceM: snap.distanceM, elevationGainM: snap.elevationGainM, points: snap.points, searching: snap.points === 0, accuracy: fix.accuracy ?? null });
       },
@@ -272,7 +287,9 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const gpsBadge =
     phase === "idle"
       ? "GPS ready"
-      : live.searching
+      : signalLost
+        ? "GPS signal lost"
+        : live.searching
         ? "Searching for GPS..."
         : live.accuracy == null
           ? "GPS tracking"
@@ -358,7 +375,8 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
               width: 6,
               height: 6,
               borderRadius: 3,
-              backgroundColor: mode !== "gps" ? colors.warning : live.accuracy != null && live.accuracy > 20 ? colors.warning : colors.success,
+              backgroundColor:
+                mode !== "gps" || signalLost ? colors.warning : live.accuracy != null && live.accuracy > 20 ? colors.warning : colors.success,
             }}
           />
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
@@ -371,6 +389,19 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
           ? "Tracking works only while Fynrox is open on screen. Keep the app open; location is not recorded in the background."
           : `${isWeb ? "GPS is not available on web. " : ""}Start the timer, then enter your distance when you finish. Saved as a manual ${label.toLowerCase()}.`}
       </Text>
+      {signalLost && phase === "running" ? (
+        <View
+          accessibilityRole="alert"
+          style={{ borderRadius: radius.card, borderWidth: 1, borderColor: colors.warning, backgroundColor: colors.warningSoft, padding: spacing.md, gap: 4 }}
+        >
+          <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>GPS SIGNAL LOST</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Still recording time</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14, lineHeight: 20 }}>
+            Distance and pace wait until the signal returns. Move to an open area if you can. When it's back, the gap is
+            joined with a straight line from your last position.
+          </Text>
+        </View>
+      ) : null}
       {perm === "denied" && phase === "idle" ? (
         <Card style={{ gap: spacing.xs }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Location access is off</Text>
@@ -464,11 +495,30 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
 
       {phase === "finishing" ? (
         <Card style={{ gap: spacing.sm }}>
+          <Text style={{ color: colors.accentText, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.6 }}>
+            {formatDateTime((startedAtRef.current ?? new Date()).toISOString()).toUpperCase()}
+          </Text>
+          <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h2 }}>
+            {isRun ? "Outdoor Run" : "Outdoor Cycle"}
+            {mode === "gps" ? ` · ${formatKm(live.distanceM, distanceUnit)}` : ""}
+          </Text>
           {mode === "gps" ? (
             <>
-              <Text style={{ color: colors.textSecondary }}>
-                {formatKm(live.distanceM, distanceUnit)} in {timeText} ({paceText}){live.elevationGainM > 0 ? `, ${live.elevationGainM} m climb` : ""}
-              </Text>
+              <View style={{ gap: 6 }}>
+                {[
+                  ["Duration", timeText],
+                  [isRun ? "Average pace" : "Average speed", paceText],
+                  ["Elevation", `+${live.elevationGainM} m`],
+                ].map(([k, v]) => (
+                  <View key={k} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14 }}>{k}</Text>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{v}</Text>
+                  </View>
+                ))}
+              </View>
+              {isRun && splits.length > 0 ? (
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>Splits are listed above.</Text>
+              ) : null}
               {distanceError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{distanceError}</Text> : null}
             </>
           ) : (
@@ -486,6 +536,7 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
             <Button label="Discard" variant="secondary" onPress={discard} style={{ flex: 1 }} />
             <Button label={`Save ${label.toLowerCase()}`} onPress={onSave} loading={save.isPending} style={{ flex: 1 }} />
           </View>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>Saved {label.toLowerCase()}s appear in Workout history.</Text>
         </Card>
       ) : (
         <>

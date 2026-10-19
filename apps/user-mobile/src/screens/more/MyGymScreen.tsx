@@ -34,6 +34,7 @@ export function MyGymScreen({ navigation }: Props) {
   const openGymWorkout = () =>
     (navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined)?.navigate("Train", {
       screen: "GymWorkout",
+      initial: false,
     });
 
   return (

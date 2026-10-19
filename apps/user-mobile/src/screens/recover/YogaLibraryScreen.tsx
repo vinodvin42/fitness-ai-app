@@ -5,6 +5,7 @@ import { SearchBar } from "../../components/SearchBar";
 import { Icon, IconName } from "../../components/Icon";
 import { BREATHING_PATTERNS, GUIDED_ROUTINES, WELLNESS_NOTE } from "../../content/recover";
 import type { LibraryCategory } from "../../content/recover";
+import { visibleYogaPrograms } from "../../content/yogaFoundations";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { ActionButton, PracticeArt, RecoverShell, SectionLabel } from "./parts";
@@ -61,7 +62,12 @@ export function YogaLibraryScreen({ navigation }: Props) {
     ];
   }, [navigation]);
 
+  // Multi-week programs (drafts only appear in development builds).
+  const programs = visibleYogaPrograms(__DEV__);
   const q = query.trim().toLowerCase();
+  const shownPrograms = programs.filter(
+    (p) => (filter === "All" || filter === "Yoga") && (!q || `${p.title} ${p.description} yoga program`.toLowerCase().includes(q)),
+  );
   const shown = entries.filter(
     (e) => (filter === "All" || e.category === filter) && (!q || `${e.title} ${e.meta} ${e.blurb} ${e.tag}`.toLowerCase().includes(q)),
   );
@@ -96,6 +102,46 @@ export function YogaLibraryScreen({ navigation }: Props) {
           );
         })}
       </View>
+
+      {shownPrograms.length > 0 ? (
+        <>
+          <SectionLabel>Programs</SectionLabel>
+          {shownPrograms.map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => navigation.navigate("YogaProgram", { programId: p.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`${p.title}, ${p.weeks.length} week yoga program${p.reviewStatus === "draft" ? ", draft" : ""}`}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: radius.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: spacing.md,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.sm,
+              }}
+            >
+              <View style={{ flex: 1, gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Icon name="flower" size={12} color={colors.accent} />
+                  <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>
+                    YOGA PROGRAM · {p.level.toUpperCase()}
+                    {p.reviewStatus === "draft" ? " · DRAFT" : ""}
+                  </Text>
+                </View>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{p.title}</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>
+                  {p.weeks.length} weeks · {p.daysPerWeek} days a week · {p.minutesLabel} min
+                </Text>
+                <Text style={{ color: colors.textSecondary, ...typography.meta }}>{p.description}</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color={colors.textMuted} />
+            </Pressable>
+          ))}
+        </>
+      ) : null}
 
       {hero ? (
         <>
@@ -152,7 +198,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
           <Icon name="chevron-right" size={18} color={colors.textMuted} />
         </Pressable>
       ))}
-      {shown.length === 0 ? <Text style={{ color: colors.textMuted, ...typography.meta }}>Nothing matches that search.</Text> : null}
+      {shown.length === 0 && shownPrograms.length === 0 ? <Text style={{ color: colors.textMuted, ...typography.meta }}>Nothing matches that search.</Text> : null}
 
       <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{WELLNESS_NOTE}</Text>
     </RecoverShell>

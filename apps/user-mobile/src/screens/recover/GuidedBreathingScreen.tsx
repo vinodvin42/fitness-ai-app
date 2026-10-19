@@ -141,7 +141,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
 
   if (phase === "setup") {
     return (
-      <RecoverShell title="Guided breathing" subtitle="Recovery · Pick a pace" onBack={() => navigation.goBack()}>
+      <RecoverShell edges={["top", "bottom"]} title="Guided breathing" subtitle="Recovery · Pick a pace" onBack={() => navigation.goBack()}>
         <Card style={{ gap: spacing.sm }}>
           <Text style={{ color: colors.textMuted, ...typography.label }}>PATTERN</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
@@ -172,7 +172,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
 
   if (phase === "done") {
     return (
-      <RecoverShell title="Nicely done" onBack={() => navigation.goBack()}>
+      <RecoverShell edges={["top", "bottom"]} title="Nicely done" onBack={() => navigation.goBack()}>
         <Card style={{ alignItems: "center", gap: spacing.sm }}>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{pattern.name}</Text>
           <Text style={{ color: colors.textSecondary, ...typography.body }}>{clock(elapsed)} of breathing</Text>
@@ -201,6 +201,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
 
   return (
     <RecoverShell
+      edges={["top", "bottom"]}
       title={pattern.name}
       subtitle={`${minutes}-minute guided session`}
       onBack={() => setConfirmEnd(true)}

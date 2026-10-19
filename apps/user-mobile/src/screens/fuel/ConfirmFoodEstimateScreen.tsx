@@ -10,6 +10,7 @@ import { confirmFoodEstimate, createSavedMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
+import { exitTaskToHome } from "../../navigation/taskExits";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "ConfirmFoodEstimate">;
 
@@ -57,7 +58,7 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
       }
       queryClient.invalidateQueries({ queryKey: ["recentFoods"] });
       await queryClient.invalidateQueries({ queryKey: ["mealLogs", "today"] });
-      navigation.navigate("FuelDashboard");
+      exitTaskToHome(navigation, "FuelDashboard");
     } catch (err) {
       Alert.alert("Couldn't log this meal", extractErrorMessage(err, "Check your connection and try again."));
     } finally {
@@ -66,7 +67,7 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Confirm Estimate" subtitle={`“${estimate.description}”`}>
+    <ScreenContainer edges={["top", "bottom"]} title="Confirm Estimate" subtitle={`“${estimate.description}”`}>
       <Card>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm }}>
           <Text style={{ fontSize: 18 }}>✨</Text>

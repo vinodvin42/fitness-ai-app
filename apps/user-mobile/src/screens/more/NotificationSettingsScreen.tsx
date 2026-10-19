@@ -185,7 +185,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
             <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>Manage saved reminders</Text>
           </View>
           <Pressable
-            onPress={() => navigation.getParent()?.navigate("Train", { screen: "RemindersRoutines" })}
+            onPress={() => navigation.getParent()?.navigate("Train", { screen: "RemindersRoutines", initial: false })}
             accessibilityRole="button"
             accessibilityLabel="Manage reminders and routines"
             style={{ backgroundColor: theme.accent, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 }}

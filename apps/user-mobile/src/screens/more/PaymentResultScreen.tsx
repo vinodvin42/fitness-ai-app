@@ -98,6 +98,7 @@ export function PaymentResultScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer
+      edges={["top", "bottom"]}
       title={success ? t("payment.successTitle") : pendingActivation ? t("payment.activatingTitle") : t("payment.failedTitle")}
     >
       <Card style={{ alignItems: "center", paddingVertical: spacing.xl }}>

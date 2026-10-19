@@ -1,6 +1,7 @@
 import React from "react";
 import { RefreshControlProps, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { Edge } from "react-native-safe-area-context";
 import { colors, layout, spacing, typography, themed } from "../theme/tokens";
 
 interface ScreenContainerProps {
@@ -15,12 +16,14 @@ interface ScreenContainerProps {
   scroll?: boolean;
   /** Optional pull-to-refresh control for scrolling screens. */
   refreshControl?: React.ReactElement<RefreshControlProps>;
+  /** Safe-area edges to pad. Screens shown without the tab bar (focused tasks) add "bottom". */
+  edges?: Edge[];
 }
 
 /** Shared per-screen header + safe-area shell — every tab screen uses this. */
-export function ScreenContainer({ title, subtitle, eyebrow, right, children, scroll = true, refreshControl }: ScreenContainerProps) {
+export function ScreenContainer({ title, subtitle, eyebrow, right, children, scroll = true, refreshControl, edges = ["top"] }: ScreenContainerProps) {
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={edges}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}

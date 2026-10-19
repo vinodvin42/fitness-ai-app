@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { Exercise } from "@fitness-ai-app/types";
+import type { Exercise, WorkoutSession } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
@@ -11,6 +11,9 @@ import { Icon } from "../../components/Icon";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchExerciseDetail } from "../../api/programs";
+import { updateSessionExercise } from "../../api/workoutSessions";
+import { extractErrorMessage } from "../../lib/apiError";
+import { useToast } from "../../components/Toast";
 import { setSwap } from "../../lib/exerciseSwaps";
 import { matchPercent, rankAlternatives, swapReasonCopy, type SwapReason } from "../../lib/exerciseMatch";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -44,14 +47,18 @@ function Thumb({ exercise }: { exercise: Exercise }) {
 /**
  * Exercise Swap (Figma Train 09). Alternatives are the real
  * GET /exercises/:id `alternatives` (same muscle group). Swapping applies to
- * this workout client-side only (lib/exerciseSwaps.ts) as no endpoint persists
- * a swap. "% match" is computed from real attributes (see lib/exerciseMatch.ts:
+ * this workout client-side only (lib/exerciseSwaps.ts) — or, during a session
+ * that has its own exercise list (Batch 3b, 18 Oct 2026), on the server, so the
+ * swap survives an app restart. "% match" is computed from real attributes (see lib/exerciseMatch.ts:
  * muscle group + equipment + difficulty); the reason chips re-rank and filter
  * the list by those same attributes. No "coach approved" claims are made.
  */
 export function ExerciseSwapScreen({ route, navigation }: Props) {
-  const { workoutId, workoutExerciseId, exerciseId } = route.params;
+  const { workoutId, workoutExerciseId, exerciseId, sessionId, sessionExerciseId } = route.params;
   const { colors: theme } = useTheme();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
   const [equipment, setEquipment] = useState(ALL);
   const [reason, setReason] = useState<SwapReason>("preference");
   const { data: exercise, isLoading, isError, refetch } = useQuery({
@@ -69,14 +76,31 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
   );
   const [best, ...others] = ranked;
 
-  const choose = (alt: Exercise | null) => {
+  const choose = async (alt: Exercise | null) => {
+    if (sessionId && sessionExerciseId) {
+      if (!alt) {
+        navigation.goBack();
+        return;
+      }
+      setSaving(true);
+      try {
+        const exercises = await updateSessionExercise(sessionId, sessionExerciseId, { exerciseId: alt.id });
+        queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => (s ? { ...s, exercises } : s));
+        navigation.goBack();
+      } catch (err) {
+        toast.show(extractErrorMessage(err, "Couldn't swap that exercise."), "error");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     setSwap(workoutId, workoutExerciseId, alt);
     navigation.goBack();
   };
 
   if (isError) {
     return (
-      <ScreenContainer title="Swap Exercise">
+      <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise">
         <BackButton onPress={() => navigation.goBack()} />
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
@@ -105,7 +129,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
   );
 
   return (
-    <ScreenContainer title="Swap Exercise">
+    <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise">
       <BackButton onPress={() => navigation.goBack()} />
       {isLoading || !exercise ? (
         <ActivityIndicator color={theme.accent} />
@@ -176,7 +200,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
                       </View>
                     ))}
                 </View>
-                <Button label="Select Fynrox Alternative" variant="secondary" onPress={() => choose(best)} />
+                <Button label="Select Fynrox Alternative" variant="secondary" loading={saving} disabled={saving} onPress={() => choose(best)} />
               </Card>
 
               {others.length > 0 ? (

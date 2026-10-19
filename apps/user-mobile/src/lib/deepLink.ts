@@ -34,9 +34,9 @@ export function openNotificationDeepLink(
       return true;
     case "recover":
     case "recovery":
-      if (second === "devices") navigation.navigate("Recover", { screen: "ConnectedDevices" });
-      else if (second === "yoga" || second === "mobility") navigation.navigate("Recover", { screen: "YogaLibrary" });
-      else if (second === "breathing") navigation.navigate("Recover", { screen: "GuidedBreathing", params: {} });
+      if (second === "devices") navigation.navigate("Recover", { screen: "ConnectedDevices", initial: false });
+      else if (second === "yoga" || second === "mobility") navigation.navigate("Recover", { screen: "YogaLibrary", initial: false });
+      else if (second === "breathing") navigation.navigate("Recover", { screen: "GuidedBreathing", params: {}, initial: false });
       else navigation.navigate("Recover", { screen: "RecoverHub" });
       return true;
     case "medicine":
@@ -47,30 +47,47 @@ export function openNotificationDeepLink(
         const medicationId = query.get("medicationId");
         const scheduledFor = query.get("scheduledFor");
         if (second === "due" && medicationId && scheduledFor) {
-          navigation.navigate("More", { screen: "MedicineOccurrence", params: { medicationId, scheduledFor } });
+          navigation.navigate("More", { screen: "MedicineOccurrence", params: { medicationId, scheduledFor }, initial: false });
         } else {
-          navigation.navigate("More", { screen: second === "due" ? "MedicineDue" : "MedicationList" });
+          navigation.navigate("More", { screen: second === "due" ? "MedicineDue" : "MedicationList", initial: false });
         }
       }
       return true;
     case "reminders":
-      navigation.navigate("More", { screen: "Reminders" });
+      navigation.navigate("More", { screen: "Reminders", initial: false });
       return true;
     case "ai-coach":
     case "coach-ai":
-      navigation.navigate("Recover", { screen: "AiCoach" });
+      navigation.navigate("Recover", { screen: "AiCoach", initial: false });
       return true;
     case "coaching":
     case "messages":
     case "coach":
-      navigation.navigate("More", { screen: "Conversations" });
+      navigation.navigate("More", { screen: "Conversations", initial: false });
       return true;
     case "billing":
     case "subscription":
-      navigation.navigate("More", { screen: "Subscription" });
+      navigation.navigate("More", { screen: "Subscription", initial: false });
       return true;
     case "settings":
-      navigation.navigate("More", { screen: "SettingsHub" });
+      navigation.navigate("More", { screen: "SettingsHub", initial: false });
+      return true;
+    case "learn":
+      {
+        // e.g. fynrox://learn?slug=… (05.04 Educational Content, Oct 2026).
+        const slug = query.get("slug");
+        if (slug) navigation.navigate("More", { screen: "LearnArticle", params: { slug }, initial: false });
+        else navigation.navigate("More", { screen: "Learn", initial: false });
+      }
+      return true;
+    case "support":
+    case "help":
+      {
+        // e.g. fynrox://support/tickets?ticketId=… (complaint notices, Oct 2026).
+        const ticketId = query.get("ticketId");
+        if (ticketId) navigation.navigate("More", { screen: "SupportTicketDetail", params: { ticketId }, initial: false });
+        else navigation.navigate("More", { screen: "Support", initial: false });
+      }
       return true;
     default:
       return false;

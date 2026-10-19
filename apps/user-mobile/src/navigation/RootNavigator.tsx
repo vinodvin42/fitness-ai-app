@@ -27,7 +27,7 @@ function buildNavigationTheme() {
   };
 }
 
-const navigationRef = createNavigationContainerRef<{ More: { screen: string; params: object } }>();
+const navigationRef = createNavigationContainerRef<{ More: { screen: string; params: object; initial?: boolean } }>();
 
 type OccurrenceTarget = { medicationId: string; scheduledFor: string };
 
@@ -69,7 +69,7 @@ export function RootNavigator() {
     if (!ready || !navigationRef.isReady() || !pending.current) return;
     const params = pending.current;
     pending.current = null;
-    navigationRef.navigate("More", { screen: "MedicineOccurrence", params });
+    navigationRef.navigate("More", { screen: "MedicineOccurrence", params, initial: false });
   }, [ready]);
   useEffect(() => {
     if (Platform.OS === "web") return;

@@ -2,6 +2,7 @@ import type {
   AiCoachMessagesResponse,
   AiCoachUsage,
   AiProviderStatus,
+  ReportAiAnswerInput,
   SendAiCoachMessageResponse,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
@@ -25,4 +26,9 @@ export function clearAiCoachConversation() {
 
 export function fetchAiCoachUsage() {
   return apiClient.get<AiCoachUsage>("/ai-coach/usage").then((r) => r.data);
+}
+
+/** AI Safety (Oct 2026): report one of your AI Coach answers to Fynrox's team. */
+export function reportAiAnswer(messageId: string, input: ReportAiAnswerInput) {
+  return apiClient.post<{ id: string; status: string }>(`/ai-coach/messages/${messageId}/report`, input).then((r) => r.data);
 }

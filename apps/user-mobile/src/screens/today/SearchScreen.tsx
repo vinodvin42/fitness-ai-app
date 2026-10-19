@@ -111,7 +111,7 @@ export function SearchScreen({ navigation }: Props) {
       tint: colors.success,
       title: "Recipes",
       subtitle: t ? `${t.catalog.recipes} meals with protein, carbs and fat` : "Meals with protein, carbs and fat",
-      onPress: () => parent?.navigate("Fuel", { screen: "Recipes" }),
+      onPress: () => parent?.navigate("Fuel", { screen: "Recipes", initial: false }),
     },
     {
       key: "pros",
@@ -120,7 +120,7 @@ export function SearchScreen({ navigation }: Props) {
       title: "Find a coach",
       subtitle: "Get help from a fitness or nutrition coach",
       onPress: () =>
-        COACH_BROWSING_ENABLED ? parent?.navigate("More", { screen: "CoachDiscovery" }) : parent?.navigate("More", { screen: "RequestGuidance" }),
+        COACH_BROWSING_ENABLED ? parent?.navigate("More", { screen: "CoachDiscovery", initial: false }) : parent?.navigate("More", { screen: "RequestGuidance", initial: false }),
     },
   ];
 
@@ -188,7 +188,7 @@ export function SearchScreen({ navigation }: Props) {
             <View style={{ gap: spacing.sm }}>
               <SectionLabel>Trending Workouts</SectionLabel>
               <Pressable
-                onPress={() => parent?.navigate("Train", { screen: "WorkoutDetail", params: { workoutId: t.workout!.id } })}
+                onPress={() => parent?.navigate("Train", { screen: "WorkoutDetail", params: { workoutId: t.workout!.id }, initial: false })}
                 accessibilityRole="button"
                 accessibilityLabel={`${t.workout.name}, ${t.basis === "most_started_30d" ? "popular" : "featured"} workout`}
               >
@@ -226,7 +226,7 @@ export function SearchScreen({ navigation }: Props) {
                   subtitle={`${p.durationWeeks} weeks`}
                   onPress={() => {
                     remember(q);
-                    parent?.navigate("Train", { screen: "ProgramDetail", params: { programId: p.id } });
+                    parent?.navigate("Train", { screen: "ProgramDetail", params: { programId: p.id }, initial: false });
                   }}
                 />
               ))}
@@ -243,7 +243,7 @@ export function SearchScreen({ navigation }: Props) {
                   subtitle={`${e.muscleGroup} · ${e.equipment}`}
                   onPress={() => {
                     remember(q);
-                    parent?.navigate("Train", { screen: "ExerciseDetail", params: { exerciseId: e.id } });
+                    parent?.navigate("Train", { screen: "ExerciseDetail", params: { exerciseId: e.id }, initial: false });
                   }}
                 />
               ))}
@@ -260,7 +260,7 @@ export function SearchScreen({ navigation }: Props) {
                   subtitle={`${r.calories} kcal · ${r.prepTimeMinutes} min`}
                   onPress={() => {
                     remember(q);
-                    parent?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: r.id } });
+                    parent?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: r.id }, initial: false });
                   }}
                 />
               ))}
@@ -276,7 +276,7 @@ export function SearchScreen({ navigation }: Props) {
                   subtitle={p.specializationTags.slice(0, 3).join(" · ") || "Coach"}
                   onPress={() => {
                     remember(q);
-                    parent?.navigate("More", { screen: "CoachProfileDetail", params: { professionalId: p.id } });
+                    parent?.navigate("More", { screen: "CoachProfileDetail", params: { professionalId: p.id }, initial: false });
                   }}
                 />
               ))}

@@ -4,12 +4,15 @@ import { TodayScreen } from "../screens/today/TodayScreen";
 import { NotificationsScreen } from "../screens/today/NotificationsScreen";
 import { SearchScreen } from "../screens/today/SearchScreen";
 import { ScheduleScreen } from "../screens/today/ScheduleScreen";
+import { DailyReviewScreen } from "../screens/today/DailyReviewScreen";
 
 export type TodayStackParamList = {
   TodayHome: undefined;
   Notifications: undefined;
   Search: undefined;
   Schedule: undefined;
+  // Figma 02b review/01–03 (Oct 2026).
+  DailyReview: undefined;
 };
 
 const Stack = createNativeStackNavigator<TodayStackParamList>();
@@ -21,6 +24,7 @@ export function TodayStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Schedule" component={ScheduleScreen} />
+      <Stack.Screen name="DailyReview" component={DailyReviewScreen} />
     </Stack.Navigator>
   );
 }

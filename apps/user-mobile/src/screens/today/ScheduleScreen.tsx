@@ -109,7 +109,7 @@ export function ScheduleScreen({ navigation }: Props) {
           title: r.label,
           subtitle: `${REMINDER_TAG[r.category]} reminder`,
           tag: REMINDER_TAG[r.category],
-          onPress: () => parent?.navigate("More", { screen: "Reminders" }),
+          onPress: () => parent?.navigate("More", { screen: "Reminders", initial: false }),
         });
       }
     }
@@ -126,6 +126,7 @@ export function ScheduleScreen({ navigation }: Props) {
           onPress: () =>
             parent?.navigate("More", {
               screen: "MedicineOccurrence",
+              initial: false,
               params: { medicationId: d.medicationId, scheduledFor: d.scheduledFor },
             }),
         });
@@ -139,7 +140,7 @@ export function ScheduleScreen({ navigation }: Props) {
           title: w.name,
           subtitle: `${w.durationMinutes} min • ${next.data?.plan.programName ?? "Your plan"}`,
           tag: "Workout",
-          onPress: () => parent?.navigate("Train", { screen: "WorkoutDetail", params: { workoutId: w.id } }),
+          onPress: () => parent?.navigate("Train", { screen: "WorkoutDetail", params: { workoutId: w.id }, initial: false }),
         });
       }
     }
@@ -156,7 +157,7 @@ export function ScheduleScreen({ navigation }: Props) {
             title: m.recipeName,
             subtitle: `${Math.round(m.calories)} kcal • ${Math.round(m.proteinG)}g protein`,
             tag: "Nutrition",
-            onPress: () => parent?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: m.recipeId } }),
+            onPress: () => parent?.navigate("Fuel", { screen: "RecipeDetail", params: { recipeId: m.recipeId }, initial: false }),
           });
         }
       }
@@ -174,7 +175,7 @@ export function ScheduleScreen({ navigation }: Props) {
       subtitle={dateLine}
       right={
         <Pressable
-          onPress={() => parent?.navigate("More", { screen: "ReminderForm", params: {} })}
+          onPress={() => parent?.navigate("More", { screen: "ReminderForm", params: {}, initial: false })}
           accessibilityRole="button"
           accessibilityLabel="Add reminder"
           style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}
@@ -237,7 +238,7 @@ export function ScheduleScreen({ navigation }: Props) {
           title="Nothing scheduled"
           subtitle="Reminders, medicine, your next workout and meal-plan meals will appear here."
           actionLabel="Add reminder"
-          onAction={() => parent?.navigate("More", { screen: "ReminderForm", params: {} })}
+          onAction={() => parent?.navigate("More", { screen: "ReminderForm", params: {}, initial: false })}
         />
       ) : (
         <View style={{ gap: spacing.md }}>

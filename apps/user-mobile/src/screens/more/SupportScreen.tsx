@@ -11,7 +11,7 @@ import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
 import { GroupCard, SectionLabel } from "../../components/SettingsParts";
 import { fetchMyTickets } from "../../api/support";
-import { fetchHelpArticles, fetchHelpCategories } from "../../api/help";
+import { fetchGrievanceOfficer, fetchHelpArticles, fetchHelpCategories } from "../../api/help";
 import { BRAND_NAME, SUPPORT_EMAIL } from "../../lib/brand";
 import { timeAgo } from "../../lib/deviceLabel";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -44,6 +44,60 @@ export const CATEGORY_LABEL: Record<SupportTicket["category"], string> = {
   other: "Other",
   complaint: "Complaint",
 };
+
+/**
+ * 08.03 Complaints (Oct 2026): India's Consumer Protection (E-Commerce)
+ * Rules 2020, rule 4(5), require the grievance officer's name, designation
+ * and contact to be shown. The API returns null fields until the owner
+ * supplies them, so each shows "Not set yet" rather than a made-up value.
+ */
+function GrievanceOfficerCard({ onComplain }: { onComplain: () => void }) {
+  const officer = useQuery({ queryKey: ["help", "grievance-officer"], queryFn: fetchGrievanceOfficer });
+  const rows: { label: string; value: string | null | undefined }[] = [
+    { label: "Name", value: officer.data?.name },
+    { label: "Designation", value: officer.data?.designation },
+    { label: "Email", value: officer.data?.email },
+  ];
+  return (
+    <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm }}>
+      <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+        Not happy with how something was handled? Make a formal complaint. You'll get a reference number straight away, and we'll resolve
+        it within one month.
+      </Text>
+      {officer.isLoading ? (
+        <ActivityIndicator color={colors.accent} />
+      ) : officer.isError ? (
+        <ErrorState onRetry={() => officer.refetch()} />
+      ) : (
+        <View style={{ gap: 6 }} accessible accessibilityLabel={`Grievance officer. ${rows.map((r) => `${r.label}: ${r.value || "not set yet"}`).join(". ")}`}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 }}>Grievance officer</Text>
+          {rows.map((r) =>
+            r.label === "Email" && r.value ? (
+              <Text key={r.label} style={{ color: colors.textSecondary, fontSize: 13 }}>
+                {r.label}:{" "}
+                <Text style={{ color: colors.accentText }} onPress={() => Linking.openURL(`mailto:${r.value}`)}>
+                  {r.value}
+                </Text>
+              </Text>
+            ) : (
+              <Text key={r.label} style={{ color: r.value ? colors.textSecondary : colors.textMuted, fontSize: 13 }}>
+                {r.label}: {r.value || "Not set yet"}
+              </Text>
+            ),
+          )}
+        </View>
+      )}
+      <Pressable
+        onPress={onComplain}
+        accessibilityRole="button"
+        style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}
+        hitSlop={6}
+      >
+        <Text style={{ color: colors.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>Make a complaint</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 function ContactCard({
   icon,
@@ -237,6 +291,9 @@ export function SupportScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("SupportTicketForm", { category: "feature_request" })}
             />
           </View>
+
+          <SectionLabel text="Complaints" />
+          <GrievanceOfficerCard onComplain={() => navigation.navigate("SupportTicketForm", { category: "complaint" })} />
         </>
       )}
 

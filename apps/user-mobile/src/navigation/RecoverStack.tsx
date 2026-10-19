@@ -8,6 +8,7 @@ import { AddDeviceScreen } from "../screens/recover/AddDeviceScreen";
 import { DevicePairingScreen } from "../screens/recover/DevicePairingScreen";
 import { SyncDashboardScreen } from "../screens/recover/SyncDashboardScreen";
 import { YogaLibraryScreen } from "../screens/recover/YogaLibraryScreen";
+import { YogaProgramScreen } from "../screens/recover/YogaProgramScreen";
 import { RoutineDetailScreen } from "../screens/recover/RoutineDetailScreen";
 import { GuidedSessionScreen } from "../screens/recover/GuidedSessionScreen";
 import { GuidedBreathingScreen } from "../screens/recover/GuidedBreathingScreen";
@@ -27,6 +28,8 @@ export type RecoverStackParamList = {
   DevicePairing: { provider: HealthProvider; kind: ConnectedDeviceKind; name: string; deviceId?: string };
   SyncDashboard: { importDeviceId?: string } | undefined;
   YogaLibrary: undefined;
+  // Bundled multi-week yoga programs (content/yogaFoundations.ts), Oct 2026.
+  YogaProgram: { programId: string };
   RoutineDetail: { routineId: string };
   GuidedSession: { routineId: string };
   GuidedBreathing: { patternId?: string; autoStart?: boolean } | undefined;
@@ -45,6 +48,7 @@ export function RecoverStack() {
       <Stack.Screen name="DevicePairing" component={DevicePairingScreen} />
       <Stack.Screen name="SyncDashboard" component={SyncDashboardScreen} />
       <Stack.Screen name="YogaLibrary" component={YogaLibraryScreen} />
+      <Stack.Screen name="YogaProgram" component={YogaProgramScreen} />
       <Stack.Screen name="RoutineDetail" component={RoutineDetailScreen} />
       <Stack.Screen name="GuidedSession" component={GuidedSessionScreen} />
       <Stack.Screen name="GuidedBreathing" component={GuidedBreathingScreen} />

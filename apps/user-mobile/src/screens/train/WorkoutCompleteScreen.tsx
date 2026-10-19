@@ -1,20 +1,30 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { WorkoutPhase } from "@fitness-ai-app/types";
+import type { SessionFeel, WorkoutPhase } from "@fitness-ai-app/types";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchSessionSummary } from "../../api/workoutSessions";
+import { fetchSessionSummary, setSessionFeel } from "../../api/workoutSessions";
+import { useToast } from "../../components/Toast";
+import { extractErrorMessage } from "../../lib/apiError";
+
+/** Batch 3b (Figma 03b log/08): optional, never required, and changes nothing in the plan. */
+const FEEL_OPTIONS: Array<{ value: SessionFeel; label: string }> = [
+  { value: "easy", label: "Easy" },
+  { value: "about_right", label: "About right" },
+  { value: "hard", label: "Hard" },
+];
 import { kgToDisplay, useWorkoutSettings } from "../../api/workoutSettings";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
+import { exitTaskToHome } from "../../navigation/taskExits";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "WorkoutComplete">;
 
@@ -40,6 +50,25 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
     queryKey: ["workoutSessions", sessionId, "summary"],
     queryFn: () => fetchSessionSummary(sessionId),
   });
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [feel, setFeel] = useState<SessionFeel | null>(null);
+  useEffect(() => {
+    if (data?.feel !== undefined) setFeel(data.feel ?? null);
+  }, [data?.feel]);
+  const chooseFeel = async (next: SessionFeel) => {
+    const value = feel === next ? null : next;
+    const before = feel;
+    setFeel(value);
+    try {
+      await setSessionFeel(sessionId, value);
+      queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["workoutHistory"] });
+    } catch (err) {
+      setFeel(before);
+      toast.show(extractErrorMessage(err, "Couldn't save that."), "error");
+    }
+  };
   const vol = (kg: number) => `${Math.round(kgToDisplay(kg, unit)).toLocaleString()} ${unit}`;
 
   const insight = !data
@@ -51,7 +80,7 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
         : "Session logged. A short recovery or mobility session tomorrow helps you come back fresh.";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" width="100%" height="100%">
@@ -162,12 +191,39 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
                   </Pressable>
                 </Card>
               ) : null}
+              <Card style={{ gap: spacing.sm }}>
+                <Text style={{ color: colors.textPrimary, ...typography.h3 }}>
+                  How did it feel? <Text style={{ color: colors.textMuted, ...typography.meta }}>Optional</Text>
+                </Text>
+                <View accessibilityRole="radiogroup" style={{ flexDirection: "row", gap: spacing.sm }}>
+                  {FEEL_OPTIONS.map((o) => (
+                    <Pressable
+                      key={o.value}
+                      onPress={() => void chooseFeel(o.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: feel === o.value }}
+                      style={{
+                        flex: 1,
+                        alignItems: "center",
+                        paddingVertical: 10,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: feel === o.value ? colors.accent : colors.border,
+                        backgroundColor: feel === o.value ? colors.accentSoft : "transparent",
+                      }}
+                    >
+                      <Text style={{ color: feel === o.value ? colors.accentText : colors.textSecondary, ...typography.label }}>{o.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>Saved with this workout. It doesn't change your plan.</Text>
+              </Card>
             </>
           )}
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <Button label="Back to Training" onPress={() => navigation.popToTop()} />
+        <Button label="Back to Workouts" onPress={() => exitTaskToHome(navigation, "TrainDashboard")} />
         <Pressable
           onPress={() => navigation.navigate("SessionSets", { sessionId, workoutName })}
           accessibilityRole="button"
