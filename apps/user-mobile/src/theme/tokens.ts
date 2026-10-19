@@ -122,7 +122,7 @@ export const palettes: Record<Scheme, Palette> = {
     dataFat: "#4f46e5",
     orange: "#c2410c",
     pink: "#be185d",
-    cyan: "#0e7490",
+    cyan: "#0e738f", // (derived) was #0e7490 at 4.44:1 on surfaceHigh; same hue, 0.2% darker for 4.5:1 (it's used as text: ActivityTracker pace)
     infoSurface: "#eaf4fb",
     infoBorder: "#b7d6ee",
     aiSurface: "#f3effd",

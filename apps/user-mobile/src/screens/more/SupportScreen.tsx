@@ -42,6 +42,7 @@ export const CATEGORY_LABEL: Record<SupportTicket["category"], string> = {
   billing: "Billing",
   account: "Account",
   other: "Other",
+  complaint: "Complaint",
 };
 
 function ContactCard({
