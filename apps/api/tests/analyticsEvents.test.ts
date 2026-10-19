@@ -120,7 +120,7 @@ describe("Product-analytics events", () => {
       const passwordHash = await hashPassword(adminPassword);
       analyticsAdminEmail = uniqueEmail("admin-analytics");
       const analyticsAdmin = await prisma.adminUser.create({
-        data: { email: analyticsAdminEmail, passwordHash, fullName: "Analytics Role Admin", role: "analytics", status: "active" },
+        data: { email: analyticsAdminEmail, passwordHash, fullName: "Analytics Role Admin", role: "operations", status: "active" },
       });
       supportAdminEmail = uniqueEmail("admin-support-noaccess");
       const supportAdmin = await prisma.adminUser.create({

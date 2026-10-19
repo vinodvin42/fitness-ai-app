@@ -11,7 +11,7 @@ import { Stepper } from "../../components/Stepper";
 import { Button } from "../../components/Button";
 import { createReminder, deleteReminder, updateReminder } from "../../api/reminders";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing } from "../../theme/tokens";
+import { colors, spacing, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "ReminderForm">;
@@ -238,7 +238,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 48,
     borderRadius: 8,
@@ -248,4 +248,4 @@ const styles = {
     paddingHorizontal: spacing.md,
     color: colors.textPrimary,
   },
-} as const;
+} as const));

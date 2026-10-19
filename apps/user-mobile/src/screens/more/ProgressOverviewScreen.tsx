@@ -129,7 +129,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Body Weight</Text>
           {goal?.targetWeightKg != null ? (
-            <Text style={{ color: colors.accent, ...typography.label }}>Goal: {wt(goal.targetWeightKg)}</Text>
+            <Text style={{ color: colors.accentText, ...typography.label }}>Goal: {wt(goal.targetWeightKg)}</Text>
           ) : null}
         </View>
         {chartPoints.length > 0 ? (
@@ -156,7 +156,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Measurements</Text>
           <Pressable onPress={() => navigation.navigate("LogMeasurement")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Update measurements">
-            <Text style={{ color: colors.accent, ...typography.label }}>Update</Text>
+            <Text style={{ color: colors.accentText, ...typography.label }}>Update</Text>
           </Pressable>
         </View>
         {tiles.length > 0 ? (
@@ -169,10 +169,10 @@ export function ProgressOverviewScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textMuted, ...typography.caption }}>{t.label}</Text>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>
                   {units.len(t.change.latest!.value)}
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{units.lenUnit}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{units.lenUnit}</Text>
                 </Text>
                 {t.change.delta != null ? (
-                  <Text style={{ color: colors.accent, ...typography.caption }}>
+                  <Text style={{ color: colors.accentText, ...typography.caption }}>
                     {signed(units.len(Math.abs(t.change.delta)) * Math.sign(t.change.delta))}
                     {units.lenUnit}
                   </Text>
@@ -201,7 +201,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
               </Text>
               <Text
                 style={{
-                  color: colors.accent,
+                  color: colors.accentText,
                   ...typography.caption,
                   backgroundColor: colors.accentSoft,
                   paddingHorizontal: 6,
@@ -230,7 +230,7 @@ export function ProgressOverviewScreen({ navigation }: Props) {
             </View>
           )}
           <Text style={{ color: colors.textPrimary, ...typography.label, flex: 1 }}>Transformation Gallery</Text>
-          <Text style={{ color: colors.accent, ...typography.label }}>View Gallery</Text>
+          <Text style={{ color: colors.accentText, ...typography.label }}>View Gallery</Text>
         </Card>
       </Pressable>
 

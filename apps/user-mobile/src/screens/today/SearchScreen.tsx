@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Icon, IconName } from "../../components/Icon";
 import { fetchExercises, fetchPrograms, fetchRecipes, fetchTrendingWorkout } from "../../api/programs";
 import { discoverCoaches } from "../../api/coaching";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TodayStackParamList } from "../../navigation/TodayStack";
 
@@ -50,7 +51,8 @@ export function SearchScreen({ navigation }: Props) {
   const pros = useQuery({
     queryKey: ["search", "professionals", q.toLowerCase()],
     queryFn: () => discoverCoaches({ search: q }),
-    enabled: q.length >= 2,
+    // Coach results open coach profiles, which only exist while browsing is switched on.
+    enabled: COACH_BROWSING_ENABLED && q.length >= 2,
     retry: false,
   });
 
@@ -108,16 +110,17 @@ export function SearchScreen({ navigation }: Props) {
       icon: "utensils",
       tint: colors.success,
       title: "Recipes",
-      subtitle: t ? `${t.catalog.recipes} meals with full macros` : "Meals with full macros",
+      subtitle: t ? `${t.catalog.recipes} meals with protein, carbs and fat` : "Meals with protein, carbs and fat",
       onPress: () => parent?.navigate("Fuel", { screen: "Recipes" }),
     },
     {
       key: "pros",
       icon: "users",
       tint: colors.aiAccent,
-      title: "Professional Guidance",
-      subtitle: "Guidance from an available professional",
-      onPress: () => parent?.navigate("More", { screen: "CoachDiscovery" }),
+      title: "Find a coach",
+      subtitle: "Get help from a fitness or nutrition coach",
+      onPress: () =>
+        COACH_BROWSING_ENABLED ? parent?.navigate("More", { screen: "CoachDiscovery" }) : parent?.navigate("More", { screen: "RequestGuidance" }),
     },
   ];
 
@@ -129,7 +132,7 @@ export function SearchScreen({ navigation }: Props) {
         value={query}
         onChangeText={setQuery}
         onSubmitEditing={() => remember(query)}
-        placeholder="Search workouts, recipes, professionals..."
+        placeholder={COACH_BROWSING_ENABLED ? "Search workouts, recipes, coaches..." : "Search workouts and recipes..."}
         right={<Icon name="mic" size={18} color={colors.textMuted} />}
       />
 
@@ -140,7 +143,7 @@ export function SearchScreen({ navigation }: Props) {
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <SectionLabel>Recent Searches</SectionLabel>
                 <Pressable onPress={clearRecent} accessibilityRole="button" accessibilityLabel="Clear recent searches" hitSlop={8}>
-                  <Text style={{ color: colors.textMuted, fontSize: 12 }}>Clear</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Clear</Text>
                 </Pressable>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
@@ -174,7 +177,7 @@ export function SearchScreen({ navigation }: Props) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>{c.title}</Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{c.subtitle}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{c.subtitle}</Text>
                 </View>
                 <Icon name="chevron-right" size={18} color={colors.textSecondary} />
               </Pressable>
@@ -195,11 +198,11 @@ export function SearchScreen({ navigation }: Props) {
                   imageStyle={{ opacity: 0.55 }}
                 >
                   <View style={{ padding: 16, gap: 4 }}>
-                    <Text style={{ color: colors.warning, fontSize: 11, letterSpacing: 1, fontFamily: fonts.bodySemi }}>
+                    <Text style={{ color: colors.warningText, fontSize: 13, letterSpacing: 1, fontFamily: fonts.bodySemi }}>
                       {t.basis === "most_started_30d" ? "POPULAR WORKOUT" : "FEATURED WORKOUT"}
                     </Text>
                     <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t.workout.name}</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                       {capitalise(t.workout.intensity)} · {t.workout.durationMinutes} min · {t.workout.programName}
                     </Text>
                   </View>
@@ -264,13 +267,13 @@ export function SearchScreen({ navigation }: Props) {
             </Group>
           )}
           {results.pros.length > 0 && (
-            <Group title="Professionals">
+            <Group title="Coaches">
               {results.pros.map((p) => (
                 <ListRow
                   key={p.id}
                   icon="users"
                   title={p.fullName}
-                  subtitle={p.specializationTags.slice(0, 3).join(" · ") || "Professional"}
+                  subtitle={p.specializationTags.slice(0, 3).join(" · ") || "Coach"}
                   onPress={() => {
                     remember(q);
                     parent?.navigate("More", { screen: "CoachProfileDetail", params: { professionalId: p.id } });

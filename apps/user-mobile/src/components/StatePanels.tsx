@@ -96,6 +96,7 @@ export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, d
               onPress={onBack}
               accessibilityRole="button"
               accessibilityLabel="Back"
+              hitSlop={8}
               style={{
                 width: 32,
                 height: 32,
@@ -115,7 +116,7 @@ export function StateLayout({ flowLabel, flowIcon, flowTone = "accent", title, d
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Icon name={flowIcon} size={18} color={tint} />
-            <Text style={{ color: tint, ...typography.label, fontSize: 11, letterSpacing: 0.7 }}>{flowLabel}</Text>
+            <Text style={{ color: tint, ...typography.label, fontSize: 13, letterSpacing: 0.7 }}>{flowLabel}</Text>
           </View>
           <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h1, fontSize: 24, lineHeight: 28 }}>
             {title}

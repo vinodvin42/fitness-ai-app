@@ -7,6 +7,9 @@ import { Stepper } from "../../components/Stepper";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
+
+const STEP = onboardingStep("Schedule");
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Schedule">;
 
@@ -36,10 +39,8 @@ export function ScheduleScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={1}
-      total={5}
-      progress={0.3}
-      caption="Optional · Availability"
+      {...STEP}
+      caption={`Step ${STEP.step} of ${STEP.total} · Optional`}
       title="When can you train?"
       subtitle="A rough idea helps us understand your availability — this doesn't lock you into a fixed schedule."
       onBack={() => navigation.goBack()}

@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed, touch } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 import { Icon } from "./Icon";
+import { FocusRing, useFocusState } from "./FocusRing";
 
 interface ChipProps {
   label: string;
@@ -23,32 +24,39 @@ interface ChipProps {
   variant?: "solid" | "danger" | "outlined";
   /** Show a leading check mark when selected (Figma goal chips). */
   showCheck?: boolean;
+  disabled?: boolean;
 }
 
 /** Single/multi-select pill — docs/mobile/04-design-system.md §5 "Chip selector". */
-export function Chip({ label, selected, onPress, accessibilityLabel, variant = "solid", showCheck }: ChipProps) {
+export function Chip({ label, selected, onPress, accessibilityLabel, variant = "solid", showCheck, disabled }: ChipProps) {
   const { colors: theme } = useTheme();
+  const { focused, focusProps } = useFocusState();
   const selectedStyle =
     variant === "danger"
-      ? { borderColor: colors.danger, backgroundColor: colors.dangerSoft }
+      ? { borderColor: colors.dangerText, backgroundColor: colors.dangerSoft }
       : variant === "outlined"
         ? { borderColor: theme.accent, backgroundColor: theme.accentSoft }
         : { borderColor: theme.accent, backgroundColor: theme.accent };
   const textColor = !selected
     ? colors.textSecondary
     : variant === "danger"
-      ? colors.danger
+      ? colors.dangerText
       : variant === "outlined"
-        ? theme.accent
+        ? theme.accentText
         : theme.textOnAccent;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, selected && selectedStyle]}
+      accessibilityState={{ selected, disabled: !!disabled }}
+      disabled={disabled}
+      hitSlop={HIT_SLOP}
+      {...focusProps}
+      android_ripple={{ color: colors.ripple }}
+      style={({ pressed }: { pressed: boolean }) => [styles.chip, selected && selectedStyle, pressed && styles.pressed, disabled && styles.disabled]}
     >
+      <FocusRing visible={focused} radius={radius.pill} />
       <View style={styles.inner}>
         {selected && variant === "danger" ? <Icon name="alert-triangle" size={13} color={textColor} /> : null}
         {selected && variant === "outlined" ? <View style={[styles.dot, { backgroundColor: textColor }]} /> : null}
@@ -59,10 +67,16 @@ export function Chip({ label, selected, onPress, accessibilityLabel, variant = "
   );
 }
 
-const styles = StyleSheet.create({
+/** 40 px visual height + 4 px slop above and below = 48 px touch target (Material). */
+const CHIP_HEIGHT = 40;
+const HIT_SLOP = { top: (touch.min - CHIP_HEIGHT) / 2, bottom: (touch.min - CHIP_HEIGHT) / 2, left: 0, right: 0 };
+
+const styles = themed(() => StyleSheet.create({
   chip: {
+    minHeight: CHIP_HEIGHT,
+    justifyContent: "center",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
@@ -77,4 +91,6 @@ const styles = StyleSheet.create({
   labelSelected: {
     fontFamily: fonts.bodySemi,
   },
-});
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.45 },
+}));

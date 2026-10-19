@@ -155,7 +155,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
     >
       <BackButton onPress={() => navigation.goBack()} />
       <View style={{ alignSelf: "flex-start", backgroundColor: colors.accentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-        <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 10 }}>Train / Form analysis setup</Text>
+        <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Train / Form analysis setup</Text>
       </View>
       <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
         {exercise ? `${exercise.name}. ` : ""}Capture a short clip for general technique feedback. This is not a medical assessment.
@@ -198,8 +198,8 @@ export function FormAnalysisScreen({ navigation }: Props) {
       </Card>
 
       <Card style={{ borderColor: colors.infoBorder, backgroundColor: colors.infoSurface, gap: spacing.sm }}>
-        <Text style={{ color: theme.accent, ...typography.h3 }}>Choose whether to share a clip</Text>
-        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 12, lineHeight: 18 }}>
+        <Text style={{ color: theme.accentText, ...typography.h3 }}>Choose whether to share a clip</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 18 }}>
           Camera permission is separate from consent to process video. Only a clip you review and choose to submit is sent. Your clip is
           stored and waits in a queue for a human coach to review; there is no automatic analysis, and review times are not guaranteed.
         </Text>
@@ -225,12 +225,12 @@ export function FormAnalysisScreen({ navigation }: Props) {
           >
             {consented ? <Icon name="check" size={13} color={theme.textOnAccent} strokeWidth={3} /> : null}
           </View>
-          <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 12, lineHeight: 18, flex: 1 }}>
+          <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 13, lineHeight: 18, flex: 1 }}>
             I agree to video processing for form feedback. I will review the clip before submitting it.
           </Text>
         </Pressable>
         <Pressable onPress={() => tabs.navigate("More", { screen: "PrivacySettings" })} accessibilityRole="link" hitSlop={8}>
-          <Text style={{ color: theme.accent, ...typography.meta }}>Review video processing and retention details</Text>
+          <Text style={{ color: theme.accentText, ...typography.meta }}>Review video processing and retention details</Text>
         </Pressable>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>
           Capture, then review, retake or delete, then submit. You decide whether the clip is submitted.
@@ -238,8 +238,8 @@ export function FormAnalysisScreen({ navigation }: Props) {
       </Card>
 
       <Card style={{ borderColor: colors.warning, backgroundColor: colors.warningSoft, gap: spacing.xs }}>
-        <Text style={{ color: colors.warning, ...typography.h3 }}>Feedback has limits</Text>
-        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 12, lineHeight: 18 }}>
+        <Text style={{ color: colors.warningText, ...typography.h3 }}>Feedback has limits</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 18 }}>
           Camera angle, lighting and occlusion can make feedback inaccurate. It cannot diagnose injuries or confirm that a movement is safe.
           Stop if you feel pain. Ask a qualified professional if you are unsure; never push through pain to get a rep.
         </Text>
@@ -275,7 +275,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
           <Button label="Use video guide instead" variant="secondary" onPress={guide} />
         </>
       )}
-      {clipError ? <Text style={{ color: colors.danger }}>{clipError}</Text> : null}
+      {clipError ? <Text style={{ color: colors.dangerText }}>{clipError}</Text> : null}
 
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Your submissions</Text>
       {listQuery.isError ? (

@@ -25,7 +25,7 @@ import {
   type AgendaItem,
 } from "../../lib/agenda";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -39,7 +39,7 @@ const TABS: Array<{ value: Tab; label: string }> = [
   { value: "history", label: "History" },
 ];
 
-const META: Record<AgendaItem["category"], { icon: IconName; tint: string }> = {
+const META: Record<AgendaItem["category"], { icon: IconName; tint: string }> = themed(() => ({
   workout: { icon: "dumbbell", tint: colors.aiAccent },
   meal: { icon: "utensils", tint: colors.success },
   water: { icon: "droplet", tint: colors.accent },
@@ -47,7 +47,7 @@ const META: Record<AgendaItem["category"], { icon: IconName; tint: string }> = {
   general: { icon: "bell", tint: colors.cyan },
   medication: { icon: "pill", tint: colors.danger },
   routine: { icon: "dumbbell", tint: colors.accent },
-};
+}));
 
 /**
  * Reminders & Routines (Figma Train 13): one list over three existing sources.
@@ -136,7 +136,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
         </Pressable>
         {done ? (
           <View style={{ backgroundColor: colors.surfaceHigh, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+            <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
               {item.doseStatus === "skipped" ? "Skipped" : "Completed"}
             </Text>
           </View>
@@ -147,7 +147,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
             accessibilityLabel={`Open routine ${item.title}`}
             style={{ backgroundColor: theme.accentSoft, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 }}
           >
-            <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>Open</Text>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Open</Text>
           </Pressable>
         ) : item.enabled !== undefined ? (
           <>
@@ -205,7 +205,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
                 backgroundColor: on ? theme.accent : colors.surface,
               }}
             >
-              <Text style={{ color: on ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{t.label}</Text>
+              <Text style={{ color: on ? theme.textOnAccent : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{t.label}</Text>
             </Pressable>
           );
         })}
@@ -245,7 +245,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
                         </Text>
                       </View>
                       <View style={{ backgroundColor: colors.surfaceHigh, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
-                        <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11 }}>Completed</Text>
+                        <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>Completed</Text>
                       </View>
                     </Card>
                   ))}
@@ -289,7 +289,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
                   <Card key={w.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                     <Icon name="dumbbell" size={18} color={colors.aiAccent} />
                     <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14, flex: 1 }}>{w.workoutName}</Text>
-                    <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11 }}>Completed</Text>
+                    <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>Completed</Text>
                   </Card>
                 ))}
               </>
@@ -300,7 +300,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
             <Card style={{ borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, gap: spacing.xs }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="sparkles" size={13} color={colors.aiAccent} />
-                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
+                <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>FYNROX RECOMMENDATION</Text>
               </View>
               <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
                 You have no workout reminder switched on. A nudge before your training days makes sessions easier to keep.
@@ -310,7 +310,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 style={{ alignSelf: "flex-start", backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 10, paddingVertical: 5 }}
               >
-                <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Add workout reminder</Text>
+                <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Add workout reminder</Text>
               </Pressable>
             </Card>
           ) : null}

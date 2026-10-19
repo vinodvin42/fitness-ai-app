@@ -21,7 +21,7 @@ import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nut
 import { fetchCurrentMealPlan } from "../../api/mealPlans";
 import { fetchWorkoutHistory } from "../../api/workoutSessions";
 import { fetchNextWorkout } from "../../api/plans";
-import { fetchGuardianReview, fetchOnboardingProfile } from "../../api/users";
+import { fetchOnboardingProfile } from "../../api/users";
 import { fetchReadiness } from "../../api/recovery";
 import { fetchNotifications } from "../../api/notifications";
 import { fetchMeasurements } from "../../api/progress";
@@ -32,7 +32,7 @@ import { formatTimeOfDay } from "../../lib/format";
 import { DAILY_TARGETS } from "../../lib/nutritionTargets";
 import { openNotificationDeepLink } from "../../lib/deepLink";
 import { GUIDED_ROUTINES, routineSeconds } from "../../content/recover";
-import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { TodayLoadingView, TodayOfflineView } from "./TodayStates";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
@@ -92,7 +92,6 @@ function sorenessLabel(v: number | null | undefined): string {
  */
 export function TodayScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const { data: guardianReview } = useQuery({ queryKey: ["users", "guardian-review"], queryFn: fetchGuardianReview, staleTime: 60_000 });
   const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
   const net = useNetInfo();
@@ -271,7 +270,7 @@ export function TodayScreen({ navigation }: Props) {
   // Daily brief assembled only from real values; falls back to the AI Coach prompt when there's nothing to say.
   const briefText = useMemo(() => {
     const parts: string[] = [];
-    if (score != null) parts.push(`Readiness is ${score}/100 today.`);
+    if (score != null) parts.push(`Your recovery score is ${score}/100 today.`);
     if (nextWorkout?.workout) parts.push(`${nextWorkout.workout.name} fits your plan.`);
     if (parts.length > 0) parts.push(`Aim for your ${DAILY_TARGETS.proteinG}g protein target.`);
     return parts.length > 0 ? parts.join(" ") : `Ask ${BRAND_NAME} AI for training, nutrition, or recovery guidance grounded in your real progress.`;
@@ -358,21 +357,6 @@ export function TodayScreen({ navigation }: Props) {
           gap: 16,
         }}
       >
-        {guardianReview && guardianReview.status !== "approved" ? (
-          <View
-            accessibilityRole="alert"
-            style={{ backgroundColor: colors.surface, borderColor: colors.warning, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 4 }}
-          >
-            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>
-              {guardianReview.status === "declined" ? "Guardian declined authorization" : "Guardian authorization pending"}
-            </Text>
-            <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>
-              {guardianReview.status === "declined"
-                ? "Personalized plans, health questions and analysis stay off. Contact support if this was a mistake."
-                : "Personalized plans, health questions and analysis stay off until your guardian approves the request we emailed them."}
-            </Text>
-          </View>
-        ) : null}
 
         {/* Header: avatar, greeting, round search + bell */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -405,18 +389,18 @@ export function TodayScreen({ navigation }: Props) {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={{ color: colors.aiAccent, fontSize: 14 }}>✦</Text>
+              <Text style={{ color: colors.aiText, fontSize: 14 }}>✦</Text>
               <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14, letterSpacing: 0.5 }}>YOUR DAILY BRIEF</Text>
             </View>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }} numberOfLines={4}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={4}>
               ✦ {briefText}
             </Text>
             <View style={{ flexDirection: "row", gap: spacing.md }}>
               <Pressable onPress={openCoach} accessibilityRole="button" accessibilityLabel="View details in AI Coach" hitSlop={8}>
-                <Text style={{ color: colors.aiAccent, ...typography.label, fontSize: 12 }}>View Details</Text>
+                <Text style={{ color: colors.aiText, ...typography.label, fontSize: 13 }}>View Details</Text>
               </Pressable>
               <Pressable onPress={dismissBrief} accessibilityRole="button" accessibilityLabel="Dismiss daily brief" hitSlop={8}>
-                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>Dismiss</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Dismiss</Text>
               </Pressable>
             </View>
           </View>
@@ -429,8 +413,8 @@ export function TodayScreen({ navigation }: Props) {
           <Pressable onPress={openRecovery} accessibilityRole="button" accessibilityLabel="Open recovery" style={cardStyle}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Readiness Score</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Recovery score</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
                   {readiness.source
                     ? `${readiness.source.kind === "device" ? readiness.source.name ?? "Connected device" : "Manual log"} · Updated ${formatTimeOfDay(new Date(readiness.source.at))}`
                     : "Manual log"}
@@ -444,27 +428,27 @@ export function TodayScreen({ navigation }: Props) {
               </ProgressRing>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 15 }}>{readiness.headline}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 4 }}>{readiness.summary}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 4 }}>{readiness.summary}</Text>
               </View>
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <StatChip icon="moon" label="Sleep" value={metrics?.sleepHours != null ? `${metrics.sleepHours}h` : "—"} />
-              <StatChip icon="activity" label="HRV" value={metrics?.hrvMs != null ? `${metrics.hrvMs}ms` : "—"} tint={colors.success} />
+              <StatChip icon="activity" label="Resting pulse" value={metrics?.restingHeartRate != null ? `${metrics.restingHeartRate} bpm` : "—"} tint={colors.success} />
               <StatChip icon="heart" label="Soreness" value={sorenessLabel(metrics?.soreness)} />
             </View>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{readiness.basis}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>{readiness.basis}</Text>
           </Pressable>
         ) : (
           <View style={cardStyle}>
-            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Readiness Score</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Recovery score</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
               {readiness?.source
-                ? "Log a few more recovery metrics — sleep, energy, soreness, HRV or resting heart rate — and your score shows up here."
-                : "Log how you slept and how you feel — or connect a device — and your readiness shows up here."}
+                ? "Log a few more things — sleep, energy, sore muscles or resting heart rate — and your score shows up here."
+                : "Log how you slept and how you feel — or connect a device — and your recovery score shows up here."}
             </Text>
             <View style={{ flexDirection: "row", gap: spacing.md }}>
               <Pressable onPress={openRecovery} accessibilityRole="button" accessibilityLabel="Log recovery" hitSlop={8}>
-                <Text style={{ color: theme.accent, ...typography.label, fontSize: 13 }}>Log recovery ›</Text>
+                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Log recovery ›</Text>
               </Pressable>
               <Pressable
                 onPress={() => navigation.navigate("Recover", { screen: "ConnectedDevices" })}
@@ -487,7 +471,7 @@ export function TodayScreen({ navigation }: Props) {
           <View style={cardStyle}>
             <Eyebrow color={theme.accent}>CONTINUE WORKOUT</Eyebrow>
             <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>{inProgressToday.workoutName}</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
               {inProgressToday.programName} · {inProgressToday.totalSets} set{inProgressToday.totalSets === 1 ? "" : "s"} logged so far
             </Text>
             <PrimaryAction
@@ -511,7 +495,7 @@ export function TodayScreen({ navigation }: Props) {
               <View style={{ flex: 1, gap: 2 }}>
                 <Eyebrow color={theme.accent}>TODAY'S WORKOUT</Eyebrow>
                 <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 17 }}>{nextWorkout.workout.name}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   {nextWorkout.workout.durationMinutes} min · {capitalise(nextWorkout.workout.intensity)}
                 </Text>
               </View>
@@ -522,25 +506,25 @@ export function TodayScreen({ navigation }: Props) {
                 disabled={!rationale}
                 onPress={() => setWhyWorkoutOpen(true)}
                 accessibilityRole={rationale ? "button" : undefined}
-                accessibilityLabel="Matches today's readiness"
+                accessibilityLabel="Suits how recovered you are today"
                 style={{ flexDirection: "row", gap: 6, alignItems: "center" }}
               >
-                <Text style={{ color: colors.aiAccent, fontSize: 12 }}>✦</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Matches today's readiness</Text>
-                {rationale ? <Text style={{ color: colors.aiAccent, ...typography.label, fontSize: 12 }}>Why?</Text> : null}
+                <Text style={{ color: colors.aiText, fontSize: 13 }}>✦</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Suits how recovered you are today</Text>
+                {rationale ? <Text style={{ color: colors.aiText, ...typography.label, fontSize: 13 }}>Why?</Text> : null}
               </Pressable>
             ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <PrimaryAction label="Start Workout" style={{ flex: 1 }} onPress={workoutPath(nextWorkout.workout.id)} />
               <Pressable onPress={workoutPath(nextWorkout.workout.id)} accessibilityRole="button" accessibilityLabel="View workout details">
-                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>View Details</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>View Details</Text>
               </Pressable>
             </View>
           </View>
         ) : nextWorkout?.programComplete ? (
           <View style={cardStyle}>
             <Text style={{ color: colors.textPrimary, ...typography.h2 }}>🎉 Plan complete</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
               You've finished every workout in {nextWorkout.plan.programName}. Head to Train to explore more programs.
             </Text>
           </View>
@@ -551,7 +535,7 @@ export function TodayScreen({ navigation }: Props) {
           <Pressable
             onPress={() => navigation.navigate("Fuel", { screen: "FuelDashboard" })}
             accessibilityRole="button"
-            accessibilityLabel="Open Fuel"
+            accessibilityLabel="Open Food"
             style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
           >
             <View style={{ flex: 1 }}>
@@ -559,7 +543,7 @@ export function TodayScreen({ navigation }: Props) {
               <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 15, marginTop: 2 }}>
                 What to eat next: {MEAL_LABEL[mealType]}
               </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
                 Protein {remaining.protein}g remaining · Carbs {remaining.carbs}g · Fat {remaining.fat}g
               </Text>
             </View>
@@ -567,8 +551,8 @@ export function TodayScreen({ navigation }: Props) {
           </Pressable>
           {plannedMeal ? (
             <View style={{ flexDirection: "row", gap: 6 }}>
-              <Text style={{ color: colors.aiAccent, fontSize: 12 }}>✦</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, flex: 1 }}>From your meal plan: {plannedMeal.recipeName}</Text>
+              <Text style={{ color: colors.aiText, fontSize: 13 }}>✦</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>From your meal plan: {plannedMeal.recipeName}</Text>
             </View>
           ) : null}
           <View style={{ flexDirection: "row", gap: 12 }}>
@@ -577,14 +561,14 @@ export function TodayScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel="Log meal"
             >
-              <Text style={{ color: colors.success, ...typography.label, fontSize: 12 }}>Log Meal</Text>
+              <Text style={{ color: colors.successText, ...typography.label, fontSize: 13 }}>Log Meal</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate("Fuel", { screen: "Recipes" })}
               accessibilityRole="button"
               accessibilityLabel="See recipes"
             >
-              <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>See Recipes</Text>
+              <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>See Recipes</Text>
             </Pressable>
           </View>
         </View>
@@ -610,7 +594,7 @@ export function TodayScreen({ navigation }: Props) {
               <Icon name="droplet" size={24} color={theme.accent} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Hydration</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   {totalGlasses} / {WATER_GOAL_GLASSES} glasses logged
                 </Text>
                 <ProgressBar pct={(totalGlasses / WATER_GOAL_GLASSES) * 100} color={theme.accent} />
@@ -621,10 +605,11 @@ export function TodayScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="Add one glass of water"
                 accessibilityState={{ disabled: isLoggingWater, busy: isLoggingWater }}
+                hitSlop={4}
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
                   borderWidth: 1,
                   borderColor: theme.accent,
                   backgroundColor: colors.surface,
@@ -633,7 +618,7 @@ export function TodayScreen({ navigation }: Props) {
                   opacity: isLoggingWater ? 0.5 : 1,
                 }}
               >
-                <Icon name="plus" size={16} color={colors.textPrimary} />
+                <Icon name="plus" size={20} color={colors.textPrimary} />
               </Pressable>
             </View>
           )}
@@ -642,7 +627,7 @@ export function TodayScreen({ navigation }: Props) {
             <Icon name="heart" size={24} color={theme.accent} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Recovery Routine</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
                 ✦ Optional: gentle mobility for {routineMinutes} min tonight. Skip any movement that feels uncomfortable.
               </Text>
             </View>
@@ -653,10 +638,10 @@ export function TodayScreen({ navigation }: Props) {
                 accessibilityLabel="Accept the suggested mobility routine"
                 style={{ borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.accentSoft, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 6 }}
               >
-                <Text style={{ color: theme.accent, ...typography.label, fontSize: 12 }}>Accept</Text>
+                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Accept</Text>
               </Pressable>
               <Pressable onPress={() => setWhyRoutineOpen(true)} accessibilityRole="button" accessibilityLabel="Why this routine?" hitSlop={8}>
-                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>Why?</Text>
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Why?</Text>
               </Pressable>
             </View>
           </View>
@@ -666,7 +651,7 @@ export function TodayScreen({ navigation }: Props) {
               <Icon name="pill" size={22} color={colors.warning} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>{nextMedication.name}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   Reminder at {formatTimeOfDay(new Date(nextMedication.scheduledFor))}
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 }}>
@@ -681,7 +666,7 @@ export function TodayScreen({ navigation }: Props) {
                     accessibilityLabel="View medicine reminder"
                     style={{ borderWidth: 1, borderColor: theme.accent, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 6 }}
                   >
-                    <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>View</Text>
+                    <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>View</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => navigation.navigate("More", { screen: "MedicationList" })}
@@ -689,7 +674,7 @@ export function TodayScreen({ navigation }: Props) {
                     accessibilityLabel="View all reminders"
                     hitSlop={8}
                   >
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>View all reminders →</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>View all reminders →</Text>
                   </Pressable>
                 </View>
               </View>
@@ -712,11 +697,11 @@ export function TodayScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }} numberOfLines={1}>
                   {coachNote.title}
                 </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
                   {coachNote.body}
                 </Text>
               </View>
-              <Text style={{ color: theme.accent, ...typography.label, fontSize: 12 }}>View</Text>
+              <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>View</Text>
             </Pressable>
           ) : null}
 
@@ -725,19 +710,19 @@ export function TodayScreen({ navigation }: Props) {
               <Icon name="target" size={22} color={theme.accent} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14 }}>Weight Goal</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   {weightGoal.current.toFixed(1)} → {weightGoal.target.toFixed(1)} kg
                 </Text>
                 <ProgressBar pct={weightGoal.pct} color={theme.accent} />
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                  <Text style={{ color: theme.accent, ...typography.label, fontSize: 11 }}>{weightGoal.pct.toFixed(1)}% of weight goal</Text>
+                  <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>{weightGoal.pct.toFixed(1)}% of weight goal</Text>
                   <Pressable
                     onPress={() => navigation.navigate("More", { screen: "ProgressSection", params: { screen: "MeasurementHistory" } })}
                     accessibilityRole="button"
                     accessibilityLabel="View weight goal details"
                     hitSlop={8}
                   >
-                    <Text style={{ color: theme.accent, ...typography.label, fontSize: 11 }}>View Details ›</Text>
+                    <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>View Details ›</Text>
                   </Pressable>
                 </View>
               </View>
@@ -749,16 +734,16 @@ export function TodayScreen({ navigation }: Props) {
   );
 }
 
-const cardStyle = {
+const cardStyle = themed(() => ({
   backgroundColor: colors.surface,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: radius.card,
   padding: 14,
   gap: 10,
-} as const;
+} as const));
 
-const rowStyle = {
+const rowStyle = themed(() => ({
   flexDirection: "row",
   alignItems: "center",
   gap: spacing.sm,
@@ -768,7 +753,7 @@ const rowStyle = {
   borderRadius: radius.md,
   paddingHorizontal: 12,
   paddingVertical: 10,
-} as const;
+} as const));
 
 function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
@@ -779,7 +764,7 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
 }
 
 function Eyebrow({ color, children }: { color: string; children: string }) {
-  return <Text style={{ color, fontSize: 12, letterSpacing: 1, fontFamily: fonts.bodySemi }}>{children}</Text>;
+  return <Text style={{ color, fontSize: 13, letterSpacing: 1, fontFamily: fonts.bodySemi }}>{children}</Text>;
 }
 
 function PrimaryAction({
@@ -825,8 +810,8 @@ function StatChip({ icon, label, value, tint }: { icon: IconName; label: string;
     >
       <Icon name={icon} size={16} color={tint ?? theme.accent} />
       <View>
-        <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{label}</Text>
-        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>{value}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{label}</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>{value}</Text>
       </View>
     </View>
   );

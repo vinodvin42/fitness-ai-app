@@ -239,7 +239,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
         </Card>
       )}
       {devices.length > 0 ? (
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
           Sync All Now opens the manual import: this build can&apos;t pull from devices automatically, so you enter what each
           device shows. The ring is the share of devices that synced successfully in the last 24 hours.
         </Text>
@@ -259,7 +259,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
                 <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dot }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{item.label}</Text>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }} numberOfLines={1}>
                     {streamSub(item)}
                   </Text>
                 </View>
@@ -325,7 +325,7 @@ export function SyncDashboardScreen({ navigation, route }: Props) {
         <TextField label="Blood oxygen SpO2 (%)" value={form.spo2} onChangeText={set("spo2")} keyboardType="numeric" />
         <TextField label="Stress score (0-100)" value={form.stressScore} onChangeText={set("stressScore")} keyboardType="numeric" />
         <TextField label="Battery (%) - optional" value={form.batteryPct} onChangeText={set("batteryPct")} keyboardType="numeric" />
-        {formError ? <Text style={{ color: colors.danger, ...typography.meta }}>{formError}</Text> : null}
+        {formError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{formError}</Text> : null}
         <Button label="Import values" loading={syncMutation.isPending} onPress={submit} />
       </BottomSheet>
     </RecoverShell>

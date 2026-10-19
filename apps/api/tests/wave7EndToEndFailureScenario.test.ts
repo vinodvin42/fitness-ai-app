@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import crypto from "node:crypto";
-import { buildApp, prisma, uniqueEmail, uniqueSuffix } from "./helpers";
+import { buildApp, prisma, uniqueEmail, uniqueSuffix, createPricedOffering } from "./helpers";
 import { hashPassword } from "../src/lib/password";
 import { generateUniqueReferralCode } from "../src/lib/referralCode";
 import { signProfessionalAccessToken } from "../src/lib/professionalJwt";
@@ -92,6 +92,7 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
   let professionalEmail: string;
   let professionalAccessToken: string;
   let offeringId: string;
+  let pricing: Awaited<ReturnType<typeof createPricedOffering>> | undefined;
   let blockerUserId: string;
   let blockerBookingId: string;
   let offerId: string;
@@ -121,16 +122,15 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
     env.RAZORPAY_KEY_SECRET = "wave7-e2e-test-key-secret";
     env.RAZORPAY_WEBHOOK_SECRET = "wave7-e2e-test-webhook-secret";
 
-    // Real admin (coach_operations — has professionals:* and dashboard:view,
-    // the same role professionalOffers.test.ts uses for the propose-offer
-    // route and enough to read the unified action-items queue).
+    // Real admin (super_admin — applies changes directly, so none of the
+    // admin steps below become maker-checker approval requests).
     const adminEmail = uniqueEmail("wave7-admin");
     const admin = await prisma.adminUser.create({
       data: {
         email: adminEmail,
         passwordHash: await hashPassword(adminPassword),
         fullName: "Wave 7 Fixture Admin",
-        role: "coach_operations",
+        role: "super_admin",
         status: "active",
       },
     });
@@ -168,17 +168,14 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
 
     // A real, priced (verifiedPayment-gated) service offering — the same
     // PAY-01 gate coaching.service.ts's createBooking() enforces.
-    const offering = await prisma.professionalServiceOffering.create({
-      data: {
-        professionalId,
-        serviceType: "fitness",
-        label: "Wave 7 Fixture Session",
-        durationMinutes: 60,
-        priceCents: 1800,
-        isActive: true,
-      },
+    // Package 4: the price comes from the coach's level fee.
+    pricing = await createPricedOffering(professionalId, {
+      serviceType: "fitness",
+      feeCents: 1800,
+      durationMinutes: 60,
+      label: "Wave 7 Fixture Session",
     });
-    offeringId = offering.id;
+    offeringId = pricing.offering.id;
 
     // A second, unrelated real user + a real CONFIRMED Booking for this
     // professional at the exact slot the scenario below will try to book —
@@ -202,6 +199,7 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
         scheduledAt: new Date(scheduledAt),
         durationMinutes: 60,
         priceCents: 1800,
+        commissionPct: 20,
         status: "confirmed",
       },
     });
@@ -222,6 +220,7 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
     await prisma.professionalOffer.deleteMany({ where: { professionalId } });
     await prisma.relationship.deleteMany({ where: { professionalId } });
     await prisma.professionalServiceOffering.deleteMany({ where: { professionalId } });
+    await pricing?.cleanup();
     await prisma.professional.deleteMany({ where: { id: professionalId } });
     await prisma.user.deleteMany({ where: { id: { in: [userId, blockerUserId] } } });
     await prisma.adminUser.deleteMany({ where: { id: adminId } });

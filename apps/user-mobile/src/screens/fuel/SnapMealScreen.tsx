@@ -7,7 +7,7 @@ import { Button } from "../../components/Button";
 import { CameraPermissionDenied } from "../../components/CameraPermissionDenied";
 import { createFoodEstimate } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "SnapMeal">;
@@ -130,7 +130,7 @@ export function SnapMealScreen({ route, navigation }: Props) {
           ) : null}
           {error ? (
             <View style={styles.banner}>
-              <Text style={[styles.bannerText, { color: colors.danger }]}>{error}</Text>
+              <Text style={[styles.bannerText, { color: colors.dangerText }]}>{error}</Text>
             </View>
           ) : null}
           <Text style={styles.disclaimer}>Photo estimates are approximate. You can review and edit before logging.</Text>
@@ -167,7 +167,7 @@ export function SnapMealScreen({ route, navigation }: Props) {
       <View style={styles.footer}>
         {error ? (
           <View style={styles.banner}>
-            <Text style={[styles.bannerText, { color: colors.danger }]}>{error}</Text>
+            <Text style={[styles.bannerText, { color: colors.dangerText }]}>{error}</Text>
           </View>
         ) : null}
         <Text style={styles.disclaimer}>Frame your meal. Photo estimates are approximate.</Text>
@@ -179,7 +179,7 @@ export function SnapMealScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background, padding: spacing.lg },
   footer: { position: "absolute", bottom: spacing.xl, left: spacing.lg, right: spacing.lg, gap: spacing.sm },
@@ -194,4 +194,4 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   bannerText: { ...typography.body, color: colors.textPrimary, flexShrink: 1 },
-});
+}));

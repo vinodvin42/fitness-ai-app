@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
+import { ApprovalsScreen } from "./screens/approvals/ApprovalsScreen";
 import { PayoutRunsScreen } from "./screens/finance/PayoutRunsScreen";
 import { PrivacyRequestsScreen } from "./screens/adminSystem/PrivacyRequestsScreen";
 import { GymHelpRequestsScreen } from "./screens/gyms/GymHelpRequestsScreen";
@@ -31,6 +32,7 @@ import { ReviewQueueScreen } from "./screens/programs/ReviewQueueScreen";
 import { PaymentsDirectoryScreen } from "./screens/commerce/PaymentsDirectoryScreen";
 import { TransactionDetailScreen } from "./screens/commerce/TransactionDetailScreen";
 import { PricingScreen } from "./screens/commerce/PricingScreen";
+import { CoachLevelsScreen } from "./screens/commerce/CoachLevelsScreen";
 import { CouponsScreen } from "./screens/commerce/CouponsScreen";
 import { RefundsScreen } from "./screens/commerce/RefundsScreen";
 import { SupportTicketsScreen } from "./screens/support/SupportTicketsScreen";
@@ -138,6 +140,15 @@ function AppRoutes() {
           with "/" now that Dashboard has a second nav-level screen, same
           "subNav appears once a module ships more than one screen" pattern
           as every other module. */}
+      {/* Maker-checker approvals inbox (blueprint section 5, D21). */}
+      <Route
+        path="/approvals"
+        element={
+          <RequireAuth>
+            <ApprovalsScreen />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/action-required"
         element={
@@ -368,6 +379,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PricingScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/commerce/coach-levels"
+        element={
+          <RequireAuth>
+            <CoachLevelsScreen />
           </RequireAuth>
         }
       />

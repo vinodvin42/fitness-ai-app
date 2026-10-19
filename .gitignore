@@ -58,3 +58,6 @@ reports/seed-catalog.html
 
 # Local-disk object storage root (apps/api providers/localObjectStorage.ts)
 .storage/
+
+# Vitest JUnit output (CI and local runs)
+test-results/

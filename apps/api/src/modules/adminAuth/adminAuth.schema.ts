@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Login-only — no signup, MFA, SSO, or password-reset endpoint. AdminUser
+// Login with authenticator-app MFA (Oct 2026); no signup, SSO, or password-reset endpoint. AdminUser
 // accounts are provisioned by seeding/a future Admin Users screen (see
 // docs/admin/03-screen-inventory.md 12.01), never self-service, matching
 // docs/admin/07-open-questions-gaps.md's "no auth screens in Figma ->
@@ -9,7 +9,23 @@ import { z } from "zod";
 export const adminLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  // Blueprint section 5: admins sign in with email + password + the
+  // 6-digit code from an authenticator app (no OTP). A single-use
+  // recovery code can stand in for the code.
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code").optional(),
+  recoveryCode: z.string().trim().min(6).max(32).optional(),
 });
+
+export const adminMfaSetupSchema = z.object({
+  setupToken: z.string().min(1),
+});
+
+export const adminMfaConfirmSchema = z.object({
+  setupToken: z.string().min(1),
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code"),
+});
+
+export type AdminMfaConfirmInput = z.infer<typeof adminMfaConfirmSchema>;
 
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;
 

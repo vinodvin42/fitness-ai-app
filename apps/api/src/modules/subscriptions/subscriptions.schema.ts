@@ -6,7 +6,7 @@ import { z } from "zod";
 // gateway wired up yet, so this activates a subscription directly rather
 // than pretending to process a real card.
 export const subscribeSchema = z.object({
-  // String id (uuid is only the default generator; seed uses "basic"/"pro").
+  // String id (uuid is only the default generator; seed uses "basic"/"pro"/"elite" ids for Basic/Grow/Prime).
   // See payments.schema.ts's referenceId comment — found 31 Aug 2026.
   planId: z.string().min(1).max(191),
 });

@@ -76,6 +76,8 @@ export function ListRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      android_ripple={{ color: colors.ripple }}
+      style={({ pressed }: { pressed: boolean }) => (pressed ? { opacity: 0.85 } : null)}
     >
       {body}
     </Pressable>

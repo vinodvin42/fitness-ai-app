@@ -80,7 +80,9 @@ guidanceRequestsRouter.get(
 guidanceRequestsRouter.post(
   "/admin/guidance-requests/:id/match",
   requireAdminAuth,
-  requirePermission("professionals", "create"),
+  // Matching a request to a coach is day-to-day operations work (D21); the
+  // user still accepts and pays at the FynroX-set fee.
+  requirePermission("professionals", "create", { approval: "exempt" }),
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const input = matchSchema.parse(req.body);

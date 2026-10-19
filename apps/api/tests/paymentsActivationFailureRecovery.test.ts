@@ -90,7 +90,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const suffix = uniqueSuffix();
     const planId = `test-plan-actfail-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Activation Recovery Test Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Activation Recovery Test Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
     });
 
     const providerOrderId = `order_actfail_${suffix}`;
@@ -154,7 +154,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     // must NOT create a new Payment/charge, only finish the grant on the
     // existing one.
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Activation Recovery Test Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Activation Recovery Test Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
     });
 
     const retryResult = await retryActivation(userId, payment.id);
@@ -206,7 +206,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const suffix = uniqueSuffix();
     const planId = `test-plan-actfail-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "elite", name: "Activation Recovery Concurrency Plan", priceCents: 2999, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "prime", name: "Activation Recovery Concurrency Plan", priceCents: 2999, billingCycle: "monthly", isActive: true },
     });
     const providerOrderId = `order_actfail_race_${suffix}`;
     const payment = await prisma.payment.create({
@@ -227,7 +227,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     // (activatePayment's own paid-claim, confirmFoodEstimate, decideRecommendation,
     // markPayoutPaid) already established, now applied to the retry path too.
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "elite", name: "Activation Recovery Concurrency Plan", priceCents: 2999, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "prime", name: "Activation Recovery Concurrency Plan", priceCents: 2999, billingCycle: "monthly", isActive: true },
     });
 
     const results = await Promise.allSettled([retryActivation(userId, payment.id), retryActivation(userId, payment.id)]);
@@ -244,7 +244,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     const suffix = uniqueSuffix();
     const planId = `test-plan-actfail-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
     });
     const providerOrderId = `order_actfail_dedup_${suffix}`;
     const payment = await prisma.payment.create({
@@ -285,7 +285,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     // path), matching the rest of this queue's own resolve-is-a-separate-
     // admin-action convention.
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
     });
     await retryActivation(userId, payment.id);
 

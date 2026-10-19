@@ -111,14 +111,19 @@ enum MealType {
   snack
 }
 
+// FynroX plans (decision D13, Oct 2026): Basic (free), Grow, Prime. The
+// tiers were renamed from basic/pro/elite in migration
+// 20261015120000_plans_grow_prime_price_schedule.
 enum SubscriptionTier {
   basic
-  pro
-  elite
+  grow
+  prime
 }
 
+// Users can pay monthly, every 3 months or yearly.
 enum BillingCycle {
   monthly
+  quarterly
   annual
 }
 
@@ -438,7 +443,6 @@ model User {
   // Forgot/Reset Password (R1 Developer 1, 18 Sep 2026, gap §53) — see
   // PasswordResetToken's own doc comment below.
   passwordResetTokens         PasswordResetToken[]
-  guardianReview              GuardianReview?
   // Acquisition/commercial attribution (R2 Wave 1, 20 Sep 2026) — see
   // Touchpoint's own doc comment for why this is a distinct sibling model
   // to AnalyticsEvent/AuditLog, not a repurposing of either. Nullable on
@@ -2019,8 +2023,45 @@ model SubscriptionPlan {
   updatedAt    DateTime         @updatedAt
 
   subscriptions Subscription[]
+  priceChanges  PlanPriceChange[]
 
   @@map("subscription_plans")
+}
+
+enum PlanPriceChangeStatus {
+  scheduled
+  applied
+  cancelled
+}
+
+// Scheduled plan price changes (decisions D8/D18, Oct 2026). Only the
+// Super Admin sets prices (anyone else's change is an approval request).
+// A change takes effect on `effectiveFrom`: from then on new purchases and
+// renewals pay `priceCents`; anyone already paid keeps their locked
+// Subscription.priceCents until their next renewal. A price increase on a
+// plan with subscribers needs at least 30 days' notice, and current
+// subscribers get an in-app notice when it is scheduled.
+// SubscriptionPlan.priceCents is always the price in force today: due
+// changes are applied by lib/planPricing.ts before any price is read.
+model PlanPriceChange {
+  id               String                @id @default(uuid())
+  planId           String
+  plan             SubscriptionPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  priceCents       Int
+  previousCents    Int
+  effectiveFrom    DateTime
+  status           PlanPriceChangeStatus @default(scheduled)
+  reason           String?
+  createdByAdminId String?
+  noticeSentAt     DateTime?
+  appliedAt        DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([planId, status, effectiveFrom])
+  @@index([status, effectiveFrom])
+  @@map("plan_price_changes")
 }
 
 model Subscription {
@@ -2048,6 +2089,11 @@ model Subscription {
   // DB) and is what the admin console's audit trail entry echoes.
   revokedAt     DateTime?
   revokedReason String?
+
+  // The price this subscriber paid for the current period (paise), locked
+  // at payment time. A later plan price change never alters it; the next
+  // renewal is charged at the plan's price on that day (decision D8).
+  priceCents Int?
 
   @@index([userId])
   @@map("subscriptions")
@@ -2102,6 +2148,14 @@ model Payment {
   // above is the ALREADY-discounted amount actually charged.
   couponCode              String?
   discountCents           Int?
+  // Package 4 — for a coach booking: the coach fee before GST and before
+  // any coupon (the coach is paid on the full fee; FynroX pays for
+  // coupons), the GST inside the amount actually charged, and the coach's
+  // level when the order was created. The booking copies all three.
+  // Null for subscriptions and programs.
+  feeCents                Int?
+  taxCents                Int?
+  coachLevelId            String?
   // PAY-01, added 5 Sep 2026 — only set (and only meaningful) when purpose
   // is "booking". Subscription/program purchases resolve their whole
   // referenceId (a SubscriptionPlan/Program id) at activation time with
@@ -2179,14 +2233,18 @@ model Payment {
 // creates a `super_admin` account, so in practice only that role can log
 // in until a real Admin Users creation flow is used for the others (see
 // Module 12.01, `adminAccounts.service.ts`).
+// FynroX roles (decisions D15/D21, Oct 2026): Lakshman is the only Super
+// Admin; the co-founder views everything and every change he makes is an
+// approval request; Operations (Maya Rao), Finance (Kiran), Safety &
+// Privacy (Farah Ali) and Support (Anil) do day-to-day work directly but
+// send risky changes to the Super Admin. The older 8-role set was mapped in
+// migration 20261015110000_admin_roles_mfa_approvals.
 enum AdminRole {
   super_admin
-  user_operations
-  coach_operations
+  co_founder
+  operations
   finance
-  content
-  growth
-  analytics
+  safety_privacy
   support
 }
 
@@ -2203,6 +2261,17 @@ model AdminUser {
   role         AdminRole       @default(super_admin)
   status       AdminUserStatus @default(active)
   lastLoginAt  DateTime?
+  // Admin sign-in uses an authenticator app (blueprint section 5): email +
+  // password + 6-digit code, no OTP. `mfaSecret` is AES-256-GCM encrypted
+  // (lib/twoFactor.ts), `mfaEnabled` flips true only after a real code is
+  // confirmed, and recovery codes are bcrypt-hashed, single use.
+  mfaSecret        String?
+  mfaEnabled       Boolean  @default(false)
+  mfaEnabledAt     DateTime?
+  mfaRecoveryCodes String[] @default([])
+  // Last accepted TOTP code + time, so a code can't be used twice.
+  mfaLastCode      String?
+  mfaLastCodeAt    DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -2275,8 +2344,58 @@ model AdminUser {
   privacyRequestsResolved         PrivacyRequest[]             @relation("PrivacyRequestResolvedBy")
   publicApplicationsReviewed      PublicApplication[]          @relation("PublicApplicationReviewedBy")
   gymHelpRequestsResolved         GymHelpRequest[]
+  // Maker-checker (D21) — see ApprovalRequest.
+  approvalRequestsMade            ApprovalRequest[]            @relation("ApprovalRequestMaker")
+  approvalRequestsChecked         ApprovalRequest[]            @relation("ApprovalRequestChecker")
 
   @@map("admin_users")
+}
+
+enum ApprovalStatus {
+  pending
+  applying
+  approved
+  rejected
+  changes_requested
+  expired
+  failed
+  cancelled
+}
+
+// Maker-checker approval requests (blueprint section 5, decision D21).
+// When anyone other than the Super Admin makes a risky change, the request
+// (method, path, JSON body, reason) is stored here instead of being
+// applied. Only the Super Admin can approve; on approval the same route is
+// re-run in-process as the maker (lib/makerChecker.ts) and its result is
+// stored. Nobody approves their own change. Pending requests expire after
+// APPROVAL_EXPIRY_DAYS (default 7).
+model ApprovalRequest {
+  id             String         @id @default(uuid())
+  status         ApprovalStatus @default(pending)
+  makerAdminId   String
+  makerAdmin     AdminUser      @relation("ApprovalRequestMaker", fields: [makerAdminId], references: [id], onDelete: Cascade)
+  makerRole      String
+  checkerAdminId String?
+  checkerAdmin   AdminUser?     @relation("ApprovalRequestChecker", fields: [checkerAdminId], references: [id], onDelete: SetNull)
+  method         String
+  path           String
+  body           Json?
+  module         String
+  action         String
+  summary        String
+  reason         String
+  decisionNote   String?
+  expiresAt      DateTime
+  decidedAt      DateTime?
+  appliedAt      DateTime?
+  resultStatus   Int?
+  resultBody     Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([makerAdminId, createdAt])
+  @@map("approval_requests")
 }
 
 // ---- Coach marketplace (Phase 5, started 20 Aug 2026) ---------------------
@@ -2419,11 +2538,14 @@ model Professional {
   specializationTags String[]                    @default([])
   yearsExperience    Int?
   status             ProfessionalStatus          @default(active)
-  // Configurable per-coach commission %, added 31 Aug 2026 — the platform's
-  // take on this coach's booking value, admin-editable (Module 03 Profile /
-  // 10.06 Settlements). A whole percent 0–100; see the CoachSettlement
-  // model's doc comment for how it's applied.
-  commissionPct      Int                         @default(20)
+  // Coach level (Package 4, Oct 2026): FynroX places each coach in a level,
+  // and the level's fee for each service is what users pay. Coaches can't
+  // change it. Null until an admin assigns one; a coach without a level
+  // can't be booked. FynroX's commission is no longer a column here — it is
+  // the versioned CommissionRate table (default rate + optional per-coach
+  // override), copied onto each Booking when it is made.
+  coachLevelId       String?
+  coachLevel         CoachLevel?                 @relation(fields: [coachLevelId], references: [id], onDelete: SetNull)
   // Shared KYC (Aadhaar/government ID) — ONE per professional, not per
   // service, unlike ProfessionalCredential below. Same base64-in-Postgres
   // storage precedent as ProgressPhoto.imageData (no object storage exists
@@ -2484,7 +2606,10 @@ model Professional {
   // above (offers proposed FOR this professional by someone else).
   offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
   dataSharing      ProfessionalDataSharing[]
+  // Package 4 — per-coach commission overrides (see CommissionRate).
+  commissionRates  CommissionRate[]
 
+  @@index([coachLevelId])
   @@map("professionals")
 }
 
@@ -2636,14 +2761,21 @@ model Relationship {
 // credentials and relationships are always genuinely single-service;
 // "combined" only ever describes what one priced session bundles, never
 // what a professional is verified for or a relationship tracks.
+//
+// Package 4 (Oct 2026): an offering no longer carries its own price. It
+// points at a FynroX `CoachService`, and the price is the fee FynroX set
+// for the coach's level and that service (see lib/coachFees.ts). `label`,
+// `durationMinutes` and `serviceType` mirror the service (kept in sync by
+// adminCoachLevels.service.ts) so existing readers keep working.
 model ProfessionalServiceOffering {
   id              String                   @id @default(uuid())
   professionalId  String
   professional    Professional             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         CoachService             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   serviceType     ProfessionalServiceType?
   label           String
   durationMinutes Int
-  priceCents      Int
   isActive        Boolean                  @default(true)
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
@@ -2651,6 +2783,7 @@ model ProfessionalServiceOffering {
   bookings Booking[]
 
   @@index([professionalId])
+  @@index([serviceId])
   @@map("professional_service_offerings")
 }
 
@@ -2683,7 +2816,16 @@ model Booking {
   offering           ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
   scheduledAt        DateTime
   durationMinutes    Int
+  // The coach fee for this session, before GST (Package 4). Copied from the
+  // level fee when the booking is made and never recomputed.
   priceCents         Int
+  // GST added on top of the fee (18%), copied at booking time.
+  gstCents           Int                         @default(0)
+  // FynroX's commission on this booking, copied from the rate in force when
+  // it was made — a later rate change never touches it (Package 4).
+  commissionPct      Int
+  // The coach's level when the booking was made (history only, no FK).
+  coachLevelId       String?
   status             BookingStatus               @default(confirmed)
   // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
   summaryText        String?                     @db.Text
@@ -2933,11 +3075,20 @@ model AuditLog {
   /// `ruleId` and the audit log did not.
   ruleId String?
 
+  /// D21 maker-checker: the reason the admin gave, the Super Admin who
+  /// approved the change (the maker is the actor), and the approval
+  /// request it came from. Null for actions that needed no approval.
+  reason            String?
+  checkerAdminId    String?
+  approvalRequestId String?
+
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([actorId])
   @@index([actorAdminId])
+  @@index([checkerAdminId])
+  @@index([approvalRequestId])
   @@index([actorProfessionalId])
   @@index([actorInfluencerId])
   @@index([entityType, entityId])
@@ -4135,37 +4286,6 @@ model FormAnalysisSubmission {
   @@map("form_analysis_submissions")
 }
 
-enum GuardianReviewStatus {
-  pending
-  approved
-  declined
-}
-
-// Under-18 guardian review (onboarding/11). One row per user. The only
-// field the app collects is the guardian's email; the API emails that
-// address a single-use, expiring link (to GET /guardian-review/approve)
-// whose token is stored here as a SHA-256 hash only. While `pending` (or
-// `declined`) the server refuses health-data submission and plan/
-// recommendation/meal-plan generation (403 guardian_authorization_pending).
-// `guardianName`/`relationship` are legacy columns from the first build,
-// kept nullable for backwards compatibility.
-model GuardianReview {
-  userId         String               @id
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guardianName   String?
-  guardianEmail  String
-  relationship   String?
-  status         GuardianReviewStatus @default(pending)
-  tokenHash      String?              @unique
-  tokenExpiresAt DateTime?
-  lastSentAt     DateTime?
-  decidedAt      DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-
-  @@map("guardian_reviews")
-}
-
 // ---- Profile & Settings 12: per-professional data sharing ----------------
 // What a professional with an ACTIVE relationship may see in the client
 // summary, on top of the health_data_processing consent. Defaults preserve
@@ -4720,4 +4840,88 @@ enum PublicApplicationStatus {
   contacted
   converted
   rejected
+}
+
+// ---- Coach levels and fees (Package 4, Oct 2026) ------------------------
+// FynroX sets every coach price (blueprint 4.3): each coach sits in a level,
+// and FynroX sets a fee per level per service. Coaches can't change either.
+
+model CoachLevel {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  // 1 = entry level; higher = more senior. Unique so levels sort cleanly.
+  rank        Int      @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fees          CoachLevelFee[]
+  professionals Professional[]
+
+  @@map("coach_levels")
+}
+
+// A service FynroX sells through its coaches ("Fitness coaching, 45 min").
+// `serviceType: null` = a combined fitness + nutrition session, same
+// convention as ProfessionalServiceOffering.
+model CoachService {
+  id              String                   @id @default(uuid())
+  key             String                   @unique
+  label           String
+  serviceType     ProfessionalServiceType?
+  durationMinutes Int
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  fees      CoachLevelFee[]
+  offerings ProfessionalServiceOffering[]
+
+  @@map("coach_services")
+}
+
+// The fee for one level and one service. Rows are never edited: a new fee
+// is a new row with its own start date, so the history stays intact. The
+// fee in force at a moment is the newest non-cancelled row whose
+// `effectiveFrom` has passed. A fee change only reaches new bookings,
+// because every Booking copies its fee when it is made.
+model CoachLevelFee {
+  id               String       @id @default(uuid())
+  levelId          String
+  level            CoachLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  serviceId        String
+  service          CoachService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  priceCents       Int
+  effectiveFrom    DateTime
+  // Only a fee that hasn't started yet can be cancelled.
+  cancelledAt      DateTime?
+  reason           String?
+  createdByAdminId String?
+  createdAt        DateTime     @default(now())
+
+  @@index([levelId, serviceId, effectiveFrom])
+  @@map("coach_level_fees")
+}
+
+// FynroX's commission on coach fees, versioned (blueprint section 7:
+// "commission_rate (versioned)"). `professionalId: null` rows are the
+// default for every coach; a row with a professionalId overrides it for
+// that coach (`pct: null` on an override = "back to the default from this
+// date"). Rows are never edited; the rate in force is the newest
+// non-cancelled row whose `effectiveFrom` has passed. Each Booking copies
+// the rate when it is made, so past bookings and settlements never change.
+model CommissionRate {
+  id               String        @id @default(uuid())
+  professionalId   String?
+  professional     Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  pct              Int?
+  effectiveFrom    DateTime
+  cancelledAt      DateTime?
+  reason           String?
+  createdByAdminId String?
+  createdAt        DateTime      @default(now())
+
+  @@index([professionalId, effectiveFrom])
+  @@map("commission_rates")
 }

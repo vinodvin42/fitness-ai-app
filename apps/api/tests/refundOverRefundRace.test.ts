@@ -51,7 +51,7 @@ describe("Refund over-refund race: concurrent refunds must not exceed the paymen
         email: `admin-refund-race-${suffix}@example.com`,
         passwordHash: await hashPassword("unused-not-logged-in-with"),
         fullName: "Refund Race Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });
@@ -69,7 +69,7 @@ describe("Refund over-refund race: concurrent refunds must not exceed the paymen
 
     planId = `test-plan-refund-race-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Refund Race Fixture Plan", priceCents: AMOUNT_CENTS, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Refund Race Fixture Plan", priceCents: AMOUNT_CENTS, billingCycle: "monthly", isActive: true },
     });
 
     const payment = await prisma.payment.create({

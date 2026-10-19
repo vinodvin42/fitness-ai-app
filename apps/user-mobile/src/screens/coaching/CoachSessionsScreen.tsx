@@ -14,6 +14,7 @@ import { fetchCoachBookings } from "../../api/coachSessions";
 import { formatSessionPrice } from "../../lib/sessionFormat";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachSessions">;
 
@@ -44,7 +45,7 @@ export function CoachSessionsScreen({ navigation }: Props) {
           title="No sessions yet"
           subtitle="When you book a session with a coach it will appear here."
           actionLabel="Find a coach"
-          onAction={() => navigation.navigate("CoachDiscovery", undefined)}
+          onAction={() => (COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance"))}
         />
       ) : (
         sorted.map((b) => (

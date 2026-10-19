@@ -144,7 +144,7 @@ export function MeasurementHistoryScreen({ navigation }: Props) {
                   {c.delta != null ? (
                     <Text
                       style={{
-                        color: colors.accent,
+                        color: colors.accentText,
                         ...typography.caption,
                         backgroundColor: colors.accentSoft,
                         paddingHorizontal: 6,
@@ -180,7 +180,7 @@ export function MeasurementHistoryScreen({ navigation }: Props) {
           <Button label="Log New Measurements" onPress={() => navigation.navigate("LogMeasurement")} />
 
           <Pressable onPress={() => setShowEntries((v) => !v)} accessibilityRole="button" style={{ alignSelf: "center", padding: spacing.sm }}>
-            <Text style={{ color: colors.accent, ...typography.label }}>{showEntries ? "Hide entries" : `Show all ${rows.length} entries`}</Text>
+            <Text style={{ color: colors.accentText, ...typography.label }}>{showEntries ? "Hide entries" : `Show all ${rows.length} entries`}</Text>
           </Pressable>
           {showEntries
             ? rows.map((m) => (

@@ -25,10 +25,10 @@ type Props = NativeStackScreenProps<MoreStackParamList, "NotificationSettings">;
 
 type CategoryKey = "workoutReminders" | "mealReminders" | "hydrationReminders" | "coachMessages" | "billing" | "marketing";
 const CATEGORIES: Array<{ key: CategoryKey; label: string; hint: string }> = [
-  { key: "workoutReminders", label: "Workout Reminders", hint: "Reminders for your planned workouts, including changes from your professional." },
+  { key: "workoutReminders", label: "Workout Reminders", hint: "Reminders for your planned workouts, including changes from your coach." },
   { key: "mealReminders", label: "Meal Logging Reminders", hint: "Nudges at breakfast, lunch, and dinner to record nutrition." },
   { key: "hydrationReminders", label: "Hydration Reminders", hint: "Gentle reminders through the day, within your daily limit." },
-  { key: "coachMessages", label: "Messages from your professional", hint: "Alerts when your professional messages you." },
+  { key: "coachMessages", label: "Messages from your coach", hint: "Alerts when your coach messages you." },
   { key: "billing", label: "Plan, gym & billing updates", hint: "Plan changes, gym holidays, renewals and payment issues." },
   { key: "marketing", label: "Tips & offers", hint: "Optional product news. Off by default." },
 ];
@@ -182,7 +182,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 }}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>Reminders & Routines</Text>
-            <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }}>Manage saved reminders</Text>
+            <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>Manage saved reminders</Text>
           </View>
           <Pressable
             onPress={() => navigation.getParent()?.navigate("Train", { screen: "RemindersRoutines" })}
@@ -225,7 +225,7 @@ export function NotificationSettingsScreen({ navigation }: Props) {
                 keyboardType="numbers-and-punctuation"
               />
             </View>
-            {quietError ? <Text style={{ color: colors.danger, ...typography.meta }}>{quietError}</Text> : null}
+            {quietError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{quietError}</Text> : null}
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>Push alerts are held during this window.</Text>
             <Button label="Save quiet hours" onPress={() => saveQuiet(false)} loading={mutation.isPending} />
             {data.quietHoursStart ? <Button label="Turn off quiet hours" variant="secondary" onPress={() => saveQuiet(true)} /> : null}

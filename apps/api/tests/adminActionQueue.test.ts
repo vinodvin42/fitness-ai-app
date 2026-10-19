@@ -178,7 +178,7 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
 
     const planId = `test-plan-aq-refund-${uniqueSuffix()}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Action Queue Refund Plan", priceCents: 50000, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Action Queue Refund Plan", priceCents: 50000, billingCycle: "monthly", isActive: true },
     });
 
     const payment = await prisma.payment.create({

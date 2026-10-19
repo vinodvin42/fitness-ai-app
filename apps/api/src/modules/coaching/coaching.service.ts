@@ -4,6 +4,8 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from "../../lib/coachFees";
+import { activeGstPercent, gstOnTop } from "../../lib/gst";
 import {
   AvailabilityQuery,
   CreateBookingInput,
@@ -118,7 +120,11 @@ const SLOT_END_HOUR = 18; // exclusive — the last bookable slot starts at 17:0
 const SLOT_DURATION_MINUTES = 60;
 
 type CredentialRow = { serviceType: string; status: string };
-type OfferingSummaryRow = { serviceType: string | null; priceCents: number; isActive: boolean };
+// Package 4: an offering's price is the fee FynroX set for the coach's
+// level and the offering's service (lib/coachFees.ts), never a column on
+// the offering.
+type OfferingSummaryRow = { id: string; serviceId: string; serviceType: string | null; isActive: boolean };
+type LevelRow = { id: string; name: string; rank: number } | null;
 
 type ProfessionalListRow = {
   id: string;
@@ -126,6 +132,7 @@ type ProfessionalListRow = {
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  coachLevel: LevelRow;
   credentials: CredentialRow[];
   serviceOfferings: OfferingSummaryRow[];
 };
@@ -134,13 +141,22 @@ function verifiedServiceTypes(credentials: CredentialRow[]): string[] {
   return credentials.filter((c) => c.status === "verified").map((c) => c.serviceType);
 }
 
-function startingPriceCents(offerings: OfferingSummaryRow[]): number | null {
-  const active = offerings.filter((o) => o.isActive);
-  if (active.length === 0) return null;
-  return Math.min(...active.map((o) => o.priceCents));
+/** Fees (before GST) for every active offering of these coaches; offerings without a fee are left out. */
+async function feesForProfessionals(rows: Array<{ id: string; coachLevel: LevelRow; serviceOfferings: OfferingSummaryRow[] }>) {
+  const levelByProfessional = new Map<string, string | null>(rows.map((p) => [p.id, p.coachLevel?.id ?? null]));
+  const offerings = rows.flatMap((p) =>
+    p.serviceOfferings.filter((o) => o.isActive).map((o) => ({ id: o.id, serviceId: o.serviceId, professionalId: p.id })),
+  );
+  return offeringFees(offerings, levelByProfessional);
 }
 
-function toDiscoveryItem(p: ProfessionalListRow) {
+function startingPriceCents(offerings: OfferingSummaryRow[], fees: Map<string, number>): number | null {
+  const prices = offerings.filter((o) => o.isActive && fees.has(o.id)).map((o) => fees.get(o.id) as number);
+  if (prices.length === 0) return null;
+  return Math.min(...prices);
+}
+
+function toDiscoveryItem(p: ProfessionalListRow, fees: Map<string, number>, gstPercent: number) {
   return {
     id: p.id,
     fullName: p.fullName,
@@ -148,7 +164,10 @@ function toDiscoveryItem(p: ProfessionalListRow) {
     specializationTags: p.specializationTags,
     yearsExperience: p.yearsExperience,
     verifiedServices: verifiedServiceTypes(p.credentials),
-    startingPriceCents: startingPriceCents(p.serviceOfferings),
+    // Lowest fee before GST; GST (`gstPercent`) is added on top at checkout.
+    startingPriceCents: startingPriceCents(p.serviceOfferings, fees),
+    gstPercent,
+    level: p.coachLevel ? { name: p.coachLevel.name, rank: p.coachLevel.rank } : null,
   };
 }
 
@@ -170,15 +189,18 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
   const professionals = await prisma.professional.findMany({
     where,
     include: {
+      coachLevel: { select: { id: true, name: true, rank: true } },
       credentials: { select: { serviceType: true, status: true } },
       serviceOfferings: {
         where: { isActive: true },
-        select: { serviceType: true, priceCents: true, isActive: true },
+        select: { id: true, serviceId: true, serviceType: true, isActive: true },
       },
     },
   });
 
-  let items = (professionals as ProfessionalListRow[]).map(toDiscoveryItem);
+  const rows = professionals as ProfessionalListRow[];
+  const [fees, gstPercent] = await Promise.all([feesForProfessionals(rows), activeGstPercent()]);
+  let items = rows.map((p) => toDiscoveryItem(p, fees, gstPercent));
 
   if (query.serviceType === "combined") {
     items = items.filter(
@@ -202,15 +224,16 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
 
 type ProfessionalDetailRow = Omit<ProfessionalListRow, "serviceOfferings"> & {
   status: string;
-  serviceOfferings: Array<OfferingSummaryRow & { id: string; label: string; durationMinutes: number }>;
+  serviceOfferings: Array<OfferingSummaryRow & { label: string; durationMinutes: number }>;
 };
 
 export async function getProfessionalDetail(id: string) {
   const professional = await prisma.professional.findUnique({
     where: { id },
     include: {
+      coachLevel: { select: { id: true, name: true, rank: true } },
       credentials: { select: { serviceType: true, status: true } },
-      serviceOfferings: { where: { isActive: true }, orderBy: { priceCents: "asc" } },
+      serviceOfferings: { where: { isActive: true }, orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -220,6 +243,12 @@ export async function getProfessionalDetail(id: string) {
   }
 
   const totalClients = await prisma.relationship.count({ where: { professionalId: id, status: "active" } });
+  const [fees, gstPercent] = await Promise.all([feesForProfessionals([p]), activeGstPercent()]);
+  // Only offerings with a fee at this coach's level can be booked.
+  const bookable = p.serviceOfferings
+    .filter((o) => fees.has(o.id))
+    .map((o) => ({ ...o, feeCents: fees.get(o.id) as number }))
+    .sort((a, b) => a.feeCents - b.feeCents);
 
   return {
     id: p.id,
@@ -229,13 +258,21 @@ export async function getProfessionalDetail(id: string) {
     yearsExperience: p.yearsExperience,
     verifiedServices: verifiedServiceTypes(p.credentials),
     totalClients,
-    offerings: p.serviceOfferings.map((o) => ({
-      id: o.id,
-      serviceType: o.serviceType,
-      label: o.label,
-      durationMinutes: o.durationMinutes,
-      priceCents: o.priceCents,
-    })),
+    level: p.coachLevel ? { name: p.coachLevel.name, rank: p.coachLevel.rank } : null,
+    gstPercent,
+    offerings: bookable.map((o) => {
+      const gstCents = gstOnTop(o.feeCents, gstPercent);
+      return {
+        id: o.id,
+        serviceType: o.serviceType,
+        label: o.label,
+        durationMinutes: o.durationMinutes,
+        // The coach fee FynroX set for this level, before GST.
+        priceCents: o.feeCents,
+        gstCents,
+        totalCents: o.feeCents + gstCents,
+      };
+    }),
     notAvailable: DISCOVERY_NOT_AVAILABLE,
   };
 }
@@ -493,16 +530,22 @@ export async function listPendingRelationships(professionalId: string) {
 export async function createBooking(
   userId: string,
   input: CreateBookingInput,
-  opts: { verifiedPayment?: boolean } = {},
+  // `paidPrice` (Package 4): the fee and GST the user actually paid for,
+  // copied from the Payment, so the booking records what was charged even
+  // if FynroX changed the fee between checkout and payment capture.
+  opts: {
+    verifiedPayment?: boolean;
+    paidPrice?: { feeCents: number; gstCents: number; coachLevelId?: string | null };
+  } = {},
 ) {
   const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: input.offeringId } });
   const o = offering as {
     id: string;
     professionalId: string;
+    serviceId: string;
     serviceType: string | null;
     label: string;
     durationMinutes: number;
-    priceCents: number;
     isActive: boolean;
   } | null;
   if (!o || o.professionalId !== input.professionalId || !o.isActive) {
@@ -542,7 +585,25 @@ export async function createBooking(
   // to be un-created. A $0 offering (none seeded today, but the schema
   // allows one) skips this and confirms immediately, same as a free plan
   // or program.
-  if (o.priceCents > 0 && !opts.verifiedPayment) {
+  // Package 4: the price is the level fee in force now (+ GST on top);
+  // a paid booking keeps exactly what was paid.
+  let price: Pick<BookingPrice, "feeCents" | "gstCents"> & { coachLevelId: string | null };
+  if (opts.verifiedPayment && opts.paidPrice) {
+    // The level recorded at checkout, else (older payments) the current one.
+    let coachLevelId = opts.paidPrice.coachLevelId ?? null;
+    if (!coachLevelId) {
+      const level = (await prisma.professional.findUnique({
+        where: { id: input.professionalId },
+        select: { coachLevelId: true },
+      })) as { coachLevelId: string | null } | null;
+      coachLevelId = level?.coachLevelId ?? null;
+    }
+    price = { feeCents: opts.paidPrice.feeCents, gstCents: opts.paidPrice.gstCents, coachLevelId };
+  } else {
+    price = await priceOffering({ id: o.id, serviceId: o.serviceId, professionalId: o.professionalId });
+  }
+
+  if (price.feeCents > 0 && !opts.verifiedPayment) {
     throw new ApiHttpError(
       402,
       "payment_required",
@@ -612,6 +673,9 @@ export async function createBooking(
     );
   }
 
+  // FynroX's commission is copied now; a later rate change never reaches
+  // this booking or its settlement.
+  const commissionPct = (await commissionPctFor([input.professionalId])).get(input.professionalId) as number;
   const booking = await prisma.booking.create({
     data: {
       userId,
@@ -619,7 +683,10 @@ export async function createBooking(
       offeringId: o.id,
       scheduledAt,
       durationMinutes: o.durationMinutes,
-      priceCents: o.priceCents,
+      priceCents: price.feeCents,
+      gstCents: price.gstCents,
+      commissionPct,
+      coachLevelId: price.coachLevelId,
       status: "confirmed",
     },
   });
@@ -670,6 +737,7 @@ export async function createBooking(
     scheduledAt: booking.scheduledAt,
     durationMinutes: booking.durationMinutes,
     priceCents: booking.priceCents,
+    gstCents: booking.gstCents,
     status: booking.status,
     relationshipIds,
   };

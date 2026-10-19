@@ -1,13 +1,14 @@
 import React from "react";
-import { Pressable, Switch, Text, View, ViewStyle } from "react-native";
+import { Platform, Pressable, Switch, Text, View, ViewStyle } from "react-native";
+import { FocusRing, useFocusState } from "./FocusRing";
 import { Icon, IconName } from "./Icon";
-import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
+import { colors, fonts, radius, spacing, typography, touch } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 /** Small uppercase-ish section heading above a settings group (Figma Settings frames). */
 export function SectionLabel({ text, style }: { text: string; style?: ViewStyle }) {
   return (
-    <Text style={[{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.3, marginTop: spacing.sm }, style as object]}>
+    <Text style={[{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.3, marginTop: spacing.sm }, style as object]}>
       {text}
     </Text>
   );
@@ -45,21 +46,40 @@ interface ToggleRowProps {
 
 export function ToggleRow({ title, subtitle, value, onValueChange, disabled, icon, iconTint, accessibilityLabel }: ToggleRowProps) {
   const { colors: theme } = useTheme();
+  const { focused, focusProps } = useFocusState();
+  // The whole row is the control (bigger target than the 51x31 switch); the
+  // Switch itself is hidden from screen readers so it is announced once.
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14, opacity: disabled ? 0.5 : 1 }}>
-      {icon ? <Icon name={icon} size={18} color={iconTint ?? theme.accent} /> : null}
+    <Pressable
+      onPress={() => onValueChange(!value)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={subtitle}
+      accessibilityState={{ checked: value, disabled: !!disabled }}
+      android_ripple={{ color: colors.ripple }}
+      {...focusProps}
+      style={({ pressed }: { pressed: boolean }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14, minHeight: touch.min, opacity: pressed && !disabled ? 0.85 : 1 })}
+    >
+      <FocusRing visible={focused} radius={radius.sm} offset={-3} />
+      {icon ? <Icon name={icon} size={18} color={disabled ? colors.textMuted : iconTint ?? theme.accent} /> : null}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
-        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11, lineHeight: 15 }}>{subtitle}</Text> : null}
+        {/* Disabled dims the title and the switch only; the subtitle usually says why, so it stays readable. */}
+        <Text style={{ color: disabled ? colors.textMuted : colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
+        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 18 }}>{subtitle}</Text> : null}
       </View>
       <Switch
+        style={disabled ? { opacity: 0.45 } : undefined}
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ true: theme.accent, false: colors.border }}
-        accessibilityLabel={accessibilityLabel ?? title}
+        trackColor={{ true: theme.accent, false: colors.outline }}
+        thumbColor={Platform.OS === "android" ? (value ? theme.textOnAccent : colors.surface) : undefined}
+        ios_backgroundColor={colors.outline}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -79,13 +99,14 @@ export function ValueRow({ title, subtitle, value, onPress }: ValueRowProps) {
       disabled={!onPress}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={value ? `${title}, ${value}` : title}
-      style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 }}
+      android_ripple={onPress ? { color: colors.ripple } : undefined}
+      style={({ pressed }: { pressed: boolean }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14, minHeight: touch.min, opacity: pressed && onPress ? 0.85 : 1 })}
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{title}</Text>
-        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11 }}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13 }}>{subtitle}</Text> : null}
       </View>
-      {value ? <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text> : null}
+      {value ? <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{value}</Text> : null}
     </Pressable>
   );
 }
@@ -104,7 +125,7 @@ export function ActionRow({
   tone?: "neutral" | "danger";
   loading?: boolean;
 }) {
-  const color = tone === "danger" ? colors.danger : colors.textPrimary;
+  const color = tone === "danger" ? colors.dangerText : colors.textPrimary;
   return (
     <Pressable
       onPress={onPress}

@@ -1,7 +1,7 @@
 import React from "react";
 import { RefreshControlProps, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, layout, spacing, typography } from "../theme/tokens";
+import { colors, layout, spacing, typography, themed } from "../theme/tokens";
 
 interface ScreenContainerProps {
   title: string;
@@ -48,7 +48,7 @@ export function ScreenContainer({ title, subtitle, eyebrow, right, children, scr
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     ...typography.caption,
-    color: colors.accent,
+    color: colors.accentText,
     marginBottom: 2,
   },
   subtitle: {
@@ -93,4 +93,4 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingHorizontal: layout.screenPadding,
   },
-});
+}));

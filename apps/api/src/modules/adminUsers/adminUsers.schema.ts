@@ -8,7 +8,7 @@ import { z } from "zod";
 // 02.01 bulk-select/suspend) — see this module's service file for the
 // full real-vs-not breakdown. "Plan", "Status", and a createdAt date
 // range are real filters.
-export const membershipTiers = ["basic", "pro", "elite", "free"] as const;
+export const membershipTiers = ["basic", "grow", "prime", "free"] as const;
 export const userAccountStatuses = ["active", "suspended"] as const;
 
 export const listUsersQuerySchema = z.object({

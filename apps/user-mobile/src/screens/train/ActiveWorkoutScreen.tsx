@@ -21,10 +21,11 @@ import {
 } from "../../api/workoutSessions";
 import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
+import { readinessFactorLabel } from "../../lib/readinessFactors";
 import { phaseLabel, sortExercisesByPhase } from "../../lib/workoutExercises";
 import { applySwaps, clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { useTheme } from "../../theme/ThemeProvider";
-import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 const column = { width: "100%" as const, maxWidth: layout.maxContentWidth, alignSelf: "center" as const };
@@ -334,7 +335,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                 paddingVertical: 2,
               }}
             >
-              <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                 Exercise {exerciseIndex + 1} of {orderedExercises.length}
                 {currentExercise ? ` · ${phaseLabel(currentExercise.phase)}` : ""}
               </Text>
@@ -391,7 +392,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           }}
         >
           <Icon name="heart" size={15} color={colors.textMuted} />
-          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
             Heart Rate:{" "}
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold }}>
               {readiness.data?.source?.kind === "device" ? "Not shown during workouts yet" : "No wearable connected"}
@@ -403,12 +404,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         {score != null ? (
           <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
             <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
-              ✦ Your readiness is {score}/100.{readiness.data?.summary ? ` ${readiness.data.summary}` : ""}
+              ✦ Your recovery score is {score}/100.{readiness.data?.summary ? ` ${readiness.data.summary}` : ""}
             </Text>
             <Pressable
               onPress={() => setWhyOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel="Why this readiness?"
+              accessibilityLabel="Why this recovery score?"
               style={{
                 alignSelf: "flex-start",
                 paddingHorizontal: 12,
@@ -419,7 +420,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                 backgroundColor: colors.aiAccentSoft,
               }}
             >
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Why?</Text>
+              <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Why?</Text>
             </Pressable>
           </View>
         ) : null}
@@ -427,8 +428,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         {modeTitle ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{modeTitle}</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
-              Mode changes between exercises. Switching is locked while you're mid-set. Change it from the Train tab.
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              Mode changes between exercises. Switching is locked while you're mid-set. Change it from the Workouts tab.
             </Text>
           </View>
         ) : null}
@@ -443,18 +444,18 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             gap: spacing.sm,
           }}
         >
-          <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h1, fontSize: 20 }}>{currentExercise?.exercise.name}</Text>
             {setsRemaining > 0 ? (
-              <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                 Set {currentSetNumber} of {currentExercise?.targetSets}
               </Text>
             ) : (
-              <Text style={{ color: colors.success, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
+              <Text style={{ color: colors.successText, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
             )}
           </View>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
             Target: {currentExercise?.targetSets} Sets × {currentExercise?.targetReps} Reps
           </Text>
 
@@ -462,11 +463,11 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             <View style={{ gap: 4, marginTop: 4 }}>
               {loggedSets.map((s) => (
                 <View key={s.setNumber} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                     Set {s.setNumber}: {s.weightKg ? `${s.weightKg}kg × ` : ""}
                     {s.reps} reps
                   </Text>
-                  <Text style={{ color: colors.success, fontSize: 12 }}>✓ Logged{s.rpe ? ` (RPE ${s.rpe})` : ""}</Text>
+                  <Text style={{ color: colors.successText, fontSize: 13 }}>✓ Logged{s.rpe ? ` (effort ${s.rpe}/10)` : ""}</Text>
                 </View>
               ))}
             </View>
@@ -476,7 +477,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             <>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, marginTop: 4 }}>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>Weight (kg)</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Weight (kg)</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="—"
@@ -488,7 +489,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                   />
                 </View>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>Reps</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Reps</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="—"
@@ -519,8 +520,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
               </View>
 
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>Rate Difficulty (RPE)</Text>
-                <Text style={{ color: theme.accent, fontFamily: fonts.bodyBold, fontSize: 11 }}>{rpe ? `RPE ${rpe} — ${rpeLabel(rpe)}` : "Optional"}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 13 }}>How hard was it? (1–10)</Text>
+                <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{rpe ? `${rpe}/10 — ${rpeLabel(rpe)}` : "Optional"}</Text>
               </View>
               <View style={{ flexDirection: "row", gap: 4 }}>
                 {RPE_SCALE.map((n) => (
@@ -528,18 +529,20 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                     key={n}
                     onPress={() => setRpe(rpe === n ? undefined : n)}
                     accessibilityRole="button"
-                    accessibilityLabel={`RPE ${n} of 10`}
+                    accessibilityLabel={`Effort ${n} of 10`}
                     accessibilityState={{ selected: rpe === n }}
+                    hitSlop={{ top: 2, bottom: 2 }}
                     style={{
                       flex: 1,
-                      height: 32,
+                      // 44 + 2 px slop = 48 px tall: tapped mid-set, often with sweaty hands.
+                      height: 44,
                       borderRadius: 8,
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: rpe === n ? theme.accent : n <= (rpe ?? 0) ? theme.accentSoft : colors.surfaceRaised,
                     }}
                   >
-                    <Text style={{ color: rpe === n ? theme.textOnAccent : colors.textSecondary, fontSize: 12, fontFamily: fonts.bodySemi }}>{n}</Text>
+                    <Text style={{ color: rpe === n ? theme.textOnAccent : colors.textSecondary, fontSize: 13, fontFamily: fonts.bodySemi }}>{n}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -602,7 +605,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{ex.exercise.name}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
                     {ex.targetSets} Sets · {ex.targetReps} Reps
                   </Text>
                 </View>
@@ -632,10 +635,10 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       <ReasoningSheet
         visible={whyOpen}
         onClose={() => setWhyOpen(false)}
-        title="Why this readiness?"
+        title="Why this recovery score?"
         heading="Based on your own logs"
         rationale={readiness.data?.summary ?? readiness.data?.headline ?? "Computed from the recovery data you have logged."}
-        rows={(readiness.data?.components ?? []).map((c) => ({ label: c.key, value: `${Math.round(c.score)}/100` }))}
+        rows={(readiness.data?.components ?? []).map((c) => ({ label: readinessFactorLabel(c.key), value: `${Math.round(c.score)}/100` }))}
         caveat={readiness.data?.basis ?? "Based on your logged data"}
       />
     </SafeAreaView>
@@ -650,7 +653,7 @@ function rpeLabel(n: number): string {
   return "Max effort";
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 50,
     borderRadius: radius.md,
@@ -661,4 +664,4 @@ const styles = {
     color: colors.textPrimary,
     fontSize: 15,
   },
-} as const;
+} as const));

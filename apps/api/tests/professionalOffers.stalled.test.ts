@@ -39,7 +39,7 @@ describe("Stalled-offer detection surfaces via the admin offers read and queues 
     const passwordHash = await hashPassword(adminPassword);
     const adminEmail = uniqueEmail("stalled-offer-admin");
     const admin = await prisma.adminUser.create({
-      data: { email: adminEmail, passwordHash, fullName: "Stalled Offer Test Admin", role: "coach_operations", status: "active" },
+      data: { email: adminEmail, passwordHash, fullName: "Stalled Offer Test Admin", role: "super_admin", status: "active" },
     });
     adminId = admin.id;
 

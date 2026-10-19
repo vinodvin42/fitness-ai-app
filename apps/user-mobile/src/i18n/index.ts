@@ -43,8 +43,18 @@ export const SUPPORTED_LANGUAGES = [
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
+const RESOURCES: Partial<Record<SupportedLanguage, { translation: typeof en }>> = { en: { translation: en } };
+
+/**
+ * Languages whose copy actually exists — today only English. The Language
+ * screen offers only these: listing nine languages that all render English
+ * is a choice that changes nothing. Derived from the resources below, so a
+ * new catalogue appears on that screen the moment it is added here.
+ */
+export const TRANSLATED_LANGUAGES = SUPPORTED_LANGUAGES.filter((code) => RESOURCES[code] != null);
+
 void i18next.use(initReactI18next).init({
-  resources: { en: { translation: en } },
+  resources: RESOURCES,
   lng: "en",
   fallbackLng: "en",
   // React Native has no <html lang>, and every string here is plain text

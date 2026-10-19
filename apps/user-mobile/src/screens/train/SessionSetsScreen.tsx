@@ -77,7 +77,7 @@ export function SessionSetsScreen({ navigation, route }: Props) {
                 <Text style={{ color: colors.textPrimary }}>
                   Set {s.setNumber} · {s.reps} reps{s.weightKg != null ? ` @ ${kgToDisplay(s.weightKg, unit)}${unit}` : ""}
                 </Text>
-                <Text style={{ color: colors.accent, ...typography.meta }}>Edit</Text>
+                <Text style={{ color: colors.accentText, ...typography.meta }}>Edit</Text>
               </Pressable>
             ))}
           </Card>

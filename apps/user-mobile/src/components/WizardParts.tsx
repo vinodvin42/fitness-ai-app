@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon, IconName } from "./Icon";
-import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 /**
@@ -73,7 +73,7 @@ export function LevelCard({ title, tag, description, selected, onPress }: LevelC
       <View style={{ flex: 1, gap: 4 }}>
         <View style={{ flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <Text style={styles.levelTitle}>{title}</Text>
-          <Text style={[styles.levelTag, { color: theme.accent }]}>{tag}</Text>
+          <Text style={[styles.levelTag, { color: theme.accentText }]}>{tag}</Text>
         </View>
         <Text style={styles.levelDesc}>{description}</Text>
       </View>
@@ -110,7 +110,7 @@ export function CheckboxField({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   rowDense: { paddingVertical: 11, minHeight: 48 },
   rowTitle: { fontSize: 14, fontFamily: fonts.bodySemi },
-  rowSubtitle: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
+  rowSubtitle: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
   well: {
     width: 32,
     height: 32,
@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
   },
   rail: { width: 3, borderRadius: 2, backgroundColor: colors.surfaceHigh },
   levelTitle: { ...typography.h3, fontSize: 15, color: colors.textPrimary },
-  levelTag: { fontSize: 11, fontFamily: fonts.bodyMedium },
-  levelDesc: { fontSize: 12, fontFamily: fonts.body, color: colors.textSecondary },
-});
+  levelTag: { fontSize: 13, fontFamily: fonts.bodyMedium },
+  levelDesc: { fontSize: 13, fontFamily: fonts.body, color: colors.textSecondary },
+}));

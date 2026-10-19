@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { z } from "zod";
+import { mockPaymentProviderBlockReason } from "../lib/paymentProviderGuard";
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -188,8 +189,8 @@ const envSchema = z.object({
   // (SendGrid, Postmark, SES, a plain Gmail/Workspace relay, etc. all
   // speak SMTP), same reasoning as AI_PROVIDER supporting multiple
   // providers rather than hardcoding one.
-  // Public base URL of this API, used to build guardian-approval links in
-  // emails (e.g. https://api.example.com). Falls back to http://localhost:PORT.
+  // Public base URL of this API, used to build links in emails
+  // (e.g. https://api.example.com). Falls back to http://localhost:PORT.
   PUBLIC_API_URL: z.string().url().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
@@ -214,6 +215,21 @@ if (!parsed.success) {
 // existing "a misconfigured .env should never silently boot" philosophy.
 if (parsed.data.NODE_ENV === "production" && parsed.data.AI_PROVIDER === "mock") {
   console.error("AI_PROVIDER=mock is a local-development stub and must not be used when NODE_ENV=production.");
+  process.exit(1);
+}
+
+// Fail closed on the mock payment provider: its signing secret is public,
+// so it would let anyone forge a paid activation. Blocked in production AND
+// on any detected hosting platform, whatever NODE_ENV says (an unset
+// NODE_ENV defaults to "development" above). See lib/paymentProviderGuard.ts.
+const mockPaymentBlock = mockPaymentProviderBlockReason({
+  paymentProvider: parsed.data.PAYMENT_PROVIDER,
+  nodeEnv: parsed.data.NODE_ENV,
+  razorpayKeyId: parsed.data.RAZORPAY_KEY_ID,
+  processEnv: process.env,
+});
+if (mockPaymentBlock) {
+  console.error(mockPaymentBlock);
   process.exit(1);
 }
 

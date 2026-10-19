@@ -129,7 +129,7 @@ export function PlanGeneratingScreen(_props: Props) {
   return (
     <ScreenContainer title={t("onboarding.generating.failed")}>
       <Card>
-        <Text style={{ color: colors.danger, ...typography.body }}>{screenState.errorMessage}</Text>
+        <Text style={{ color: colors.dangerText, ...typography.body }}>{screenState.errorMessage}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
           {t("onboarding.generating.answersSaved")}
         </Text>

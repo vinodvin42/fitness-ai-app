@@ -11,12 +11,13 @@ import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchCoachProfile } from "../../api/coaching";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachProfileDetail">;
 
-function formatPrice(cents: number) {
-  return `₹${(cents / 100).toFixed(2)}`;
+function formatPrice(paise: number) {
+  return formatRupees(paise);
 }
 
 function serviceLabel(serviceType: string | null) {
@@ -75,7 +76,7 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: colors.accent, ...typography.display }}>{data.fullName.slice(0, 1)}</Text>
+            <Text style={{ color: colors.accentText, ...typography.display }}>{data.fullName.slice(0, 1)}</Text>
           </View>
           <View style={{ flex: 1, justifyContent: "center" }}>
             <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{data.fullName}</Text>
@@ -112,7 +113,10 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
       ) : null}
 
       <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("coaching.profile.services")}</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("coaching.profile.services")}</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
+          {data.level ? `${data.level.name} coach · ` : ""}Fees are set by FynroX. {data.gstPercent}% GST is added on top.
+        </Text>
         {data.offerings.length === 0 ? (
           <Text style={{ color: colors.textSecondary }}>{t("coaching.profile.noServices")}</Text>
         ) : (
@@ -131,7 +135,7 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
               <Text style={{ color: colors.textPrimary, flex: 1 }}>
                 {o.label ?? serviceLabel(o.serviceType)} · {o.durationMinutes}min
               </Text>
-              <Pill label={formatPrice(o.priceCents)} tone="accent" />
+              <Pill label={o.priceCents === 0 ? "Free" : `${formatPrice(o.priceCents)} + GST`} tone="accent" />
             </View>
           ))
         )}

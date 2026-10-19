@@ -1181,7 +1181,8 @@ export interface CheckInStatus {
 // Corresponds to the admin console's Plan/Subscription entities — one
 // shared table, not duplicated between apps (docs/mobile/05-data-model.md §2).
 
-export type SubscriptionTier = "basic" | "pro" | "elite";
+/** FynroX plans (D13): Basic (free), Grow, Prime. */
+export type SubscriptionTier = "basic" | "grow" | "prime";
 // `expired`/`revoked` added 18 Sep 2026 (gap §57) — see
 // apps/api/prisma/schema.prisma's SubscriptionStatus enum doc comment for
 // the full real cancel-at-period-end policy and force-revoke design.
@@ -1212,14 +1213,17 @@ export type SubscriptionDisplayState =
   | "canceled"
   | "past_due";
 /** Named 25 Aug 2026 for Module 06.05's AdminPlanListItem — was previously only ever an inline literal. */
-export type BillingCycle = "monthly" | "annual";
+export type BillingCycle = "monthly" | "quarterly" | "annual";
 
 export interface SubscriptionPlan {
   id: string;
   tier: SubscriptionTier;
   name: string;
+  /** Today's price, in paise. */
   priceCents: number;
   billingCycle: BillingCycle;
+  /** Next scheduled price (D8), e.g. Grow ₹349 from 1 Dec; null when none. Only on GET /subscriptions/plans. */
+  upcomingPrice?: { priceCents: number; effectiveFrom: string } | null;
 }
 
 export interface Subscription {
@@ -1234,6 +1238,8 @@ export interface Subscription {
   /** Gap §57 — only ever set by the admin force-revoke action. */
   revokedAt: string | null;
   revokedReason: string | null;
+  /** What this subscriber paid for the current period (paise), locked until renewal (D8). */
+  priceCents?: number | null;
 }
 
 /**
@@ -1534,19 +1540,15 @@ export interface ReferralSummary {
 // ---- Admin console (Phase 6, added 20 Aug 2026) ----------------------------
 // docs/admin/*.md. AdminUser is a genuinely separate identity from `User`
 // above — see apps/api's prisma/schema.prisma AdminUser doc comment for
-// why. Only `super_admin` is actually enforced anywhere yet (gap §7 in
-// docs/admin/07-open-questions-gaps.md); the other 7 role names are listed
-// here because they're real, confirmed role names from the Figma review,
-// not because their permission matrices are implemented.
+// why. Roles follow decisions D15/D21 (Oct 2026): super_admin (Lakshman)
+// applies changes directly; everyone else's risky changes need his approval.
 
 export type AdminRole =
   | "super_admin"
-  | "user_operations"
-  | "coach_operations"
+  | "co_founder"
+  | "operations"
   | "finance"
-  | "content"
-  | "growth"
-  | "analytics"
+  | "safety_privacy"
   | "support";
 
 export type AdminUserStatus = "active" | "disabled";
@@ -1560,12 +1562,80 @@ export interface AdminUser {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** True once the admin has confirmed an authenticator app. */
+  mfaEnabled?: boolean;
 }
 
-/** Matches apps/api's adminLoginSchema (Zod). */
+/** Matches apps/api's adminLoginSchema (Zod). `code` is the authenticator code once MFA is set up. */
 export interface AdminLoginInput {
   email: string;
   password: string;
+  code?: string;
+  recoveryCode?: string;
+}
+
+// ---- Admin sign-in with an authenticator app (blueprint section 5) ----
+
+/** POST /admin/auth/login when the password is right but MFA still has to be set up. */
+export interface AdminMfaSetupRequiredResponse {
+  mfaSetupRequired: true;
+  setupToken: string;
+}
+
+/** POST /admin/auth/mfa/setup */
+export interface AdminMfaSetupResponse {
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+  /** Shown once for manual entry into the authenticator app. */
+  secret: string;
+}
+
+// ---- Maker-checker approvals (blueprint section 5, decision D21) ----
+
+export type ApprovalStatus =
+  | "pending"
+  | "applying"
+  | "approved"
+  | "rejected"
+  | "changes_requested"
+  | "expired"
+  | "failed"
+  | "cancelled";
+
+export interface ApprovalPerson {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  role: string | null;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  status: ApprovalStatus;
+  maker: ApprovalPerson;
+  makerRole: string;
+  checker: ApprovalPerson | null;
+  method: string;
+  path: string;
+  body: unknown;
+  module: string;
+  action: string;
+  summary: string;
+  reason: string;
+  decisionNote: string | null;
+  expiresAt: string;
+  decidedAt: string | null;
+  appliedAt: string | null;
+  resultStatus: number | null;
+  resultBody: unknown;
+  createdAt: string;
+}
+
+/** 202 answer from any admin write that was sent for approval. */
+export interface PendingApprovalResponse {
+  status: "pending_approval";
+  message: string;
+  approvalRequest: Pick<ApprovalRequest, "id" | "status" | "summary" | "reason" | "expiresAt" | "createdAt">;
 }
 
 export interface AdminLoginResult {
@@ -1824,8 +1894,18 @@ export interface CoachDiscoveryItem {
   specializationTags: string[];
   yearsExperience: number | null;
   verifiedServices: ProfessionalServiceType[];
-  /** Cheapest active offering's priceCents, or null if this coach has no active offerings yet. */
+  /** Lowest fee (before GST) among this coach's bookable offerings, or null if none can be booked yet. */
   startingPriceCents: number | null;
+  /** GST added on top of coach fees (Package 4). */
+  gstPercent: number;
+  /** The coach's FynroX level, or null if not placed yet. */
+  level: CoachLevelSummary | null;
+}
+
+/** A coach's FynroX level as users see it (Package 4). */
+export interface CoachLevelSummary {
+  name: string;
+  rank: number;
 }
 
 /** The shape returned by GET /coaching/professionals. */
@@ -1841,7 +1921,12 @@ export interface CoachServiceOffering {
   serviceType: ProfessionalServiceType | null;
   label: string;
   durationMinutes: number;
+  /** The fee FynroX set for the coach's level, before GST. */
   priceCents: number;
+  /** GST added on top. */
+  gstCents: number;
+  /** What the user pays: fee + GST. */
+  totalCents: number;
 }
 
 /** The shape returned by GET /coaching/professionals/:id. */
@@ -1853,6 +1938,9 @@ export interface CoachProfileDetail {
   yearsExperience: number | null;
   verifiedServices: ProfessionalServiceType[];
   totalClients: number;
+  level: CoachLevelSummary | null;
+  gstPercent: number;
+  /** Only offerings that can be booked (a fee is set for the coach's level). */
   offerings: CoachServiceOffering[];
   notAvailable: string[];
 }
@@ -1885,7 +1973,10 @@ export interface BookingConfirmation {
   offeringLabel: string;
   scheduledAt: string;
   durationMinutes: number;
+  /** Coach fee before GST. */
   priceCents: number;
+  /** GST paid on top of the fee. */
+  gstCents: number;
   status: BookingStatus;
   relationshipIds: string[];
 }
@@ -2596,7 +2687,7 @@ export interface AdminChangeRequestResponse {
 // real backing mechanism, so unlike Modules 03/04 there's no input type
 // here for a state-changing action.
 
-export type MembershipTier = "basic" | "pro" | "elite" | "free";
+export type MembershipTier = "basic" | "grow" | "prime" | "free";
 /** "referral" if a `Referral` row exists with this user as referee, else "organic" — see adminUsers.service.ts. No richer acquisition-channel taxonomy is tracked anywhere in this schema. */
 export type UserAcquisitionChannel = "referral" | "organic";
 /** Mirrors `ProfessionalStatus`/`AdminUserStatus` exactly — account-operations only, added 26 Aug 2026. Not a moderation/trust-and-safety taxonomy (no "banned" state) — see `User.status`'s own schema comment. */
@@ -3004,7 +3095,7 @@ export interface AdminPaymentDirectoryResponse {
 }
 
 export type AdminPaymentReference =
-  | { type: "plan"; id: string; name: string; tier: SubscriptionTier; priceCents: number; billingCycle: "monthly" | "annual" }
+  | { type: "plan"; id: string; name: string; tier: SubscriptionTier; priceCents: number; billingCycle: BillingCycle }
   | { type: "program"; id: string; name: string; priceCents: number };
 
 export interface AdminPaymentAuditEntry {
@@ -3188,6 +3279,11 @@ export interface AdminAuditLogEntry {
   entityType: string;
   entityId: string | null;
   metadata: Record<string, unknown> | null;
+  /** D21 maker-checker: the reason given, and the Super Admin who approved (null when applied directly). The actor is the maker. */
+  reason?: string | null;
+  checkerAdminId?: string | null;
+  checkerLabel?: string | null;
+  approvalRequestId?: string | null;
   createdAt: string;
 }
 
@@ -3472,8 +3568,33 @@ export interface AdminPlanListItem {
   isActive: boolean;
   /** Real, all-time Subscription row count on this plan (every status, not just currently-active). */
   subscriberCount: number;
+  /** Upcoming price changes (D8), earliest first. */
+  scheduledPriceChanges: AdminPlanPriceChange[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** A scheduled plan price change (D8/D18). */
+export interface AdminPlanPriceChange {
+  id: string;
+  priceCents: number;
+  previousCents: number;
+  effectiveFrom: string;
+  status: "scheduled" | "applied" | "cancelled";
+  reason: string | null;
+  /** When current subscribers were told (null if the plan had none). */
+  noticeSentAt: string | null;
+  appliedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+/** POST /admin/plans/:id/price-changes */
+export interface ScheduleAdminPlanPriceChangeInput {
+  priceCents: number;
+  /** YYYY-MM-DD (India time) or an ISO timestamp. */
+  effectiveFrom: string;
+  reason?: string;
 }
 
 export interface AdminPlanDirectoryResponse {
@@ -3816,12 +3937,10 @@ export interface AdminFinancialReportsResponse {
 
 export type AdminRoleName =
   | "super_admin"
-  | "user_operations"
-  | "coach_operations"
+  | "co_founder"
+  | "operations"
   | "finance"
-  | "content"
-  | "growth"
-  | "analytics"
+  | "safety_privacy"
   | "support";
 
 export interface AdminRoleSummary {
@@ -3963,7 +4082,10 @@ export type CommissionStatus =
 export interface CoachSettlementRow {
   professionalId: string;
   professionalName: string;
+  /** The month's effective rate (each booking keeps the rate it was made at). */
   commissionPct: number;
+  /** The rate this coach's new bookings get today. */
+  currentCommissionPct: number;
   grossCents: number;
   commissionCents: number;
   netCents: number;
@@ -5047,7 +5169,7 @@ export interface MedicationAdherence {
   adherencePct: number | null;
 }
 
-export type AiCoachTier = "basic" | "pro" | "elite";
+export type AiCoachTier = "basic" | "grow" | "prime";
 
 /** GET /ai-coach/usage */
 export interface AiCoachUsage {
@@ -5364,26 +5486,6 @@ export interface PublishBookingSummaryInput {
   summaryText: string;
 }
 
-// Under-18 guardian review (onboarding/11) — matches apps/api's
-// guardianReviewSchema and GuardianReview model. `approved` is reserved;
-// nothing sets it yet.
-export type GuardianRelationship = "parent" | "legal_guardian" | "other";
-export interface GuardianReviewInput {
-  guardianEmail: string;
-  /** Legacy (first build) — no longer collected by the app, still accepted by the API. */
-  guardianName?: string;
-  relationship?: GuardianRelationship;
-}
-/** `approved`/`declined` are set only by the guardian via the emailed link (apps/api /guardian-review/approve). */
-export interface GuardianReview extends GuardianReviewInput {
-  status: "pending" | "approved" | "declined";
-  createdAt: string;
-  /** When the emailed approval link expires (null once no live token exists). */
-  expiresAt?: string | null;
-  lastSentAt?: string | null;
-  decidedAt?: string | null;
-}
-
 // ---- Profile & Settings row 2 (Security / Data & Privacy / Help / Export) ----
 
 /** GET/PATCH /coaching/professionals/:id/sharing and items of GET /coaching/sharing */
@@ -5543,4 +5645,82 @@ export interface AdminPublicApplicationListResponse {
 export interface UpdatePublicApplicationInput {
   status: PublicApplicationStatus;
   adminNote?: string;
+}
+
+// ---- Coach levels, fees and FynroX commission (Package 4, Oct 2026) ----
+
+export interface AdminCoachService {
+  id: string;
+  key: string;
+  label: string;
+  /** null = combined fitness + nutrition session. */
+  serviceType: ProfessionalServiceType | null;
+  durationMinutes: number;
+  isActive: boolean;
+}
+
+export interface AdminScheduledFee {
+  id: string;
+  priceCents: number;
+  effectiveFrom: string;
+  reason: string | null;
+}
+
+export interface AdminCoachLevel {
+  id: string;
+  name: string;
+  rank: number;
+  description: string | null;
+  isActive: boolean;
+  coachCount: number;
+  fees: Array<{
+    serviceId: string;
+    /** Fee before GST in force today; null = not set (can't be booked). */
+    priceCents: number | null;
+    scheduled: AdminScheduledFee[];
+  }>;
+}
+
+export interface AdminScheduledCommission {
+  id: string;
+  /** null on a coach override = back to the default. */
+  pct: number | null;
+  effectiveFrom: string;
+  reason: string | null;
+}
+
+export interface AdminCoachPricingCoach {
+  id: string;
+  fullName: string;
+  status: string;
+  lifecycleStatus: string;
+  coachLevelId: string | null;
+  verifiedServices: ProfessionalServiceType[];
+  commissionPct: number;
+  hasCommissionOverride: boolean;
+  scheduledCommission: AdminScheduledCommission[];
+}
+
+/** GET /admin/coach-levels */
+export interface AdminCoachPricingResponse {
+  gstPercent: number;
+  commission: { defaultPct: number; scheduled: AdminScheduledCommission[] };
+  services: AdminCoachService[];
+  levels: AdminCoachLevel[];
+  coaches: AdminCoachPricingCoach[];
+}
+
+/** GET /professionals/me/level — the coach's own level and fees, read-only. */
+export interface CoachMyLevelResponse {
+  level: { name: string; rank: number; description: string | null } | null;
+  gstPercent: number;
+  commissionPct: number;
+  fees: Array<{
+    label: string;
+    serviceType: ProfessionalServiceType | null;
+    durationMinutes: number;
+    /** Before GST; null = FynroX hasn't set it yet. */
+    priceCents: number | null;
+    upcoming: { priceCents: number; effectiveFrom: string } | null;
+  }>;
 }

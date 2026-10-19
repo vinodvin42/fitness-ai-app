@@ -48,12 +48,21 @@ services:
       npm run build --workspace=apps/api
     startCommand: npm run start --workspace=apps/api
     # Runs once per deploy, after build, before the new instance takes
-    # traffic. First deploy: creates the schema. Every deploy after: a
-    # no-op if the schema hasn't changed, syncs it if it has (see the
-    # migration-history note above for when to switch this to
-    # `prisma migrate deploy`).
+    # traffic.
+    #
+    # Batch 0 (16 Oct 2026): this used to be
+    #   npx prisma db push --accept-data-loss
+    # which rewrites the live schema to match schema.prisma on EVERY deploy
+    # and is allowed to drop columns and tables (with their data) to get
+    # there. The repo now has a committed migration history
+    # (apps/api/prisma/migrations), so that command is both unnecessary and
+    # dangerous. It is replaced by a READ-ONLY check: `prisma migrate status`
+    # exits 1 when any migration is unapplied, history has diverged, or the
+    # database has no migration table — so a deploy now STOPS instead of
+    # changing the database. Apply reviewed migrations by hand (see
+    # docs/platform/migration-safety.md), then redeploy.
     preDeployCommand: >-
-      npx prisma db push --accept-data-loss --schema=apps/api/prisma/schema.prisma
+      npx prisma migrate status --schema=apps/api/prisma/schema.prisma
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

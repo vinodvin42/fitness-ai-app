@@ -51,7 +51,7 @@ describe("Creator Partner Lite portal", () => {
         email: `admin-creator-${suffix}@example.com`,
         passwordHash: await hashPassword("unused"),
         fullName: "Creator Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });
@@ -89,7 +89,7 @@ describe("Creator Partner Lite portal", () => {
 
     planId = `plan-creator-${suffix}`;
     await prisma.subscriptionPlan.create({
-      data: { id: planId, tier: "pro", name: "Premium", priceCents: AMOUNT, billingCycle: "monthly", isActive: true },
+      data: { id: planId, tier: "grow", name: "Premium", priceCents: AMOUNT, billingCycle: "monthly", isActive: true },
     });
     const payment = await prisma.payment.create({
       data: {

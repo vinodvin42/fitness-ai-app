@@ -29,9 +29,10 @@ export const en = {
 
   nav: {
     today: "Today",
-    train: "Train",
-    fuel: "Fuel",
-    recover: "Recover",
+    // Plain words for beginners (Oct 2026 decision); route names stay Train/Fuel/Recover.
+    train: "Workouts",
+    fuel: "Food",
+    recover: "Recovery",
     more: "More",
   },
 
@@ -114,6 +115,7 @@ export const en = {
     title: "Subscription",
     cancel: "Cancel Subscription",
     monthly: "Monthly",
+    quarterly: "3 months",
     annual: "Annual",
     popular: "Popular",
     save: "Save {{percent}}%",
@@ -125,7 +127,6 @@ export const en = {
     purchaseHistory: "Purchase History",
     comparePlans: "Compare plans",
     feature: "Feature",
-    comingSoon: "Coming soon",
     switch: "Switch",
     choose: "Choose",
     // Plan TIER names (Basic / Pro / Elite) are deliberately absent: they
@@ -136,7 +137,7 @@ export const en = {
       progress: "Progress & timeline",
       aiCoach: "AI Coach chat",
       recovery: "Recovery log",
-      humanCoaching: "1-on-1 human coaching",
+      humanCoaching: "Request a coach (fee paid separately)",
       prioritySupport: "Priority support",
     },
   },
@@ -159,38 +160,38 @@ export const en = {
 
   /** Coaching — discovery, bookings, messages and the relationship. */
   coaching: {
-    title: "Coaching",
-    subtitle: "Request guidance and track your professional relationship",
+    title: "Coach",
+    subtitle: "Ask for a coach and see how your request is going",
     team: {
-      title: "My Professional Team",
+      title: "My coaches",
       emptyTitle: "No coaches yet",
       emptySubtitle: "Book a session with a coach and they'll show up here.",
-      findCoach: "Find a Coach",
-      bookSession: "Book Session",
+      findCoach: "Find a coach",
+      bookSession: "Book session",
       message: "Message",
       change: "Change",
-      viewProfile: "View Profile",
+      viewProfile: "View profile",
       allMessages: "All messages ›",
-      recommended: "Recommended Professionals",
+      recommended: "Recommended coaches",
     },
     discovery: {
       search: "Search coaches",
       mostExperienced: "Most experienced",
       lowestPrice: "Lowest price",
-      findTeam: "Find My Professional Team",
+      findTeam: "My coaches",
       loading: "Loading coaches…",
       emptyTitle: "No verified coaches yet",
       emptySubtitle: "Check back soon, or try a different filter.",
     },
     profile: {
-      title: "Coach Profile",
-      yearsExp: "Years exp.",
+      title: "Coach profile",
+      yearsExp: "Years of experience",
       clients: "Clients",
-      services: "Available Services",
-      noServices: "No priced services listed yet.",
+      services: "What they offer",
+      noServices: "No services with a price yet.",
     },
     booking: {
-      selectTitle: "Book a Session",
+      selectTitle: "Book a session",
       chooseService: "Choose a service",
       chooseDate: "Choose a date",
       chooseTime: "Choose a time",
@@ -206,10 +207,10 @@ export const en = {
       backHome: "Back to Home",
     },
     relationship: {
-      emptyTitle: "No professional relationship yet",
-      emptySubtitle: "Request guidance from a verified fitness or nutrition professional to get started.",
+      emptyTitle: "No coach yet",
+      emptySubtitle: "Ask for a verified fitness or nutrition coach to get started.",
       yourRequest: "Your Request",
-      viewTeam: "View My Professional Team",
+      viewTeam: "See my coaches",
       serviceFitness: "Fitness Coaching",
       serviceNutrition: "Nutrition Coaching",
       // §10's relationship lifecycle, as the progress stepper renders it.
@@ -226,19 +227,19 @@ export const en = {
         requested: "Waiting for the coach to respond",
         accepted: "Accepted — set up your payment to continue",
         awaiting_payment: "Awaiting payment",
-        activating: "Activating your relationship…",
+        activating: "Starting your coaching…",
         active: "Active",
       },
       requestedNote:
         "Nothing's wrong — the coach hasn't reviewed your request yet. You'll be able to continue as soon as they accept.",
-      notActiveNote: "Not an active professional relationship yet — full access unlocks once this reaches Active.",
-      continueToPayment: "Continue to Payment",
+      notActiveNote: "Your coaching hasn't started yet — it starts once this reaches Active.",
+      continueToPayment: "Continue to payment",
     },
     change: {
-      title: "Change Professional",
+      title: "Change coach",
       headsUp: "Heads up",
-      current: "Current professional",
-      why: "Why are you changing professionals?",
+      current: "Current coach",
+      why: "Why do you want a different coach?",
       tellUsMore: "Tell us more (optional)",
     },
     messages: {
@@ -250,7 +251,7 @@ export const en = {
     },
     requests: {
       emptyTitle: "No requests yet",
-      emptySubtitle: "Ask for guidance and we'll match you with a professional.",
+      emptySubtitle: "Ask for a coach and we'll match you with one.",
     },
   },
 
@@ -331,7 +332,7 @@ export const en = {
       answersSaved: "Your assessment answers are saved — nothing is lost. Try again below.",
     },
     summary: {
-      step: "Review",
+      step: "Last step · Review",
       title: "Review your assessment",
       subtitle: "Check your answers before we build your plan.",
       goals: "Goals",
@@ -410,9 +411,9 @@ export const en = {
     notesOptional: "Notes (optional)",
     noteOptional: "Note (optional)",
     metrics: {
-      restingHr: "Resting HR",
+      restingHr: "Resting heart rate",
       sleep: "Sleep",
-      hrv: "HRV",
+      hrv: "Body rest (HRV, from a watch)",
       soreness: "Soreness",
       energy: "Energy",
     },
@@ -440,7 +441,7 @@ export const en = {
     discount: "Discount",
     inclGst: "Incl. {{percent}}% GST ({{amount}})",
     includesTrial: "Includes a free trial period",
-    paymentsUnavailable: "Payments aren't available on this server yet.",
+    paymentsUnavailable: "Online payment isn't switched on yet. Please try again later.",
     processing: {
       title: "Processing your payment",
       subtitle: "Don't close this screen — we're confirming with your bank.",
@@ -478,14 +479,14 @@ export const en = {
   },
 
   guidance: {
-    title: "Professional guidance",
-    subtitle: "Ask for a verified fitness or nutrition professional",
+    title: "Find a coach",
+    subtitle: "Ask for a verified fitness or nutrition coach",
     yourRequest: "Your request",
     whatHelp: "What do you need help with?",
-    noteLabel: "Anything the professional should know (optional)",
+    noteLabel: "Anything your coach should know (optional)",
     notePlaceholder: "Goals, injuries, schedule…",
     send: "Send request",
-    onlyPayOnAccept: "We match you with a professional from our verified network. You only pay once they accept.",
+    onlyPayOnAccept: "We match you with a coach from our verified network. You only pay once they accept.",
     cancel: "Cancel request",
     earlier: "Earlier requests",
     sendFailed: "Couldn't send your request",
@@ -493,15 +494,15 @@ export const en = {
     status: {
       open: {
         label: "Finding a professional",
-        detail: "We're matching you with a verified professional. This usually takes a day or two.",
+        detail: "We're matching you with a verified coach. This usually takes a day or two.",
       },
       offered: {
-        label: "Waiting on a professional",
-        detail: "We've sent your request to a professional and are waiting for them to accept.",
+        label: "Waiting for a coach",
+        detail: "We've sent your request to a coach and are waiting for them to accept.",
       },
       fulfilled: {
         label: "Matched",
-        detail: "A professional accepted. You'll find them under your professional team.",
+        detail: "A coach accepted. You'll find them under My coaches.",
       },
       cancelled: {
         label: "Cancelled",
@@ -510,7 +511,7 @@ export const en = {
       exhausted: {
         label: "No match yet",
         detail:
-          "We couldn't find an available professional for this request. Our team has been notified and will get in touch.",
+          "We couldn't find a free coach for this request yet. Our team has been told and will get in touch.",
       },
     },
     // Pluralised through CLDR rules, not a hand-written "s" — this is

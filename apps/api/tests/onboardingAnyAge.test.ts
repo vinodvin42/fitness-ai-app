@@ -3,10 +3,11 @@ import request from "supertest";
 import { buildApp, prisma, uniqueEmail } from "./helpers";
 
 /**
- * "Continue without health data" (onboarding/09) and Under-18 guardian
- * review (onboarding/11). Real Postgres, no mocked Prisma. The approval-token flow is covered in guardianReviewFlow.test.ts.
+ * "Continue without health data" (onboarding/09) and the no-age-limit rule
+ * (owner decision, 15 Oct 2026: anyone can sign up; there is no guardian
+ * flow and no minimum age). Real Postgres, no mocked Prisma.
  */
-describe("Onboarding: health-data skip + guardian review", () => {
+describe("Onboarding: health-data skip + no age limit", () => {
   const app = buildApp();
   let userId: string;
   let token: string;
@@ -23,14 +24,13 @@ describe("Onboarding: health-data skip + guardian review", () => {
   beforeAll(async () => {
     const signup = await request(app)
       .post("/auth/signup")
-      .send({ email: uniqueEmail("skipguardian"), password: "SomePassword1!", fullName: "Skip Tester" });
+      .send({ email: uniqueEmail("skipanyage"), password: "SomePassword1!", fullName: "Skip Tester" });
     userId = signup.body.user.id;
     token = signup.body.tokens.accessToken;
   });
 
   afterAll(async () => {
     await prisma.safetyEscalation.deleteMany({ where: { userId } });
-    await prisma.guardianReview.deleteMany({ where: { userId } });
     await prisma.onboardingProfile.deleteMany({ where: { userId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.$disconnect();
@@ -60,42 +60,31 @@ describe("Onboarding: health-data skip + guardian review", () => {
     expect(res.body.onboardingProfile.medicalConditions).toEqual(["Asthma"]);
   });
 
-  it("GET /users/me/guardian-review is null before any submission", async () => {
-    const res = await request(app).get("/users/me/guardian-review").set("Authorization", `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.guardianReview).toBeNull();
-  });
-
-  it("POST /users/me/guardian-review stores a pending review and is idempotent per user", async () => {
+  it("accepts a young date of birth — FynroX has no age limit", async () => {
+    const now = new Date();
+    const dob = `${now.getUTCFullYear() - 12}-01-15`;
     const res = await request(app)
-      .post("/users/me/guardian-review")
+      .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
-      .send({ guardianEmail: "Pat@Example.com" });
+      .send({ ...baseProfile, age: undefined, dateOfBirth: dob });
 
-    expect(res.status).toBe(201);
-    expect(res.body.guardianReview).toEqual(
-      expect.objectContaining({ guardianEmail: "pat@example.com", status: "pending" }),
-    );
-
-    const again = await request(app)
-      .post("/users/me/guardian-review")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ guardianEmail: "pat2@example.com" });
-    expect(again.status).toBe(201);
-    expect(await prisma.guardianReview.count({ where: { userId } })).toBe(1);
-
-    const got = await request(app).get("/users/me/guardian-review").set("Authorization", `Bearer ${token}`);
-    expect(got.body.guardianReview.guardianEmail).toBe("pat2@example.com");
+    expect(res.status).toBe(200);
+    expect(res.body.onboardingProfile.age).toBeGreaterThanOrEqual(11);
+    expect(res.body.onboardingProfile.age).toBeLessThanOrEqual(12);
   });
 
-  it("rejects an invalid guardian email and unauthenticated calls", async () => {
-    const bad = await request(app)
-      .post("/users/me/guardian-review")
+  it("accepts any age on the legacy age field", async () => {
+    const res = await request(app)
+      .put("/users/me/onboarding")
       .set("Authorization", `Bearer ${token}`)
-      .send({ guardianEmail: "nope" });
-    expect(bad.status).toBe(400);
+      .send({ ...baseProfile, age: 15 });
 
-    const anon = await request(app).get("/users/me/guardian-review");
-    expect(anon.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.onboardingProfile.age).toBe(15);
+  });
+
+  it("no longer exposes the guardian-review endpoints", async () => {
+    const res = await request(app).get("/users/me/guardian-review").set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(404);
   });
 });

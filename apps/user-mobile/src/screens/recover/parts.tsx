@@ -228,7 +228,7 @@ export function SafetyCard({ title, body }: { title: string; body: string }) {
         gap: 6,
       }}
     >
-      <Text style={{ color: colors.warning, ...typography.h3 }}>{title}</Text>
+      <Text style={{ color: colors.warningText, ...typography.h3 }}>{title}</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 18 }}>{body}</Text>
     </View>
   );

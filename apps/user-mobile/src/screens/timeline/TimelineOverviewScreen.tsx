@@ -91,7 +91,7 @@ export function TimelineOverviewScreen({ navigation }: Props) {
             <Card style={{ gap: spacing.sm, borderColor: colors.aiBorder, backgroundColor: colors.aiSurface }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
                 <Icon name="sparkles" size={14} color={colors.aiAccent} />
-                <Text style={{ color: colors.aiAccent, ...typography.caption, letterSpacing: 0.8 }}>{BRAND_NAME.toUpperCase()} JOURNEY INSIGHT</Text>
+                <Text style={{ color: colors.aiText, ...typography.caption, letterSpacing: 0.8 }}>{BRAND_NAME.toUpperCase()} JOURNEY INSIGHT</Text>
               </View>
               <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 19 }}>{s.insight}</Text>
               <View style={{ flexDirection: "row", gap: spacing.xs }}>

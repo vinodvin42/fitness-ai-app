@@ -8,6 +8,7 @@ import {
   webFallbackDeepLinkProvider,
 } from "./mockProviders";
 import { localObjectStorage } from "./localObjectStorage";
+import { assertPaymentProviderIsSafe } from "../lib/paymentProviderGuard";
 import type {
   DeepLinkProvider,
   FoodDataProvider,
@@ -44,6 +45,16 @@ export { mockPaymentSignature } from "./mockProviders";
  *   assuming a payout was sent.
  */
 function pickPaymentProvider(): PaymentProvider {
+  // Second, independent check (env.ts already refuses to boot): the mock's
+  // signing secret is public, so it must never be handed out in production
+  // or on a hosting platform. Throws rather than falling back to Razorpay,
+  // so a misconfiguration is loud instead of silently "working".
+  assertPaymentProviderIsSafe({
+    paymentProvider: env.PAYMENT_PROVIDER,
+    nodeEnv: env.NODE_ENV,
+    razorpayKeyId: env.RAZORPAY_KEY_ID,
+    processEnv: process.env,
+  });
   return env.PAYMENT_PROVIDER === "mock" ? mockPaymentProvider : razorpayPaymentProvider;
 }
 

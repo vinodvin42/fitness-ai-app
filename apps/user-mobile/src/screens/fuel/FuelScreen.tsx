@@ -118,7 +118,7 @@ export function FuelScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -142,10 +142,10 @@ export function FuelScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: spacing.xs }}>
           <Text style={{ color: colors.textSecondary, ...typography.label }}>Daily total</Text>
-          <Text style={{ color: theme.accent, ...typography.label }}>
+          <Text style={{ color: theme.accentText, ...typography.label }}>
             {totals.calories.toLocaleString()} / {DAILY_TARGETS.calories.toLocaleString()} kcal
           </Text>
         </View>
@@ -225,7 +225,7 @@ export function FuelScreen({ navigation }: Props) {
                       {logs.length > 1 ? `${logs.length} items · ` : ""}Logged at {formatTimeOfDay(new Date(latest.loggedAt))}
                     </Text>
                   </View>
-                  <Text style={{ color: theme.accent, ...typography.label }}>{kcal} kcal</Text>
+                  <Text style={{ color: theme.accentText, ...typography.label }}>{kcal} kcal</Text>
                 </Card>
               </Pressable>
             );
@@ -257,6 +257,7 @@ export function FuelScreen({ navigation }: Props) {
                 disabled={isLoggingWater}
                 accessibilityRole="button"
                 accessibilityLabel="Add one glass of water"
+                hitSlop={8}
                 style={{
                   width: 32,
                   height: 32,
@@ -341,7 +342,7 @@ function MacroBar({ label, value, target, color }: { label: string; value: numbe
   return (
     <View>
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 5 }}>
-        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 12 }}>{label}</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>{label}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
           {value}/{target}g
         </Text>

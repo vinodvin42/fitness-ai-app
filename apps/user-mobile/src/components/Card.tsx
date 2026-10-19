@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, View, ViewProps } from "react-native";
-import { colors, elevation, radius, spacing } from "../theme/tokens";
+import { colors, elevation, radius, spacing, themed } from "../theme/tokens";
 
 /**
  * Card-based vertical scrolling is the dominant mobile layout —
@@ -15,7 +15,7 @@ export function Card({ style, children, ...rest }: ViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
@@ -24,4 +24,4 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...elevation.card,
   },
-});
+}));

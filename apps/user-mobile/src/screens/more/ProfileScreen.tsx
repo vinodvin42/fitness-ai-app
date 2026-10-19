@@ -146,11 +146,11 @@ export function ProfileScreen({ navigation }: Props) {
         {memberId ? <Text style={{ color: colors.textMuted, ...typography.meta }}>Member ID: {memberId}</Text> : null}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Pressable onPress={share} accessibilityRole="button" accessibilityLabel="Share profile" hitSlop={8}>
-            <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Share Profile</Text>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Share Profile</Text>
           </Pressable>
           <Text style={{ color: colors.textMuted }}>·</Text>
           <Pressable onPress={() => navigation.navigate("EditProfile")} accessibilityRole="button" accessibilityLabel="View profile" hitSlop={8}>
-            <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 12 }}>View Profile</Text>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>View Profile</Text>
           </Pressable>
         </View>
       </View>
@@ -163,7 +163,7 @@ export function ProfileScreen({ navigation }: Props) {
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: colors.textMuted, ...typography.meta }}>Current Plan</Text>
-          <Text style={{ color: theme.accent, fontFamily: fonts.displayBold, fontSize: 14 }}>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.displayBold, fontSize: 14 }}>
             {subscription.isLoading ? "…" : sub ? sub.plan.name : "None"}
           </Text>
         </View>
@@ -226,7 +226,7 @@ export function ProfileScreen({ navigation }: Props) {
             right={
               l.pill ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 12 }}>{l.pill}</Text>
+                  <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>{l.pill}</Text>
                   <Icon name="chevron-right" size={16} color={colors.textMuted} />
                 </View>
               ) : undefined

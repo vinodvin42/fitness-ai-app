@@ -254,7 +254,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
             </Pressable>
             <BrandMark size={34} withName />
           </View>
-          <Text style={{ color: colors.accent, ...typography.caption }}>Recover / Mindful practice</Text>
+          <Text style={{ color: colors.accentText, ...typography.caption }}>Recovery / Mindful practice</Text>
           <View style={{ gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 22 }}>{routine.title}</Text>
             <Text style={{ color: colors.textSecondary, ...typography.meta }}>{routine.description}</Text>
@@ -274,8 +274,8 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
               &ldquo;{current.instruction}&rdquo;
             </Text>
           </Card>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{routine.safetyBody}</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11, textAlign: "center" }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{routine.safetyBody}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13, textAlign: "center" }}>
             You can pause or finish whenever you need.
           </Text>
           {controls}
@@ -294,14 +294,14 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
       <View style={{ gap: 4 }}>
         <ProgressBar progress={pos / total} />
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(pos)} elapsed</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{clock(total - pos)} remaining</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(pos)} elapsed</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{clock(total - pos)} remaining</Text>
         </View>
       </View>
       <PracticeArt height={150} icon={routine.kind === "mobility" ? "activity" : "flower"} />
       <Card style={{ gap: 6, borderColor: colors.accentSoft }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>
+          <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>
             CURRENT {routine.kind === "mobility" ? "STEP" : "POSE"}
           </Text>
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>
@@ -312,7 +312,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
         <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>{current.title}</Text>
         <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>{current.instruction}</Text>
         {current.easier ? (
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Easier option: {current.easier}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Easier option: {current.easier}</Text>
         ) : null}
       </Card>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 24 }}>
@@ -338,14 +338,14 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
           accessibilityLabel={routine.kind === "mobility" ? "Skip step" : "Skip pose"}
           style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
         >
-          <Text style={{ color: colors.accent, ...typography.label }}>{routine.kind === "mobility" ? "Skip step" : "Skip pose"}</Text>
+          <Text style={{ color: colors.accentText, ...typography.label }}>{routine.kind === "mobility" ? "Skip step" : "Skip pose"}</Text>
           <Icon name="chevron-right" size={14} color={colors.accent} />
         </Pressable>
       </View>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 12 }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
         {next ? `Up next: ${next.title} · ${Math.round(next.seconds / 60)} min` : "Last one - then you're done."}
       </Text>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
         Stay within a comfortable range. Stop if you feel pain.
       </Text>
       {controls}

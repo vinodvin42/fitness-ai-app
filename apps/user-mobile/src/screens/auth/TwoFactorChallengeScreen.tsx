@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "TwoFactorChallenge">;
@@ -76,7 +76,7 @@ export function TwoFactorChallengeScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.lg, gap: spacing.md },
   title: { ...typography.h1, color: colors.textPrimary },
@@ -91,6 +91,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: 2,
   },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
-});
+}));

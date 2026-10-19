@@ -133,7 +133,8 @@ gymPortalRouter.get(
 gymPortalRouter.post(
   "/admin/gym-help-requests/:id/respond",
   requireAdminAuth,
-  requirePermission("gyms", "edit"),
+  // Replying to a member's help request is day-to-day work (D21).
+  requirePermission("gyms", "edit", { approval: "exempt" }),
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const input = respondSchema.parse(req.body);

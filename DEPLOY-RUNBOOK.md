@@ -321,7 +321,11 @@ above.
 ## Rollback
 
 Render keeps every previous deploy — dashboard -> **Deploys** -> pick a
-prior one -> **Rollback**, one click, no data migration involved since
-`db push`/`migrate deploy` are additive-only in this flow. Vercel does the
+prior one -> **Rollback**, one click. **Correction (16 Oct 2026):** the
+earlier claim here that `db push`/`migrate deploy` are "additive-only" was
+wrong — `db push --accept-data-loss` can drop columns and tables, and
+several committed migrations drop or rewrite data. `render.yaml` now runs a
+read-only `prisma migrate status` instead, and rolling back code never
+rolls back the database. See `docs/platform/migration-safety.md`. Vercel does the
 same under **Deployments** -> **Promote to Production** on any earlier
 build. Neither requires touching the database directly.

@@ -10,18 +10,18 @@ import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchDevices } from "../../api/devices";
 import { PROVIDER_LABEL, timeAgo } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { CircleButton, RecoverShell, SectionLabel } from "./parts";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "ConnectedDevices">;
 
-const STATUS: Record<ConnectedDeviceStatus, { label: string; color: string }> = {
-  paired: { label: "Connected", color: colors.success },
-  syncing: { label: "Syncing", color: colors.accent },
-  error: { label: "Sync error", color: colors.danger },
+const STATUS: Record<ConnectedDeviceStatus, { label: string; color: string }> = themed(() => ({
+  paired: { label: "Connected", color: colors.successText },
+  syncing: { label: "Syncing", color: colors.accentText },
+  error: { label: "Sync error", color: colors.dangerText },
   disconnected: { label: "Disconnected", color: colors.textMuted },
-};
+}));
 
 const KIND_ICON: Record<ConnectedDeviceKind, IconName> = {
   watch: "watch",
@@ -60,7 +60,7 @@ export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{device.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: st.color }} />
-            <Text style={{ color: st.color, ...typography.meta, fontSize: 11 }}>{st.label}</Text>
+            <Text style={{ color: st.color, ...typography.meta, fontSize: 13 }}>{st.label}</Text>
           </View>
         </View>
         <Text style={{ color: colors.textSecondary, ...typography.meta }}>
@@ -69,19 +69,19 @@ export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Icon name="battery" size={12} color={colors.textMuted} />
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
               {device.batteryPct == null ? "Not reported" : `${device.batteryPct}%`}
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
             <Icon name="refresh-cw" size={12} color={colors.textMuted} />
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }} numberOfLines={1}>
               {device.lastSyncAt ? `Synced ${timeAgo(device.lastSyncAt)}` : "Never synced"}
             </Text>
           </View>
         </View>
         {device.lastError ? (
-          <Text style={{ color: colors.danger, ...typography.meta, fontSize: 11 }}>Last error: {device.lastError}</Text>
+          <Text style={{ color: colors.dangerText, ...typography.meta, fontSize: 13 }}>Last error: {device.lastError}</Text>
         ) : null}
       </View>
       <CircleButton icon="refresh-cw" onPress={onSync} label={`Sync ${device.name}`} tint={colors.accent} />
@@ -89,11 +89,11 @@ export function DeviceCard({ device, onSync }: { device: ConnectedDevice; onSync
   );
 }
 
-const PLATFORMS: Array<{ name: string; blurb: string; icon: IconName; tint: string }> = [
+const PLATFORMS: Array<{ name: string; blurb: string; icon: IconName; tint: string }> = themed(() => ([
   { name: "Apple Health", blurb: "Sync workouts & health metrics...", icon: "heart-pulse", tint: colors.warning },
   { name: "Samsung Health", blurb: "Import sleep and body composition...", icon: "activity", tint: colors.warning },
   { name: "Strava", blurb: "Automate run, ride, and swim routes...", icon: "compass", tint: colors.warning },
-];
+]));
 
 const SYNC_CHIPS: Array<{ label: string; perm: DevicePermission }> = [
   { label: "Steps", perm: "steps" },
@@ -196,7 +196,7 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
               paddingVertical: 8,
             }}
           >
-            <Text style={{ color: colors.accent, ...typography.label }}>Connect</Text>
+            <Text style={{ color: colors.accentText, ...typography.label }}>Connect</Text>
           </Pressable>
         </Card>
       ))}

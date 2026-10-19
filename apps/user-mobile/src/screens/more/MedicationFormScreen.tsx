@@ -245,7 +245,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
                   backgroundColor: i === safeIdx ? colors.accentSoft : colors.surface,
                 }}
               >
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 12 }}>{t}</Text>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.mono, fontSize: 13 }}>{t}</Text>
               </Pressable>
             ))}
             <Pressable
@@ -257,7 +257,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
               accessibilityLabel="Remove selected time"
               style={{ paddingHorizontal: 12, paddingVertical: 6 }}
             >
-              <Text style={{ color: colors.danger, ...typography.meta }}>Remove</Text>
+              <Text style={{ color: colors.dangerText, ...typography.meta }}>Remove</Text>
             </Pressable>
           </View>
         ) : null}
@@ -270,7 +270,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
             accessibilityRole="button"
             style={{ alignSelf: "flex-start", marginTop: spacing.sm }}
           >
-            <Text style={{ color: colors.accent, ...typography.label }}>+ Add another time</Text>
+            <Text style={{ color: colors.accentText, ...typography.label }}>+ Add another time</Text>
           </Pressable>
         ) : null}
       </View>
@@ -311,7 +311,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
           </View>
         ) : null}
         {repeat === "selected" && days.length === 0 ? (
-          <Text style={{ color: colors.danger, ...typography.meta }}>Pick at least one day.</Text>
+          <Text style={{ color: colors.dangerText, ...typography.meta }}>Pick at least one day.</Text>
         ) : null}
       </View>
 

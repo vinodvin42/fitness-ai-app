@@ -70,7 +70,7 @@ describe("Relationship Lifecycle — End Relationship / Handover", () => {
         email: uniqueEmail("lifecycle-admin"),
         passwordHash,
         fullName: "Lifecycle Test Admin",
-        role: "coach_operations",
+        role: "super_admin",
         status: "active",
       },
     });

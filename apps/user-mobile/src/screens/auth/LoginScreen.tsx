@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
-import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
+import { TextField } from "../../components/TextField";
+import { colors, layout, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
@@ -38,29 +39,24 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t("auth.login.title")}</Text>
         <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.login.email")}
-          placeholderTextColor={colors.textMuted}
+        {/* Visible labels (not placeholders, which vanish once you type). */}
+        <TextField
+          label={t("auth.login.email")}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          accessibilityLabel={t("auth.login.email")}
           textContentType="emailAddress"
         />
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.login.password")}
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry
+        <TextField
+          label={t("auth.login.password")}
+          secure
           value={password}
           onChangeText={setPassword}
-          accessibilityLabel={t("auth.login.password")}
           textContentType="password"
         />
 
@@ -83,34 +79,25 @@ export function LoginScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("Signup")}
           style={styles.secondaryButton}
         />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     width: "100%",
     maxWidth: layout.maxContentWidth,
     alignSelf: "center",
     paddingHorizontal: layout.screenPadding,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   title: { ...typography.display, color: colors.textPrimary },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
-  input: {
-    height: 54,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-    fontSize: 15,
-  },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
-});
+}));

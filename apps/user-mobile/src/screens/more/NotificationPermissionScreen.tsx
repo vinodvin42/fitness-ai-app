@@ -97,7 +97,7 @@ export function NotificationPermissionScreen({ navigation }: Props) {
       )}
       <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, gap: 4 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.8 }}>LOCK-SCREEN PREVIEW</Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.8 }}>LOCK-SCREEN PREVIEW</Text>
           <Icon name="lock" size={14} color={colors.textMuted} />
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{lock.title}</Text>
@@ -111,7 +111,7 @@ export function NotificationPermissionScreen({ navigation }: Props) {
         title="Private by default"
         body={`Lock-screen text is generic. It doesn't show your reminder name, medicine, dose, health conditions or fitness details. Open ${BRAND_NAME} to view your in-app reminder.`}
       />
-      <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+      <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
         {state === "denied"
           ? `Open your device settings and allow notifications for ${BRAND_NAME}. You can change permission and reminder preferences later.`
           : "You can change permission and reminder preferences later in Settings > Notifications."}

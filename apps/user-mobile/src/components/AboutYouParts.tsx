@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Icon } from "./Icon";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
-import { colors, fonts, radius, spacing } from "../theme/tokens";
+import { colors, fonts, radius, spacing, themed } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
+import { HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, cmToFeetInches, inToCm, kgToLb, lbToKg } from "../lib/measureUnits";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -45,11 +46,11 @@ export function toDobString(day: string, month: string, year: string): string {
 interface DateOfBirthCardProps {
   value: string | undefined;
   onChange: (dob: string) => void;
-  /** Shown under the card when the age is below the minimum (13). */
+  /** Optional message shown under the card. */
   error?: string | null;
 }
 
-/** Figma About You "Date of birth" card: formatted date, computed Age badge, and the under-18 info note. */
+/** Figma About You "Date of birth" card: formatted date, computed Age badge, and an info note. */
 export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps) {
   const { colors: theme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -110,16 +111,16 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
         </Pressable>
         <View style={{ alignItems: "flex-start", minWidth: 56 }}>
           <Text style={styles.ageLabel}>Age</Text>
-          <Text style={[styles.age, { color: theme.accent }]}>{age != null && age >= 0 ? age : "–"}</Text>
+          <Text style={[styles.age, { color: theme.accentText }]}>{age != null && age >= 0 ? age : "–"}</Text>
           <Text style={styles.ageLabel}>{age == null ? "" : age < 18 ? "Under 18" : "Adult"}</Text>
         </View>
       </View>
       <View style={[styles.note, { backgroundColor: theme.accentSoft }]}>
         <Icon name="info" size={14} color={theme.accent} />
-        <Text style={styles.noteText}>Users under 18 need a parent/guardian review and consent before proceeding.</Text>
+        <Text style={styles.noteText}>We use your age to tailor your plan.</Text>
       </View>
       {error ? (
-        <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, fontFamily: fonts.body }}>
+        <Text accessibilityRole="alert" style={{ color: colors.dangerText, fontSize: 13, fontFamily: fonts.body }}>
           {error}
         </Text>
       ) : null}
@@ -131,7 +132,7 @@ export function DateOfBirthCard({ value, onChange, error }: DateOfBirthCardProps
           <DobInput label="Year" value={year} onChangeText={setYear} maxLength={4} placeholder="YYYY" flex={1.6} />
         </View>
         {formError ? (
-          <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 12, fontFamily: fonts.body }}>
+          <Text accessibilityRole="alert" style={{ color: colors.dangerText, fontSize: 13, fontFamily: fonts.body }}>
             {formError}
           </Text>
         ) : null}
@@ -173,20 +174,38 @@ function DobInput({
   );
 }
 
+const round = (n: number, dp: number) => Math.round(n * 10 ** dp) / 10 ** dp;
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/** Keeps digits and a single decimal point; a comma (some Android keyboards) counts as the point. */
+function cleanDecimal(raw: string): string {
+  const s = raw.replace(/,/g, ".").replace(/[^\d.]/g, "");
+  const [whole, ...rest] = s.split(".");
+  return rest.length ? `${whole}.${rest.join("")}` : whole;
+}
+
+/** The number in a typed string, or null while it is empty or half-typed ("."). */
+function parseTyped(text: string): number | null {
+  if (!/\d/.test(text)) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
 interface MeasureCardProps {
   label: string;
-  /** Display string for the large value, or null for the unset placeholder. */
-  display: string | null;
-  placeholder: string;
   units: [string, string];
   unitIndex: 0 | 1;
   onUnitChange: (i: 0 | 1) => void;
-  onDecrement: () => void;
-  onIncrement: () => void;
+  /** Short line under the value, e.g. the accepted range. */
+  hint?: string;
+  onDecrement?: () => void;
+  onIncrement?: () => void;
+  /** The typed input(s) — see MeasureInput. */
+  children: React.ReactNode;
 }
 
-/** Figma weight/height card: label, unit toggle, big value, round -/+ steppers. */
-export function MeasureCard({ label, display, placeholder, units, unitIndex, onUnitChange, onDecrement, onIncrement }: MeasureCardProps) {
+/** Figma weight/height card: label, unit toggle, a big typed value with small -/+ helpers either side. */
+export function MeasureCard({ label, units, unitIndex, onUnitChange, hint, onDecrement, onIncrement, children }: MeasureCardProps) {
   const { colors: theme } = useTheme();
   return (
     <View style={styles.card}>
@@ -210,26 +229,230 @@ export function MeasureCard({ label, display, placeholder, units, unitIndex, onU
           })}
         </View>
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <StepButton icon="minus" label={`Decrease ${label}`} onPress={onDecrement} />
-        <Text accessibilityLabel={`${label}: ${display ?? "not set"}`} style={[styles.value, display == null && { color: colors.textMuted }]}>
-          {display ?? placeholder}
-        </Text>
-        <StepButton icon="plus" label={`Increase ${label}`} onPress={onIncrement} />
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
+        {onDecrement ? <StepButton icon="minus" label={`Decrease ${label}`} onPress={onDecrement} /> : null}
+        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm }}>{children}</View>
+        {onIncrement ? <StepButton icon="plus" label={`Increase ${label}`} onPress={onIncrement} /> : null}
       </View>
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
+  );
+}
+
+interface MeasureInputProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  placeholder: string;
+  /** Unit shown after the number ("kg", "ft"...). */
+  suffix: string;
+  keyboardType: "decimal-pad" | "number-pad";
+  maxLength: number;
+  accessibilityLabel: string;
+}
+
+/** A big number the user types directly, with its unit beside it. The placeholder is dimmed so it never reads as a saved value. */
+export function MeasureInput({ value, onChangeText, onFocus, onBlur, placeholder, suffix, keyboardType, maxLength, accessibilityLabel }: MeasureInputProps) {
+  return (
+    <View style={styles.inputWrap}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        placeholderTextColor={PLACEHOLDER_COLOR}
+        keyboardType={keyboardType}
+        maxLength={maxLength}
+        selectTextOnFocus
+        accessibilityLabel={accessibilityLabel}
+        style={styles.valueInput}
+      />
+      <Text style={styles.suffix}>{suffix}</Text>
+    </View>
+  );
+}
+
+interface WeightCardProps {
+  valueKg: number | undefined;
+  onChange: (kg: number | undefined) => void;
+  /** 0 = kg, 1 = lb. Storage is always kg. */
+  unitIndex: 0 | 1;
+  onUnitChange: (i: 0 | 1) => void;
+}
+
+const weightText = (kg: number | undefined, lb: boolean) => (kg == null ? "" : String(round(lb ? kgToLb(kg) : kg, 1)));
+
+/** Weight typed as a number (kg or lb), stored in kg, clamped to WEIGHT_RANGE_KG when the field loses focus. */
+export function WeightCard({ valueKg, onChange, unitIndex, onUnitChange }: WeightCardProps) {
+  const lb = unitIndex === 1;
+  const [text, setText] = useState(() => weightText(valueKg, lb));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setText(weightText(valueKg, lb));
+  }, [valueKg, lb, editing]);
+
+  const onChangeText = (raw: string) => {
+    const cleaned = cleanDecimal(raw);
+    setText(cleaned);
+    const n = parseTyped(cleaned);
+    onChange(n == null ? undefined : round(lb ? lbToKg(n) : n, 2));
+  };
+  const onBlur = () => {
+    setEditing(false);
+    if (valueKg != null) onChange(round(clamp(valueKg, WEIGHT_RANGE_KG.min, WEIGHT_RANGE_KG.max), 2));
+  };
+  const step = (dir: 1 | -1) => {
+    const next = round(clamp((valueKg ?? 70) + dir * (lb ? lbToKg(1) : 0.5), WEIGHT_RANGE_KG.min, WEIGHT_RANGE_KG.max), 2);
+    onChange(next);
+    setText(weightText(next, lb));
+  };
+
+  const range = lb
+    ? `${Math.ceil(kgToLb(WEIGHT_RANGE_KG.min))}–${Math.floor(kgToLb(WEIGHT_RANGE_KG.max))} lb`
+    : `${WEIGHT_RANGE_KG.min}–${WEIGHT_RANGE_KG.max} kg`;
+
+  return (
+    <MeasureCard
+      label="Weight"
+      units={["KG", "LBS"]}
+      unitIndex={unitIndex}
+      onUnitChange={onUnitChange}
+      hint={`Type your weight (${range})`}
+      onDecrement={() => step(-1)}
+      onIncrement={() => step(1)}
+    >
+      <MeasureInput
+        value={text}
+        onChangeText={onChangeText}
+        onFocus={() => setEditing(true)}
+        onBlur={onBlur}
+        placeholder={lb ? "e.g. 154" : "e.g. 70"}
+        suffix={lb ? "lb" : "kg"}
+        keyboardType="decimal-pad"
+        maxLength={5}
+        accessibilityLabel={lb ? "Weight in pounds" : "Weight in kilograms"}
+      />
+    </MeasureCard>
+  );
+}
+
+interface HeightCardProps {
+  valueCm: number | undefined;
+  onChange: (cm: number | undefined) => void;
+  /** 0 = cm, 1 = ft + in. Storage is always cm. */
+  unitIndex: 0 | 1;
+  onUnitChange: (i: 0 | 1) => void;
+}
+
+function heightTexts(cm: number | undefined) {
+  if (cm == null) return { cm: "", ft: "", inch: "" };
+  const parts = cmToFeetInches(cm);
+  return { cm: String(Math.round(cm)), ft: String(parts.ft), inch: String(parts.inch) };
+}
+
+/** Height typed in cm, or in feet + inches, stored in cm, clamped to HEIGHT_RANGE_CM when a field loses focus. */
+export function HeightCard({ valueCm, onChange, unitIndex, onUnitChange }: HeightCardProps) {
+  const ftMode = unitIndex === 1;
+  const [texts, setTexts] = useState(() => heightTexts(valueCm));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setTexts(heightTexts(valueCm));
+  }, [valueCm, editing]);
+
+  const onCmText = (raw: string) => {
+    const cleaned = raw.replace(/\D/g, "");
+    setTexts((prev) => ({ ...prev, cm: cleaned }));
+    const n = parseTyped(cleaned);
+    onChange(n == null ? undefined : n);
+  };
+  const onFeetInches = (ft: string, inch: string) => {
+    setTexts((prev) => ({ ...prev, ft, inch }));
+    const f = parseTyped(ft);
+    const i = parseTyped(inch);
+    onChange(f == null && i == null ? undefined : round(inToCm((f ?? 0) * 12 + (i ?? 0)), 1));
+  };
+  const onBlur = () => {
+    setEditing(false);
+    if (valueCm != null) onChange(round(clamp(valueCm, HEIGHT_RANGE_CM.min, HEIGHT_RANGE_CM.max), 1));
+  };
+  const step = (dir: 1 | -1) => {
+    const next = round(clamp((valueCm ?? 170) + dir * (ftMode ? inToCm(1) : 1), HEIGHT_RANGE_CM.min, HEIGHT_RANGE_CM.max), 1);
+    onChange(next);
+    setTexts(heightTexts(next));
+  };
+
+  const lo = cmToFeetInches(HEIGHT_RANGE_CM.min);
+  const hi = cmToFeetInches(HEIGHT_RANGE_CM.max);
+  const range = ftMode ? `${lo.ft}'${lo.inch}" to ${hi.ft}'${hi.inch}"` : `${HEIGHT_RANGE_CM.min}–${HEIGHT_RANGE_CM.max} cm`;
+
+  return (
+    <MeasureCard
+      label="Height"
+      units={["CM", "FT"]}
+      unitIndex={unitIndex}
+      onUnitChange={onUnitChange}
+      hint={`Type your height (${range})`}
+      onDecrement={() => step(-1)}
+      onIncrement={() => step(1)}
+    >
+      {ftMode ? (
+        <>
+          <MeasureInput
+            value={texts.ft}
+            onChangeText={(t) => onFeetInches(t.replace(/\D/g, ""), texts.inch)}
+            onFocus={() => setEditing(true)}
+            onBlur={onBlur}
+            placeholder="5"
+            suffix="ft"
+            keyboardType="number-pad"
+            maxLength={1}
+            accessibilityLabel="Height, feet"
+          />
+          <MeasureInput
+            value={texts.inch}
+            onChangeText={(t) => onFeetInches(texts.ft, t.replace(/\D/g, ""))}
+            onFocus={() => setEditing(true)}
+            onBlur={onBlur}
+            placeholder="7"
+            suffix="in"
+            keyboardType="number-pad"
+            maxLength={2}
+            accessibilityLabel="Height, inches"
+          />
+        </>
+      ) : (
+        <MeasureInput
+          value={texts.cm}
+          onChangeText={onCmText}
+          onFocus={() => setEditing(true)}
+          onBlur={onBlur}
+          placeholder="e.g. 170"
+          suffix="cm"
+          keyboardType="number-pad"
+          maxLength={3}
+          accessibilityLabel="Height in centimetres"
+        />
+      )}
+    </MeasureCard>
   );
 }
 
 function StepButton({ icon, label, onPress }: { icon: "minus" | "plus"; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.stepBtn}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.stepBtn} hitSlop={4}>
       <Icon name={icon} size={18} color={colors.textPrimary} strokeWidth={2.5} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+/** Dimmer than textMuted so an example value is never mistaken for a typed one (large text, so 3:1 is the bar). */
+const PLACEHOLDER_COLOR = "rgba(152,162,179,0.55)";
+
+const styles = themed(() => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -238,12 +461,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 12,
   },
-  eyebrow: { color: colors.textMuted, fontSize: 10, letterSpacing: 0.8, fontFamily: fonts.bodyMedium },
+  eyebrow: { color: colors.textMuted, fontSize: 13, letterSpacing: 0.8, fontFamily: fonts.bodyMedium },
   dob: { color: colors.textPrimary, fontSize: 18, fontFamily: fonts.displayBold, marginTop: 4 },
-  ageLabel: { color: colors.textSecondary, fontSize: 10, fontFamily: fonts.body },
+  ageLabel: { color: colors.textSecondary, fontSize: 13, fontFamily: fonts.body },
   age: { fontSize: 20, fontFamily: fonts.displayBold, marginVertical: 2 },
   note: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  noteText: { flex: 1, color: colors.textSecondary, fontSize: 11, lineHeight: 15, fontFamily: fonts.body },
+  noteText: { flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18, fontFamily: fonts.body },
   dobInput: {
     marginTop: 4,
     height: 48,
@@ -258,9 +481,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   toggle: { flexDirection: "row", backgroundColor: colors.surfaceRaised, borderRadius: 6, padding: 2 },
-  toggleItem: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 5 },
-  toggleText: { color: colors.textSecondary, fontSize: 10, fontFamily: fonts.bodySemi },
-  value: { color: colors.textPrimary, fontSize: 34, fontFamily: fonts.displayBold, letterSpacing: -0.5 },
+  toggleItem: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 5 },
+  toggleText: { color: colors.textSecondary, fontSize: 13, fontFamily: fonts.bodySemi },
+  inputWrap: {
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.borderStrong,
+    paddingHorizontal: 4,
+  },
+  valueInput: {
+    minWidth: 48,
+    paddingVertical: 4,
+    color: colors.textPrimary,
+    fontSize: 34,
+    fontFamily: fonts.displayBold,
+    letterSpacing: -0.5,
+    textAlign: "center",
+  },
+  suffix: { color: colors.textSecondary, fontSize: 16, fontFamily: fonts.bodySemi },
+  hint: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.body, textAlign: "center" },
   stepBtn: {
     width: 44,
     height: 44,
@@ -271,4 +513,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+}));

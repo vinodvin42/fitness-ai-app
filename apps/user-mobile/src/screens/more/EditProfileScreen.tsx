@@ -10,7 +10,7 @@ import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
 import { extractErrorMessage } from "../../lib/apiError";
-import { cmToIn, inToCm, kgToLb, lbToKg, useMeasureUnits } from "../../lib/measureUnits";
+import { HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, cmToIn, inToCm, kgToLb, lbToKg, useMeasureUnits } from "../../lib/measureUnits";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -40,7 +40,7 @@ function Field({ label, children, onPress, chevron }: { label: string; children:
       }}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{label}</Text>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{label}</Text>
         {children}
       </View>
       {chevron ? <Icon name="chevron-right" size={16} color={colors.textMuted} /> : null}
@@ -55,7 +55,7 @@ function Field({ label, children, onPress, chevron }: { label: string; children:
  * weight on OnboardingProfile (storage is always cm/kg; the inputs follow the
  * user's Measurement Units). Mobile is optional free text with no OTP check.
  * Profile photos are not supported yet (no image storage for avatars), so the
- * avatar shows initials with an honest caption.
+ * avatar shows initials (no "coming soon" caption — it promised nothing usable).
  */
 export function EditProfileScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
@@ -116,13 +116,15 @@ export function EditProfileScreen({ navigation }: Props) {
     if (heightText.trim() && (heightText !== initial.current.height || heightInText !== initial.current.heightIn)) {
       const first = parseFloat(heightText.replace(",", "."));
       heightCm = ft ? inToCm(first * 12 + (parseFloat(heightInText) || 0)) : first;
-      if (!Number.isFinite(heightCm) || heightCm < 100 || heightCm > 230) return setError("Enter a height between 100 and 230 cm.");
+      if (!Number.isFinite(heightCm) || heightCm < HEIGHT_RANGE_CM.min || heightCm > HEIGHT_RANGE_CM.max)
+        return setError(`Enter a height between ${HEIGHT_RANGE_CM.min} and ${HEIGHT_RANGE_CM.max} cm.`);
     }
     let weightKg: number | undefined;
     if (weightText.trim() && weightText !== initial.current.weight) {
       const w = parseFloat(weightText.replace(",", "."));
       weightKg = lb ? lbToKg(w) : w;
-      if (!Number.isFinite(weightKg) || weightKg < 30 || weightKg > 250) return setError("Enter a weight between 30 and 250 kg.");
+      if (!Number.isFinite(weightKg) || weightKg < WEIGHT_RANGE_KG.min || weightKg > WEIGHT_RANGE_KG.max)
+        return setError(`Enter a weight between ${WEIGHT_RANGE_KG.min} and ${WEIGHT_RANGE_KG.max} kg.`);
     }
 
     setIsSubmitting(true);
@@ -149,16 +151,15 @@ export function EditProfileScreen({ navigation }: Props) {
   const input = {
     color: colors.textPrimary,
     fontFamily: fonts.bodySemi,
-    fontSize: 14,
-    paddingVertical: 4,
-    minHeight: 28,
+    fontSize: 16,
+    paddingVertical: 6,
+    minHeight: 36,
   } as const;
 
   return (
     <RecoverShell centered title="View Profile" onBack={() => navigation.goBack()}>
       <View style={{ alignItems: "center", gap: 6 }}>
         <Avatar name={fullName || user?.fullName} size={84} />
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Profile photos are coming soon</Text>
       </View>
 
       {isLoading ? <ActivityIndicator color={colors.accent} /> : null}
@@ -242,7 +243,7 @@ export function EditProfileScreen({ navigation }: Props) {
             value={heightText}
             onChangeText={setHeightText}
             editable={loaded}
-            keyboardType="decimal-pad"
+            keyboardType={ft ? "number-pad" : "decimal-pad"}
             placeholder={ft ? "ft" : "cm"}
             placeholderTextColor={colors.textMuted}
             accessibilityLabel={ft ? "Height feet" : "Height centimetres"}
@@ -281,7 +282,7 @@ export function EditProfileScreen({ navigation }: Props) {
         </Text>
       </Field>
 
-      {error ? <Text style={{ color: colors.danger, ...typography.meta }}>{error}</Text> : null}
+      {error ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{error}</Text> : null}
 
       <Button label="Save Changes" onPress={onSave} loading={isSubmitting} disabled={!fullName.trim()} />
     </RecoverShell>

@@ -98,7 +98,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
         backgroundColor: selected ? (outlined ? theme.accentSoft : colors.aiAccentSoft) : colors.surface,
       }}
     >
-      <Text style={{ color: selected ? (outlined ? theme.accent : colors.aiAccent) : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+      <Text style={{ color: selected ? (outlined ? theme.accent : colors.aiAccent) : colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
         {label}
       </Text>
     </Pressable>
@@ -149,7 +149,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
             <>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name="sparkles" size={13} color={colors.aiAccent} />
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.6 }}>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
                   FYNROX RECOMMENDATION
                 </Text>
               </View>
@@ -157,7 +157,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
                   <Text style={{ color: colors.textPrimary, ...typography.h2, flex: 1 }}>{best.name}</Text>
                   <View style={{ backgroundColor: colors.aiAccentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 11 }}>{matchPercent(exercise, best)}% Match</Text>
+                    <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13 }}>{matchPercent(exercise, best)}% Match</Text>
                   </View>
                 </View>
                 <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 19 }}>
@@ -198,7 +198,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
                           accessibilityLabel={`Swap to ${alt.name}`}
                           style={{ backgroundColor: theme.accent, borderRadius: radius.xs + 2, paddingHorizontal: 14, paddingVertical: 7 }}
                         >
-                          <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Select</Text>
+                          <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Select</Text>
                         </Pressable>
                       </Card>
                     ))}

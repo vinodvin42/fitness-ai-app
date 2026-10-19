@@ -23,10 +23,10 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
 type Props = NativeStackScreenProps<MoreStackParamList, "HealthConnect">;
 
 const SCOPES: Array<{ key: string; label: string; hint: string }> = [
-  { key: "heart_rate", label: "Heart rate", hint: "Resting HR and ranges" },
+  { key: "heart_rate", label: "Heart rate", hint: "Resting heart rate and ranges" },
   { key: "sleep", label: "Sleep", hint: "Sleep duration" },
-  { key: "activity", label: "Daily activity", hint: "Steps and active energy" },
-  { key: "hrv", label: "HRV", hint: "Heart-rate variability" },
+  { key: "activity", label: "Daily activity", hint: "Steps and calories burned" },
+  { key: "hrv", label: "How rested your body is", hint: "Heart-rate variability (HRV), if your watch measures it" },
 ];
 
 interface ProviderDef {
@@ -104,8 +104,8 @@ export function HealthConnectScreen({ navigation }: Props) {
       <BackButton onPress={() => navigation.goBack()} />
       <InfoCard
         tone="accent"
-        title="Consent only, for now"
-        body="Connecting here records your permission and the data types you allow. This build has no native health SDK, so data is imported only when a device syncs (see Recover > Connected devices)."
+        title="This saves your permission"
+        body="Connecting here saves your permission and the kinds of data you allow. Your readings come in when your device syncs (see Recovery > Connected devices)."
       />
 
       {isLoading ? (
@@ -113,40 +113,45 @@ export function HealthConnectScreen({ navigation }: Props) {
       ) : isError ? (
         <ErrorState message="Couldn't load your health connections." onRetry={() => refetch()} />
       ) : (
-        providerDefs().map((def) => {
-          const conn = byProvider.get(def.provider);
-          const active = conn?.status === "connected";
-          return (
-            <Card key={def.provider} style={{ gap: spacing.sm, opacity: def.available || active ? 1 : 0.6 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <Icon name="heart-pulse" size={22} color={active ? colors.success : colors.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{PROVIDER_LABEL[def.provider]}</Text>
-                  <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                    {active
-                      ? `Allowed: ${conn.scopes.length ? conn.scopes.join(", ").replace(/_/g, " ") : "no data types"}`
-                      : def.blurb}
-                  </Text>
+        // Only sources that can be connected on this phone (or already are).
+        // Garmin, Fitbit, Whoop and Oura aren't supported yet, and a list
+        // of greyed-out "Coming soon" rows is just clutter.
+        providerDefs()
+          .filter((def) => def.available || byProvider.get(def.provider)?.status === "connected")
+          .map((def) => {
+            const conn = byProvider.get(def.provider);
+            const active = conn?.status === "connected";
+            return (
+              <Card key={def.provider} style={{ gap: spacing.sm, opacity: def.available || active ? 1 : 0.6 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                  <Icon name="heart-pulse" size={22} color={active ? colors.success : colors.textSecondary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{PROVIDER_LABEL[def.provider]}</Text>
+                    <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
+                      {active
+                        ? `Allowed: ${conn.scopes.length ? conn.scopes.join(", ").replace(/_/g, " ") : "no data types"}`
+                        : def.blurb}
+                    </Text>
+                  </View>
+                  {active ? (
+                    <Pill label="Connected" tone="success" />
+                  ) : !def.available ? (
+                    <Pill label="Coming soon" />
+                  ) : null}
                 </View>
                 {active ? (
-                  <Pill label="Connected" tone="success" />
-                ) : !def.available ? (
-                  <Pill label="Coming soon" />
+                  <Button
+                    label="Revoke access"
+                    variant="secondary"
+                    loading={revoke.isPending && revoke.variables === conn.id}
+                    onPress={() => confirmRevoke(conn)}
+                  />
+                ) : def.available ? (
+                  <Button label={conn ? "Reconnect" : "Connect"} onPress={() => openConnect(def.provider)} />
                 ) : null}
-              </View>
-              {active ? (
-                <Button
-                  label="Revoke access"
-                  variant="secondary"
-                  loading={revoke.isPending && revoke.variables === conn.id}
-                  onPress={() => confirmRevoke(conn)}
-                />
-              ) : def.available ? (
-                <Button label={conn ? "Reconnect" : "Connect"} onPress={() => openConnect(def.provider)} />
-              ) : null}
-            </Card>
-          );
-        })
+              </Card>
+            );
+          })
       )}
 
       <Button label="Connected devices" variant="secondary" onPress={() => navigation.getParent()?.navigate("Recover", { screen: "ConnectedDevices" })} />

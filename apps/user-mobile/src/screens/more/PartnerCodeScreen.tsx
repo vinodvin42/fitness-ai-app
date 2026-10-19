@@ -84,7 +84,7 @@ export function PartnerCodeScreen({ navigation }: Props) {
       }}
     >
       <Text style={{ color: colors.textMuted, ...typography.meta }}>{label}</Text>
-      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{value}</Text>
+      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
 
@@ -167,7 +167,7 @@ export function PartnerCodeScreen({ navigation }: Props) {
               />
               <Button label={changing ? "Replace code" : "Link code"} onPress={() => link.mutate(code)} loading={link.isPending} disabled={!code.trim()} />
               {changing ? <TextAction label="Cancel" onPress={() => { setChanging(false); setCode(""); }} /> : null}
-              <Text style={{ color: theme.accent, ...typography.meta, textAlign: "center" }} onPress={() => navigation.navigate("PartnerCodeProblems", {})}>
+              <Text style={{ color: theme.accentText, ...typography.meta, textAlign: "center" }} onPress={() => navigation.navigate("PartnerCodeProblems", {})}>
                 Having trouble with a code?
               </Text>
             </View>

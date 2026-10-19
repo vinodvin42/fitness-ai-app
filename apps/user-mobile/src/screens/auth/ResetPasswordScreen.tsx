@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Button } from "../../components/Button";
 import { extractErrorMessage } from "../../lib/apiError";
 import { resetPasswordRequest } from "../../api/auth";
-import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ResetPassword">;
@@ -102,7 +102,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {
     flex: 1,
@@ -125,6 +125,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 15,
   },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
-});
+}));

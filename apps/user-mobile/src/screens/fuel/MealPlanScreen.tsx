@@ -159,7 +159,7 @@ export function MealPlanScreen({ navigation }: Props) {
       }}
     >
       <Icon name="sparkles" size={13} color={theme.textOnAccent} />
-      <Text style={{ color: theme.textOnAccent, ...typography.label, fontSize: 11 }}>Re-Gen</Text>
+      <Text style={{ color: theme.textOnAccent, ...typography.label, fontSize: 13 }}>Re-Gen</Text>
     </Pressable>
   ) : undefined;
 
@@ -209,7 +209,7 @@ export function MealPlanScreen({ navigation }: Props) {
                   backgroundColor: on ? theme.accentSoft : colors.surface,
                 }}
               >
-                <Text style={{ color: on ? theme.accent : colors.textMuted, fontSize: 9, fontFamily: fonts.bodyMedium }}>
+                <Text style={{ color: on ? theme.accent : colors.textMuted, fontSize: 13, fontFamily: fonts.bodyMedium }}>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </Text>
                 <Text style={{ color: on ? theme.accent : colors.textPrimary, fontSize: 14, fontFamily: fonts.displayBold }}>
@@ -223,7 +223,7 @@ export function MealPlanScreen({ navigation }: Props) {
 
       {generationError ? (
         <Card>
-          <Text style={{ color: colors.danger, ...typography.body }}>{generationError}</Text>
+          <Text style={{ color: colors.dangerText, ...typography.body }}>{generationError}</Text>
         </Card>
       ) : null}
 
@@ -287,7 +287,7 @@ export function MealPlanScreen({ navigation }: Props) {
                 >
                   <View style={{ width: 3, alignSelf: "stretch", backgroundColor: theme.accent }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.accent, fontSize: 10, fontFamily: fonts.bodySemi }}>{MEAL_LABELS[item.mealType]}</Text>
+                    <Text style={{ color: theme.accentText, fontSize: 13, fontFamily: fonts.bodySemi }}>{MEAL_LABELS[item.mealType]}</Text>
                     <Text style={{ color: colors.textPrimary, ...typography.h3 }} numberOfLines={2}>
                       {item.recipeName}
                     </Text>
@@ -305,7 +305,7 @@ export function MealPlanScreen({ navigation }: Props) {
               accessibilityLabel="Why this meal plan?"
               style={{ alignSelf: "flex-start", paddingVertical: spacing.xs }}
             >
-              <Text style={{ color: colors.aiAccent, ...typography.label }}>✦ Why this plan?</Text>
+              <Text style={{ color: colors.aiText, ...typography.label }}>✦ Why this plan?</Text>
             </Pressable>
           ) : null}
         </>

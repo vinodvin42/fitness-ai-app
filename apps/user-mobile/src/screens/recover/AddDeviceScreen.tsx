@@ -70,7 +70,7 @@ export function AddDeviceScreen({ navigation }: Props) {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{c.title}</Text>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13, marginTop: 2 }} numberOfLines={1}>
                     {c.devices.length} device{c.devices.length === 1 ? "" : "s"} · {c.devices.map((d) => d.name).join(", ")}
                   </Text>
                 </View>
@@ -88,7 +88,7 @@ export function AddDeviceScreen({ navigation }: Props) {
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.textPrimary, ...typography.body, fontSize: 14 }}>{d.name}</Text>
-                        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{d.brand}</Text>
+                        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{d.brand}</Text>
                       </View>
                       <Icon name="plus" size={16} color={colors.accent} />
                     </Pressable>

@@ -27,7 +27,7 @@ export function RequestStepBar({ step }: { step: number }) {
       {STEP_LABELS.map((label, i) => (
         <View key={label} style={{ flex: 1, gap: 6 }}>
           <View style={{ height: 3, borderRadius: 2, backgroundColor: i < step ? theme.accent : colors.border }} />
-          <Text style={{ color: i < step ? colors.textSecondary : colors.textMuted, fontFamily: fonts.body, fontSize: 9 }}>{label}</Text>
+          <Text style={{ color: i < step ? colors.textSecondary : colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>{label}</Text>
         </View>
       ))}
     </View>

@@ -285,7 +285,7 @@ function SmallAction({ label, onPress, disabled }: { label: string; onPress: () 
       hitSlop={6}
       style={{ opacity: disabled ? 0.35 : 1 }}
     >
-      <Text style={{ color: colors.accent, ...typography.meta }}>{label}</Text>
+      <Text style={{ color: colors.accentText, ...typography.meta }}>{label}</Text>
     </Pressable>
   );
 }

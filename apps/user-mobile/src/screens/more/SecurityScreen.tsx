@@ -26,7 +26,7 @@ import { BIOMETRIC_LOCK_IDLE_TIMEOUT_OPTIONS, type BiometricLockIdleTimeoutMinut
 import { extractErrorMessage } from "../../lib/apiError";
 import { confirmAction } from "../../lib/confirm";
 import { describeUserAgent, timeAgo } from "../../lib/deviceLabel";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import type { SetupTwoFactorResponse } from "@fitness-ai-app/types";
 
@@ -256,7 +256,7 @@ export function SecurityScreen({ navigation, route }: Props) {
 
   const deleteForm = (
     <Card style={{ borderColor: colors.danger, gap: spacing.sm }}>
-      <Text style={{ color: colors.danger, ...typography.h3 }}>Delete Account</Text>
+      <Text style={{ color: colors.dangerText, ...typography.h3 }}>Delete Account</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>
         Permanently deletes your account and everything in it. Enter your password to confirm.
       </Text>
@@ -281,7 +281,7 @@ export function SecurityScreen({ navigation, route }: Props) {
 
   const rowStyle = { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: 14 } as const;
   const rowTitle = { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 } as const;
-  const rowSub = { color: colors.textSecondary, ...typography.meta, fontSize: 11 } as const;
+  const rowSub = { color: colors.textSecondary, ...typography.meta, fontSize: 13 } as const;
   const iconTile = (icon: "lock" | "shield-check", tint: string, soft: string) => (
     <View style={{ width: 36, height: 36, borderRadius: radius.sm, backgroundColor: soft, alignItems: "center", justifyContent: "center" }}>
       <Icon name={icon} size={18} color={tint} />
@@ -331,7 +331,7 @@ export function SecurityScreen({ navigation, route }: Props) {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
             />
-            {passwordError ? <Text style={{ color: colors.danger }}>{passwordError}</Text> : null}
+            {passwordError ? <Text style={{ color: colors.dangerText }}>{passwordError}</Text> : null}
             <Text style={{ color: colors.textMuted, ...typography.meta }}>You'll be signed out of every session after changing it.</Text>
             <Button label="Save new password" onPress={onChangePassword} loading={isChangingPassword} disabled={!canChangePassword} />
           </View>
@@ -398,7 +398,7 @@ export function SecurityScreen({ navigation, route }: Props) {
               value={twoFactorCode}
               onChangeText={setTwoFactorCode}
             />
-            {twoFactorError ? <Text style={{ color: colors.danger, marginTop: spacing.sm }}>{twoFactorError}</Text> : null}
+            {twoFactorError ? <Text style={{ color: colors.dangerText, marginTop: spacing.sm }}>{twoFactorError}</Text> : null}
             <Button
               label="Enable"
               onPress={onConfirmEnableTwoFactor}
@@ -447,7 +447,7 @@ export function SecurityScreen({ navigation, route }: Props) {
           onValueChange={onToggleBiometric}
           disabled={!isBiometricHardwareChecked || !isBiometricHardwareReady || isTogglingBiometric}
         />
-        {biometricError ? <Text style={{ color: colors.danger, paddingHorizontal: 14, paddingBottom: 10 }}>{biometricError}</Text> : null}
+        {biometricError ? <Text style={{ color: colors.dangerText, paddingHorizontal: 14, paddingBottom: 10 }}>{biometricError}</Text> : null}
         {isBiometricLockEnabled ? (
           <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
             <Text style={{ color: colors.textSecondary, ...typography.meta, marginBottom: spacing.sm }}>Lock after being backgrounded for</Text>
@@ -494,7 +494,7 @@ export function SecurityScreen({ navigation, route }: Props) {
                 {session.current ? (
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
                 ) : (
-                  <Text style={{ color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 12 }}>Sign out</Text>
+                  <Text style={{ color: colors.dangerText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Sign out</Text>
                 )}
               </Pressable>
             );
@@ -507,7 +507,7 @@ export function SecurityScreen({ navigation, route }: Props) {
               accessibilityLabel="Sign out all other devices"
               style={{ padding: 14, alignItems: "center" }}
             >
-              <Text style={{ color: colors.danger, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+              <Text style={{ color: colors.dangerText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
                 {isSigningOutOthers ? "Signing out..." : "Sign Out All Other Devices"}
               </Text>
             </Pressable>
@@ -526,7 +526,7 @@ export function SecurityScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 48,
     borderRadius: 8,
@@ -566,4 +566,4 @@ const styles = {
     fontSize: 15,
     letterSpacing: 1,
   },
-} as const;
+} as const));

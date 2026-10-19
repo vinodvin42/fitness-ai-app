@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Button } from "../../components/Button";
 import { BrandMark } from "../../components/BrandMark";
-import { colors, layout, spacing, typography } from "../../theme/tokens";
+import { colors, layout, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import { clearStoredResetPasswordToken, getStoredResetPasswordToken } from "../../lib/resetPasswordLink";
 
@@ -60,14 +60,14 @@ const column = {
   alignSelf: "center" as const,
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: "space-between" },
   content: { ...column, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: layout.screenPadding, gap: spacing.sm },
   mark: { marginBottom: spacing.md },
   signInLink: { alignItems: "center", paddingVertical: spacing.sm },
-  signInText: { ...typography.body, fontSize: 12, color: colors.textSecondary },
-  signInAccent: { color: colors.accent, fontWeight: "600" },
+  signInText: { ...typography.body, fontSize: 13, color: colors.textSecondary },
+  signInAccent: { color: colors.accentText, fontWeight: "600" },
   logo: { ...typography.display, color: colors.textPrimary },
   tagline: { ...typography.body, color: colors.textSecondary, textAlign: "center" },
   actions: { ...column, paddingHorizontal: layout.screenPadding, paddingBottom: spacing.xl, gap: spacing.sm },
-});
+}));

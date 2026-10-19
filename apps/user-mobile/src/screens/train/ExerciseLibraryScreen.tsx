@@ -132,10 +132,10 @@ export function ExerciseLibraryScreen({ navigation }: Props) {
                 {item.name}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{item.muscleGroup}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{item.equipment}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 13 }}>{item.muscleGroup}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 13 }}>{item.equipment}</Text>
                 <View style={{ borderRadius: 5, borderWidth: 1, borderColor: DIFFICULTY_COLOR[item.difficulty], paddingHorizontal: 6, paddingVertical: 1 }}>
-                  <Text style={{ color: DIFFICULTY_COLOR[item.difficulty], fontSize: 10, fontFamily: fonts.bodySemi, textTransform: "capitalize" }}>
+                  <Text style={{ color: DIFFICULTY_COLOR[item.difficulty], fontSize: 13, fontFamily: fonts.bodySemi, textTransform: "capitalize" }}>
                     {item.difficulty}
                   </Text>
                 </View>

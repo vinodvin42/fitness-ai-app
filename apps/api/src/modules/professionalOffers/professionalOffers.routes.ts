@@ -61,7 +61,8 @@ professionalOffersRouter.get(
 professionalOffersRouter.post(
   "/admin/professional-offers",
   requireAdminAuth,
-  requirePermission("professionals", "create"),
+  // Offering a coach to a user is day-to-day operations work (D21).
+  requirePermission("professionals", "create", { approval: "exempt" }),
   async (req: AdminAuthedRequest, res, next) => {
     try {
       const input = createOfferSchema.parse(req.body);

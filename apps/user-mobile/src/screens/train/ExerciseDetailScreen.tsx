@@ -122,7 +122,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
           </Text>
         </View>
         <View style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: difficultyColor, paddingHorizontal: 12, paddingVertical: 4 }}>
-          <Text style={{ color: difficultyColor, fontFamily: fonts.bodyBold, fontSize: 11, textTransform: "capitalize" }}>{exercise.difficulty}</Text>
+          <Text style={{ color: difficultyColor, fontFamily: fonts.bodyBold, fontSize: 13, textTransform: "capitalize" }}>{exercise.difficulty}</Text>
         </View>
       </View>
 
@@ -131,7 +131,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
       <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>Target Muscles</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <View style={{ borderRadius: radius.sm, borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.accentSoft, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 12 }}>{exercise.muscleGroup} (Primary)</Text>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>{exercise.muscleGroup} (Primary)</Text>
         </View>
       </View>
 
@@ -142,7 +142,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
             {exercise.instructions.map((step, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
                 <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 12 }}>{i + 1}</Text>
+                  <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 13 }}>{i + 1}</Text>
                 </View>
                 <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{step}</Text>
               </View>
@@ -168,10 +168,10 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
           }}
         >
           <View style={{ flex: 1, gap: 3 }}>
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6 }}>
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
               {BRAND_NAME.toUpperCase()} ALTERNATIVE
             </Text>
-            <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 17 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
               {alternative.name} also works your {alternative.muscleGroup.toLowerCase()} using {alternative.equipment.toLowerCase()}.
             </Text>
           </View>
@@ -181,7 +181,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
             accessibilityLabel={`View ${alternative.name}`}
             style={{ backgroundColor: colors.aiAccent, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8 }}
           >
-            <Text style={{ color: "#0B0B0F", fontFamily: fonts.bodyBold, fontSize: 12 }}>View</Text>
+            <Text style={{ color: "#0B0B0F", fontFamily: fonts.bodyBold, fontSize: 13 }}>View</Text>
           </Pressable>
         </View>
       ) : null}

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/Button";
-import { colors, layout, radius, spacing, typography } from "../../theme/tokens";
+import { TextField } from "../../components/TextField";
+import { colors, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import {
   clearStoredAcquisitionContext,
@@ -64,7 +65,8 @@ export function SignupScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      {/* Scrolls so the labelled fields still fit above the keyboard on a small phone. */}
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t("auth.signup.title")}</Text>
         <Text style={styles.subtitle}>{t("auth.signup.subtitle")}</Text>
 
@@ -74,39 +76,33 @@ export function SignupScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.signup.fullName")}
-          placeholderTextColor={colors.textMuted}
+        {/* A visible label above every field: a placeholder alone vanishes
+            as soon as you start typing, leaving no clue what the box was for. */}
+        <TextField
+          label={t("auth.signup.fullName")}
           value={fullName}
           onChangeText={setFullName}
-          accessibilityLabel={t("auth.signup.fullName")}
+          autoComplete="name"
+          textContentType="name"
         />
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.signup.email")}
-          placeholderTextColor={colors.textMuted}
+        <TextField
+          label={t("auth.signup.email")}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          accessibilityLabel={t("auth.signup.email")}
           textContentType="emailAddress"
         />
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.signup.password")}
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry
+        <TextField
+          label={t("auth.signup.password")}
+          secure
           value={password}
           onChangeText={setPassword}
           accessibilityLabel={t("auth.signup.passwordA11y")}
           textContentType="newPassword"
         />
-        <TextInput
-          style={styles.input}
-          placeholder={t("auth.signup.referral")}
-          placeholderTextColor={colors.textMuted}
+        <TextField
+          label={t("auth.signup.referral")}
           autoCapitalize="characters"
           value={referralCode}
           onChangeText={setReferralCode}
@@ -131,35 +127,26 @@ export function SignupScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("Login")}
           style={styles.secondaryButton}
         />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     width: "100%",
     maxWidth: layout.maxContentWidth,
     alignSelf: "center",
     paddingHorizontal: layout.screenPadding,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   title: { ...typography.display, color: colors.textPrimary },
   subtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
-  input: {
-    height: 54,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-    fontSize: 15,
-  },
-  error: { color: colors.danger, ...typography.meta },
+  error: { color: colors.dangerText, ...typography.meta },
   secondaryButton: { marginTop: spacing.sm },
   acquisitionBanner: {
     backgroundColor: colors.accentSoft,
@@ -167,5 +154,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  acquisitionBannerText: { color: colors.accent, ...typography.meta },
-});
+  acquisitionBannerText: { color: colors.accentText, ...typography.meta },
+}));

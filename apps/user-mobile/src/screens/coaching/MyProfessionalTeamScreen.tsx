@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { fetchMyTeam } from "../../api/coaching";
 import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "MyProfessionalTeam">;
 
@@ -63,7 +64,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
           title={t("coaching.team.emptyTitle")}
           subtitle={t("coaching.team.emptySubtitle")}
           actionLabel={t("coaching.team.findCoach")}
-          onAction={() => navigation.navigate("CoachDiscovery", undefined)}
+          onAction={() => (COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance"))}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>
@@ -71,13 +72,13 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
             <Text
               onPress={() => navigation.navigate("CoachSessions")}
               accessibilityRole="link"
-              style={{ color: colors.accent, fontFamily: fonts.bodySemi }}
+              style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}
             >
               Sessions
             </Text>
             <Text
               onPress={() => navigation.navigate("Conversations")}
-              style={{ color: colors.accent, fontFamily: fonts.bodySemi }}
+              style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}
             >
               {t("coaching.team.allMessages")}
             </Text>
@@ -85,7 +86,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
           {data.team.map((member) => (
             <Card key={member.relationshipId}>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{member.professionalFullName}</Text>
-              <Text style={{ color: colors.accent, ...typography.meta, marginTop: 2 }}>
+              <Text style={{ color: colors.accentText, ...typography.meta, marginTop: 2 }}>
                 {serviceLabel(member.serviceType)}
               </Text>
               <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>

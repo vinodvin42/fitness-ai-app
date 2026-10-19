@@ -58,7 +58,7 @@ export function MeasurementUnitsScreen({ navigation }: Props) {
         exercises, fuel logs, and analytics.
       </Text>
 
-      <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 11, letterSpacing: 0.8 }}>PREFERENCE GROUPS</Text>
+      <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.8 }}>PREFERENCE GROUPS</Text>
       <View style={{ gap: spacing.sm }}>
         {ROWS.map((r) => (
           <View

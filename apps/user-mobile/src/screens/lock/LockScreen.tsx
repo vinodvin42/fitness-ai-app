@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { useAuth } from "../../context/AuthContext";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, spacing, typography, themed } from "../../theme/tokens";
 
 /**
  * Biometric app-lock gate (docs/mobile/03-screen-inventory.md §L Security
@@ -55,7 +55,7 @@ export function LockScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: "space-between" },
   content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.lg },
   logo: { ...typography.metricLarge, color: colors.textPrimary },
@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.sm,
   },
-  error: { color: colors.danger, marginTop: spacing.md, textAlign: "center" },
+  error: { color: colors.dangerText, marginTop: spacing.md, textAlign: "center" },
   actions: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
-});
+}));

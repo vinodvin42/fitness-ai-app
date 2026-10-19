@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Modal, StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import type { RazorpayOrder, VerifyRazorpayPaymentInput } from "@fitness-ai-app/types";
-import { colors } from "../theme/tokens";
+import { colors, themed } from "../theme/tokens";
 
 interface Props {
   order: RazorpayOrder | null;
@@ -75,7 +75,7 @@ function buildCheckoutHtml(order: RazorpayOrder, preferredMethod?: "upi" | "card
     name: order.name,
     description: order.description,
     order_id: order.orderId,
-    theme: { color: colors.accent },
+    theme: { color: colors.accentText },
     ...(preferredMethod ? { prefill: { method: preferredMethod } } : {}),
   };
 
@@ -112,7 +112,7 @@ function buildCheckoutHtml(order: RazorpayOrder, preferredMethod?: "upi" | "card
 </html>`;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   webview: { flex: 1, backgroundColor: colors.background },
-});
+}));

@@ -75,7 +75,7 @@ export function SupportTicketDetailScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
-        <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontFamily: fonts.bodySemi }}>
+        <Text onPress={() => navigation.goBack()} style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}>
           ‹ Back
         </Text>
         {ticket && (
@@ -184,7 +184,7 @@ function MessageBubble({ body, createdAt, mine }: { body: string; createdAt: str
       <Text
         style={{
           color: mine ? "rgba(4,18,14,0.6)" : colors.textMuted,
-          fontSize: 10,
+          fontSize: 13,
           marginTop: 2,
           textAlign: "right",
         }}

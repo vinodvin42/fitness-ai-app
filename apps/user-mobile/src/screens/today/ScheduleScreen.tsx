@@ -15,7 +15,7 @@ import { fetchNextWorkout } from "../../api/plans";
 import { fetchCurrentMealPlan } from "../../api/mealPlans";
 import { fetchDueMedications, localDateString } from "../../api/medications";
 import { formatTimeOfDay } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TodayStackParamList } from "../../navigation/TodayStack";
@@ -28,7 +28,7 @@ const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 const MEAL_LABEL: Record<MealType, string> = { breakfast: "Breakfast", lunch: "Lunch", snack: "Snack", dinner: "Dinner" };
 
 type Tag = "Workout" | "Nutrition" | "Recovery" | "Hydration" | "Medicine" | "Progress" | "Reminder";
-const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = {
+const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = themed(() => ({
   Workout: { fg: colors.accent, bg: colors.accentSoft },
   Nutrition: { fg: colors.success, bg: colors.successSoft },
   Recovery: { fg: colors.aiAccent, bg: colors.aiAccentSoft },
@@ -36,7 +36,7 @@ const TAG_STYLE: Record<Tag, { fg: string; bg: string }> = {
   Medicine: { fg: colors.warning, bg: colors.warningSoft },
   Progress: { fg: colors.warning, bg: colors.warningSoft },
   Reminder: { fg: colors.aiAccent, bg: colors.aiAccentSoft },
-};
+}));
 const REMINDER_TAG: Record<Reminder["category"], Tag> = {
   workout: "Workout",
   meal: "Nutrition",
@@ -243,7 +243,7 @@ export function ScheduleScreen({ navigation }: Props) {
         <View style={{ gap: spacing.md }}>
           {items.map((it) => (
             <View key={it.key} style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
-              <Text style={{ width: 62, color: colors.textSecondary, fontSize: 12, paddingTop: 14, textAlign: "left" }}>{it.timeLabel}</Text>
+              <Text style={{ width: 62, color: colors.textSecondary, fontSize: 13, paddingTop: 14, textAlign: "left" }}>{it.timeLabel}</Text>
               <Pressable
                 onPress={it.onPress}
                 disabled={!it.onPress}
@@ -264,10 +264,10 @@ export function ScheduleScreen({ navigation }: Props) {
                     {it.title}
                   </Text>
                   <View style={{ backgroundColor: TAG_STYLE[it.tag].bg, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ color: TAG_STYLE[it.tag].fg, fontSize: 10 }}>{it.tag}</Text>
+                    <Text style={{ color: TAG_STYLE[it.tag].fg, fontSize: 13 }}>{it.tag}</Text>
                   </View>
                 </View>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
                   {it.subtitle}
                 </Text>
               </Pressable>

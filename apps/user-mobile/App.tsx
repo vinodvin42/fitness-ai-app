@@ -3,9 +3,14 @@ import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { useFonts, Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from "@expo-google-fonts/sora";
-import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from "@expo-google-fonts/manrope";
-import { JetBrainsMono_600SemiBold, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from "@expo-google-fonts/inter";
 // Imported for its side effect: initialises i18next before any screen
 // renders, so no component can mount against an uninitialised instance.
 import "./src/i18n";
@@ -13,7 +18,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { OfflineBanner } from "./src/components/OfflineBanner";
 import { ToastProvider } from "./src/components/Toast";
-import { ThemeProvider } from "./src/theme/ThemeProvider";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { queryClient, persistOptions } from "./src/lib/queryClient";
 import { captureAcquisitionContext } from "./src/lib/acquisitionContext";
 import { captureResetPasswordToken } from "./src/lib/resetPasswordLink";
@@ -22,21 +27,22 @@ import { initTextScale } from "./src/lib/localSettings";
 // Applies the saved "Larger text" choice (Settings) before the first render.
 void initTextScale();
 
+/** Light icons on the dark theme, dark icons on the light theme. */
+function ThemedStatusBar() {
+  const { scheme } = useTheme();
+  return <StatusBar style={scheme === "dark" ? "light" : "dark"} />;
+}
+
 export default function App() {
-  // Design System v2 typefaces (31 Aug 2026): Sora (display/headers),
-  // Manrope (body/labels), JetBrains Mono (tabular metrics). Render on load
-  // OR error so a font fetch failure degrades to the system font rather than
-  // blanking the app.
+  // Inter, the typeface in the approved Figma type styles (16 Oct 2026;
+  // replaced Sora/Manrope/JetBrains Mono). Render on load OR error so a font
+  // fetch failure degrades to the system font rather than blanking the app.
   const [fontsLoaded, fontError] = useFonts({
-    Sora_600SemiBold,
-    Sora_700Bold,
-    Sora_800ExtraBold,
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
-    JetBrainsMono_600SemiBold,
-    JetBrainsMono_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
   });
 
   // Acquisition-context capture (R1 Developer 1 U1, 14 Sep 2026) — see
@@ -76,7 +82,7 @@ export default function App() {
         <AuthProvider>
           <ThemeProvider>
             <ToastProvider>
-              <StatusBar style="light" />
+              <ThemedStatusBar />
               <RootNavigator />
               <OfflineBanner />
             </ToastProvider>

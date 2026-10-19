@@ -8,7 +8,7 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { confirmFoodEstimate, createSavedMeal } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "ConfirmFoodEstimate">;
@@ -139,7 +139,7 @@ export function ConfirmFoodEstimateScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   input: {
     height: 50,
     borderRadius: radius.md,
@@ -150,4 +150,4 @@ const styles = {
     color: colors.textPrimary,
     fontSize: 15,
   },
-} as const;
+} as const));

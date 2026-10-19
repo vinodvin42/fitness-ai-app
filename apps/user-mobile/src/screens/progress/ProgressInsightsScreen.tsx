@@ -101,7 +101,7 @@ export function ProgressInsightsScreen({ navigation }: Props) {
           ) : (
             data.cards.map((c) => (c.kind === "goal" ? <GoalCard key={c.id} card={c} /> : <PlainCard key={c.id} card={c} />))
           )}
-          <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 16, marginTop: spacing.sm }}>{data.disclaimer}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18, marginTop: spacing.sm }}>{data.disclaimer}</Text>
         </>
       )}
     </ScreenContainer>

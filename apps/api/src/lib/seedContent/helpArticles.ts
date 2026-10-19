@@ -122,7 +122,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Plans and pricing",
     order: 1,
     body:
-      "Fynrox has Basic (free), Pro and Elite plans, billed monthly or annually. Open More > Subscription to compare what each includes and to subscribe or change plan. Prices are shown in rupees before you pay.",
+      "Fynrox has Basic (free), Grow and Prime plans, billed monthly, every 3 months or yearly. Open More > Subscription to compare what each includes and to subscribe or change plan. Prices are shown in rupees before you pay.",
   },
   {
     slug: "cancel-a-subscription",

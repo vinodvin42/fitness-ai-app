@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { buildApp, prisma, uniqueEmail, uniqueSuffix } from "./helpers";
+import { buildApp, prisma, uniqueEmail, uniqueSuffix, createPricedOffering } from "./helpers";
 import { hashPassword } from "../src/lib/password";
 
 /**
@@ -32,6 +32,7 @@ describe("Parked payments: subscriptions, program purchases, bookings, Razorpay"
   let paidProgramId: string;
   let paidProfessionalId: string;
   let paidOfferingId: string;
+  let pricing: Awaited<ReturnType<typeof createPricedOffering>> | undefined;
 
   beforeAll(async () => {
     userEmail = uniqueEmail("parked-payments");
@@ -47,7 +48,7 @@ describe("Parked payments: subscriptions, program purchases, bookings, Razorpay"
     paidProgramId = `test-program-paid-${suffix}`;
 
     await prisma.subscriptionPlan.create({
-      data: { id: paidPlanId, tier: "pro", name: "Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
+      data: { id: paidPlanId, tier: "grow", name: "Test Pro Plan", priceCents: 1499, billingCycle: "monthly", isActive: true },
     });
     await prisma.subscriptionPlan.create({
       data: { id: freePlanId, tier: "basic", name: "Test Basic Plan", priceCents: 0, billingCycle: "monthly", isActive: true },
@@ -73,22 +74,20 @@ describe("Parked payments: subscriptions, program purchases, bookings, Razorpay"
       },
     });
     paidProfessionalId = professional.id;
-    const offering = await prisma.professionalServiceOffering.create({
-      data: {
-        professionalId: paidProfessionalId,
-        serviceType: "fitness",
-        label: "Test Paid Session",
-        durationMinutes: 60,
-        priceCents: 1800,
-        isActive: true,
-      },
+    // Package 4: the price comes from the coach's level fee.
+    pricing = await createPricedOffering(paidProfessionalId, {
+      serviceType: "fitness",
+      feeCents: 1800,
+      durationMinutes: 60,
+      label: "Test Paid Session",
     });
-    paidOfferingId = offering.id;
+    paidOfferingId = pricing.offering.id;
   });
 
   afterAll(async () => {
     await prisma.booking.deleteMany({ where: { professionalId: paidProfessionalId } });
     await prisma.professionalServiceOffering.deleteMany({ where: { professionalId: paidProfessionalId } });
+    await pricing?.cleanup();
     await prisma.professional.deleteMany({ where: { id: paidProfessionalId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.subscriptionPlan.deleteMany({ where: { id: { in: [paidPlanId, freePlanId] } } });

@@ -6,6 +6,7 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "BookingConfirmation">;
@@ -20,8 +21,8 @@ function formatDateTime(iso: string) {
   });
 }
 
-function formatPrice(cents: number) {
-  return `₹${(cents / 100).toFixed(2)}`;
+function formatPrice(paise: number) {
+  return formatRupees(paise);
 }
 
 /**
@@ -44,7 +45,7 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer title={t("coaching.booking.confirmedTitle")}>
       <Card style={{ alignItems: "center" }}>
-        <Text style={{ color: colors.success, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
+        <Text style={{ color: colors.successText, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           Your session with {booking.professionalFullName} is confirmed.
         </Text>
@@ -55,7 +56,15 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
         <Row label={t("coaching.booking.service")} value={booking.offeringLabel} />
         <Row label={t("coaching.booking.dateTime")} value={formatDateTime(booking.scheduledAt)} />
         <Row label={t("coaching.booking.duration")} value={`${booking.durationMinutes} min`} />
-        <Row label={t("coaching.booking.amount")} value={formatPrice(booking.priceCents)} last />
+        <Row
+          label={t("coaching.booking.amount")}
+          value={
+            booking.gstCents > 0
+              ? `${formatPrice(booking.priceCents + booking.gstCents)} (incl. ${formatPrice(booking.gstCents)} GST)`
+              : formatPrice(booking.priceCents)
+          }
+          last
+        />
       </Card>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>

@@ -90,7 +90,7 @@ export function MyGoalsScreen({ navigation }: Props) {
               paddingVertical: 10,
             }}
           >
-            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Target weight ({lb ? "lb" : "kg"}), optional</Text>
+            <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Target weight ({lb ? "lb" : "kg"}), optional</Text>
             <TextInput
               value={target}
               onChangeText={setTarget}
@@ -101,7 +101,7 @@ export function MyGoalsScreen({ navigation }: Props) {
               style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14, minHeight: 32 }}
             />
           </View>
-          {error ? <Text style={{ color: colors.danger, ...typography.meta }}>{error}</Text> : null}
+          {error ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{error}</Text> : null}
           <Button label="Save Goals" onPress={onSave} loading={saving} disabled={goals.length === 0} />
         </>
       ) : null}

@@ -123,7 +123,7 @@ export function PrivacySettingsScreen({ navigation }: Props) {
         <ErrorState onRetry={() => sharing.refetch()} />
       ) : (sharing.data ?? []).length === 0 ? (
         <>
-          <SectionLabel text="What your professionals can see" />
+          <SectionLabel text="What your coaches can see" />
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
             <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 17 }}>
               You don't have an active professional yet. When you do, you'll choose here what they can see.
@@ -162,11 +162,11 @@ export function PrivacySettingsScreen({ navigation }: Props) {
         })
       )}
       {(sharing.data ?? []).length > 0 && !healthGranted && !consents.isLoading ? (
-        <Text style={{ color: colors.warning, ...typography.meta, lineHeight: 17 }}>
+        <Text style={{ color: colors.warningText, ...typography.meta, lineHeight: 17 }}>
           Health-data consent is off, so your professionals can't see any of this until you turn it on below.
         </Text>
       ) : null}
-      {saveError ? <Text style={{ color: colors.danger, ...typography.meta }}>{saveError}</Text> : null}
+      {saveError ? <Text style={{ color: colors.dangerText, ...typography.meta }}>{saveError}</Text> : null}
 
       <ActionRow
         label={`Health-data consent - ${showConsents ? "Hide" : "Manage / withdraw"}`}
@@ -212,8 +212,8 @@ export function PrivacySettingsScreen({ navigation }: Props) {
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: colors.danger, fontFamily: fonts.bodyBold, fontSize: 14 }}>Delete account</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 11, lineHeight: 15 }}>
+          <Text style={{ color: colors.dangerText, fontFamily: fonts.bodyBold, fontSize: 14 }}>Delete account</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 18 }}>
             Permanently deletes your account and data. This can't be undone.
           </Text>
         </View>
@@ -235,7 +235,7 @@ export function PrivacySettingsScreen({ navigation }: Props) {
       </BottomSheet>
 
       {consentMutation.isError ? (
-        <Text style={{ color: colors.danger }}>Couldn't save that preference. Check your connection and try again.</Text>
+        <Text style={{ color: colors.dangerText }}>Couldn't save that preference. Check your connection and try again.</Text>
       ) : null}
     </ScreenContainer>
   );

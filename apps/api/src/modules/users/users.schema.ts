@@ -192,12 +192,3 @@ export const updateConsentSchema = z.object({
 });
 export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;
 
-// Under-18 guardian review (onboarding/11). The app collects ONE field: the
-// guardian's email. `guardianName`/`relationship` are accepted (optional,
-// ignored for new clients) so older app builds keep working.
-export const guardianReviewSchema = z.object({
-  guardianEmail: z.string().trim().toLowerCase().email().max(254),
-  guardianName: z.string().trim().min(1).max(120).optional(),
-  relationship: z.enum(["parent", "legal_guardian", "other"]).optional(),
-});
-export type GuardianReviewInput = z.infer<typeof guardianReviewSchema>;

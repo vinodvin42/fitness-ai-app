@@ -5,7 +5,7 @@ import type { WorkoutDetail } from "@fitness-ai-app/types";
 import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { agoShort, formatDayAndTime } from "../../lib/format";
-import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 
 /**
@@ -14,14 +14,14 @@ import { useTheme } from "../../theme/ThemeProvider";
  * instead of the avatar header of the live screen.
  */
 
-const cardBase = {
+const cardBase = themed(() => ({
   backgroundColor: colors.surface,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: radius.card,
   padding: 16,
   gap: 10,
-} as const;
+} as const));
 
 function Shell({ children, topGap = 0 }: { children: React.ReactNode; topGap?: number }) {
   return (
@@ -68,7 +68,7 @@ export function TodayLoadingView({ greeting, firstName }: { greeting: string; fi
         style={{ backgroundColor: theme.accent, borderRadius: radius.card, padding: 16, gap: 2 }}
       >
         <Text style={{ color: theme.textOnAccent, ...typography.h3 }}>Fetching your day...</Text>
-        <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Loading your plan and latest synced data.</Text>
+        <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Loading your plan and latest synced data.</Text>
       </View>
 
       <View style={cardBase}>
@@ -112,7 +112,7 @@ export function TodayLoadingView({ greeting, firstName }: { greeting: string; fi
       </View>
 
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", lineHeight: 17 }}>
-        Scores and recommendations appear when loading finishes.{"\n"}You can still browse Train, Fuel or Recover.
+        Scores and recommendations appear when loading finishes.{"\n"}You can still browse Workouts, Food or Recovery.
       </Text>
     </Shell>
   );
@@ -165,14 +165,14 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
             : "Today's plan and wearable data can't load without a connection."}
         </Text>
         {lastSyncedAt > 0 ? (
-          <Text style={{ color: colors.warning, fontSize: 12 }}>
+          <Text style={{ color: colors.warningText, fontSize: 13 }}>
             Last synced {formatDayAndTime(lastSyncedAt)} · {agoShort(lastSyncedAt)}
           </Text>
         ) : (
-          <Text style={{ color: colors.warning, fontSize: 12 }}>Nothing has been saved on this device yet.</Text>
+          <Text style={{ color: colors.warningText, fontSize: 13 }}>Nothing has been saved on this device yet.</Text>
         )}
         <Pressable onPress={onRetry} disabled={retrying} accessibilityRole="button" accessibilityLabel="Try reconnecting" hitSlop={8}>
-          <Text style={{ color: theme.accent, ...typography.label, fontSize: 12 }}>{retrying ? "Checking connection..." : "Try reconnecting ›"}</Text>
+          <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>{retrying ? "Checking connection..." : "Try reconnecting ›"}</Text>
         </Pressable>
       </View>
 
@@ -180,14 +180,14 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
         <View style={cardBase}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="download" size={14} color={theme.accent} />
-            <Text style={{ color: theme.accent, fontSize: 11, letterSpacing: 0.8, fontFamily: fonts.bodySemi }}>AVAILABLE OFFLINE</Text>
+            <Text style={{ color: theme.accentText, fontSize: 13, letterSpacing: 0.8, fontFamily: fonts.bodySemi }}>AVAILABLE OFFLINE</Text>
           </View>
           <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }}>{workout.name}</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{meta}</Text>
           {detail && savedAt > 0 ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Saved {formatDayAndTime(savedAt)}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Saved {formatDayAndTime(savedAt)}</Text>
           ) : (
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>Open this workout once while online to save its full exercise list.</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Open this workout once while online to save its full exercise list.</Text>
           )}
           <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
             {detail

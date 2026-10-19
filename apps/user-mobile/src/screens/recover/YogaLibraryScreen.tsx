@@ -69,7 +69,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
   const rest = shown.filter((e) => e !== hero);
 
   return (
-    <RecoverShell title="Yoga & Mobility" subtitle="Recover · Move gently, breathe easily" onBack={() => navigation.goBack()}>
+    <RecoverShell title="Yoga & Mobility" subtitle="Recovery · Move gently, breathe easily" onBack={() => navigation.goBack()}>
       <SearchBar value={query} onChangeText={setQuery} placeholder="Search yoga, breathing or mobility" />
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         {FILTERS.map((f) => {
@@ -91,7 +91,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: on ? colors.accent : colors.textSecondary, ...typography.label, fontSize: 12 }}>{f}</Text>
+              <Text style={{ color: on ? colors.accent : colors.textSecondary, ...typography.label, fontSize: 13 }}>{f}</Text>
             </Pressable>
           );
         })}
@@ -112,7 +112,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
           >
             <PracticeArt height={150} icon={hero.icon} />
             <View style={{ paddingHorizontal: 4, gap: 4 }}>
-              <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>{hero.tag}</Text>
+              <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>{hero.tag}</Text>
               <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>{hero.title}</Text>
               <Text style={{ color: colors.textMuted, ...typography.meta }}>{hero.meta}</Text>
               <Text style={{ color: colors.textSecondary, ...typography.meta }}>{hero.blurb}</Text>
@@ -143,7 +143,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name={e.icon} size={12} color={colors.accent} />
-              <Text style={{ color: colors.accent, ...typography.caption, letterSpacing: 0.6 }}>{e.tag}</Text>
+              <Text style={{ color: colors.accentText, ...typography.caption, letterSpacing: 0.6 }}>{e.tag}</Text>
             </View>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 15 }}>{e.title}</Text>
             <Text style={{ color: colors.textMuted, ...typography.meta }}>{e.meta}</Text>
@@ -154,7 +154,7 @@ export function YogaLibraryScreen({ navigation }: Props) {
       ))}
       {shown.length === 0 ? <Text style={{ color: colors.textMuted, ...typography.meta }}>Nothing matches that search.</Text> : null}
 
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{WELLNESS_NOTE}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{WELLNESS_NOTE}</Text>
     </RecoverShell>
   );
 }

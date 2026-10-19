@@ -1,21 +1,9 @@
 import { z } from "zod";
 
-// Mirrors prisma/schema.prisma's AdminRole enum exactly — see
-// adminAccounts.service.ts's own doc comment for why every value is
-// assignable here. All 8 roles' permissions are enforced as of 25 Aug 2026
-// (apps/api/src/middleware/adminPermissions.ts) — but the 7 non-super_admin
-// matrices are still a derived starter set, not a confirmed spec (docs/
-// admin/07-open-questions-gaps.md gap §7's 25 Aug update).
-export const adminRoles = [
-  "super_admin",
-  "user_operations",
-  "coach_operations",
-  "finance",
-  "content",
-  "growth",
-  "analytics",
-  "support",
-] as const;
+// Mirrors prisma/schema.prisma's AdminRole enum exactly (D15/D21 roles,
+// Oct 2026). Only the Super Admin's changes to admin accounts apply
+// directly; anyone else's become approval requests (adminPermissions.ts).
+export const adminRoles = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"] as const;
 
 export const adminUserStatuses = ["active", "disabled"] as const;
 

@@ -67,14 +67,14 @@ function ProgramCard({ item, onPress }: { item: MyProgram; onPress: () => void }
         </View>
         {!done ? (
           <View style={{ borderWidth: 1, borderColor: colors.accent, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 2 }}>
-            <Text style={{ color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 10 }}>Active</Text>
+            <Text style={{ color: colors.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>Active</Text>
           </View>
         ) : null}
         <Icon name="chevron-right" size={16} color={colors.textMuted} />
       </View>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>{done ? "Completed" : "Overall Progress"}</Text>
-        <Text style={{ color: tone, fontFamily: fonts.bodyBold, fontSize: 12 }}>{percent}%</Text>
+        <Text style={{ color: tone, fontFamily: fonts.bodyBold, fontSize: 13 }}>{percent}%</Text>
       </View>
       <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceHigh, overflow: "hidden" }}>
         <View style={{ height: "100%", width: `${percent}%`, backgroundColor: tone }} />
@@ -112,7 +112,7 @@ export function MyProgramsScreen({ navigation }: Props) {
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : (myPrograms ?? []).length === 0 ? (
-        <EmptyState title="No programs yet" subtitle="You haven't started or purchased any programs yet — browse Programs on the Train tab." />
+        <EmptyState title="No programs yet" subtitle="You haven't started or purchased any programs yet — browse Programs on the Workouts tab." />
       ) : (
         <>
           <SectionHeader title="Active Programs" count={active.length} />

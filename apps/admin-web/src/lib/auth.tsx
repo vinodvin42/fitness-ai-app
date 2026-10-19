@@ -1,21 +1,33 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import type { AdminUser } from "@fitness-ai-app/types";
-import { apiClient, clearToken, getStoredToken, storeToken } from "./api";
+import type { AdminMfaSetupResponse, AdminUser } from "@fitness-ai-app/types";
+import { apiClient, clearToken, getStoredToken, storeRole, storeToken } from "./api";
+
+export type LoginResult = { kind: "signedIn" } | { kind: "mfaSetupRequired"; setupToken: string };
+
+export interface MfaConfirmResult {
+  token: string;
+  adminUser: AdminUser;
+  recoveryCodes: string[];
+}
 
 interface AuthContextValue {
   adminUser: AdminUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** Email + password (+ the 6-digit authenticator code once MFA is set up). */
+  login: (email: string, password: string, second?: { code?: string; recoveryCode?: string }) => Promise<LoginResult>;
+  startMfaSetup: (setupToken: string) => Promise<AdminMfaSetupResponse>;
+  confirmMfaSetup: (setupToken: string, code: string) => Promise<MfaConfirmResult>;
+  /** Starts the session returned by confirmMfaSetup, after the recovery codes were shown. */
+  acceptSession: (token: string, adminUser: AdminUser) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /**
- * Admin console auth state (Phase 6). Mirrors the shape of user-mobile's
- * AuthContext (bootstrap check on mount, login/logout actions) but simpler
- * — no refresh-token rotation, no onboarding flag; see apps/api's
- * adminAuth module for why.
+ * Admin console auth state. Admins sign in with email + password + the code
+ * from an authenticator app (FynroX blueprint section 5). An admin without
+ * an authenticator is walked through setting one up on first sign-in.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
@@ -30,15 +42,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     apiClient
       .get("/admin/auth/me")
-      .then((res) => setAdminUser(res.data.adminUser))
+      .then((res) => {
+        setAdminUser(res.data.adminUser);
+        storeRole(res.data.adminUser.role);
+      })
       .catch(() => setAdminUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
-    const res = await apiClient.post("/admin/auth/login", { email, password });
-    storeToken(res.data.token);
-    setAdminUser(res.data.adminUser);
+  function acceptSession(token: string, user: AdminUser) {
+    storeToken(token);
+    storeRole(user.role);
+    setAdminUser(user);
+  }
+
+  async function login(email: string, password: string, second?: { code?: string; recoveryCode?: string }): Promise<LoginResult> {
+    const res = await apiClient.post("/admin/auth/login", {
+      email,
+      password,
+      ...(second?.code ? { code: second.code } : {}),
+      ...(second?.recoveryCode ? { recoveryCode: second.recoveryCode } : {}),
+    });
+    if (res.data.mfaSetupRequired) {
+      return { kind: "mfaSetupRequired", setupToken: res.data.setupToken };
+    }
+    acceptSession(res.data.token, res.data.adminUser);
+    return { kind: "signedIn" };
+  }
+
+  async function startMfaSetup(setupToken: string): Promise<AdminMfaSetupResponse> {
+    const res = await apiClient.post<AdminMfaSetupResponse>("/admin/auth/mfa/setup", { setupToken });
+    return res.data;
+  }
+
+  async function confirmMfaSetup(setupToken: string, code: string): Promise<MfaConfirmResult> {
+    const res = await apiClient.post("/admin/auth/mfa/confirm", { setupToken, code });
+    return { token: res.data.token, adminUser: res.data.adminUser, recoveryCodes: res.data.recoveryCodes };
   }
 
   function logout() {
@@ -47,7 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ adminUser, isLoading, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ adminUser, isLoading, login, startMfaSetup, confirmMfaSetup, acceptSession, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

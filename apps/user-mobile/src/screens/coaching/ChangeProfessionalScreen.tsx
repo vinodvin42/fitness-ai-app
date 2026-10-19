@@ -11,6 +11,7 @@ import { submitChangeRequest } from "../../api/coaching";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "ChangeProfessional">;
 
@@ -46,7 +47,10 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
       // No field on Relationship actually changes here (submitting a
       // change request deliberately doesn't end it — see this screen's
       // own doc comment) — nothing to invalidate before navigating on.
-      navigation.navigate("CoachDiscovery", { serviceType });
+      // With browsing off, the FynroX team finds the new coach from this
+      // request, so land on the coach status screen rather than a switched-off list.
+      if (COACH_BROWSING_ENABLED) navigation.navigate("CoachDiscovery", { serviceType });
+      else navigation.navigate("ProfessionalRelationship");
     } catch (err) {
       Alert.alert("Couldn't submit request", extractErrorMessage(err, "Check your connection and try again."));
     } finally {
@@ -57,7 +61,7 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer title={t("coaching.change.title")}>
       <Card>
-        <Text style={{ color: colors.warning, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
+        <Text style={{ color: colors.warningText, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
           Changing your {serviceType} professional doesn't affect any other service relationship you have — only
           your pairing with {professionalFullName} for {serviceType}.

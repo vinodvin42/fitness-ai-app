@@ -9,7 +9,7 @@ import { Chip } from "../../components/Chip";
 import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { getScheme, accentPalettes, colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Preferences">;
@@ -19,12 +19,13 @@ const UNIT_LABELS: Record<UnitSystem, string> = { metric: "Metric (kg, cm)", imp
 
 // Reuses existing semantic tokens rather than inventing new brand colors —
 // tokens.ts itself notes these are eyeballed, not a locked spec.
-const ACCENT_SWATCHES: Record<AccentColor, string> = {
-  blue: colors.accent,
-  green: colors.success,
-  yellow: colors.warning,
-  red: colors.danger,
-};
+/** The exact accent each choice applies in the current mode (not the currently applied accent). */
+const ACCENT_SWATCHES: Record<AccentColor, string> = themed(() => ({
+  blue: accentPalettes[getScheme()].blue.accent,
+  green: accentPalettes[getScheme()].green.accent,
+  yellow: accentPalettes[getScheme()].yellow.accent,
+  red: accentPalettes[getScheme()].red.accent,
+}));
 const ACCENT_COLORS: AccentColor[] = ["blue", "green", "yellow", "red"];
 
 /**

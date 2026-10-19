@@ -9,7 +9,6 @@ import { EquipmentScreen } from "../screens/onboarding/EquipmentScreen";
 import { FoodDietScreen } from "../screens/onboarding/FoodDietScreen";
 import { SafetyScreen } from "../screens/onboarding/SafetyScreen";
 import { HealthDataSkipScreen } from "../screens/onboarding/HealthDataSkipScreen";
-import { GuardianReviewScreen } from "../screens/onboarding/GuardianReviewScreen";
 import { AssessmentSummaryScreen } from "../screens/onboarding/AssessmentSummaryScreen";
 import { PlanGeneratingScreen } from "../screens/onboarding/PlanGeneratingScreen";
 import { OnboardingWizardProvider, useOnboardingWizard } from "../context/OnboardingWizardContext";
@@ -39,7 +38,6 @@ export type OnboardingStackParamList = {
   FoodDiet: undefined;
   Safety: undefined;
   HealthDataSkip: undefined;
-  GuardianReview: undefined;
   AssessmentSummary: undefined;
   PlanGenerating: undefined;
 };
@@ -76,7 +74,6 @@ function OnboardingNavigator() {
       <Stack.Screen name="FoodDiet" component={FoodDietScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />
       <Stack.Screen name="HealthDataSkip" component={HealthDataSkipScreen} />
-      <Stack.Screen name="GuardianReview" component={GuardianReviewScreen} />
       <Stack.Screen name="AssessmentSummary" component={AssessmentSummaryScreen} />
       <Stack.Screen name="PlanGenerating" component={PlanGeneratingScreen} />
     </Stack.Navigator>

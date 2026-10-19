@@ -9,6 +9,7 @@ import { Pill } from "../../components/Pill";
 import { useAuth } from "../../context/AuthContext";
 import { cancelSubscription, fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatRupees } from "../../lib/money";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -33,15 +34,18 @@ const DAY = 24 * 60 * 60 * 1000;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 function price(sub: SubscriptionDetail) {
-  if (sub.plan.priceCents === 0) return "Free";
-  return `₹${(sub.plan.priceCents / 100).toFixed(2)} / ${sub.plan.billingCycle === "annual" ? "year" : "month"}`;
+  // What this subscriber pays, locked until renewal (D8); falls back to the plan price.
+  const cents = sub.priceCents ?? sub.plan.priceCents;
+  if (cents === 0) return "Free";
+  const period = sub.plan.billingCycle === "annual" ? "year" : sub.plan.billingCycle === "quarterly" ? "3 months" : "month";
+  return `${formatRupees(cents)} / ${period} incl. GST`;
 }
 
 /**
  * My plan (Figma Profile & Settings 03): a restyled entry point over the real
  * subscription (the same queries and cancel-at-period-end action as the
  * Subscription screen, which still owns plan switching and checkout). Plans
- * are the app's real Basic / Pro / Elite lineup. Payments are one-time
+ * are the app's real Basic / Grow / Prime lineup. Payments are one-time
  * Razorpay orders, so there is no auto-renewal: the Figma toggle is replaced
  * by an honest "Renews manually" row. "Change billing period" shows only when
  * the current tier has a plan with the other billing cycle.
@@ -55,9 +59,12 @@ export function MyPlanScreen({ navigation }: Props) {
   const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans });
 
   const sub = current.data;
-  const otherCycle = sub ? (sub.plan.billingCycle === "monthly" ? "annual" : "monthly") : null;
-  const canChangeCycle =
-    !!sub && sub.plan.priceCents > 0 && (plans.data ?? []).some((p) => p.tier === sub.plan.tier && p.billingCycle === otherCycle);
+  // Any other billing period (monthly / 3 months / yearly) on sale for this tier.
+  const otherCycle = sub
+    ? ((plans.data ?? []).find((p) => p.tier === sub.plan.tier && p.billingCycle !== sub.plan.billingCycle && p.priceCents > 0)
+        ?.billingCycle ?? null)
+    : null;
+  const canChangeCycle = !!sub && sub.plan.priceCents > 0 && otherCycle != null;
   const progress = sub ? periodProgress(sub) : null;
   const daysLeft = sub?.renewsAt ? Math.max(0, Math.ceil((new Date(sub.renewsAt).getTime() - Date.now()) / DAY)) : null;
   const cancellable =
@@ -99,7 +106,7 @@ export function MyPlanScreen({ navigation }: Props) {
 
   const stat = (label: string, value: string) => (
     <View style={{ flex: 1, gap: 2 }}>
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>{label}</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{label}</Text>
       <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
@@ -125,7 +132,7 @@ export function MyPlanScreen({ navigation }: Props) {
         <>
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.md }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ color: theme.accent, fontFamily: fonts.displayBold, fontSize: 24 }}>{sub.plan.name}</Text>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.displayBold, fontSize: 24 }}>{sub.plan.name}</Text>
               <Pill label={sub.cancelAtPeriodEnd ? "ENDING" : STATUS[sub.status].label} tone={sub.cancelAtPeriodEnd ? "warning" : STATUS[sub.status].tone} />
             </View>
             <View style={{ flexDirection: "row", gap: spacing.md }}>
@@ -135,8 +142,8 @@ export function MyPlanScreen({ navigation }: Props) {
             {progress != null ? (
               <View style={{ gap: 6 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Remaining</Text>
-                  <Text style={{ color: theme.accent, fontFamily: fonts.bodySemi, fontSize: 11 }}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Remaining</Text>
+                  <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
                     {daysLeft} day{daysLeft === 1 ? "" : "s"}
                   </Text>
                 </View>
@@ -173,7 +180,7 @@ export function MyPlanScreen({ navigation }: Props) {
           </RowGroup>
 
           {sub.status === "past_due" ? (
-            <Text style={{ color: colors.warning, ...typography.meta }}>
+            <Text style={{ color: colors.warningText, ...typography.meta }}>
               Your last payment did not go through. Choose a plan to pay again and keep premium access.
             </Text>
           ) : null}

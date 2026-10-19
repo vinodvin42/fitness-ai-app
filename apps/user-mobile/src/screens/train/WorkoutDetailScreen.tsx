@@ -14,20 +14,22 @@ import { fetchReadiness } from "../../api/recovery";
 import { startWorkoutSession } from "../../api/workoutSessions";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatRupees } from "../../lib/money";
+import { readinessFactorLabel } from "../../lib/readinessFactors";
 import { applySwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { BRAND_NAME } from "../../lib/brand";
 import { useTheme } from "../../theme/ThemeProvider";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "WorkoutDetail">;
 
 const PHASE_LABELS = { warmup: "Mobility & Warm-up", main: "Strength Training", cooldown: "Cooldown & Stretch" } as const;
-const PHASE_META: Record<keyof typeof PHASE_LABELS, { color: string }> = {
-  warmup: { color: colors.success },
-  main: { color: colors.accent },
-  cooldown: { color: colors.aiAccent },
-};
+const PHASE_META: Record<keyof typeof PHASE_LABELS, { color: string }> = themed(() => ({
+  warmup: { color: colors.successText },
+  main: { color: colors.accentText },
+  cooldown: { color: colors.aiText },
+}));
 const LEVEL_LABEL = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" } as const;
 
 /**
@@ -114,18 +116,18 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
       {score != null && readiness.data ? (
         <View style={{ gap: spacing.sm }}>
           <View style={{ alignSelf: "flex-start", borderRadius: radius.sm, borderWidth: 1, borderColor: colors.aiBorder, backgroundColor: colors.aiSurface, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.6 }}>
-              ✦ {BRAND_NAME.toUpperCase()} READINESS
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>
+              ✦ {BRAND_NAME.toUpperCase()} RECOVERY
             </Text>
           </View>
           <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
             <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
-              Your readiness is {score}/100.{readiness.data.summary ? ` ${readiness.data.summary}` : ""}
+              Your recovery score is {score}/100.{readiness.data.summary ? ` ${readiness.data.summary}` : ""}
             </Text>
             <Pressable
               onPress={() => setWhyOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel="Why this readiness?"
+              accessibilityLabel="Why this recovery score?"
               style={{
                 alignSelf: "flex-start",
                 paddingHorizontal: 12,
@@ -136,7 +138,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                 backgroundColor: colors.aiAccentSoft,
               }}
             >
-              <Text style={{ color: colors.aiAccent, fontFamily: fonts.bodySemi, fontSize: 12 }}>Why?</Text>
+              <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Why?</Text>
             </Pressable>
           </View>
         </View>
@@ -167,7 +169,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
             >
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
               <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{PHASE_LABELS[phase]}</Text>
-              <Text style={{ flex: 1, color: colors.textMuted, fontSize: 12 }}>· {exercisesInPhase.length} ex</Text>
+              <Text style={{ flex: 1, color: colors.textMuted, fontSize: 13 }}>· {exercisesInPhase.length} ex</Text>
               <View style={{ transform: [{ rotate: isOpen ? "-90deg" : "90deg" }] }}>
                 <Icon name="chevron-right" size={16} color={isOpen ? theme.accent : colors.textMuted} />
               </View>
@@ -201,7 +203,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{we.exercise.name}</Text>
-                        <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
                           {we.targetSets}×{we.targetReps} · {we.exercise.muscleGroup}
                         </Text>
                       </View>
@@ -233,26 +235,28 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
           <Button label="Start Workout" onPress={onStart} loading={isStarting} style={{ marginTop: spacing.sm }} />
         </>
       ) : (
-        <Button
-          label={
-            paymentsConfigured
-              ? `Purchase ${workout.program.name} — ₹${(workout.program.priceCents / 100).toFixed(2)}`
-              : "Coming soon"
-          }
-          onPress={onPurchase}
-          loading={isPurchasing}
-          disabled={!paymentsConfigured}
-          style={{ marginTop: spacing.sm }}
-        />
+        // No dead "Coming soon" button: with online payment off, one plain line says why.
+        paymentsConfigured ? (
+          <Button
+            label={`Buy ${workout.program.name} — ${formatRupees(workout.program.priceCents)}`}
+            onPress={onPurchase}
+            loading={isPurchasing}
+            style={{ marginTop: spacing.sm }}
+          />
+        ) : (
+          <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.sm }}>
+            This workout is part of {workout.program.name}. Online payment isn't switched on yet, so it can't be bought right now.
+          </Text>
+        )
       )}
 
       <ReasoningSheet
         visible={whyOpen}
         onClose={() => setWhyOpen(false)}
-        title="Why this readiness?"
+        title="Why this recovery score?"
         heading="Based on your own logs"
         rationale={readiness.data?.summary ?? readiness.data?.headline ?? "Computed from the recovery data you have logged."}
-        rows={(readiness.data?.components ?? []).map((c) => ({ label: c.key, value: `${Math.round(c.score)}/100` }))}
+        rows={(readiness.data?.components ?? []).map((c) => ({ label: readinessFactorLabel(c.key), value: `${Math.round(c.score)}/100` }))}
         caveat={readiness.data?.basis ?? "Based on your logged data"}
       />
 

@@ -5,7 +5,7 @@
     "version": "0.5.0",
     "orientation": "portrait",
     "scheme": "fynrox",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "backgroundColor": "#0B0C10"
     },

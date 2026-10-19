@@ -1,7 +1,14 @@
 import { prisma } from "../../db/prisma";
+import { formatRupees, indiaDate, indiaMidnightOnOrAfter, parseEffectiveFrom } from "../../lib/indiaTime";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { CreatePlanInput, ListPlansQuery, UpdatePlanInput } from "./adminPlans.schema";
+import {
+  applyDuePlanPriceChanges,
+  CURRENT_SUBSCRIPTION_STATUSES,
+  PRICE_INCREASE_NOTICE_DAYS,
+} from "../../lib/planPricing";
+import { createNotification } from "../notifications/notifications.service";
+import { CreatePlanInput, ListPlansQuery, SchedulePriceChangeInput, UpdatePlanInput } from "./adminPlans.schema";
 
 /**
  * Module 06.05 — Pricing (docs/admin/03-screen-inventory.md §06.05), added
@@ -47,9 +54,38 @@ type PlanRow = {
   createdAt: Date;
   updatedAt: Date;
   _count: { subscriptions: number };
+  priceChanges?: PriceChangeRow[];
 };
 
-function toPlanListItem(p: PlanRow) {
+type PriceChangeRow = {
+  id: string;
+  priceCents: number;
+  previousCents: number;
+  effectiveFrom: Date;
+  status: string;
+  reason: string | null;
+  noticeSentAt: Date | null;
+  appliedAt: Date | null;
+  cancelledAt: Date | null;
+  createdAt: Date;
+};
+
+function toPriceChange(c: PriceChangeRow) {
+  return {
+    id: c.id,
+    priceCents: c.priceCents,
+    previousCents: c.previousCents,
+    effectiveFrom: c.effectiveFrom,
+    status: c.status,
+    reason: c.reason,
+    noticeSentAt: c.noticeSentAt,
+    appliedAt: c.appliedAt,
+    cancelledAt: c.cancelledAt,
+    createdAt: c.createdAt,
+  };
+}
+
+function toPlanListItem(p: PlanRow & { priceChanges?: PriceChangeRow[] }) {
   return {
     id: p.id,
     name: p.name,
@@ -58,14 +94,21 @@ function toPlanListItem(p: PlanRow) {
     priceCents: p.priceCents,
     isActive: p.isActive,
     subscriberCount: p._count.subscriptions,
+    // D8: upcoming prices, newest schedule last; applied/cancelled history
+    // is in the audit log.
+    scheduledPriceChanges: (p.priceChanges ?? []).map(toPriceChange),
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
 }
 
-const PLAN_INCLUDE = { _count: { select: { subscriptions: true } } };
+const PLAN_INCLUDE = {
+  _count: { select: { subscriptions: true } },
+  priceChanges: { where: { status: "scheduled" as const }, orderBy: { effectiveFrom: "asc" as const } },
+};
 
 export async function listPlans(query: ListPlansQuery) {
+  await applyDuePlanPriceChanges();
   const rows = (await prisma.subscriptionPlan.findMany({
     include: PLAN_INCLUDE,
     orderBy: { priceCents: "asc" },
@@ -106,7 +149,17 @@ export async function createPlan(actorAdminId: string, input: CreatePlanInput) {
 }
 
 export async function updatePlan(actorAdminId: string, id: string, input: UpdatePlanInput) {
-  await getPlanOrThrow(id);
+  const existing = await getPlanOrThrow(id);
+  // D8: once anyone has subscribed, the price only changes through a
+  // scheduled price change (start date, notice, subscribers keep what they
+  // paid). A plan nobody has bought yet can still be priced directly.
+  if (input.priceCents !== undefined && input.priceCents !== existing.priceCents && existing._count.subscriptions > 0) {
+    throw new ApiHttpError(
+      409,
+      "use_scheduled_price_change",
+      "This plan has subscribers. Schedule the new price with a start date instead (POST /admin/plans/:id/price-changes).",
+    );
+  }
   await prisma.subscriptionPlan.update({ where: { id }, data: input });
   await recordAudit({ actorAdminId, action: "plan.update", entityType: "SubscriptionPlan", entityId: id, metadata: input });
   return toPlanListItem(await getPlanOrThrow(id));
@@ -130,4 +183,123 @@ export async function reactivatePlan(actorAdminId: string, id: string) {
   await prisma.subscriptionPlan.update({ where: { id }, data: { isActive: true } });
   await recordAudit({ actorAdminId, action: "plan.reactivate", entityType: "SubscriptionPlan", entityId: id });
   return toPlanListItem(await getPlanOrThrow(id));
+}
+
+/**
+ * Schedules a plan price change (decisions D8/D18). Runs only for the Super
+ * Admin; anyone else's call becomes an approval request (commerce:edit).
+ *
+ * - The start date can't be in the past.
+ * - A price increase on a plan with current subscribers needs at least
+ *   30 days' notice, and each current subscriber gets an in-app notice now.
+ * - Subscribers keep what they paid for the current period; the new price
+ *   applies to new purchases and renewals from the start date.
+ */
+export async function schedulePriceChange(actorAdminId: string, planId: string, input: SchedulePriceChangeInput) {
+  await applyDuePlanPriceChanges();
+  const plan = await getPlanOrThrow(planId);
+  const effectiveFrom = parseEffectiveFrom(input.effectiveFrom);
+  const now = new Date();
+  if (effectiveFrom.getTime() < now.getTime() - 60_000) {
+    throw new ApiHttpError(422, "start_date_in_past", "The new price can't start in the past");
+  }
+  // Compare with the price that will be in force just before the new start
+  // date (a change already scheduled before it counts), not just today's —
+  // otherwise a decrease then an increase could dodge the notice rule.
+  const priorScheduled = await prisma.planPriceChange.findFirst({
+    where: { planId, status: "scheduled", effectiveFrom: { lt: effectiveFrom } },
+    orderBy: { effectiveFrom: "desc" },
+  });
+  const baselineCents = priorScheduled?.priceCents ?? plan.priceCents;
+  if (input.priceCents === baselineCents) {
+    throw new ApiHttpError(422, "price_unchanged", "That is already the price on that date");
+  }
+
+  const currentSubscribers = await prisma.subscription.findMany({
+    where: { planId, status: { in: [...CURRENT_SUBSCRIPTION_STATUSES] } },
+    select: { userId: true },
+  });
+  const isIncrease = input.priceCents > baselineCents || input.priceCents > plan.priceCents;
+  const minStart = indiaMidnightOnOrAfter(new Date(now.getTime() + PRICE_INCREASE_NOTICE_DAYS * 24 * 60 * 60 * 1000));
+  if (isIncrease && currentSubscribers.length > 0 && effectiveFrom.getTime() < minStart.getTime()) {
+    throw new ApiHttpError(
+      422,
+      "notice_too_short",
+      `A price increase needs at least ${PRICE_INCREASE_NOTICE_DAYS} days' notice because this plan has ${currentSubscribers.length} subscriber(s). Pick a start date on or after ${indiaDate(minStart)}.`,
+    );
+  }
+
+  const clash = await prisma.planPriceChange.findFirst({ where: { planId, status: "scheduled", effectiveFrom } });
+  if (clash) {
+    throw new ApiHttpError(409, "price_change_exists", "A price change is already scheduled for that date. Cancel it first.");
+  }
+
+  let change;
+  try {
+    change = await prisma.planPriceChange.create({
+      data: {
+        planId,
+        priceCents: input.priceCents,
+        previousCents: baselineCents,
+        effectiveFrom,
+        reason: input.reason ?? null,
+        createdByAdminId: actorAdminId,
+      },
+    });
+  } catch (err) {
+    // The database's one-scheduled-change-per-date index caught a duplicate
+    // sent at the same moment.
+    if ((err as { code?: string }).code === "P2002") {
+      throw new ApiHttpError(409, "price_change_exists", "A price change is already scheduled for that date. Cancel it first.");
+    }
+    throw err;
+  }
+
+  // Tell current subscribers now (in-app). Sent as a `system` notice so
+  // notification preferences can't hide a price change (createNotification
+  // never throws).
+  if (currentSubscribers.length > 0) {
+    const dateText = effectiveFrom.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
+    const userIds: string[] = [...new Set<string>(currentSubscribers.map((s: { userId: string }) => s.userId))];
+    for (const userId of userIds) {
+      await createNotification(userId, {
+        kind: "system",
+        title: `${plan.name} price change`,
+        body: `From ${dateText}, ${plan.name} will be ${formatRupees(input.priceCents)} per ${plan.billingCycle === "annual" ? "year" : plan.billingCycle === "quarterly" ? "3 months" : "month"}. You keep your current price until your next renewal on or after that date.`,
+        deepLink: "fynrox://subscription",
+      });
+    }
+    await prisma.planPriceChange.update({ where: { id: change.id }, data: { noticeSentAt: new Date() } });
+  }
+
+  await recordAudit({
+    actorAdminId,
+    action: "plan.price_change_scheduled",
+    entityType: "SubscriptionPlan",
+    entityId: planId,
+    stateBefore: { priceCents: plan.priceCents },
+    stateAfter: { priceCents: input.priceCents, effectiveFrom: effectiveFrom.toISOString() },
+    metadata: { priceChangeId: change.id, subscribersNotified: currentSubscribers.length },
+  });
+
+  return toPlanListItem(await getPlanOrThrow(planId));
+}
+
+/** Cancels a price change that has not started yet. */
+export async function cancelPriceChange(actorAdminId: string, planId: string, changeId: string) {
+  const cancelled = await prisma.planPriceChange.updateMany({
+    where: { id: changeId, planId, status: "scheduled" },
+    data: { status: "cancelled", cancelledAt: new Date() },
+  });
+  if (cancelled.count === 0) {
+    throw new ApiHttpError(409, "price_change_not_scheduled", "Only a price change that hasn't started can be cancelled");
+  }
+  await recordAudit({
+    actorAdminId,
+    action: "plan.price_change_cancelled",
+    entityType: "SubscriptionPlan",
+    entityId: planId,
+    metadata: { priceChangeId: changeId },
+  });
+  return toPlanListItem(await getPlanOrThrow(planId));
 }

@@ -59,7 +59,7 @@ describe("Creator commission ledger (spec §10, acceptance test 15)", () => {
     await prisma.subscriptionPlan.create({
       data: {
         id: planId,
-        tier: "pro",
+        tier: "grow",
         name: "Commission Fixture Plan",
         priceCents: amountCents,
         billingCycle: "monthly",
@@ -90,7 +90,7 @@ describe("Creator commission ledger (spec §10, acceptance test 15)", () => {
         email: `admin-commission-${suffix}@example.com`,
         passwordHash: await hashPassword("unused"),
         fullName: "Commission Fixture Admin",
-        role: "finance",
+        role: "super_admin",
         status: "active",
       },
     });

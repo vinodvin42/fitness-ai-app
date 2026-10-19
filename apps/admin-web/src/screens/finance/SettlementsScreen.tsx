@@ -26,8 +26,10 @@ async function fetchSettlements(month: string): Promise<AdminSettlementsResponse
 
 /**
  * 10.06 Coach Settlements (docs/admin/03-screen-inventory.md), added 31 Aug
- * 2026. Per-coach booking value for a month, net of that coach's
- * configurable commission (editable inline). "Settle" records a real
+ * 2026. Per-coach booking value for a month, net of FynroX's commission.
+ * Package 4: each booking keeps the commission rate it was made at, so
+ * the rate is read-only here; it is changed on the Coach levels screen
+ * and only reaches new bookings. "Settle" records a real
  * CoachSettlement + a Finance Expense (category coach_settlement). "Gross"
  * is delivered booking value, not funds collected — coaching bookings don't
  * run through Razorpay yet. See adminSettlements.service.ts.
@@ -36,7 +38,6 @@ export function SettlementsScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
-  const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-settlements", month],
@@ -44,12 +45,6 @@ export function SettlementsScreen() {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-settlements"] });
-
-  const commissionMutation = useMutation({
-    mutationFn: ({ professionalId, commissionPct }: { professionalId: string; commissionPct: number }) =>
-      apiClient.patch(`/admin/settlements/commission/${professionalId}`, { commissionPct }),
-    onSuccess: invalidate,
-  });
 
   const settleMutation = useMutation({
     mutationFn: (professionalId: string) => apiClient.post("/admin/settlements", { professionalId, month }),
@@ -113,41 +108,18 @@ export function SettlementsScreen() {
               </thead>
               <tbody>
                 {data.rows.map((r) => {
-                  const draft = commissionDraft[r.professionalId] ?? String(r.commissionPct);
-                  const settled = r.settlement?.status === "paid";
+                                  const settled = r.settlement?.status === "paid";
                   return (
                     <tr key={r.professionalId} className="border-b border-border-subtle last:border-0">
                       <td className="px-4 py-3 font-medium text-text-primary">{r.professionalName}</td>
                       <td className="px-4 py-3 text-text-secondary">{r.bookingCount}</td>
                       <td className="px-4 py-3 text-text-secondary">{money(r.grossCents)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={draft}
-                            disabled={settled}
-                            onChange={(e) =>
-                              setCommissionDraft((prev) => ({ ...prev, [r.professionalId]: e.target.value }))
-                            }
-                            className="w-16 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-sm text-text-primary outline-none focus:border-accent disabled:opacity-50"
-                          />
-                          {!settled && Number(draft) !== r.commissionPct && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                commissionMutation.mutate({
-                                  professionalId: r.professionalId,
-                                  commissionPct: Number(draft),
-                                })
-                              }
-                              className="rounded-md border border-border-subtle px-2 py-1 text-xs text-accent hover:border-accent"
-                            >
-                              {t("settlements.save")}
-                            </button>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {/* Package 4: each booking keeps the rate it was made at. Rates are changed on the Coach levels screen. */}
+                        {money(r.commissionCents)} · {r.commissionPct}%
+                        {r.currentCommissionPct !== r.commissionPct && (
+                          <span className="block text-xs text-text-dim">New bookings: {r.currentCommissionPct}%</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-text-primary">{money(r.netCents)}</td>
                       <td className="px-4 py-3">

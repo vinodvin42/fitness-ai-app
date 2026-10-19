@@ -16,7 +16,7 @@ import { useToast } from "../../components/Toast";
 import { deleteMealLog, fetchNutritionCalendar, fetchNutritionSummary, updateMealLog } from "../../api/nutrition";
 import { extractErrorMessage } from "../../lib/apiError";
 import { DAILY_TARGETS } from "../../lib/nutritionTargets";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -171,7 +171,7 @@ export function NutritionCalendarScreen(_props: Props) {
         <View style={{ flexDirection: "row" }}>
           {WEEKDAY_LABELS.map((label, i) => (
             <View key={i} style={{ flex: 1, alignItems: "center", paddingVertical: spacing.xs }}>
-              <Text style={{ color: colors.textMuted, ...typography.label, fontSize: 12 }}>{label}</Text>
+              <Text style={{ color: colors.textMuted, ...typography.label, fontSize: 13 }}>{label}</Text>
             </View>
           ))}
         </View>
@@ -313,13 +313,13 @@ export function NutritionCalendarScreen(_props: Props) {
         >
           <View>
             <Text style={{ color: colors.textMuted, ...typography.caption }}>Perfect Days</Text>
-            <Text style={{ color: colors.success, fontSize: 20, fontFamily: fonts.displayBold }}>
+            <Text style={{ color: colors.successText, fontSize: 20, fontFamily: fonts.displayBold }}>
               {balance.perfect} {balance.perfect === 1 ? "Day" : "Days"}
             </Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ color: colors.textMuted, ...typography.caption }}>Close target</Text>
-            <Text style={{ color: colors.warning, fontSize: 20, fontFamily: fonts.displayBold }}>
+            <Text style={{ color: colors.warningText, fontSize: 20, fontFamily: fonts.displayBold }}>
               {balance.close} {balance.close === 1 ? "Day" : "Days"}
             </Text>
           </View>
@@ -354,7 +354,7 @@ function DetailTile({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   navBtn: {
     width: 34,
     height: 34,
@@ -366,7 +366,7 @@ const styles = {
     justifyContent: "center",
   },
   tileValue: { color: colors.textPrimary, fontSize: 16, fontFamily: fonts.displayBold },
-} as const;
+} as const));
 
 /** Edit or delete one logged meal (PATCH/DELETE /meal-logs/:id); sends only changed fields. */
 function MealEditSheet({ meal, onClose }: { meal: DayMeal | null; onClose: () => void }) {
@@ -428,7 +428,7 @@ function MealEditSheet({ meal, onClose }: { meal: DayMeal | null; onClose: () =>
       return;
     }
     if ([cal, p, c, f].some((n) => !Number.isFinite(n) || n < 0)) {
-      setError("Calories and macros must be zero or more.");
+      setError("Calories, protein, carbs and fat must be zero or more.");
       return;
     }
     const input: UpdateMealLogInput = {};

@@ -1,13 +1,23 @@
 import { prisma } from "../../db/prisma";
+import { env } from "../../config/env";
 import { hashPassword, verifyPassword } from "../../lib/password";
-import { signAdminAccessToken } from "../../lib/adminJwt";
+import { signAdminAccessToken, signAdminMfaSetupToken, verifyAdminMfaSetupToken } from "../../lib/adminJwt";
+import {
+  buildOtpauthUrl,
+  decryptSecret,
+  encryptSecret,
+  generateQrCodeDataUrl,
+  generateRecoveryCodes,
+  generateTotpSecret,
+  verifyTotpCode,
+} from "../../lib/twoFactor";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { AdminChangePasswordInput, AdminLoginInput } from "./adminAuth.schema";
+import { AdminChangePasswordInput, AdminLoginInput, AdminMfaConfirmInput } from "./adminAuth.schema";
 
 /**
- * Admin console auth (Phase 6, 20 Aug 2026). Deliberately minimal —
- * login only, no signup/MFA/SSO/password-reset (see adminAuth.schema.ts's
+ * Admin console auth (Phase 6, 20 Aug 2026; authenticator-app MFA added
+ * Oct 2026 per the FynroX blueprint). No signup/SSO/password-reset (see adminAuth.schema.ts's
  * doc comment) and no refresh-token rotation (see config/env.ts's
  * ADMIN_JWT_ACCESS_TTL_MIN comment). AdminUser accounts are provisioned by
  * scripts/seed.ts for now; a real Admin Users management screen
@@ -33,9 +43,96 @@ export function toPublicAdminUser(adminUser: {
   createdAt: Date;
   updatedAt: Date;
   passwordHash?: string;
+  mfaSecret?: string | null;
+  mfaRecoveryCodes?: string[];
+  mfaLastCode?: string | null;
+  mfaEnabled?: boolean;
 }) {
-  const { passwordHash: _passwordHash, ...publicAdminUser } = adminUser;
+  // Never return the password hash or the MFA secret / recovery codes.
+  const {
+    passwordHash: _passwordHash,
+    mfaSecret: _mfaSecret,
+    mfaRecoveryCodes: _mfaRecoveryCodes,
+    mfaLastCode: _mfaLastCode,
+    ...publicAdminUser
+  } = adminUser;
   return publicAdminUser;
+}
+
+/**
+ * Admin MFA is required (blueprint section 5: email + password + an
+ * authenticator code). The only exceptions: the automated test suite
+ * (NODE_ENV=test, so existing fixtures can sign in), and a developer's own
+ * machine may switch it off with ADMIN_MFA_REQUIRED=false — never in
+ * production. Read at call time.
+ */
+export function isAdminMfaRequired(): boolean {
+  const flag = process.env.ADMIN_MFA_REQUIRED;
+  if (env.NODE_ENV === "production") return true;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return env.NODE_ENV !== "test";
+}
+
+/** A TOTP code may be used once: the same code is refused for this long after it worked. */
+const TOTP_REUSE_WINDOW_MS = 2 * 60 * 1000;
+
+type AdminRowForMfa = {
+  id: string;
+  mfaEnabled?: boolean;
+  mfaSecret?: string | null;
+  mfaRecoveryCodes?: string[];
+  mfaLastCode?: string | null;
+  mfaLastCodeAt?: Date | null;
+};
+
+/** Checks a 6-digit code, or burns one recovery code. Throws 401 when neither is right. */
+async function verifyAdminSecondFactor(adminUser: AdminRowForMfa, input: { code?: string; recoveryCode?: string }) {
+  if (!input.code && !input.recoveryCode) {
+    throw new ApiHttpError(401, "mfa_required", "Enter the 6-digit code from your authenticator app");
+  }
+  if (input.code && adminUser.mfaSecret) {
+    const reused =
+      adminUser.mfaLastCode === input.code &&
+      !!adminUser.mfaLastCodeAt &&
+      Date.now() - adminUser.mfaLastCodeAt.getTime() < TOTP_REUSE_WINDOW_MS;
+    if (!reused && (await verifyTotpCode(decryptSecret(adminUser.mfaSecret), input.code))) {
+      // Remember the code so an intercepted code can't be replayed. The
+      // conditional write also stops two simultaneous sign-ins with one code.
+      const claimed = await prisma.adminUser.updateMany({
+        where: {
+          id: adminUser.id,
+          OR: [{ mfaLastCode: null }, { mfaLastCode: { not: input.code } }, { mfaLastCodeAt: { lt: new Date(Date.now() - TOTP_REUSE_WINDOW_MS) } }],
+        },
+        data: { mfaLastCode: input.code, mfaLastCodeAt: new Date() },
+      });
+      if (claimed.count === 1) return;
+    }
+  }
+  if (input.recoveryCode) {
+    const normalised = input.recoveryCode.replace(/[\s-]/g, "").toUpperCase();
+    const hashes = adminUser.mfaRecoveryCodes ?? [];
+    for (let i = 0; i < hashes.length; i++) {
+      if (await verifyPassword(normalised, hashes[i])) {
+        // Conditional write: if two sign-ins race with the same code, only
+        // the one that still finds the code in the list wins.
+        const used = await prisma.adminUser.updateMany({
+          where: { id: adminUser.id, mfaRecoveryCodes: { has: hashes[i] } },
+          data: { mfaRecoveryCodes: hashes.filter((_, index) => index !== i) },
+        });
+        if (used.count === 0) break;
+        await recordAudit({
+          actorAdminId: adminUser.id,
+          action: "admin_user.mfa_recovery_code_used",
+          entityType: "AdminUser",
+          entityId: adminUser.id,
+          metadata: { remaining: hashes.length - 1 },
+        });
+        return;
+      }
+    }
+  }
+  throw new ApiHttpError(401, "invalid_mfa_code", "That code is not right. Check your authenticator app and try again.");
 }
 
 export async function adminLogin(input: AdminLoginInput) {
@@ -55,21 +152,107 @@ export async function adminLogin(input: AdminLoginInput) {
     throw new ApiHttpError(401, "invalid_credentials", "Incorrect email or password");
   }
 
+  // Second factor: an authenticator app (blueprint section 5).
+  if (adminUser.mfaEnabled) {
+    await verifyAdminSecondFactor(adminUser, input);
+  } else if (isAdminMfaRequired()) {
+    return { mfaSetupRequired: true as const, setupToken: signAdminMfaSetupToken(adminUser.id) };
+  }
+
+  return startAdminSession(adminUser.id, adminUser.email, adminUser.role);
+}
+
+async function startAdminSession(adminUserId: string, email: string, role: string) {
   const updated = await prisma.adminUser.update({
-    where: { id: adminUser.id },
+    where: { id: adminUserId },
     data: { lastLoginAt: new Date() },
   });
 
   await recordAudit({
-    actorAdminId: adminUser.id,
+    actorAdminId: adminUserId,
     action: "admin_user.login",
+    entityType: "AdminUser",
+    entityId: adminUserId,
+  });
+
+  const access = signAdminAccessToken({ sub: adminUserId, email, role });
+
+  return { mfaSetupRequired: false as const, adminUser: updated, token: access.token, tokenExpiresAt: access.expiresAt };
+}
+
+function adminIdFromSetupToken(setupToken: string): string {
+  try {
+    return verifyAdminMfaSetupToken(setupToken);
+  } catch {
+    throw new ApiHttpError(401, "mfa_setup_expired", "Your set-up session expired. Sign in again.");
+  }
+}
+
+/** Step 1 of MFA set-up: creates a fresh secret and returns the QR code to scan. */
+export async function startAdminMfaSetup(setupToken: string) {
+  const adminUser = await getAdminUserById(adminIdFromSetupToken(setupToken));
+  if (adminUser.status !== "active") {
+    throw new ApiHttpError(401, "invalid_credentials", "Incorrect email or password");
+  }
+  if (adminUser.mfaEnabled) {
+    throw new ApiHttpError(409, "mfa_already_enabled", "An authenticator app is already set up for this account");
+  }
+  const secret = generateTotpSecret();
+  await prisma.adminUser.update({ where: { id: adminUser.id }, data: { mfaSecret: encryptSecret(secret) } });
+  const otpauthUrl = buildOtpauthUrl(adminUser.email, secret);
+  return { otpauthUrl, qrCodeDataUrl: await generateQrCodeDataUrl(otpauthUrl), secret };
+}
+
+/** Step 2 of MFA set-up: a real code turns MFA on, returns recovery codes once, and starts the session. */
+export async function confirmAdminMfaSetup(input: AdminMfaConfirmInput) {
+  const adminUser = await getAdminUserById(adminIdFromSetupToken(input.setupToken));
+  if (adminUser.status !== "active") {
+    throw new ApiHttpError(401, "invalid_credentials", "Incorrect email or password");
+  }
+  if (adminUser.mfaEnabled) {
+    throw new ApiHttpError(409, "mfa_already_enabled", "An authenticator app is already set up for this account");
+  }
+  if (!adminUser.mfaSecret || !(await verifyTotpCode(decryptSecret(adminUser.mfaSecret), input.code))) {
+    throw new ApiHttpError(401, "invalid_mfa_code", "That code is not right. Check your authenticator app and try again.");
+  }
+
+  const recoveryCodes = generateRecoveryCodes();
+  const hashed = await Promise.all(recoveryCodes.map((code) => hashPassword(code)));
+  await prisma.adminUser.update({
+    where: { id: adminUser.id },
+    data: { mfaEnabled: true, mfaEnabledAt: new Date(), mfaRecoveryCodes: hashed },
+  });
+  await recordAudit({
+    actorAdminId: adminUser.id,
+    action: "admin_user.mfa_enabled",
     entityType: "AdminUser",
     entityId: adminUser.id,
   });
 
-  const access = signAdminAccessToken({ sub: adminUser.id, email: adminUser.email, role: adminUser.role });
+  const session = await startAdminSession(adminUser.id, adminUser.email, adminUser.role);
+  return { ...session, recoveryCodes };
+}
 
-  return { adminUser: updated, token: access.token, tokenExpiresAt: access.expiresAt };
+/**
+ * Super Admin resets another admin's authenticator (lost phone). The admin
+ * sets it up again at their next sign-in. Anyone else's reset is an
+ * approval request (requirePermission on the route).
+ */
+export async function resetAdminMfa(actorAdminId: string, targetAdminId: string) {
+  const target = await getAdminUserById(targetAdminId);
+  await prisma.adminUser.update({
+    where: { id: target.id },
+    data: { mfaEnabled: false, mfaEnabledAt: null, mfaSecret: null, mfaRecoveryCodes: [], mfaLastCode: null, mfaLastCodeAt: null },
+  });
+  await recordAudit({
+    actorAdminId,
+    action: "admin_user.mfa_reset",
+    entityType: "AdminUser",
+    entityId: target.id,
+    stateBefore: { mfaEnabled: target.mfaEnabled },
+    stateAfter: { mfaEnabled: false },
+  });
+  return toPublicAdminUser(await getAdminUserById(target.id));
 }
 
 export async function getAdminUserById(id: string) {

@@ -1,34 +1,27 @@
 import { NextFunction, Response } from "express";
 import { AdminAuthedRequest } from "./adminAuth";
 import { ApiHttpError } from "./errorHandler";
+import { prisma } from "../db/prisma";
+import { env } from "../config/env";
+import { MIN_REASON_LENGTH } from "../lib/highImpactAction";
+import { captureForApproval, isApprovalReplay, readChangeReason, runWithChangeContext } from "../lib/makerChecker";
 
 /**
- * Real RBAC enforcement (25 Aug 2026, go-live prep). Until now,
- * `requireAdminAuth` only checked for *a* valid admin session — every
- * `AdminRole` was assignable in the UI, but none except `super_admin` was
- * ever actually gated (see adminAuth.ts's own doc comment, and
- * prisma/schema.prisma's AdminRole comment). This closes that gap.
+ * Admin RBAC + maker-checker (FynroX blueprint section 5, decision D21,
+ * Oct 2026).
  *
- * The module list and the six actions (View/Create/Edit/Delete/Export/
- * Approve) come from docs/admin/05-roles-permissions.md — the one place
- * this build has a real, design-sourced permission matrix. That doc is
- * explicit that only Super Admin's matrix was ever visible in the
- * reviewed Figma export; the other 7 roles' cell-level permissions were
- * "not visible in this static export" and the doc says to "capture their
- * matrices... before treating this as final."
+ * Roles (D15/D21): Lakshman is the only Super Admin and his changes apply
+ * directly (a reason is recorded in the audit log). The co-founder can see
+ * everything but every change he makes is a request. Operations, Finance,
+ * Safety & Privacy and Support do their day-to-day work directly, but
+ * risky changes (money, prices, fees, commissions, codes, offers, payouts,
+ * refunds, settings, partner and account actions) become approval
+ * requests that only the Super Admin can approve. Nobody approves their
+ * own change. See lib/makerChecker.ts and modules/adminApprovals.
  *
- * So PERMISSION_MATRIX below is two different kinds of data:
- *  - `super_admin`: copied directly from the doc's real matrix (with one
- *    deliberate extension — see the comment on `commerce` below).
- *  - every other role: a STARTER matrix I derived by taking each role's
- *    literal "stated scope" text from the same doc's role table (e.g.
- *    Finance = "Revenue, transactions, settlements") and granting that
- *    role the *same* action set super_admin has on the one matrix row
- *    whose name matches — nothing invented beyond that mapping. This is
- *    a defensible default, not a confirmed spec. Treat it as a draft to
- *    review against your actual staff roster before real accounts rely
- *    on it — see RUN-LOCALLY.md / the go-live plan for the request to
- *    send a real role list.
+ * Old roles were migrated in 20261015110000_admin_roles_mfa_approvals:
+ * user_operations / coach_operations / content / growth / analytics ->
+ * operations; finance, support and super_admin unchanged.
  */
 
 export type AdminModule =
@@ -48,116 +41,155 @@ export type AdminModule =
   // rather than folded into `growth` — partner accounts/status/commercial
   // terms are closer to `professionals` (an external-party relationship
   // super_admin manages end to end) than a marketing/acquisition lever.
-  | "gyms";
+  | "gyms"
+  // Maker-checker approvals inbox (D21).
+  | "approvals";
 
 export type AdminAction = "view" | "create" | "edit" | "delete" | "export" | "approve";
 
 type ModulePermissions = Partial<Record<AdminModule, AdminAction[]>>;
 
-const ALL_ROLES = [
-  "super_admin",
-  "user_operations",
-  "coach_operations",
-  "finance",
-  "content",
+const ALL_ROLES = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"] as const;
+
+export type KnownAdminRole = (typeof ALL_ROLES)[number];
+
+const ALL_MODULES: AdminModule[] = [
+  "dashboard",
+  "users",
+  "professionals",
+  "relationships",
+  "programs",
+  "commerce",
   "growth",
   "analytics",
   "support",
-] as const;
+  "admin",
+  "sensitiveData",
+  "auditLogs",
+  "gyms",
+  "approvals",
+];
 
-type KnownAdminRole = (typeof ALL_ROLES)[number];
+const FULL: AdminAction[] = ["view", "create", "edit", "delete", "export", "approve"];
 
 export const PERMISSION_MATRIX: Record<KnownAdminRole, ModulePermissions> = {
-  // Copied directly from docs/admin/05-roles-permissions.md §2's Super
-  // Admin matrix. One deliberate extension: the doc's `commerce` row
-  // (view/export/approve only) pre-dates Module 06.05 — adminPlans.ts's
-  // real create/edit/archive endpoints — so `create`/`edit` are added
-  // here to match what super_admin has actually always been able to do
-  // in this codebase; not adding them would be a real regression, not a
-  // permissions tightening.
+  // Lakshman (Super Admin): everything, applied directly.
   super_admin: {
-    // `edit` added 20 Sep 2026 (R2 Wave 1, Admin Action Required queue) —
-    // the doc's own matrix pre-dates that queue existing at all; assigning/
-    // resolving a real AdminActionItem is a genuine dashboard mutation, not
-    // a regression the way widening an existing action would be. See
-    // adminActionQueue.routes.ts's own comment for why only super_admin
-    // gets it this wave — which other roles should too is a real,
-    // deliberately deferred ownership question for whoever builds the real
-    // triage UI on top of this (Wave 4).
     dashboard: ["view", "create", "edit", "export"],
     users: ["view", "create", "edit", "delete", "export"],
-    professionals: ["view", "create", "edit", "delete", "export", "approve"],
+    professionals: FULL,
     relationships: ["view", "create", "edit", "delete", "export"],
-    programs: ["view", "create", "edit", "delete", "export", "approve"],
+    programs: FULL,
     commerce: ["view", "create", "edit", "export", "approve"],
     growth: ["view", "create", "edit", "delete", "export"],
     analytics: ["view", "export"],
     support: ["view", "create", "edit", "export"],
-    admin: ["view", "create", "edit", "delete", "export", "approve"],
+    admin: FULL,
     sensitiveData: ["view", "edit", "approve"],
     auditLogs: ["view", "export"],
-    gyms: ["view", "create", "edit", "delete", "export", "approve"],
+    gyms: FULL,
+    approvals: ["view", "approve"],
   },
 
-  // "User management and support" — mirrors super_admin's users + support
-  // rows exactly; nothing else (no Professionals/Commerce/Admin access).
-  user_operations: {
-    dashboard: ["view"],
-    users: ["view", "create", "edit", "delete", "export"],
-    support: ["view", "create", "edit", "export"],
+  // Co-founder: views everything; every write becomes a request to
+  // Lakshman (see needsApproval). Never approves anything.
+  co_founder: {
+    ...Object.fromEntries(ALL_MODULES.map((m) => [m, ["view", "export"] as AdminAction[]])),
+    users: ["view", "edit", "export"],
+    professionals: ["view", "create", "edit", "export", "approve"],
+    relationships: ["view", "edit", "export"],
+    programs: ["view", "create", "edit", "export", "approve"],
+    commerce: ["view", "create", "edit", "export", "approve"],
+    growth: ["view", "create", "edit", "export"],
+    gyms: ["view", "create", "edit", "export", "approve"],
+    admin: ["view", "create", "edit", "export"],
+    approvals: ["view", "create"],
+    // Health data stays behind the two-person access review (sensitiveData).
+    sensitiveData: [],
   },
 
-  // "Professional verification and management" — mirrors super_admin's
-  // professionals row exactly. Relationships included too since a
-  // Professional's active pairings are the natural extension of
-  // "management" — the more debatable inference in this starter set,
-  // worth confirming explicitly.
-  coach_operations: {
-    dashboard: ["view"],
-    professionals: ["view", "create", "edit", "delete", "export", "approve"],
-    relationships: ["view", "create", "edit", "delete", "export"],
+  // Maya Rao (Operations): users, professionals, relationships, content,
+  // gyms, partners/growth and analytics.
+  operations: {
+    dashboard: ["view", "edit"],
+    users: ["view", "create", "edit", "export"],
+    professionals: ["view", "create", "edit", "export", "approve"],
+    relationships: ["view", "create", "edit", "export"],
+    programs: FULL,
+    growth: ["view", "create", "edit", "export"],
+    gyms: ["view", "create", "edit", "export", "approve"],
+    analytics: ["view", "export"],
+    approvals: ["view", "create"],
   },
 
-  // "Revenue, transactions, settlements" — mirrors super_admin's commerce
-  // row exactly (including the create/edit extension noted above).
+  // Kiran (Finance): revenue, refunds, settlements, payout runs.
   finance: {
     dashboard: ["view"],
     commerce: ["view", "create", "edit", "export", "approve"],
-  },
-
-  // "Programs, exercises, content approval" — mirrors super_admin's
-  // programs row exactly (adminPrograms.ts covers all three content
-  // types — Programs/Exercises/Recipes — under this one module).
-  content: {
-    dashboard: ["view"],
-    programs: ["view", "create", "edit", "delete", "export", "approve"],
-  },
-
-  // "Influencers, referrals, campaigns" — mirrors super_admin's growth
-  // row exactly. Only Referrals (adminReferrals.ts) actually exists
-  // behind this module today; Influencers/Campaigns have no backend yet.
-  growth: {
-    dashboard: ["view"],
-    growth: ["view", "create", "edit", "delete", "export"],
-  },
-
-  // "Read-only analytics and reports" — mirrors super_admin's analytics
-  // row exactly; the role's own name confirms no write access anywhere.
-  analytics: {
-    dashboard: ["view"],
     analytics: ["view", "export"],
+    approvals: ["view", "create"],
   },
 
-  // "Ticket management and user assistance" — mirrors super_admin's
-  // support row exactly, plus read-only Users access for "...and user
-  // assistance" (a support agent needs to look up who they're helping,
-  // not edit their record).
+  // Farah Ali (Safety & Privacy): safety escalations, privacy requests,
+  // health-data access reviews, audit log.
+  safety_privacy: {
+    dashboard: ["view"],
+    users: ["view", "edit"],
+    support: ["view", "create", "edit", "export"],
+    sensitiveData: ["view", "edit", "approve"],
+    auditLogs: ["view", "export"],
+    approvals: ["view", "create"],
+  },
+
+  // Anil (Support): tickets and user lookup.
   support: {
     dashboard: ["view"],
     support: ["view", "create", "edit", "export"],
     users: ["view"],
+    approvals: ["view", "create"],
   },
 };
+
+/**
+ * Modules where a write by anyone other than the Super Admin must be
+ * approved by the Super Admin (D21: money, prices, fees, commissions,
+ * codes, offers, payouts, refunds, settings, partner and account actions).
+ * Day-to-day modules (dashboard queue, support tickets, programs content,
+ * the existing two-person health-data review) are not listed; a single
+ * route can still opt in or out with `requirePermission(..., { approval })`.
+ */
+const APPROVAL_MODULES: ReadonlySet<AdminModule> = new Set<AdminModule>([
+  "users",
+  "professionals",
+  "relationships",
+  "commerce",
+  "growth",
+  "admin",
+  "gyms",
+]);
+
+const WRITE_ACTIONS: ReadonlySet<AdminAction> = new Set<AdminAction>(["create", "edit", "delete", "approve"]);
+
+export type ApprovalPolicy = "default" | "required" | "exempt";
+
+/** True when this role's write must go to the Super Admin as an approval request instead of applying. */
+export function needsApproval(
+  role: string | undefined,
+  module: AdminModule,
+  action: AdminAction,
+  policy: ApprovalPolicy = "default",
+): boolean {
+  if (role === "super_admin") return false;
+  if (!WRITE_ACTIONS.has(action)) return false;
+  if (role === "co_founder") return true;
+  if (policy === "required") return true;
+  if (policy === "exempt") return false;
+  return APPROVAL_MODULES.has(module);
+}
+
+export function isSuperAdmin(role: string | undefined): boolean {
+  return role === "super_admin";
+}
 
 function isKnownRole(role: string | undefined): role is KnownAdminRole {
   return !!role && (ALL_ROLES as readonly string[]).includes(role);
@@ -180,31 +212,94 @@ export function hasPermission(role: string | undefined, module: AdminModule, act
 }
 
 /**
- * Use after requireAdminAuth on any admin route that maps to a real
- * module/action. Routes with no real permission boundary yet (currently
- * just GET /admin/auth/me — a session self-check every admin needs
- * regardless of role) intentionally don't use this.
+ * The Super Admin must give a reason for a risky change too (it goes to the
+ * audit log). Required everywhere except the automated test suite, where
+ * existing fixtures write without one; SUPER_ADMIN_REASON_REQUIRED=true|false
+ * overrides. Read at call time.
  */
-export function requirePermission(module: AdminModule, action: AdminAction) {
-  return function (req: AdminAuthedRequest, _res: Response, next: NextFunction) {
-    const role = req.adminRole;
+export function isSuperAdminReasonRequired(): boolean {
+  const flag = process.env.SUPER_ADMIN_REASON_REQUIRED;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return env.NODE_ENV !== "test";
+}
 
-    if (!isKnownRole(role)) {
-      // An AdminUser row can theoretically carry a role value outside the
-      // 8 named ones only via a direct DB edit (the Zod schema + Prisma
-      // enum both constrain creation) — fail closed rather than assume
-      // access, same as an unrecognized role should always be treated.
+/**
+ * The admin's CURRENT role, read from the database. A session token lasts
+ * hours, so a write is never decided on the role inside the token alone: a
+ * demoted or disabled admin loses write access (and the Super Admin's
+ * direct-apply right) at once.
+ */
+async function currentRole(adminUserId: string | undefined): Promise<string | null> {
+  if (!adminUserId) return null;
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId }, select: { role: true, status: true } });
+  if (!admin || admin.status !== "active") return null;
+  return admin.role;
+}
+
+/**
+ * Use after requireAdminAuth on any admin route that maps to a real
+ * module/action. For a write that needs the Super Admin's approval (see
+ * needsApproval), the request is saved as an ApprovalRequest and answered
+ * with 202 instead of being applied; when the Super Admin approves it, the
+ * same route runs again for the maker (lib/makerChecker.ts) and this check
+ * lets it through. Every write runs inside a change context so the audit
+ * log records the reason and, for approved requests, the checker.
+ */
+export function requirePermission(module: AdminModule, action: AdminAction, opts: { approval?: ApprovalPolicy } = {}) {
+  return function (req: AdminAuthedRequest, res: Response, next: NextFunction) {
+    const tokenRole = req.adminRole;
+
+    if (!isKnownRole(tokenRole)) {
+      // An AdminUser row can carry an unknown role only via a direct DB
+      // edit — fail closed rather than assume access.
       throw new ApiHttpError(403, "forbidden", "Your admin role is not recognized for this action");
     }
 
-    if (!hasPermission(role, module, action)) {
+    if (!hasPermission(tokenRole, module, action)) {
       throw new ApiHttpError(
         403,
         "forbidden",
-        `Your role (${role}) does not have "${action}" access to ${module}`,
+        `Your role (${tokenRole}) does not have "${action}" access to ${module}`,
       );
     }
 
-    next();
+    if (!WRITE_ACTIONS.has(action)) {
+      next();
+      return;
+    }
+
+    (async () => {
+      const role = await currentRole(req.adminUserId);
+      if (!role || role !== tokenRole) {
+        throw new ApiHttpError(401, "session_outdated", "Your admin role or status changed. Sign in again.");
+      }
+
+      if (isApprovalReplay(req)) {
+        runWithChangeContext(req, next);
+        return;
+      }
+
+      if (needsApproval(role, module, action, opts.approval)) {
+        await captureForApproval(req, res, { module, action });
+        return;
+      }
+
+      // The Super Admin applies directly, but a risky change still needs a
+      // written reason for the audit log (blueprint section 5).
+      const riskyForOthers = needsApproval("operations", module, action, opts.approval);
+      if (role === "super_admin" && riskyForOthers && isSuperAdminReasonRequired()) {
+        const reason = readChangeReason(req);
+        if (!reason || reason.length < MIN_REASON_LENGTH) {
+          throw new ApiHttpError(
+            422,
+            "reason_required",
+            `Add a reason of at least ${MIN_REASON_LENGTH} characters. It is saved to the audit log.`,
+          );
+        }
+      }
+
+      runWithChangeContext(req, next);
+    })().catch(next);
   };
 }

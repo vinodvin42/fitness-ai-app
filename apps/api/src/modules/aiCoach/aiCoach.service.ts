@@ -72,8 +72,8 @@ const MAX_RETURNED_MESSAGES = 200;
 // single place to tune limits; users with no active subscription get basic.
 export const AI_COACH_DAILY_LIMITS = {
   basic: 5,
-  pro: 50,
-  elite: 200,
+  grow: 50,
+  prime: 200,
 } as const;
 export type AiCoachTier = keyof typeof AI_COACH_DAILY_LIMITS;
 
@@ -89,7 +89,7 @@ export async function getUsage(userId: string) {
     prisma.aiCoachMessage.count({ where: { userId, role: "user", failed: false, createdAt: { gte: dayStart } } }),
   ]);
   const rawTier = subscription?.plan.tier;
-  const tier: AiCoachTier = rawTier === "pro" || rawTier === "elite" ? rawTier : "basic";
+  const tier: AiCoachTier = rawTier === "grow" || rawTier === "prime" ? rawTier : "basic";
   return { used, limit: AI_COACH_DAILY_LIMITS[tier], resetsAt: nextUtcMidnight(now), tier };
 }
 

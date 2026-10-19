@@ -50,7 +50,7 @@ function formatEffective(d: Date): string {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Text style={{ width: 84, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 12 }}>{label}</Text>
+      <Text style={{ width: 84, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13 }}>{label}</Text>
       <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{value}</Text>
     </View>
   );
@@ -92,7 +92,7 @@ export function ConsentWithdrawnScreen({ navigation, route }: Props) {
           gap: 10,
         }}
       >
-        <Text style={{ color: theme.accent, ...typography.h3, fontSize: 14 }}>Withdrawal confirmed</Text>
+        <Text style={{ color: theme.accentText, ...typography.h3, fontSize: 14 }}>Withdrawal confirmed</Text>
         <DetailRow label="Account" value={user?.fullName ?? ""} />
         <DetailRow label="Effective" value={effective} />
       </View>
@@ -104,7 +104,7 @@ export function ConsentWithdrawnScreen({ navigation, route }: Props) {
           "Full account deletion is a separate request with its own confirmation.",
         ]}
       />
-      <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }}>
+      <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13, lineHeight: 18 }}>
         You can review a new consent choice later. Personalization won't resume unless you give consent again.
       </Text>
     </StateLayout>

@@ -15,19 +15,19 @@ import { extractErrorMessage } from "../../lib/apiError";
 import { useAuth } from "../../lib/auth";
 import { ADMIN_SYSTEM_SUB_NAV } from "./subNav";
 
-const ROLE_OPTIONS: AdminRole[] = [
-  "super_admin",
-  "user_operations",
-  "coach_operations",
-  "finance",
-  "content",
-  "growth",
-  "analytics",
-  "support",
-];
+const ROLE_OPTIONS: AdminRole[] = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"];
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  co_founder: "Co-founder",
+  operations: "Operations",
+  finance: "Finance",
+  safety_privacy: "Safety & Privacy",
+  support: "Support",
+};
 
 function roleLabel(role: string): string {
-  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return ROLE_LABELS[role] ?? role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 interface Filters {

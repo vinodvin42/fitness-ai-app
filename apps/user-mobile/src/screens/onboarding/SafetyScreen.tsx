@@ -7,9 +7,10 @@ import { Chip } from "../../components/Chip";
 import { Icon } from "../../components/Icon";
 import { CheckboxField, OptionRow } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { BRAND_NAME } from "../../lib/brand";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
+import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Safety">;
 
@@ -55,8 +56,7 @@ export function SafetyScreen({ navigation }: Props) {
 
   return (
     <WizardLayout
-      step={5}
-      total={5}
+      {...onboardingStep("Safety")}
       title="Safety & Preferences"
       subtitle="Help us keep your workouts safe. Your selections are used only to personalize guidance and intensity."
       onBack={() => navigation.goBack()}
@@ -156,7 +156,7 @@ export function SafetyScreen({ navigation }: Props) {
         accessibilityLabel="Continue without sharing health data"
         style={{ alignItems: "center", paddingVertical: spacing.xs }}
       >
-        <Text style={{ ...typography.label, fontSize: 12, color: colors.textPrimary }}>
+        <Text style={{ ...typography.label, fontSize: 13, color: colors.textPrimary }}>
           Continue without sharing health data
         </Text>
       </Pressable>
@@ -168,9 +168,9 @@ export function SafetyScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   h3: { ...typography.h3, fontSize: 15, color: colors.textPrimary },
-  help: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.textSecondary, marginTop: 4 },
+  help: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary, marginTop: 4 },
   warning: {
     backgroundColor: "rgba(251,191,36,0.07)",
     borderColor: colors.warning,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   warnTitle: { fontFamily: fonts.displayBold, fontSize: 13, color: colors.textPrimary },
-  warnBody: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.textPrimary },
+  warnBody: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textPrimary },
   consentCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  consentText: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: colors.textPrimary },
-  consentNote: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.textSecondary },
-  footNote: { fontFamily: fonts.body, fontSize: 10, lineHeight: 14, color: colors.textSecondary, textAlign: "center" },
-});
+  consentText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textPrimary },
+  consentNote: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary },
+  footNote: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textSecondary, textAlign: "center" },
+}));

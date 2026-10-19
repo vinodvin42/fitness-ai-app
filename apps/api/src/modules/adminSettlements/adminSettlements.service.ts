@@ -1,14 +1,17 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { commissionCents as commissionOn, commissionPctFor } from "../../lib/coachFees";
 import { ListSettlementsQuery, SetCommissionInput, SettleCoachInput } from "./adminSettlements.schema";
 
 /**
  * Module 10.06 — Coach Settlements (docs/admin/03-screen-inventory.md),
  * added 31 Aug 2026 — the "money out to coaches" module the roadmap left
- * blocked on a take-rate decision. Decision made: **configurable per-coach
- * commission** (`Professional.commissionPct`, admin-editable here and on the
- * Module 03 Professional profile).
+ * blocked on a take-rate decision. **Package 4 (Oct 2026):** FynroX's
+ * commission is the versioned `CommissionRate` table (default + per-coach
+ * override, lib/coachFees.ts), and each Booking copies the rate when it is
+ * made. A settlement sums each booking's own commission, so a rate change
+ * never recomputes past bookings or settlements.
  *
  * A settlement is computed from the real `Booking` value a coach delivered
  * in a UTC calendar month: gross = Σ priceCents of that coach's confirmed,
@@ -62,7 +65,8 @@ function monthBounds(month?: string): { periodStart: Date; periodEnd: Date; mont
 type BookingRow = {
   professionalId: string;
   priceCents: number;
-  professional: { fullName: string; commissionPct: number; status: string };
+  commissionPct: number;
+  professional: { fullName: string; status: string };
 };
 
 type SettlementRow = {
@@ -73,9 +77,18 @@ type SettlementRow = {
   netCents: number;
 };
 
-function commissionFor(grossCents: number, pct: number) {
-  const commissionCents = Math.round((grossCents * pct) / 100);
-  return { commissionCents, netCents: grossCents - commissionCents };
+/** Gross, commission and net from bookings, each at its own copied rate. */
+function totalsFor(bookings: Array<{ priceCents: number; commissionPct: number }>) {
+  let grossCents = 0;
+  let commissionCents = 0;
+  for (const b of bookings) {
+    grossCents += b.priceCents;
+    commissionCents += commissionOn(b.priceCents, b.commissionPct);
+  }
+  // The effective rate across the month, for display (rates can differ
+  // between bookings if FynroX changed it mid-month).
+  const effectivePct = grossCents > 0 ? Math.round((commissionCents * 100) / grossCents) : 0;
+  return { grossCents, commissionCents, netCents: grossCents - commissionCents, effectivePct };
 }
 
 export async function listSettlements(query: ListSettlementsQuery) {
@@ -92,7 +105,8 @@ export async function listSettlements(query: ListSettlementsQuery) {
       select: {
         professionalId: true,
         priceCents: true,
-        professional: { select: { fullName: true, commissionPct: true, status: true } },
+        commissionPct: true,
+        professional: { select: { fullName: true, status: true } },
       },
     }),
     prisma.coachSettlement.findMany({ where: { periodStart } }),
@@ -102,30 +116,28 @@ export async function listSettlements(query: ListSettlementsQuery) {
   for (const s of existing as SettlementRow[]) settledByPro.set(s.professionalId, s);
 
   // Aggregate booking value per professional.
-  const agg = new Map<string, { name: string; pct: number; grossCents: number; bookingCount: number }>();
+  const agg = new Map<string, { name: string; bookings: Array<{ priceCents: number; commissionPct: number }> }>();
   for (const b of bookings as BookingRow[]) {
-    const cur = agg.get(b.professionalId) ?? {
-      name: b.professional.fullName,
-      pct: b.professional.commissionPct,
-      grossCents: 0,
-      bookingCount: 0,
-    };
-    cur.grossCents += b.priceCents;
-    cur.bookingCount += 1;
+    const cur = agg.get(b.professionalId) ?? { name: b.professional.fullName, bookings: [] };
+    cur.bookings.push({ priceCents: b.priceCents, commissionPct: b.commissionPct });
     agg.set(b.professionalId, cur);
   }
+  // The rate each coach's NEW bookings get today (shown beside the month's
+  // effective rate; changing it never touches the month's bookings).
+  const currentRates = await commissionPctFor([...agg.keys()]);
 
   const rows = [...agg.entries()].map(([professionalId, a]) => {
-    const { commissionCents, netCents } = commissionFor(a.grossCents, a.pct);
+    const { grossCents, commissionCents, netCents, effectivePct } = totalsFor(a.bookings);
     const settlement = settledByPro.get(professionalId);
     return {
       professionalId,
       professionalName: a.name,
-      commissionPct: a.pct,
-      grossCents: a.grossCents,
+      commissionPct: effectivePct,
+      currentCommissionPct: currentRates.get(professionalId) ?? effectivePct,
+      grossCents,
       commissionCents,
       netCents,
-      bookingCount: a.bookingCount,
+      bookingCount: a.bookings.length,
       settlement: settlement
         ? { id: settlement.id, status: settlement.status, paidAt: settlement.paidAt }
         : null,
@@ -148,6 +160,11 @@ export async function listSettlements(query: ListSettlementsQuery) {
   return { month: monthKey, periodStart, periodEnd, rows, summary, notAvailable: SETTLEMENTS_NOT_AVAILABLE };
 }
 
+/**
+ * Set this coach's own commission rate from now on (a new versioned
+ * CommissionRate override row — Package 4). Only new bookings get it;
+ * existing bookings and settlements keep the rate they were made at.
+ */
 export async function setCommission(actorAdminId: string, professionalId: string, input: SetCommissionInput) {
   const professional = await prisma.professional.findUnique({
     where: { id: professionalId },
@@ -156,13 +173,24 @@ export async function setCommission(actorAdminId: string, professionalId: string
   if (!professional) {
     throw new ApiHttpError(404, "professional_not_found", "Coach not found");
   }
-  await prisma.professional.update({ where: { id: professionalId }, data: { commissionPct: input.commissionPct } });
+  const before = (await commissionPctFor([professionalId])).get(professionalId);
+  const rate = await prisma.commissionRate.create({
+    data: {
+      professionalId,
+      pct: input.commissionPct,
+      effectiveFrom: new Date(),
+      reason: input.reason ?? null,
+      createdByAdminId: actorAdminId,
+    },
+  });
   await recordAudit({
     actorAdminId,
     action: "coach.commission_updated",
     entityType: "Professional",
     entityId: professionalId,
-    metadata: { commissionPct: input.commissionPct },
+    stateBefore: { commissionPct: before },
+    stateAfter: { commissionPct: input.commissionPct },
+    metadata: { commissionRateId: rate.id, appliesTo: "new bookings only" },
   });
   return { professionalId, commissionPct: input.commissionPct };
 }
@@ -188,22 +216,23 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
 
   const professional = await prisma.professional.findUnique({
     where: { id: input.professionalId },
-    select: { id: true, fullName: true, commissionPct: true },
+    select: { id: true, fullName: true },
   });
-  const prof = professional as { id: string; fullName: string; commissionPct: number } | null;
+  const prof = professional as { id: string; fullName: string } | null;
   if (!prof) {
     throw new ApiHttpError(404, "professional_not_found", "Coach not found");
   }
 
   const bookings = await prisma.booking.findMany({
     where: { professionalId: input.professionalId, status: "confirmed", scheduledAt: { gte: periodStart, lt: deliveredBefore } },
-    select: { priceCents: true },
+    select: { priceCents: true, commissionPct: true },
   });
-  const grossCents = (bookings as { priceCents: number }[]).reduce((sum, b) => sum + b.priceCents, 0);
+  const { grossCents, commissionCents, netCents, effectivePct } = totalsFor(
+    bookings as Array<{ priceCents: number; commissionPct: number }>,
+  );
   if (grossCents <= 0) {
     throw new ApiHttpError(422, "nothing_to_settle", "This coach has no delivered bookings to settle for that month");
   }
-  const { commissionCents, netCents } = commissionFor(grossCents, prof.commissionPct);
 
   const settlement = await prisma.coachSettlement.create({
     data: {
@@ -211,7 +240,7 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
       periodStart,
       periodEnd,
       grossCents,
-      commissionPct: prof.commissionPct,
+      commissionPct: effectivePct,
       commissionCents,
       netCents,
       status: "paid",
@@ -253,7 +282,7 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
     action: "coach_settlement.paid",
     entityType: "CoachSettlement",
     entityId: settlement.id,
-    metadata: { professionalId: input.professionalId, grossCents, netCents, commissionPct: prof.commissionPct },
+    metadata: { professionalId: input.professionalId, grossCents, netCents, commissionPct: effectivePct },
   });
 
   return settlement;

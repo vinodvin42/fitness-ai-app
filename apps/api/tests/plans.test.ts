@@ -327,8 +327,8 @@ describe("Plan-Generation / Recommendation Engine", () => {
       await prisma.onboardingProfile.update({ where: { userId }, data: { equipmentContext: null } });
     });
 
-    it("adds a cautious note when health data was skipped or the user is a minor", async () => {
-      await prisma.onboardingProfile.update({ where: { userId }, data: { healthDataSkippedAt: new Date(), age: 16 } });
+    it("adds a cautious note when health data was skipped", async () => {
+      await prisma.onboardingProfile.update({ where: { userId }, data: { healthDataSkippedAt: new Date() } });
 
       generateCompletion.mockResolvedValueOnce(`PROGRAM_ID: ${programAId}
 RATIONALE: Gentle fit.`);
@@ -337,9 +337,8 @@ RATIONALE: Gentle fit.`);
 
       const promptSent = generateCompletion.mock.calls[0][0] as string;
       expect(promptSent).toContain("UNKNOWN");
-      expect(promptSent).toContain("under 18");
 
-      await prisma.onboardingProfile.update({ where: { userId }, data: { healthDataSkippedAt: null, age: null } });
+      await prisma.onboardingProfile.update({ where: { userId }, data: { healthDataSkippedAt: null } });
     });
 
     it("still generates cleanly when no equipmentContext was ever self-reported (never fabricates one)", async () => {

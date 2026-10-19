@@ -124,12 +124,12 @@ export function DevicePairingScreen({ navigation, route }: Props) {
         <Icon name="watch" size={18} color={colors.accent} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{name}</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
             via {PROVIDER_LABEL[provider] ?? provider} · {kind}
           </Text>
         </View>
         {addedId ? (
-          <Text style={{ color: colors.success, ...typography.label }}>Added</Text>
+          <Text style={{ color: colors.successText, ...typography.label }}>Added</Text>
         ) : (
           <ActionButton
             label={pair.isPending ? "Adding…" : "Add Now"}
@@ -163,7 +163,7 @@ export function DevicePairingScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>
         Permissions are the data this device may supply to Fynrox. You can change them any time from Connected Devices.
       </Text>
     </RecoverShell>

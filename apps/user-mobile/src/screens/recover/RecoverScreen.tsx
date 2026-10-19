@@ -12,23 +12,23 @@ import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchReadiness, fetchRecoverySummary } from "../../api/recovery";
 import { PROVIDER_LABEL, timeAgo } from "../../lib/format";
-import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { ActionButton, SectionLabel } from "./parts";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "RecoverHub">;
 
-const BAND = {
+const BAND = themed(() => ({
   ready: { label: "Ready to train", fg: colors.success, bg: colors.successSoft },
   moderate: { label: "Train with care", fg: colors.warning, bg: colors.warningSoft },
   rest: { label: "Take it easy", fg: colors.danger, bg: colors.dangerSoft },
-} as const;
+} as const));
 
-const STRESS = {
+const STRESS = themed(() => ({
   low: { label: "Low", fg: colors.success, bg: colors.successSoft },
   moderate: { label: "Moderate", fg: colors.warning, bg: colors.warningSoft },
   high: { label: "High", fg: colors.danger, bg: colors.dangerSoft },
-} as const;
+} as const));
 
 function Tile({ label, value, icon }: { label: string; value: string; icon: IconName }) {
   return (
@@ -44,7 +44,7 @@ function Tile({ label, value, icon }: { label: string; value: string; icon: Icon
       }}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }} numberOfLines={1}>
+        <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }} numberOfLines={1}>
           {label}
         </Text>
         <Icon name={icon} size={13} color={colors.textSecondary} />
@@ -84,7 +84,7 @@ function ActionCard({
             paddingVertical: 3,
           }}
         >
-          <Text style={{ color: colors.accent, ...typography.caption }}>{tag}</Text>
+          <Text style={{ color: colors.accentText, ...typography.caption }}>{tag}</Text>
         </View>
       </View>
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -137,7 +137,7 @@ export function RecoverScreen({ navigation }: Props) {
         <Card style={{ gap: spacing.md }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View>
-              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Readiness Score</Text>
+              <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Recovery score</Text>
               <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 32, marginTop: 2 }}>
                 {r.score}/100
               </Text>
@@ -161,12 +161,12 @@ export function RecoverScreen({ navigation }: Props) {
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
             <ProgressRing progress={r.score / 100} size={76} strokeWidth={8} color={colors.accent}>
-              <Text style={{ color: colors.textMuted, fontSize: 9 }}>Score</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>Score</Text>
               <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 16 }}>{r.score}</Text>
             </ProgressRing>
             <View style={{ flex: 1, gap: spacing.sm }}>
               <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-                {r.summary ?? "Based on your logged sleep, HRV, and resting heart rate."}
+                {r.summary ?? "Based on the sleep, resting heart rate and how-rested readings you logged."}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 3, height: 26 }} accessibilityLabel="Score components">
                 {r.components.map((c) => (
@@ -181,10 +181,10 @@ export function RecoverScreen({ navigation }: Props) {
         </Card>
       ) : (
         <Card style={{ gap: spacing.sm }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 11 }}>Readiness Score</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>Recovery score</Text>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Not enough data yet</Text>
           <Text style={{ color: colors.textSecondary, ...typography.meta }}>
-            {r?.reason ?? "Log sleep, HRV, resting heart rate, soreness or energy to see your readiness."}
+            {r?.reason ?? "Log your sleep, resting heart rate, sore muscles or energy to see your recovery score."}
           </Text>
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <ActionButton label="Log recovery" onPress={() => navigation.navigate("Recovery")} style={{ flex: 1 }} />
@@ -193,10 +193,10 @@ export function RecoverScreen({ navigation }: Props) {
         </Card>
       )}
 
-      <SectionLabel>Key Metrics</SectionLabel>
+      <SectionLabel>Your numbers</SectionLabel>
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <Tile label="Sleep" value={metrics?.sleepHours != null ? `${metrics.sleepHours}h` : "—"} icon="moon" />
-        <Tile label="HRV" value={metrics?.hrvMs != null ? `${metrics.hrvMs}ms` : "—"} icon="activity" />
+        <Tile label="Body rest (HRV)" value={metrics?.hrvMs != null ? `${metrics.hrvMs}ms` : "—"} icon="activity" />
         <Tile
           label="Resting HR"
           value={metrics?.restingHeartRate != null ? `${metrics.restingHeartRate} bpm` : "—"}
@@ -322,7 +322,7 @@ export function RecoverScreen({ navigation }: Props) {
       <ListRow
         icon="heart-pulse"
         title="Log today's recovery"
-        subtitle="Self-report sleep, resting HR, HRV, soreness & energy"
+        subtitle="Note your sleep, resting heart rate, sore muscles and energy"
         tint={colors.danger}
         tintSoft={colors.dangerSoft}
         onPress={() => navigation.navigate("Recovery")}

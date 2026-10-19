@@ -21,7 +21,6 @@ import { checkoutRouter } from "./modules/checkout/checkout.routes";
 import { couponsRouter } from "./modules/coupons/coupons.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
 import { aiCoachRouter } from "./modules/aiCoach/aiCoach.routes";
-import { guardianReviewRouter } from "./modules/guardianReview/guardianReview.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { savedMealsRouter } from "./modules/savedMeals/savedMeals.routes";
 import { savedRecipesRouter } from "./modules/savedRecipes/savedRecipes.routes";
@@ -47,6 +46,7 @@ import { adminAnalyticsRouter } from "./modules/adminAnalytics/adminAnalytics.ro
 import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegrations.routes";
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
+import { adminCoachLevelsRouter } from "./modules/adminCoachLevels/adminCoachLevels.routes";
 import { payoutRunsRouter } from "./modules/payoutRuns/payoutRuns.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
@@ -58,6 +58,8 @@ import { gymPortalRouter } from "./modules/gymPortal/gymPortal.routes";
 import { adminCouponsRouter } from "./modules/adminCoupons/adminCoupons.routes";
 import { adminRefundsRouter } from "./modules/adminRefunds/adminRefunds.routes";
 import { adminRolesRouter } from "./modules/adminRoles/adminRoles.routes";
+import { adminApprovalsRouter } from "./modules/adminApprovals/adminApprovals.routes";
+import { setApprovalReplayApp } from "./lib/makerChecker";
 import { adminPrivacyRouter } from "./modules/adminPrivacy/adminPrivacy.routes";
 import { privacyRequestsRouter } from "./modules/privacyRequests/privacyRequests.routes";
 import { adminAiOpsRouter } from "./modules/adminAiOps/adminAiOps.routes";
@@ -96,6 +98,8 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
   const app = express();
+  // Approved maker-checker requests are re-run through this same app (D21).
+  setApprovalReplayApp(app);
 
   // Go-live hardening (25 Aug 2026) — Render (and any PaaS fronted by a
   // load balancer that terminates TLS) sits one hop in front of this
@@ -184,7 +188,6 @@ export function createApp() {
   app.use("/users", usersRouter);
   app.use("/users", userPartnerRouter);
   app.use("/", savedRecipesRouter);
-  app.use("/", guardianReviewRouter);
   // programPurchasesRouter must be mounted before programsRouter: its
   // GET /programs/mine would otherwise be swallowed by programsRouter's
   // GET /programs/:id (Express matches "mine" as the :id param).
@@ -328,6 +331,8 @@ export function createApp() {
   // made: configurable per-coach/per-influencer commission) and a missing
   // Coupon/Refund entity (now built). See each module's own doc comment.
   app.use("/", adminSettlementsRouter);
+  // Package 4 — coach levels, fees and FynroX commission.
+  app.use("/", adminCoachLevelsRouter);
   // A-M3 — the payout run the settlement rows were waiting on.
   app.use("/", payoutRunsRouter);
   app.use("/", adminInfluencersRouter);
@@ -362,6 +367,8 @@ export function createApp() {
   // between this real access log and a genuine self-service DSAR flow,
   // which is NOT built.
   app.use("/", adminRolesRouter);
+  // Maker-checker approvals inbox (D21) — see lib/makerChecker.ts.
+  app.use("/", adminApprovalsRouter);
   app.use("/", adminPrivacyRouter);
   // Journey F8 — the tracked subject-rights lifecycle (U-M17 / A-M5).
   // Sits alongside the existing 12.04 Privacy dashboard rather than

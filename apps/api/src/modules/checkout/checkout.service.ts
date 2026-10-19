@@ -1,4 +1,6 @@
 import { prisma } from "../../db/prisma";
+import { activeGstPercent } from "../../lib/gst";
+import { applyDuePlanPriceChanges } from "../../lib/planPricing";
 import { r1Flags } from "@fitness-ai-app/config";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { validateCoupon } from "../coupons/coupons.service";
@@ -39,16 +41,6 @@ export type CheckoutMethod = {
  * then adding tax at the last step is exactly the pattern Indian
  * consumers do not expect, and the handoff asks for "incl. GST".
  */
-const DEFAULT_GST_PERCENT = 18;
-
-async function activeGstPercent(): Promise<number> {
-  const config = await prisma.taxConfig.findFirst({
-    where: { isActive: true, jurisdiction: "IN" },
-    orderBy: { updatedAt: "desc" },
-  });
-  if (!config?.ratePercent) return DEFAULT_GST_PERCENT;
-  return Number(config.ratePercent);
-}
 
 /** Splits a GST-inclusive total into its net and tax parts. */
 export function splitGstInclusive(totalCents: number, gstPercent: number) {
@@ -92,6 +84,7 @@ export async function getCheckoutQuote(
   const currency = "INR";
 
   if (input.purpose === "subscription") {
+    await applyDuePlanPriceChanges();
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: input.referenceId } });
     if (!plan || !plan.isActive) {
       throw new ApiHttpError(404, "plan_not_found", "That plan isn't available");
