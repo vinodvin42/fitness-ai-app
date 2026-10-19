@@ -110,6 +110,24 @@ const LABELS: Record<string, string> = {
   aiFeatureConsole: "Feature Console (multi-capability rows, rollout %)",
   aiUsageMetrics: "Usage Metrics (latency, cost/call, error rate)",
   aiSafetyOverridesLog: "Safety / Overrides Log",
+  // 11.02 AI Usage (Oct 2026) — not stored per reply.
+  aiTokens: "Tokens per reply",
+  aiCost: "Cost",
+  aiLatency: "Reply time",
+  aiModelBreakdown: "Breakdown by model",
+  // 10.09 Bank Settlements (Oct 2026).
+  bankBalances: "Bank balances and connected bank accounts (needs a bank-feed provider)",
+  // 11.03 AI Safety (Oct 2026).
+  aiAutoFlagging: "Automatic flagging of answers (no moderation model yet)",
+  // 12.07 Notifications (Oct 2026).
+  notificationTemplates: "Notification templates",
+  notificationGateways: "Gateway management (email / SMS / push providers)",
+  pushSending: "Sending push messages (phones register, nothing is sent yet)",
+  broadcastSend: "Sending a message to many users",
+  // 12.08 Platform Settings (Oct 2026).
+  editableSettings: "Editing these settings in the console",
+  localization: "Localization",
+  billingDefaults: "Subscription and billing defaults",
   // Module 09.06 (Unit Economics / Cohorts) addition, 27 Aug 2026 — see
   // adminAnalytics.service.ts's `getUnitEconomics` doc comment.
   acquisitionChannelSplit: "Acquisition Channel Split (donut + leaderboard)",

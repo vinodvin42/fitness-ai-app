@@ -8,6 +8,7 @@ import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatStepTimes, videoFromForm } from "../../lib/recipeVideoForm";
 import { PROGRAMS_SUB_NAV } from "./subNav";
 
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
@@ -35,6 +36,9 @@ interface FormState {
   prepTimeMinutes: string;
   tagsText: string;
   imageUrl: string;
+  videoUrl: string;
+  videoDurationSec: string;
+  videoStepsText: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -47,6 +51,9 @@ const EMPTY_FORM: FormState = {
   prepTimeMinutes: "",
   tagsText: "",
   imageUrl: "",
+  videoUrl: "",
+  videoDurationSec: "",
+  videoStepsText: "",
 };
 
 async function fetchDirectory(filters: Filters): Promise<AdminRecipeDirectoryResponse> {
@@ -60,7 +67,7 @@ async function fetchDirectory(filters: Filters): Promise<AdminRecipeDirectoryRes
   return res.data;
 }
 
-function formToPayload(form: FormState) {
+function formToPayload(form: FormState, video: AdminRecipeListItem["video"] | undefined) {
   return {
     name: form.name,
     mealType: form.mealType,
@@ -77,6 +84,9 @@ function formToPayload(form: FormState) {
     // with Zod's `.url()`, which an empty string fails. Same handling as
     // the Exercises directory's own Media URL field.
     imageUrl: form.imageUrl || undefined,
+    // Recipe video — see lib/recipeVideoForm.ts. undefined (create, no
+    // video) is dropped from the JSON; null (edit, link emptied) clears it.
+    video,
   };
 }
 
@@ -103,6 +113,7 @@ export function RecipesDirectoryScreen() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-recipes", filters],
@@ -118,6 +129,7 @@ export function RecipesDirectoryScreen() {
     setShowForm(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setVideoError(null);
   };
 
   const createMutation = useMutation({
@@ -164,13 +176,18 @@ export function RecipesDirectoryScreen() {
       prepTimeMinutes: String(r.prepTimeMinutes),
       tagsText: r.tags.join(", "),
       imageUrl: r.imageUrl ?? "",
+      videoUrl: r.video?.url ?? "",
+      videoDurationSec: r.video ? String(r.video.durationSec) : "",
+      videoStepsText: r.video ? formatStepTimes(r.video.steps) : "",
     });
+    setVideoError(null);
     setShowForm(true);
   }
 
   function startCreate() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setVideoError(null);
     setShowForm((prev) => !prev);
   }
 
@@ -240,7 +257,13 @@ export function RecipesDirectoryScreen() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const payload = formToPayload(form);
+              const video = videoFromForm(form, editingId !== null);
+              if ("error" in video) {
+                setVideoError(video.error);
+                return;
+              }
+              setVideoError(null);
+              const payload = formToPayload(form, video.video);
               if (editingId) updateMutation.mutate({ id: editingId, payload });
               else createMutation.mutate(payload);
             }}
@@ -357,6 +380,44 @@ export function RecipesDirectoryScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
+            <fieldset className="space-y-2 rounded-md border border-border-subtle p-3">
+              <legend className="px-1 text-xs font-medium text-text-secondary">{t("recipesDirectory.videoSection")}</legend>
+              <p className="text-xs text-text-dim">{t("recipesDirectory.videoHelp")}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem]">
+                <label className="flex flex-col gap-1 text-xs text-text-dim">
+                  {t("recipesDirectory.videoUrl")}
+                  <input
+                    type="url"
+                    placeholder="https://…/recipe.mp4"
+                    value={form.videoUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, videoUrl: e.target.value }))}
+                    className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-text-dim">
+                  {t("recipesDirectory.videoLengthSec")}
+                  <input
+                    type="number"
+                    min={5}
+                    max={600}
+                    value={form.videoDurationSec}
+                    onChange={(e) => setForm((prev) => ({ ...prev, videoDurationSec: e.target.value }))}
+                    className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("recipesDirectory.videoStepTimes")}
+                <input
+                  value={form.videoStepsText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, videoStepsText: e.target.value }))}
+                  placeholder="0:02, 0:08, 0:18"
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+                <span className="text-[11px] text-text-dim">{t("recipesDirectory.videoStepTimesHelp")}</span>
+              </label>
+              {videoError && <p className="text-xs text-danger">{videoError}</p>}
+            </fieldset>
             {saveError && (
               <p className="text-xs text-danger">{extractErrorMessage(saveError, "Couldn't save this recipe.")}</p>
             )}
@@ -411,11 +472,18 @@ export function RecipesDirectoryScreen() {
                 {data.recipes.map((r) => (
                   <tr key={r.id} className="border-b border-border-subtle last:border-0">
                     <td className="px-4 py-3">
-                      {r.imageUrl ? (
-                        <img src={r.imageUrl} alt="" className="h-10 w-16 rounded object-cover" loading="lazy" />
-                      ) : (
-                        <span className="text-text-dim">—</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {r.imageUrl ? (
+                          <img src={r.imageUrl} alt="" className="h-10 w-16 rounded object-cover" loading="lazy" />
+                        ) : (
+                          <span className="text-text-dim">—</span>
+                        )}
+                        {r.video && (
+                          <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent">
+                            {t("recipesDirectory.videoBadge")}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-medium text-text-primary">{r.name}</td>
                     <td className="px-4 py-3 text-text-secondary">{MEAL_TYPE_LABELS[r.mealType]}</td>

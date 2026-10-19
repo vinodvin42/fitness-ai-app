@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { apiBaseUrl } from "./env";
+import { MIN_REASON_LENGTH, requestReason, showApprovalNotice } from "./reasonPrompt";
 
 const TOKEN_KEY = "fynrox-admin.token";
 const ROLE_KEY = "fynrox-admin.role";
@@ -30,15 +31,15 @@ function storedRole(): string | null {
 /**
  * Maker-checker (D21). Every admin except the Super Admin needs Lakshman's
  * approval for risky changes, and everyone (Lakshman included) must say
- * why. Until the admin v2 screens add a reason box to each form, any write
- * without a reason asks for one here and sends it as the X-Change-Reason
- * header. Cancelling the prompt cancels the request. Forms that already
- * send `reason` are left alone.
+ * why. Any write without a reason asks for one in an in-app dialog
+ * (lib/reasonPrompt.ts, components/ReasonDialogHost.tsx — Oct 2026, replacing
+ * window.prompt) and sends it as the X-Change-Reason header. Cancelling the
+ * dialog cancels the request. Forms that already send `reason` are left alone.
  */
 const WRITE_METHODS = new Set(["post", "put", "patch", "delete"]);
 const NO_REASON_PATHS = [/^\/admin\/auth\//, /^\/admin\/approvals/];
 
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use(async (config) => {
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -50,18 +51,18 @@ apiClient.interceptors.request.use((config) => {
   const body = (config.data ?? {}) as Record<string, unknown>;
   const hasReason =
     !!config.headers["X-Change-Reason"] ||
-    (typeof body === "object" && body !== null && typeof body.reason === "string" && body.reason.trim().length >= 10);
+    (typeof body === "object" && body !== null && typeof body.reason === "string" && body.reason.trim().length >= MIN_REASON_LENGTH);
   if (token && role && WRITE_METHODS.has(method) && !hasReason && !NO_REASON_PATHS.some((re) => re.test(url))) {
     const question =
       role === "super_admin"
-        ? "Why are you making this change? It is saved to the audit log. (at least 10 characters)"
-        : "This change needs Lakshman's approval. Why are you making it? (at least 10 characters)";
-    const reason = window.prompt(question);
-    if (reason === null || reason.trim().length < 10) {
-      return Promise.reject(new AxiosError("A reason of at least 10 characters is needed for this change.", "ERR_CANCELED", config));
+        ? "Why are you making this change? It is saved to the audit log."
+        : "This change needs Lakshman's approval. Why are you making it?";
+    const reason = await requestReason(question);
+    if (reason === null || reason.length < MIN_REASON_LENGTH) {
+      return Promise.reject(new AxiosError(`A reason of at least ${MIN_REASON_LENGTH} characters is needed for this change.`, "ERR_CANCELED", config));
     }
     // URL-encoded: HTTP headers can't carry ₹, Hindi/Telugu text or emoji as-is.
-    config.headers["X-Change-Reason"] = encodeURIComponent(reason.trim());
+    config.headers["X-Change-Reason"] = encodeURIComponent(reason);
   }
   return config;
 });
@@ -80,6 +81,7 @@ apiClient.interceptors.response.use(
     const data = response.data as { status?: string; message?: string } | undefined;
     if (response.status === 202 && data?.status === "pending_approval") {
       const message = data.message ?? "Sent to Lakshman for approval. Nothing changes until he approves it.";
+      showApprovalNotice(message);
       const err = new AxiosError(message, "PENDING_APPROVAL", response.config, response.request, {
         ...response,
         data: { error: { code: "pending_approval", message }, approvalRequest: (response.data as { approvalRequest?: unknown }).approvalRequest },

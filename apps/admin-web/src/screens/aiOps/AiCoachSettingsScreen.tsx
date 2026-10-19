@@ -5,6 +5,7 @@ import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import { AI_OPS_SUB_NAV } from "./subNav";
 
 async function fetchAiCoachSettings(): Promise<AdminAiCoachSettingsResponse> {
   const res = await apiClient.get<AdminAiCoachSettingsResponse>("/admin/ai-ops/ai-coach");
@@ -54,7 +55,7 @@ export function AiCoachSettingsScreen() {
   });
 
   return (
-    <AppShell title={t("aiCoachSettings.aiOperations")}>
+    <AppShell title={t("aiCoachSettings.aiOperations")} subNav={AI_OPS_SUB_NAV}>
       <div className="space-y-4">
         <div className="max-w-xl rounded-lg border border-border-subtle bg-surface p-4">
           <div className="flex items-start justify-between gap-4">
@@ -111,7 +112,7 @@ export function AiCoachSettingsScreen() {
         </div>
 
         <NotAvailablePanel
-          keys={["aiFeatureConsole", "aiUsageMetrics", "aiSafetyOverridesLog"]}
+          keys={["aiFeatureConsole"]}
           subtitle={t("aiCoachSettings.theRestOf11")}
         />
       </div>

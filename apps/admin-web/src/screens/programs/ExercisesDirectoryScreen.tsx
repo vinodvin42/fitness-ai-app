@@ -7,6 +7,15 @@ import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import {
+  EMPTY_EXERCISE_VIDEO_FIELDS,
+  exerciseVideoFromForm,
+  fieldsFromExerciseVideo,
+  LICENCE_URLS,
+  VIDEO_ASPECTS,
+  VIDEO_LICENCES,
+  type ExerciseVideoFields,
+} from "../../lib/exerciseVideoForm";
 import { PROGRAMS_SUB_NAV } from "./subNav";
 
 type Difficulty = "beginner" | "intermediate" | "advanced";
@@ -25,7 +34,7 @@ interface Filters {
   search: string;
 }
 
-interface FormState {
+interface FormState extends ExerciseVideoFields {
   name: string;
   muscleGroup: string;
   equipment: string;
@@ -35,6 +44,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
+  ...EMPTY_EXERCISE_VIDEO_FIELDS,
   name: "",
   muscleGroup: "",
   equipment: "",
@@ -56,7 +66,7 @@ async function fetchDirectory(filters: Filters): Promise<AdminExerciseDirectoryR
   return res.data;
 }
 
-function formToPayload(form: FormState) {
+function formToPayload(form: FormState, video: AdminExerciseListItem["video"] | undefined) {
   return {
     name: form.name,
     muscleGroup: form.muscleGroup,
@@ -67,6 +77,9 @@ function formToPayload(form: FormState) {
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean),
+    // Exercise video — see lib/exerciseVideoForm.ts. undefined (create, no
+    // video) is dropped from the JSON; null (edit, link emptied) clears it.
+    video,
   };
 }
 
@@ -91,6 +104,7 @@ export function ExercisesDirectoryScreen() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-exercises", filters],
@@ -106,6 +120,7 @@ export function ExercisesDirectoryScreen() {
     setShowForm(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setVideoError(null);
   };
 
   const createMutation = useMutation({
@@ -142,7 +157,9 @@ export function ExercisesDirectoryScreen() {
 
   function startEdit(ex: AdminExerciseListItem) {
     setEditingId(ex.id);
+    setVideoError(null);
     setForm({
+      ...fieldsFromExerciseVideo(ex.video),
       name: ex.name,
       muscleGroup: ex.muscleGroup,
       equipment: ex.equipment,
@@ -156,6 +173,7 @@ export function ExercisesDirectoryScreen() {
   function startCreate() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setVideoError(null);
     setShowForm((prev) => !prev);
   }
 
@@ -243,7 +261,13 @@ export function ExercisesDirectoryScreen() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const payload = formToPayload(form);
+              const video = exerciseVideoFromForm(form, editingId !== null);
+              if ("error" in video) {
+                setVideoError(video.error);
+                return;
+              }
+              setVideoError(null);
+              const payload = formToPayload(form, video.video);
               if (editingId) updateMutation.mutate({ id: editingId, payload });
               else createMutation.mutate(payload);
             }}
@@ -324,6 +348,119 @@ export function ExercisesDirectoryScreen() {
                 className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
               />
             </label>
+            <fieldset className="space-y-2 rounded-md border border-border-subtle p-3">
+              <legend className="px-1 text-xs font-medium text-text-secondary">{t("exercisesDirectory.videoSection")}</legend>
+              <p className="text-xs text-text-dim">{t("exercisesDirectory.videoHelp")}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem]">
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.videoUrl")}
+                <input
+                  type="url"
+                  placeholder="https://…/exercise.mp4"
+                  value={form.videoUrl}
+                  onChange={(e) => setForm((prev) => ({ ...prev, videoUrl: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.videoLengthSec")}
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={form.videoDurationSec}
+                  onChange={(e) => setForm((prev) => ({ ...prev, videoDurationSec: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[10rem_1fr]">
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.videoAspect")}
+                <select
+                  value={form.videoAspect}
+                  onChange={(e) => setForm((prev) => ({ ...prev, videoAspect: e.target.value as FormState["videoAspect"] }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                >
+                  {VIDEO_ASPECTS.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.videoPosterUrl")}
+                <input
+                  type="url"
+                  placeholder="https://…/poster.jpg"
+                  value={form.videoPosterUrl}
+                  onChange={(e) => setForm((prev) => ({ ...prev, videoPosterUrl: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.creditAuthor")}
+                <input
+                  value={form.creditAuthor}
+                  onChange={(e) => setForm((prev) => ({ ...prev, creditAuthor: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.creditLicence")}
+                <select
+                  value={form.creditLicence}
+                  onChange={(e) => {
+                    const licence = e.target.value as FormState["creditLicence"];
+                    setForm((prev) => ({
+                      ...prev,
+                      creditLicence: licence,
+                      creditLicenceUrl: LICENCE_URLS[licence] ?? "",
+                    }));
+                  }}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                >
+                  {VIDEO_LICENCES.map((l) => (
+                    <option key={l} value={l}>
+                      {l === "Own" ? t("exercisesDirectory.licenceOwn") : l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.creditLicenceUrl")}
+                <input
+                  type="url"
+                  value={form.creditLicenceUrl}
+                  onChange={(e) => setForm((prev) => ({ ...prev, creditLicenceUrl: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.creditSourceUrl")}
+                <input
+                  type="url"
+                  placeholder="https://wger.de/en/exercise/…"
+                  value={form.creditSourceUrl}
+                  onChange={(e) => setForm((prev) => ({ ...prev, creditSourceUrl: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              </div>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                {t("exercisesDirectory.creditChanges")}
+                <input
+                  placeholder="Re-encoded and trimmed, sound removed"
+                  value={form.creditChanges}
+                  onChange={(e) => setForm((prev) => ({ ...prev, creditChanges: e.target.value }))}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                />
+              </label>
+              {videoError && <p className="text-xs text-danger">{videoError}</p>}
+            </fieldset>
             {saveError && (
               <p className="text-xs text-danger">{extractErrorMessage(saveError, "Couldn't save this exercise.")}</p>
             )}
@@ -380,7 +517,14 @@ export function ExercisesDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{ex.muscleGroup}</td>
                     <td className="px-4 py-3 text-text-secondary">{ex.equipment}</td>
                     <td className="px-4 py-3 text-text-secondary">{DIFFICULTY_LABELS[ex.difficulty]}</td>
-                    <td className="px-4 py-3 text-text-secondary">{ex.mediaUrl ? "Yes" : "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {ex.mediaUrl ? "Yes" : "—"}
+                      {ex.video && (
+                        <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent">
+                          {t("exercisesDirectory.videoBadge")}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-text-secondary">{ex.programUsageCount}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={ex.status} />

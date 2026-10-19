@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminContentReviewListResponse, ContentReviewContentType, ContentReviewStatus } from "@fitness-ai-app/types";
@@ -14,6 +15,7 @@ const CONTENT_TYPE_LABELS: Record<ContentReviewContentType, string> = {
   program: "Program",
   exercise: "Exercise",
   recipe: "Recipe",
+  article: "Article",
 };
 
 async function fetchQueue(status: ContentReviewStatus | ""): Promise<AdminContentReviewListResponse> {
@@ -27,8 +29,10 @@ async function fetchQueue(status: ContentReviewStatus | ""): Promise<AdminConten
  * 05.05 Review / Approval (docs/admin/03-screen-inventory.md §05.05) —
  * added 25 Aug 2026, joining Programs/Exercises/Recipes (05.01–05.03) as
  * the fourth real screen in Module 05. Covers Programs, Exercises, and
- * Recipes only — Educational Content (05.04) still isn't a real entity
- * anywhere in this build, so it can't be part of a real queue. "Priority"
+ * Recipes — and, since Oct 2026, Educational Content (05.04) articles,
+ * which can ONLY be published from here: approving one needs the name and
+ * credentials of the expert who checked it (shown to members as "Reviewed
+ * by …"). "Priority"
  * and "SLA" (spec'd columns with no backing field) and the Figma's fourth
  * "In Review" tab (no "claimed by a reviewer" state is modeled) are
  * surfaced as honest gaps rather than faked — see adminPrograms.service.ts
@@ -50,6 +54,9 @@ export function ReviewQueueScreen() {
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<ContentReviewStatus | "">("pending");
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  // Articles (05.04): the expert who checked it, required to approve.
+  const [expert, setExpert] = useState<Record<string, { name: string; credentials: string }>>({});
+  const expertFor = (id: string) => expert[id] ?? { name: "", credentials: "" };
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -60,7 +67,11 @@ export function ReviewQueueScreen() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-content-reviews"] });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => apiClient.post(`/admin/content-reviews/${id}/approve`, { reviewNotes: reviewNotes[id] }),
+    mutationFn: (id: string) =>
+      apiClient.post(`/admin/content-reviews/${id}/approve`, {
+        reviewNotes: reviewNotes[id],
+        ...(expert[id]?.name.trim() ? { expertReviewerName: expert[id].name.trim(), expertReviewerCredentials: expert[id].credentials.trim() } : {}),
+      }),
     onSuccess: invalidate,
   });
 
@@ -81,9 +92,10 @@ export function ReviewQueueScreen() {
         )}
 
         <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
-          A content creator can submit a draft Program, Exercise, or Recipe here for a second admin to sign off on.
+          A content creator can submit a draft Program, Exercise, Recipe or Article here for a second admin to sign off on.
           Approving publishes it (the same effect as the direct Publish button on its own Directory screen); rejecting
           leaves it as a draft with your notes attached. You can't approve or reject something you submitted yourself.
+          Articles have no direct Publish button: approving one needs the expert who checked it.
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
@@ -125,7 +137,17 @@ export function ReviewQueueScreen() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-text-primary">{r.contentName ?? "(deleted)"}</div>
-                  <div className="text-xs text-text-dim">{CONTENT_TYPE_LABELS[r.contentType]}</div>
+                  <div className="text-xs text-text-dim">
+                    {CONTENT_TYPE_LABELS[r.contentType]}
+                    {r.contentType === "article" && (
+                      <>
+                        {" · "}
+                        <Link to={`/programs/education?id=${r.contentId}`} className="text-accent hover:underline">
+                          Read the article
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -158,10 +180,40 @@ export function ReviewQueueScreen() {
                     className="w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
                     rows={2}
                   />
+                  {r.contentType === "article" && (
+                    <fieldset className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <legend className="mb-1 text-xs text-text-dim">
+                        Expert who checked this article (required to approve; members see "Reviewed by …")
+                      </legend>
+                      <label className="flex flex-col gap-1 text-xs text-text-dim">
+                        Name
+                        <input
+                          value={expertFor(r.id).name}
+                          onChange={(e) => setExpert((prev) => ({ ...prev, [r.id]: { ...expertFor(r.id), name: e.target.value } }))}
+                          placeholder="e.g. their full name"
+                          className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-xs text-text-primary outline-none focus:border-accent"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-text-dim">
+                        Credentials
+                        <input
+                          value={expertFor(r.id).credentials}
+                          onChange={(e) => setExpert((prev) => ({ ...prev, [r.id]: { ...expertFor(r.id), credentials: e.target.value } }))}
+                          placeholder="e.g. Registered Dietitian"
+                          className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-xs text-text-primary outline-none focus:border-accent"
+                        />
+                      </label>
+                    </fieldset>
+                  )}
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      disabled={
+                        approveMutation.isPending ||
+                        rejectMutation.isPending ||
+                        (r.contentType === "article" &&
+                          (expertFor(r.id).name.trim().length < 2 || expertFor(r.id).credentials.trim().length < 2))
+                      }
                       onClick={() => approveMutation.mutate(r.id)}
                       className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
                     >

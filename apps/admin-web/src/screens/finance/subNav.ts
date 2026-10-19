@@ -8,6 +8,10 @@
  * Influencer directory), and 10.09 Bank/Payment Accounts stays out (needs a
  * real banking-aggregation vendor) — same "no dead links, omit rather than
  * stub" convention. See adminSettlements.service.ts's own doc comment.
+ *
+ * **Oct 2026: 10.09 joins as "Bank Settlements"** — Razorpay's payouts to
+ * the bank, read-only, until a bank-feed vendor exists. "Settlements" above
+ * stays the coach settlements (10.06).
  */
 export const FINANCE_SUB_NAV = [
   { label: "Dashboard", path: "/finance" },
@@ -19,6 +23,8 @@ export const FINANCE_SUB_NAV = [
   // waiting on. Sits next to Settlements because that is where an
   // admin approves the rows a run then claims.
   { label: "Payout Runs", path: "/finance/payout-runs" },
+  // 10.09 (Oct 2026): what Razorpay has paid into the bank.
+  { label: "Bank Settlements", path: "/finance/bank-settlements" },
   { label: "Invoices", path: "/finance/invoices" },
   { label: "Receivables & Payables", path: "/finance/receivables-payables" },
   { label: "Taxes & Compliance", path: "/finance/taxes" },

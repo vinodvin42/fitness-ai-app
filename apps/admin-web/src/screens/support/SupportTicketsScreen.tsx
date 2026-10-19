@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminSupportTicketDetailResponse,
@@ -23,6 +24,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   billing: "Billing",
   account: "Account",
   other: "Other",
+  complaint: "Complaint",
 };
 
 const HISTORY_ACTION_LABELS: Record<string, string> = {
@@ -253,6 +255,7 @@ export function SupportTicketsScreen() {
                           <span>{t.userFullName}</span>
                           <span>·</span>
                           <span>{CATEGORY_LABELS[t.category] ?? t.category}</span>
+                          {t.complaint && <span className="font-mono text-accent">{t.complaint.reference}</span>}
                           <span>·</span>
                           <StatusBadge status={t.priority} />
                         </div>
@@ -348,6 +351,15 @@ export function SupportTicketsScreen() {
 
                 <div className="rounded-md border border-border-subtle p-3">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.triage")}</div>
+                  {ticket?.complaint && (
+                    <p className="mt-1 text-[11px] text-text-dim">
+                      A complaint ({ticket.complaint.reference}). Close it from{" "}
+                      <Link to="/support/complaints" className="text-accent hover:underline">
+                        Complaints
+                      </Link>{" "}
+                      with an outcome.
+                    </p>
+                  )}
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <label className="flex flex-col gap-1 text-xs text-text-dim">
                       {t("supportTickets.status")}

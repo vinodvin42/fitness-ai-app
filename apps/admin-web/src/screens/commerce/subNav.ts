@@ -12,6 +12,8 @@
 // Subscriptions (Revenue waterfall) stays out — see adminPayments.service.ts.
 export const COMMERCE_SUB_NAV = [
   { label: "Payments", path: "/commerce" },
+  // 06.01 Subscriptions list (Oct 2026) — the revenue waterfall stays under Finance.
+  { label: "Subscriptions", path: "/commerce/subscriptions" },
   { label: "Pricing", path: "/commerce/plans" },
   // Package 4 — coach levels, fees and FynroX commission.
   { label: "Coach levels", path: "/commerce/coach-levels" },

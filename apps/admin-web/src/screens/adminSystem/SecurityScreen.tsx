@@ -5,6 +5,7 @@ import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
+import { useAuth } from "../../lib/auth";
 import { ADMIN_SYSTEM_SUB_NAV } from "./subNav";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -24,12 +25,15 @@ const EMPTY_FORM: ChangePasswordForm = { currentPassword: "", newPassword: "", c
  * a real backend behind it: changing your own password
  * (`PATCH /admin/auth/password`, added in the same 25 Aug 2026 hardening
  * pass that made this screen necessary — see adminAuth.routes.ts's own
- * doc comment for why). 2FA, password policy, and session settings are
- * honestly NOT built — none of that exists anywhere in this API — and the
- * security-events table isn't either (no security-event log distinct from
- * the general AuditLog exists); both render via `NotAvailablePanel`
- * instead of being silently absent, same convention as every other
- * "half-real" module in this build.
+ * doc comment for why). Password policy and session settings are honestly
+ * NOT built, and the security-events table isn't either (no security-event
+ * log distinct from the general AuditLog exists); they render via
+ * `NotAvailablePanel` instead of being silently absent.
+ *
+ * Oct 2026: the sign-in code (admin MFA, D21) now exists — an
+ * authenticator-app code at every sign-in, set up at the first one, with
+ * recovery codes. This screen shows the admin's own status and how a lost
+ * phone is handled (a Super Admin resets it on Admin Users).
  *
  * No admin-web screen linked here before this — the endpoint existed but
  * had no UI, meaning the seeded bootstrap credential (published in this
@@ -38,6 +42,7 @@ const EMPTY_FORM: ChangePasswordForm = { currentPassword: "", newPassword: "", c
  */
 export function SecurityScreen() {
   const { t } = useTranslation();
+  const { adminUser } = useAuth();
   const [form, setForm] = useState<ChangePasswordForm>(EMPTY_FORM);
   const [justChanged, setJustChanged] = useState(false);
 
@@ -137,8 +142,27 @@ export function SecurityScreen() {
           </button>
         </form>
 
+        <div className="max-w-xl space-y-2 rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium">Sign-in code (MFA)</div>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] ${adminUser?.mfaEnabled ? "bg-accent/15 text-accent" : "bg-warning/15 text-warning"}`}
+            >
+              {adminUser?.mfaEnabled ? "Set up" : "Not set up"}
+            </span>
+          </div>
+          <p className="text-xs text-text-secondary">
+            Every admin signs in with their password plus a 6-digit code from an authenticator app. The app is set up at the first
+            sign-in, which also gives you one-time recovery codes.
+          </p>
+          <p className="text-xs text-text-dim">
+            Lost your phone? Sign in with one of your recovery codes, or ask the Super Admin to reset your sign-in code on Admin
+            Users. You then set up a new authenticator at your next sign-in.
+          </p>
+        </div>
+
         <NotAvailablePanel
-          keys={["twoFactorAuth", "passwordPolicy", "sessionSettings", "securityEventsTable"]}
+          keys={["passwordPolicy", "sessionSettings", "securityEventsTable"]}
           subtitle={t("security.theRestOf12")}
         />
       </div>

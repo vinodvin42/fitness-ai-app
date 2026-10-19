@@ -4,6 +4,9 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { GlobalSearch } from "./GlobalSearch";
 import { BrandLockup } from "./BrandLockup";
+import { AI_OPS_SUB_NAV } from "../screens/aiOps/subNav";
+import { ADMIN_SYSTEM_SUB_NAV } from "../screens/adminSystem/subNav";
+import { can, moduleForPath } from "../lib/permissions";
 
 /**
  * The shared shell (docs/admin/02-information-architecture.md §1) — fixed
@@ -164,33 +167,60 @@ interface NavItem {
   path: string;
   glyph: string;
   builtIn: boolean;
+  /** Shown when the role can view this module (Oct 2026, role-aware menus). */
+  module?: string;
+  /** Sections whose pages need different modules: shown if any page is, and the link opens the first one allowed. */
+  pages?: SubNavItem[];
 }
 
 interface SubNavItem {
   label: string;
   path: string;
+  /** The permission the page's data needs; omitted = everyone (e.g. your own Security page). */
+  module?: string;
+}
+
+/** Role labels for the shell (same names as Admin Users). */
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  co_founder: "Co-founder",
+  operations: "Operations",
+  finance: "Finance",
+  safety_privacy: "Safety & Privacy",
+  support: "Support",
+};
+
+/**
+ * Role-aware menus (Oct 2026): the signed-in admin carries its role's grants
+ * (`permissions`, from login and /admin/auth/me — apps/api's permissionsFor),
+ * so the console hides what the role would only get "access denied" on, and a
+ * page the role can't open (a deep link) shows "No access" instead of loading.
+ * The server still enforces every route. See lib/permissions.ts.
+ */
+function canView(permissions: Partial<Record<string, string[]>> | undefined, module?: string): boolean {
+  return can(permissions, module, "view");
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", path: "/", glyph: "▦", builtIn: true },
+  { label: "Dashboard", path: "/", glyph: "▦", builtIn: true, module: "dashboard" },
   // Maker-checker approvals inbox (blueprint section 5, D21).
-  { label: "Approvals", path: "/approvals", glyph: "✓", builtIn: true },
-  { label: "Users", path: "/users", glyph: "◔", builtIn: true },
-  { label: "Professionals", path: "/professionals", glyph: "◈", builtIn: true },
-  { label: "Relationships", path: "/relationships", glyph: "⇄", builtIn: true },
-  { label: "Programs", path: "/programs", glyph: "▤", builtIn: true },
-  { label: "Commerce", path: "/commerce", glyph: "◎", builtIn: true },
-  { label: "Growth", path: "/growth", glyph: "↗", builtIn: true },
-  { label: "Support & Safety", path: "/support", glyph: "◑", builtIn: true },
-  { label: "Analytics", path: "/analytics", glyph: "▥", builtIn: true },
-  { label: "Finance", path: "/finance", glyph: "◫", builtIn: true },
-  { label: "AI Operations", path: "/ai-operations", glyph: "✳", builtIn: true },
-  { label: "Admin & System", path: "/admin-system", glyph: "⚙", builtIn: true },
+  { label: "Approvals", path: "/approvals", glyph: "✓", builtIn: true, module: "approvals" },
+  { label: "Users", path: "/users", glyph: "◔", builtIn: true, module: "users" },
+  { label: "Professionals", path: "/professionals", glyph: "◈", builtIn: true, module: "professionals" },
+  { label: "Relationships", path: "/relationships", glyph: "⇄", builtIn: true, module: "relationships" },
+  { label: "Programs", path: "/programs", glyph: "▤", builtIn: true, module: "programs" },
+  { label: "Commerce", path: "/commerce", glyph: "◎", builtIn: true, module: "commerce" },
+  { label: "Growth", path: "/growth", glyph: "↗", builtIn: true, module: "growth" },
+  { label: "Support & Safety", path: "/support", glyph: "◑", builtIn: true, module: "support" },
+  { label: "Analytics", path: "/analytics", glyph: "▥", builtIn: true, module: "analytics" },
+  { label: "Finance", path: "/finance", glyph: "◫", builtIn: true, module: "commerce" },
+  { label: "AI Operations", path: "/ai-operations", glyph: "✳", builtIn: true, pages: AI_OPS_SUB_NAV },
+  { label: "Admin & System", path: "/admin-system", glyph: "⚙", builtIn: true, pages: ADMIN_SYSTEM_SUB_NAV },
   // Gym Partner Lite (R2 Wave 4, 20 Sep 2026) — a real 13th nav destination,
   // not one of the original 12-module Figma IA this file's own top comment
   // describes. See docs/admin/07-open-questions-gaps.md's Wave 1/Wave 4
   // entries for the full Gym Partner Lite design.
-  { label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true },
+  { label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true, module: "gyms" },
 ];
 
 export function AppShell({
@@ -206,16 +236,29 @@ export function AppShell({
   const { t } = useTranslation();
   const location = useLocation();
   const { adminUser, logout } = useAuth();
+  const permissions = adminUser?.permissions;
+  const visibleSubNav = subNav?.filter((item) => canView(permissions, item.module));
+  const navItems = NAV_ITEMS.flatMap((item) => {
+    if (item.pages) {
+      const first = item.pages.find((p) => canView(permissions, p.module));
+      return first ? [{ ...item, path: first.path === item.pages[0].path ? item.path : first.path, activePrefix: item.path }] : [];
+    }
+    return canView(permissions, item.module) ? [{ ...item, activePrefix: item.path }] : [];
+  });
+  const roleLabel = adminUser ? (ROLE_LABELS[adminUser.role] ?? adminUser.role.replace(/_/g, " ")) : "";
+  const pageModule = moduleForPath(location.pathname);
+  const pageAllowed = canView(permissions, pageModule ?? undefined);
 
   return (
     <div className="flex min-h-screen bg-canvas text-text-primary">
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
-        <BrandLockup subtitle={t("appShell.superAdmin")} />
+        <BrandLockup subtitle={roleLabel || t("appShell.superAdmin")} />
 
         <nav className="flex-1 space-y-0.5 px-3 py-4">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive =
-              location.pathname === item.path || (item.path !== "/" && location.pathname.startsWith(`${item.path}/`));
+              location.pathname === item.activePrefix ||
+              (item.activePrefix !== "/" && location.pathname.startsWith(`${item.activePrefix}/`));
             if (!item.builtIn) {
               return (
                 <div
@@ -272,9 +315,7 @@ export function AppShell({
             </div>
             <div className="text-right">
               <div className="text-sm font-medium">{adminUser?.fullName}</div>
-              <div className="text-[10px] uppercase tracking-widest text-text-dim">
-                {adminUser?.role.replace(/_/g, " ")}
-              </div>
+              <div className="text-[10px] uppercase tracking-widest text-text-dim">{roleLabel}</div>
             </div>
             <button
               type="button"
@@ -286,9 +327,9 @@ export function AppShell({
           </div>
         </header>
 
-        {subNav && subNav.length > 0 && (
+        {visibleSubNav && visibleSubNav.length > 0 && (
           <div className="flex gap-1 border-b border-border-subtle bg-canvas px-8 py-2">
-            {subNav.map((item) => {
+            {visibleSubNav.map((item) => {
               const isSubActive = location.pathname === item.path;
               return (
                 <Link
@@ -307,7 +348,23 @@ export function AppShell({
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-8 py-6">
+          {pageAllowed ? (
+            children
+          ) : (
+            <div role="alert" className="mx-auto mt-12 max-w-md rounded-lg border border-border-subtle bg-surface p-6 text-center">
+              <div className="text-sm font-medium text-text-primary">No access</div>
+              <p className="mt-2 text-xs text-text-secondary">
+                Your role ({roleLabel}) can't open this page. If you need it, ask a Super Admin to change your role.
+              </p>
+              {navItems[0] && (
+                <Link to={navItems[0].path} className="mt-4 inline-block text-xs text-accent hover:underline">
+                  Go to {navItems[0].label}
+                </Link>
+              )}
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

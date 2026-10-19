@@ -28,15 +28,20 @@ export const BRAND_NAME = "Fynrox";
 export const BRAND_AI_NAME = "Fynrox AI";
 
 /**
- * The square logo mark — the brand's initials, not its name.
+ * The logo mark: a running figure that forms an "F", in a cyan-to-blue
+ * gradient (logo supplied 16 Oct 2026, replacing every earlier mark).
  *
- * A constant because the rename missed the two places this was written
- * out by hand: the admin console's login screen and its app shell both
- * still read "PF", the old PrimeFit mark, and that was visible on the
- * live console. apps/landing hardcodes the same two letters in HTML,
- * which cannot import this file (no build step) — if this ever changes,
- * grep for brand__mark there too.
+ * It is artwork, not a path, so each app ships its own PNG copy (React
+ * Native and Vite only bundle files inside the app). All are generated
+ * from the one supplied image; the mark has a transparent background and
+ * keeps its colours on light and dark surfaces. App icons and favicons
+ * put it on a black tile.
+ * Source artwork: docs/brand/fynrox-logo-source.png (regenerate every size from it).
+ *   apps/{user,coach}-mobile/assets/logo-mark.png  (+ icon, adaptive-icon, splash-icon, favicon)
+ *   apps/{admin-web,creator-portal,gym-portal}/src/assets/logo-mark.png, public/favicon.png, public/apple-touch-icon.png
+ *   apps/landing/assets/brand/{logo-mark,favicon,apple-touch-icon}.png  (landing has no build step; its pages link these directly)
  */
+/** @deprecated The "FX" initials are not a logo; use the logo-mark.png artwork. */
 export const BRAND_MARK = "FX";
 
 /** The single R1 paid tier (see `r1Flags.SINGLE_PREMIUM_TIER`). */

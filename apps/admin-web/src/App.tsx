@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ApprovalsScreen } from "./screens/approvals/ApprovalsScreen";
+import { ReasonDialogHost } from "./components/ReasonDialogHost";
 import { PayoutRunsScreen } from "./screens/finance/PayoutRunsScreen";
 import { PrivacyRequestsScreen } from "./screens/adminSystem/PrivacyRequestsScreen";
 import { GymHelpRequestsScreen } from "./screens/gyms/GymHelpRequestsScreen";
@@ -22,6 +23,8 @@ import { AdminUsersScreen } from "./screens/adminSystem/AdminUsersScreen";
 import { AuditLogsScreen } from "./screens/adminSystem/AuditLogsScreen";
 import { IntegrationsScreen } from "./screens/adminSystem/IntegrationsScreen";
 import { SecurityScreen } from "./screens/adminSystem/SecurityScreen";
+import { NotificationsScreen } from "./screens/adminSystem/NotificationsScreen";
+import { PlatformSettingsScreen } from "./screens/adminSystem/PlatformSettingsScreen";
 import { RolesPermissionsScreen } from "./screens/adminSystem/RolesPermissionsScreen";
 import { PrivacyScreen } from "./screens/adminSystem/PrivacyScreen";
 import { ConsentManagementScreen } from "./screens/adminSystem/ConsentManagementScreen";
@@ -35,9 +38,14 @@ import { PricingScreen } from "./screens/commerce/PricingScreen";
 import { CoachLevelsScreen } from "./screens/commerce/CoachLevelsScreen";
 import { CouponsScreen } from "./screens/commerce/CouponsScreen";
 import { RefundsScreen } from "./screens/commerce/RefundsScreen";
+import { SubscriptionsScreen } from "./screens/commerce/SubscriptionsScreen";
 import { SupportTicketsScreen } from "./screens/support/SupportTicketsScreen";
 import { EscalationsScreen } from "./screens/support/EscalationsScreen";
 import { SafetyEscalationsScreen } from "./screens/support/SafetyEscalationsScreen";
+import { SafetyReportsScreen } from "./screens/support/SafetyReportsScreen";
+import { ComplaintsScreen } from "./screens/support/ComplaintsScreen";
+import { EducationalContentScreen } from "./screens/programs/EducationalContentScreen";
+import { ForgotPasswordScreen, ResetPasswordScreen } from "./screens/PasswordResetScreens";
 import { ReferralsScreen } from "./screens/growth/ReferralsScreen";
 import { InfluencersScreen } from "./screens/growth/InfluencersScreen";
 import { CampaignDirectoryScreen } from "./screens/acquisition/CampaignDirectoryScreen";
@@ -53,11 +61,14 @@ import { RevenueScreen } from "./screens/finance/RevenueScreen";
 import { RevenueWaterfallScreen } from "./screens/finance/RevenueWaterfallScreen";
 import { ExpensesScreen } from "./screens/finance/ExpensesScreen";
 import { SettlementsScreen } from "./screens/finance/SettlementsScreen";
+import { BankSettlementsScreen } from "./screens/finance/BankSettlementsScreen";
 import { InvoicesScreen } from "./screens/finance/InvoicesScreen";
 import { ReceivablesPayablesScreen } from "./screens/finance/ReceivablesPayablesScreen";
 import { TaxesScreen } from "./screens/finance/TaxesScreen";
 import { FinancialReportsScreen } from "./screens/finance/FinancialReportsScreen";
 import { AiCoachSettingsScreen } from "./screens/aiOps/AiCoachSettingsScreen";
+import { AiUsageScreen } from "./screens/aiOps/AiUsageScreen";
+import { AiSafetyScreen } from "./screens/aiOps/AiSafetyScreen";
 import { GymDirectoryScreen } from "./screens/gyms/GymDirectoryScreen";
 import { GymProfileScreen } from "./screens/gyms/GymProfileScreen";
 
@@ -123,6 +134,12 @@ function AppRoutes() {
           </RedirectIfAuthed>
         }
       />
+      {/* Admin forgot/reset password (Oct 2026) — see PasswordResetScreens.tsx.
+          The emailed link may arrive under /app (where the console is served),
+          so both reset paths are routed. */}
+      <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+      <Route path="/reset-password" element={<ResetPasswordScreen />} />
+      <Route path="/app/reset-password" element={<ResetPasswordScreen />} />
       <Route
         path="/"
         element={
@@ -317,6 +334,24 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* 12.07 Notifications and 12.08 Platform Settings (Oct 2026) — read-only
+          views of what really exists; see each screen's doc comment. */}
+      <Route
+        path="/admin-system/notifications"
+        element={
+          <RequireAuth>
+            <NotificationsScreen />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin-system/settings"
+        element={
+          <RequireAuth>
+            <PlatformSettingsScreen />
+          </RequireAuth>
+        }
+      />
       {/* Module 05 — Programs (Content CMS), 05.01/05.02/05.03 added 22 Aug
           2026; 05.05 Review/Approval joined 25 Aug 2026, closing the gap
           the old comment here used to flag (see adminPrograms.service.ts's
@@ -408,6 +443,15 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* 06.01 Subscriptions list (Oct 2026), declared before "/commerce/:id". */}
+      <Route
+        path="/commerce/subscriptions"
+        element={
+          <RequireAuth>
+            <SubscriptionsScreen />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/commerce/:id"
         element={
@@ -448,6 +492,33 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <SafetyEscalationsScreen />
+          </RequireAuth>
+        }
+      />
+      {/* 05.04 Educational Content (Oct 2026) — see EducationalContentScreen.tsx. */}
+      <Route
+        path="/programs/education"
+        element={
+          <RequireAuth>
+            <EducationalContentScreen />
+          </RequireAuth>
+        }
+      />
+      {/* 08.03 Complaints (Oct 2026) — see ComplaintsScreen.tsx. */}
+      <Route
+        path="/support/complaints"
+        element={
+          <RequireAuth>
+            <ComplaintsScreen />
+          </RequireAuth>
+        }
+      />
+      {/* 08.04 Safety & Abuse Reports (Oct 2026) — see SafetyReportsScreen.tsx. */}
+      <Route
+        path="/support/safety-reports"
+        element={
+          <RequireAuth>
+            <SafetyReportsScreen />
           </RequireAuth>
         }
       />
@@ -572,11 +643,18 @@ function AppRoutes() {
           below at /finance/settlements; the Revenue Waterfall at
           /finance/waterfall shipped 5 Sep 2026, sharing FINANCE_SUB_NAV
           too). 10.07 Influencer Payouts lives under Growth instead (see
-          the Growth route block above), and 10.09 Bank/Payment Accounts
-          still has no route at all — same "no dead links, omit rather
-          than stub" convention SUPPORT_SUB_NAV set for 08.03/08.04. See
-          adminFinance.service.ts's own doc comment for the full
-          real-vs-not breakdown. */}
+          the Growth route block above). 10.09 joined in Oct 2026 as Bank
+          Settlements (/finance/bank-settlements): Razorpay's payouts to the
+          bank, read-only. See adminFinance.service.ts's own doc comment for
+          the full real-vs-not breakdown. */}
+      <Route
+        path="/finance/bank-settlements"
+        element={
+          <RequireAuth>
+            <BankSettlementsScreen />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/finance"
         element={
@@ -670,6 +748,24 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* 11.02 AI Usage & Metrics (Oct 2026) — see AiUsageScreen.tsx. */}
+      <Route
+        path="/ai-operations/usage"
+        element={
+          <RequireAuth>
+            <AiUsageScreen />
+          </RequireAuth>
+        }
+      />
+      {/* 11.03 AI Safety / Overrides (Oct 2026) — see AiSafetyScreen.tsx. */}
+      <Route
+        path="/ai-operations/safety"
+        element={
+          <RequireAuth>
+            <AiSafetyScreen />
+          </RequireAuth>
+        }
+      />
       {/* Gym Partner Lite admin-web UI (R2 Wave 4, 20 Sep 2026) — the real
           screens this wave built over R2 Wave 1's real gyms.service.ts/
           gyms.routes.ts. Directory + Profile (row-click drill-down), same
@@ -713,6 +809,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AppRoutes />
+        {/* The in-app reason dialog and "sent for approval" notices (lib/reasonPrompt.ts). */}
+        <ReasonDialogHost />
       </AuthProvider>
     </QueryClientProvider>
   );

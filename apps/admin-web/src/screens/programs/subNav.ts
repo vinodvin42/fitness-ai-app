@@ -11,5 +11,7 @@ export const PROGRAMS_SUB_NAV = [
   { label: "Programs", path: "/programs" },
   { label: "Exercises", path: "/programs/exercises" },
   { label: "Recipes", path: "/programs/recipes" },
+  // 05.04 Educational Content (Oct 2026) — the app's Learn library.
+  { label: "Educational Content", path: "/programs/education" },
   { label: "Review/Approval", path: "/programs/review-queue" },
 ];

@@ -120,6 +120,16 @@ export function AdminUsersScreen() {
     onSuccess: invalidateAll,
   });
 
+  // Reset another admin's sign-in code (lost phone). They set up a new
+  // authenticator at their next sign-in. Super Admin applies it directly;
+  // the Co-founder's request goes to approval (server-side, D21). The
+  // reason dialog (lib/reasonPrompt.ts) is the confirmation step.
+  const canResetMfa = viewer?.role === "super_admin" || viewer?.role === "co_founder";
+  const resetMfaMutation = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/admin/admin-users/${id}/mfa/reset`),
+    onSuccess: invalidateAll,
+  });
+
   async function copyPassword() {
     if (!createdResult) return;
     try {
@@ -308,6 +318,11 @@ export function AdminUsersScreen() {
           </div>
         )}
 
+        {resetMfaMutation.isError && (
+          <p className="text-xs text-danger">
+            {extractErrorMessage(resetMfaMutation.error, "The sign-in code wasn't reset.")}
+          </p>
+        )}
         {(disableMutation.isError || enableMutation.isError) && (
           <p className="text-xs text-danger">
             {extractErrorMessage(disableMutation.error ?? enableMutation.error, "That action didn't go through.")}
@@ -344,6 +359,9 @@ export function AdminUsersScreen() {
                       <td className="px-4 py-3 text-text-secondary">{roleLabel(a.role)}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={a.status} />
+                        <div className="mt-1 text-[11px] text-text-dim">
+                          {a.mfaEnabled ? "Sign-in code set up" : "No sign-in code yet"}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString() : "Never"}
@@ -368,6 +386,17 @@ export function AdminUsersScreen() {
                             className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
                           >
                             {t("adminUsers.enable")}
+                          </button>
+                        )}
+                        {canResetMfa && !isSelf && a.mfaEnabled && (
+                          <button
+                            type="button"
+                            disabled={resetMfaMutation.isPending}
+                            onClick={() => resetMfaMutation.mutate(a.id)}
+                            title="For a lost phone: they set up a new authenticator app at their next sign-in"
+                            className="ml-2 rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+                          >
+                            Reset sign-in code
                           </button>
                         )}
                       </td>
