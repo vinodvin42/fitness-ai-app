@@ -1,0 +1,12 @@
+-- Recipe sample videos (20 Oct 2026): link five free Pexels clips to their recipes as samples.
+-- Clips are hosted on Azure Blob (fynroxmedia/recipe-videos): cropped square, 720x720, no sound.
+-- Licence: Pexels License (https://www.pexels.com/license/), free to use and modify, no attribution
+-- required. Sources: rec-guacamole = pexels.com/video/5738584 (RDNE Stock project); rec-smoothie = pexels.com/video/5436163 (Pavel Danilyuk); rec-fruit-salad = pexels.com/video/854082 (Coverr); rec-veggie-omelette = pexels.com/video/8051995 (Annushka Ahuja); rec-protein-pancakes = pexels.com/video/3704774 (cottonbro studio).
+-- Data only: fills `video` where it is still empty, so a video an admin already entered is kept.
+-- A step marker is written only when the recipe has that method step; otherwise steps is [].
+
+UPDATE "recipes" SET "video" = jsonb_build_object('url', 'https://fynroxmedia.blob.core.windows.net/recipe-videos/guacamole.mp4', 'durationSec', 17, 'steps', CASE WHEN cardinality("instructions") >= 2 THEN '[{"step":2,"startSec":0}]'::jsonb ELSE '[]'::jsonb END) WHERE "id" = 'rec-guacamole' AND "video" IS NULL;
+UPDATE "recipes" SET "video" = jsonb_build_object('url', 'https://fynroxmedia.blob.core.windows.net/recipe-videos/smoothie.mp4', 'durationSec', 16, 'steps', CASE WHEN cardinality("instructions") >= 2 THEN '[{"step":2,"startSec":0}]'::jsonb ELSE '[]'::jsonb END) WHERE "id" = 'rec-smoothie' AND "video" IS NULL;
+UPDATE "recipes" SET "video" = jsonb_build_object('url', 'https://fynroxmedia.blob.core.windows.net/recipe-videos/fruit-salad.mp4', 'durationSec', 13, 'steps', CASE WHEN cardinality("instructions") >= 2 THEN '[{"step":2,"startSec":0}]'::jsonb ELSE '[]'::jsonb END) WHERE "id" = 'rec-fruit-salad' AND "video" IS NULL;
+UPDATE "recipes" SET "video" = jsonb_build_object('url', 'https://fynroxmedia.blob.core.windows.net/recipe-videos/veggie-omelette.mp4', 'durationSec', 10, 'steps', CASE WHEN cardinality("instructions") >= 2 THEN '[{"step":2,"startSec":0}]'::jsonb ELSE '[]'::jsonb END) WHERE "id" = 'rec-veggie-omelette' AND "video" IS NULL;
+UPDATE "recipes" SET "video" = jsonb_build_object('url', 'https://fynroxmedia.blob.core.windows.net/recipe-videos/protein-pancakes.mp4', 'durationSec', 27, 'steps', CASE WHEN cardinality("instructions") >= 4 THEN '[{"step":4,"startSec":0}]'::jsonb ELSE '[]'::jsonb END) WHERE "id" = 'rec-protein-pancakes' AND "video" IS NULL;
