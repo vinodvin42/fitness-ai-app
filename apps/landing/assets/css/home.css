@@ -275,6 +275,12 @@ svg {
   gap: 16px;
 }
 
+/* Partners shows only the professional card for now (gyms and creators
+   are hidden until they launch), so it takes the full row. */
+.cards-3--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* ------------------------------------------------------------------ */
 /* Buttons                                                              */
 /* ------------------------------------------------------------------ */
