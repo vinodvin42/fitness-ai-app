@@ -275,6 +275,78 @@ svg {
   gap: 16px;
 }
 
+/* Plans shows two cards for now (Basic and Prime). */
+.cards-3--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Partners shows only the professional card for now (gyms and creators
+   are hidden until they launch): a coach photo beside a compact card.
+   The card sets the row height; the photo just fills its slot (it is
+   absolutely positioned so its tall portrait size can't stretch the row). */
+.partner-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 16px;
+}
+
+.partner-feature__media {
+  position: relative;
+  min-height: 280px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--ink);
+}
+
+.partner-feature__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 6%;
+}
+
+.partner--feature {
+  justify-content: center;
+}
+
+.partner--feature .bullets {
+  margin-bottom: 6px;
+}
+
+.partner--feature .bullets li::before {
+  background: var(--mint);
+}
+
+/* Beats .btn-ink's full-width, pushed-to-bottom, ink defaults (declared
+   later): content width, and mint like the site's other primary actions. */
+.partner .btn-ink--auto {
+  width: auto;
+  margin-top: 4px;
+  padding: 0 28px;
+  background: var(--mint);
+  color: var(--ink);
+}
+
+.partner .btn-ink--auto:hover {
+  background: var(--mint-hover);
+}
+
+@media (max-width: 719px) {
+  .partner-feature {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .partner-feature__media {
+    min-height: 240px;
+  }
+
+  .partner .btn-ink--auto {
+    width: 100%;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Buttons                                                              */
 /* ------------------------------------------------------------------ */
@@ -1174,6 +1246,15 @@ svg {
   color: var(--text-on-dark-muted);
 }
 
+/* Who the programme is for, kept below the promise and set apart in mint. */
+.program__for {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 14px;
+  color: var(--mint);
+}
+
 .programs__note {
   font-size: 15px;
   color: var(--text-on-dark-muted);
@@ -1302,6 +1383,51 @@ svg {
 
 .plan--featured .plan__note {
   color: var(--text-on-dark-muted);
+}
+
+.plan__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.plan__tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan__price {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.plan__price span {
+  margin-left: 2px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--grey-strong);
+}
+
+.plan--featured .plan__price {
+  color: var(--mint);
+}
+
+.plan--featured .plan__price span {
+  color: var(--text-on-dark-muted);
+}
+
+.plan__note--small {
+  font-size: 14px;
 }
 
 /* ------------------------------------------------------------------ */

@@ -75,11 +75,29 @@ if (!appDistArg) {
 }
 const appDistDir = path.resolve(repoRoot, appDistArg);
 
+// 20 Oct 2026, owner's decision: the gym and creator (influencer) programmes
+// are hidden until they launch. While this is false the two partner portals
+// are not mounted even though the workflow still builds them, and the
+// partner pages and invite/referral links answer 404. Flip to true to bring
+// them all back.
+const PARTNER_PROGRAMMES_LIVE = false;
+const PARTNER_MOUNTS = new Set(["portal/gym", "portal/creator"]);
+const PARTNER_PATHS = [
+  "/portal/gym/*",
+  "/portal/creator/*",
+  "/gyms.html",
+  "/creators.html",
+  "/gym-invite.html",
+  "/referral.html",
+  "/gym/*",
+  "/r/*",
+];
+
 // Everything after the second app is "<dist>:<mount>" — mounted whole, under
 // its own subpath. Parsed strictly rather than forgivingly: a typo here would
 // otherwise deploy a portal to the wrong path, or to the site root on top of
 // the landing page, and only be noticed in production.
-const extraApps = process.argv.slice(4).map((arg) => {
+const parsedExtraApps = process.argv.slice(4).map((arg) => {
   const sep = arg.lastIndexOf(":");
   if (sep <= 0 || sep === arg.length - 1) {
     console.error(`Bad extra-app argument "${arg}" — expected "<dist>:<mount>", e.g. apps/gym-portal/dist:gym`);
@@ -101,6 +119,13 @@ const extraApps = process.argv.slice(4).map((arg) => {
   }
   return { distArg: dist, dist: path.resolve(repoRoot, dist), mount };
 });
+const extraApps = PARTNER_PROGRAMMES_LIVE
+  ? parsedExtraApps
+  : parsedExtraApps.filter(({ mount, distArg }) => {
+      if (!PARTNER_MOUNTS.has(mount)) return true;
+      console.log(`Skipping ${distArg} at /${mount}/ — partner programmes are hidden.`);
+      return false;
+    });
 
 // "app" is taken by the flatten-mode app below, and two apps claiming one
 // mount would silently overwrite each other.
@@ -258,17 +283,28 @@ fs.writeFileSync(
           { route: `/${mount}`, rewrite: `/${mount}/index.html` },
           { route: `/${mount}/*`, rewrite: `/${mount}/index.html` },
         ]),
+        // Gym invite and creator referral links (/gym/<code>, /r/<code>) —
+        // the same rewrites apps/landing/staticwebapp.config.json declares,
+        // which this generated config replaces. Without them those links
+        // fell through to the homepage. While the partner programmes are
+        // hidden (see PARTNER_PROGRAMMES_LIVE), these and the partner
+        // pages answer 404 instead.
+        // Status code only: Azure rejects a rule that has both a rewrite and
+        // a statusCode. The 404 page itself comes from responseOverrides.
+        ...(PARTNER_PROGRAMMES_LIVE
+          ? [
+              { route: "/gym/*", rewrite: "/gym-invite.html" },
+              { route: "/r/*", rewrite: "/referral.html" },
+            ]
+          : PARTNER_PATHS.map((route) => ({ route, statusCode: 404 }))),
       ],
-      navigationFallback: {
-        rewrite: "/index.html",
-        exclude: [
-          "/app/*",
-          ...extraApps.map(({ mount }) => `/${mount}/*`),
-          "/_expo/*",
-          "/assets/*",
-          "/favicon.svg",
-          "/robots.txt",
-        ],
+      // 20 Oct 2026: no navigationFallback. It rewrote every unknown URL to
+      // the homepage with a 200, so 404.html was never shown and search
+      // engines saw soft 404s. Every real route is listed above or is a
+      // real file, so unknown paths now get the landing 404 page with a
+      // real 404 status.
+      responseOverrides: {
+        "404": { rewrite: "/404.html", statusCode: 404 },
       },
       globalHeaders: {
         "X-Content-Type-Options": "nosniff",

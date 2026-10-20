@@ -29,8 +29,6 @@ const NAV_LINKS = [
   ["programs.html", "Programs"],
   ["professional-guidance.html", "Guidance"],
   ["pricing.html", "Pricing"],
-  ["gyms.html", "For Gyms"],
-  ["creators.html", "For Creators"],
   ["professionals.html", "For Professionals"],
   ["learn.html", "Learn"],
 ];
@@ -44,8 +42,6 @@ const FOOTER_COLS = [
     ["download.html", "Download"],
   ]],
   ["Partners", [
-    ["gyms.html", "For Gyms"],
-    ["creators.html", "For Creators"],
     ["professionals.html", "For Professionals"],
     ["professional-guidance.html", "Professional Guidance"],
   ]],

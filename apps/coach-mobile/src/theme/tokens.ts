@@ -4,13 +4,12 @@
  * approximations from rendered screenshots, not a locked spec. Confirm
  * exact values with design before shipping.
  *
- * Accent is the coach app's own **lime/yellow-green** (`#D4FF00`–`#C6F000`,
- * §1) — deliberately left different from admin-web's mint and user-mobile's
- * blue. docs/coach/07-open-questions-gaps.md §3 flags all three as likely
- * unintentional drift, but unifying them is a real design decision, not an
- * engineering call to make unilaterally — see that gap doc's "20 Aug 2026"
- * entry. Every other token below otherwise mirrors user-mobile's shape
- * exactly, so a future shared `packages/ui` token set has an easy merge.
+ * Accent is the brand mint (#70D4A8) that the website, admin console and
+ * mint F logo use. 20 Oct 2026, owner's decision: the coach app's original
+ * lime/yellow-green (#D4FF00–#C6F000, docs/coach/04-design-system.md §1)
+ * is retired, which closes docs/coach/07-open-questions-gaps.md §3 for this
+ * app. Every other token below mirrors user-mobile's shape, so a future
+ * shared `packages/ui` token set has an easy merge.
  */
 
 export const colors = {
@@ -27,8 +26,8 @@ export const colors = {
   // had been measured.
   textMuted: "#88888F",
 
-  accent: "#D4FF00",
-  accentAlt: "#C6F000",
+  accent: "#70D4A8",
+  accentAlt: "#8ADCB9",
 
   success: "#22C55E",
   warning: "#F59E0B",
