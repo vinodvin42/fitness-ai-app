@@ -55,6 +55,7 @@ export function ProfessionalProfileScreen() {
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("overview");
   const [draftCapacity, setDraftCapacity] = useState("");
+  const [draftGender, setDraftGender] = useState<"" | "male" | "female">("");
   const queryClient = useQueryClient();
   // Hide what this role can't do (the API still checks every call).
   const canEdit = useCan("professionals", "edit");
@@ -68,6 +69,18 @@ export function ProfessionalProfileScreen() {
   useEffect(() => {
     if (data) setDraftCapacity(String(data.professional.maxActiveClients));
   }, [data?.professional.maxActiveClients]);
+
+  useEffect(() => {
+    if (data) setDraftGender(data.professional.gender ?? "");
+  }, [data?.professional.gender]);
+
+  // Coach gender (20 Oct 2026): members can ask for a male or female coach, and a
+  // request only goes to a coach of that gender. The coach can state it in the coach
+  // app; an admin can set or correct it here (PATCH /admin/professionals/:id/gender).
+  const genderMutation = useMutation({
+    mutationFn: (gender: "male" | "female" | null) => apiClient.patch(`/admin/professionals/${id}/gender`, { gender }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professional-detail", id] }),
+  });
 
   // R2 Wave 2 (20 Sep 2026) — admin override for `maxActiveClients`, the
   // same `PATCH /admin/professionals/:id/capacity` endpoint R2 Wave 1
@@ -143,6 +156,36 @@ export function ProfessionalProfileScreen() {
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.profile")}</div>
                 <dl className="mt-3 space-y-2 text-sm">
                   <Row label={t("professionalProfile.yearsExperience")} value={data.professional.yearsExperience ?? "—"} />
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-text-dim">Gender</dt>
+                    <dd className="flex items-center gap-2 text-right text-text-secondary">
+                      {canEdit ? (
+                        <>
+                          <select
+                            aria-label="Coach gender"
+                            value={draftGender}
+                            onChange={(e) => setDraftGender(e.target.value as "" | "male" | "female")}
+                            disabled={genderMutation.isPending}
+                            className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-sm text-text-primary"
+                          >
+                            <option value="">Not stated</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                          </select>
+                          <button
+                            type="button"
+                            disabled={genderMutation.isPending || draftGender === (data.professional.gender ?? "")}
+                            onClick={() => genderMutation.mutate(draftGender === "" ? null : draftGender)}
+                            className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-canvas disabled:opacity-40"
+                          >
+                            {genderMutation.isPending ? "Saving…" : "Save"}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="capitalize">{data.professional.gender ?? "Not stated"}</span>
+                      )}
+                    </dd>
+                  </div>
                   <Row label={t("professionalProfile.specializations")} value={data.professional.specializationTags.join(", ") || "—"} />
                   <Row label={t("professionalProfile.bio")} value={data.professional.bio ?? "—"} />
                   <Row label={t("professionalProfile.joined")} value={new Date(data.professional.createdAt).toLocaleDateString()} />

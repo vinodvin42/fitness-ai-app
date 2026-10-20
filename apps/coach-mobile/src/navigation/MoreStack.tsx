@@ -2,6 +2,7 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { MoreScreen } from "../screens/more/MoreScreen";
 import { AvailabilityScreen } from "../screens/more/AvailabilityScreen";
+import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EarningsScreen } from "../screens/earnings/EarningsScreen";
 import { OffersScreen } from "../screens/clients/OffersScreen";
 import { FormReviewsListScreen } from "../screens/formReviews/FormReviewsListScreen";
@@ -16,6 +17,7 @@ import { FormReviewDetailScreen } from "../screens/formReviews/FormReviewDetailS
 export type MoreStackParamList = {
   MoreMenu: undefined;
   AvailabilityCapacity: undefined;
+  MyProfile: undefined;
   /** P6 — the earnings surface, absent from this app until R1. */
   Earnings: undefined;
   /** P-M7 — offers list, with decline reasons and expiry. */
@@ -31,6 +33,7 @@ export function MoreStack() {
     <Stack.Navigator initialRouteName="MoreMenu" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MoreMenu" component={MoreScreen} />
       <Stack.Screen name="AvailabilityCapacity" component={AvailabilityScreen} />
+      <Stack.Screen name="MyProfile" component={ProfileScreen} />
       <Stack.Screen name="Earnings" component={EarningsScreen} />
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="FormReviews" component={FormReviewsListScreen} />

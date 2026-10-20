@@ -26,6 +26,7 @@ export function toPublicProfessional(professional: {
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  gender?: string | null;
   status: string;
   kycStatus: string;
   createdAt: Date;

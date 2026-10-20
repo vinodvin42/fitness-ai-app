@@ -31,6 +31,12 @@ export function MoreScreen() {
           subtitle={t("more.availability.subtitle")}
           onPress={() => navigation.navigate("AvailabilityCapacity")}
         />
+        {/* Coach gender (20 Oct 2026): for members who ask for a male or female coach. */}
+        <MenuRow
+          label={t("more.profile.label")}
+          subtitle={t("more.profile.subtitle")}
+          onPress={() => navigation.navigate("MyProfile")}
+        />
         {/* P6 (28 Sep 2026) — the earnings surface. The handoff lists
             earnings, payout pending/paid/failed and earnings history
             among this app's complete-as-designed screens; none of them

@@ -9,6 +9,7 @@ import {
   verifyKycSchema,
 } from "./adminProfessionals.schema";
 import * as adminProfessionalsService from "./adminProfessionals.service";
+import { setCoachGender, setCoachGenderSchema } from "../../lib/coachGender";
 
 export const adminProfessionalsRouter = Router();
 
@@ -103,6 +104,22 @@ adminProfessionalsRouter.post(
     try {
       const professional = await adminProfessionalsService.reactivateProfessional(req.adminUserId as string, req.params.id);
       res.status(200).json({ professional });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Coach gender (20 Oct 2026) — set or correct a coach's stated gender, used to
+// match members who ask for a male or female coach (lib/coachGender.ts).
+adminProfessionalsRouter.patch(
+  "/admin/professionals/:id/gender",
+  requireAdminAuth,
+  requirePermission("professionals", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = setCoachGenderSchema.parse(req.body);
+      res.status(200).json(await setCoachGender(req.params.id, input, { adminId: req.adminUserId as string }));
     } catch (err) {
       next(err);
     }

@@ -6,6 +6,7 @@ import type { ProfessionalServiceType } from "@fitness-ai-app/types";
 import { WizardLayout } from "../../components/WizardLayout";
 import { SelectCard } from "../../components/SelectCard";
 import { selectServices } from "../../api/professionalOnboarding";
+import { setMyGender } from "../../api/professionalAuth";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
@@ -30,11 +31,14 @@ const SERVICES: { value: ProfessionalServiceType; title: string; subtitle: strin
  * selectable cards, **not mutually exclusive** ("can be updated later").
  * Selecting at least one and continuing calls PUT /professionals/me/services
  * for real, then hands the selected list off to CredentialUploadScreen to
- * loop over.
+ * loop over. Coach gender (20 Oct 2026) is asked here too, optionally, so
+ * members who ask for a male or female coach can be matched; it can be
+ * changed later in More > My profile.
  */
 export function ServiceSelectionScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<ProfessionalServiceType[]>([]);
+  const [gender, setGender] = useState<"female" | "male" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +51,7 @@ export function ServiceSelectionScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await selectServices({ services: selected });
+      if (gender) await setMyGender(gender);
       navigation.navigate("CredentialUpload", { services: selected, index: 0 });
     } catch (err) {
       setError(extractErrorMessage(err, "Couldn't save your services. Check your connection and try again."));
@@ -77,6 +82,16 @@ export function ServiceSelectionScreen({ navigation }: Props) {
             multiSelect
           />
         ))}
+      </View>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.lg }}>
+        {t("onboarding.serviceSelection.genderTitle")}
+      </Text>
+      <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 4 }}>
+        {t("onboarding.serviceSelection.genderHelp")}
+      </Text>
+      <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+        <SelectCard title={t("profile.female")} selected={gender === "female"} onPress={() => setGender(gender === "female" ? null : "female")} />
+        <SelectCard title={t("profile.male")} selected={gender === "male"} onPress={() => setGender(gender === "male" ? null : "male")} />
       </View>
       {error ? <Text style={{ color: colors.danger, ...typography.meta, marginTop: spacing.sm }}>{error}</Text> : null}
     </WizardLayout>

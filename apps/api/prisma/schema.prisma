@@ -382,6 +382,8 @@ model User {
   foodEstimates               FoodEstimate[]
   bodyMeasurements            BodyMeasurement[]
   progressPhotos              ProgressPhoto[]
+  // Profile photo (20 Oct 2026) — see UserProfilePhoto's own doc comment.
+  profilePhoto                UserProfilePhoto?
   // Check-In (U5, 15 Sep 2026) — see CheckIn's own doc comment.
   checkIns                    CheckIn[]
   // Mindfulness streak category (22 Sep 2026) — see MindfulnessLog's own
@@ -1545,6 +1547,26 @@ model ProgressPhoto {
 
   @@index([userId, takenAt])
   @@map("progress_photos")
+}
+
+// ---- Profile photo (20 Oct 2026) ----------------------------------------
+// The member's own profile picture, set from Profile / Edit Profile by
+// taking a photo or choosing one from the gallery. Stored the same way as
+// ProgressPhoto: a base64 JPEG or PNG data URI in Postgres, since member
+// uploads have no object storage. The app crops it square and shrinks it to
+// 512 px before upload (about 30-80 KB); the API caps it at about 1 MB.
+// Kept in its own table, not on User, so the many queries that load a User
+// don't carry the image. One per member, deleted with the account
+// (cascade). Only the member sees it: nothing shares it with coaches, gyms
+// or admins. Included in "Download my data" as profile_photo.jpg/.png.
+model UserProfilePhoto {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageData String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profile_photos")
 }
 
 // ---- Check-In (§F/§4, R1 Developer 1 U5, 15 Sep 2026) ------------------
@@ -2773,6 +2795,9 @@ model Professional {
   bio                String?
   specializationTags String[]                    @default([])
   yearsExperience    Int?
+  // Coach gender (20 Oct 2026): stated by the coach or set by an admin; null = not stated.
+  // Members can ask for a male or female coach (GuidanceRequest.coachGenderPreference).
+  gender             CoachGender?
   status             ProfessionalStatus          @default(active)
   // Coach level (Package 4, Oct 2026): FynroX places each coach in a level,
   // and the level's fee for each service is what users pay. Coaches can't
@@ -5008,6 +5033,11 @@ model GuidanceRequest {
   /// What the user said they want help with. Free text, optional.
   userNote String?
 
+  /// Coach gender (20 Oct 2026): the member asked for a male or female coach;
+  /// null = no preference. An admin can only send the request to a coach of
+  /// that gender (lib/coachGender.ts).
+  coachGenderPreference CoachGender?
+
   /// D11: "48 hours, 3 re-matches, then Admin queue." Counts how many
   /// times an offer from this request was declined or expired and the
   /// request returned to the queue.
@@ -5027,6 +5057,14 @@ model GuidanceRequest {
   @@index([status, createdAt])
   @@index([userId])
   @@map("guidance_requests")
+}
+
+// Coach gender (owner, 20 Oct 2026: "give male and female coaches option").
+// Used for Professional.gender and GuidanceRequest.coachGenderPreference;
+// "not stated" / "no preference" is a null column, not a third value.
+enum CoachGender {
+  male
+  female
 }
 
 enum GuidanceRequestStatus {

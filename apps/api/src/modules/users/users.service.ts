@@ -26,6 +26,7 @@ import {
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
   OnboardingProfileInput,
+  ProfilePhotoInput,
   UpdateConsentInput,
   UpdateProfileInput,
 } from "./users.schema";
@@ -803,5 +804,43 @@ export async function updateConsent(userId: string, input: UpdateConsentInput) {
   await trackEvent(userId, "consent.changed", { consentId: consent.id }, { metadata: { consentType: input.type, granted: input.granted } });
 
   return { type: consent.type, granted: consent.granted, updatedAt: consent.updatedAt };
+}
+
+// ---- Profile photo (20 Oct 2026) — see UserProfilePhoto in schema.prisma ----
+
+/** First bytes of each accepted image type, checked after decoding. */
+const PHOTO_SIGNATURES: Record<string, number[]> = {
+  jpeg: [0xff, 0xd8, 0xff],
+  png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+};
+
+function toProfilePhoto(row: { imageData: string; updatedAt: Date }) {
+  return { imageData: row.imageData, updatedAt: row.updatedAt };
+}
+
+export async function getProfilePhoto(userId: string) {
+  const row = await prisma.userProfilePhoto.findUnique({ where: { userId } });
+  return row ? toProfilePhoto(row) : null;
+}
+
+/** Sets (or replaces) the member's profile photo. */
+export async function setProfilePhoto(userId: string, input: ProfilePhotoInput) {
+  const match = /^data:image\/(jpeg|png);base64,/.exec(input.imageData);
+  const head = match ? Buffer.from(input.imageData.slice(match[0].length, match[0].length + 16), "base64") : Buffer.alloc(0);
+  const signature = match ? PHOTO_SIGNATURES[match[1]] : undefined;
+  if (!signature || !signature.every((byte, i) => head[i] === byte)) {
+    throw new ApiHttpError(400, "invalid_image", "That file isn't a JPEG or PNG photo");
+  }
+  const row = await prisma.userProfilePhoto.upsert({
+    where: { userId },
+    create: { userId, imageData: input.imageData },
+    update: { imageData: input.imageData },
+  });
+  return toProfilePhoto(row);
+}
+
+/** Removes the member's profile photo; nothing to do when there is none. */
+export async function deleteProfilePhoto(userId: string) {
+  await prisma.userProfilePhoto.deleteMany({ where: { userId } });
 }
 

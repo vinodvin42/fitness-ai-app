@@ -18,6 +18,11 @@ export function logoutRequest(refreshToken: string) {
   return apiClient.post("/professionals/auth/logout", { refreshToken });
 }
 
+/** Coach gender (20 Oct 2026): states the coach's own gender, or clears it with null. */
+export function setMyGender(gender: "male" | "female" | null) {
+  return apiClient.patch<{ gender: "male" | "female" | null }>("/professionals/me/gender", { gender }).then((r) => r.data);
+}
+
 export function fetchMe() {
   return apiClient.get<ProfessionalMeResponse>("/professionals/me").then((r) => r.data);
 }

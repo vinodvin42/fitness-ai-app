@@ -35,8 +35,8 @@ export async function listPlans() {
   return plans.map((p) => ({ ...p, upcomingPrice: upcoming.get(p.id) ?? null }));
 }
 
-function renewalDateFor(billingCycle: "monthly" | "quarterly" | "annual"): Date {
-  const next = new Date();
+function renewalDateFor(billingCycle: "monthly" | "quarterly" | "annual", from: Date = new Date()): Date {
+  const next = new Date(from.getTime());
   if (billingCycle === "annual") {
     next.setFullYear(next.getFullYear() + 1);
   } else if (billingCycle === "quarterly") {
@@ -133,7 +133,13 @@ export type SubscriptionDisplayState =
   | "canceled"
   | "past_due";
 
-function deriveDisplayState(s: { status: string; renewsAt: Date | null; cancelAtPeriodEnd: boolean }): SubscriptionDisplayState {
+function deriveDisplayState(s: {
+  status: string;
+  renewsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+  priceCents?: number | null;
+  plan?: { priceCents: number };
+}): SubscriptionDisplayState {
   if (s.status === "pending") return "pending";
   if (s.status === "suspended") return "suspended";
   if (s.status === "revoked") return "revoked";
@@ -148,7 +154,10 @@ function deriveDisplayState(s: { status: string; renewsAt: Date | null; cancelAt
     // simply active, and telling a paying user their access is about to
     // end when it is about to renew is the kind of wrong that generates
     // a cancellation.
-    if (s.cancelAtPeriodEnd && daysLeft >= 0 && daysLeft <= EXPIRING_WINDOW_DAYS) return "expiring";
+    // 20 Oct 2026: there is no autopay, so a paid plan also ends at renewsAt
+    // unless the member renews it — its last 7 days are "expiring" too.
+    const ends = s.cancelAtPeriodEnd || isPaidSubscription(s);
+    if (ends && daysLeft >= 0 && daysLeft <= EXPIRING_WINDOW_DAYS) return "expiring";
   }
   return "active";
 }
@@ -198,9 +207,20 @@ type SubscriptionWithPlan = {
   plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
 };
 
+/**
+ * A plan the member paid for (or that normally costs money, e.g. Prime bought
+ * with a 100% code). Basic, the free plan, never ends on its own.
+ */
+function isPaidSubscription(s: { priceCents?: number | null; plan?: { priceCents: number } }): boolean {
+  return (s.plan?.priceCents ?? 0) > 0 || (s.priceCents ?? 0) > 0;
+}
+
 async function maybeExpireLapsed(subscription: SubscriptionWithPlan): Promise<SubscriptionWithPlan> {
+  // 20 Oct 2026 (owner): payments are one-time, with no autopay, so a paid plan
+  // ends when the period paid for ends unless the member renews it — not only
+  // after a cancel-at-period-end. The free plan never lapses on its own.
   const lapsed =
-    subscription.cancelAtPeriodEnd &&
+    (subscription.cancelAtPeriodEnd || isPaidSubscription(subscription)) &&
     subscription.renewsAt != null &&
     subscription.renewsAt.getTime() < Date.now() &&
     (subscription.status === "active" || subscription.status === "trialing" || subscription.status === "past_due");
@@ -217,7 +237,7 @@ async function maybeExpireLapsed(subscription: SubscriptionWithPlan): Promise<Su
     action: "subscription.expired",
     entityType: "Subscription",
     entityId: subscription.id,
-    metadata: { reason: "cancel_at_period_end_lapsed" },
+    metadata: { reason: subscription.cancelAtPeriodEnd ? "cancel_at_period_end_lapsed" : "paid_period_ended" },
   });
 
   return expired as SubscriptionWithPlan;
@@ -257,6 +277,44 @@ export async function subscribe(
   }
 
   const existing = await getCurrentSubscription(userId);
+  // getCurrentSubscription may have just expired a lapsed row; only a live one counts below.
+  const live = existing && ["active", "trialing", "past_due"].includes(existing.status) ? existing : null;
+
+  // 20 Oct 2026 (owner): choosing the free plan must never end a paid plan in
+  // one tap — the member cancels instead and keeps what they paid for until it
+  // ends (cancelSubscription), then is on Basic.
+  if (plan.priceCents === 0 && live && isPaidSubscription(live)) {
+    throw new ApiHttpError(
+      409,
+      "paid_plan_active",
+      `Your ${live.plan.name} plan is paid until ${live.renewsAt ? live.renewsAt.toISOString().slice(0, 10) : "the end of this period"}. Cancel it instead: you keep it until then, then move to ${plan.name}.`,
+    );
+  }
+
+  // Manual renewal (20 Oct 2026): paying again for the plan you are already on
+  // extends it from its current end date, so renewing early never loses days.
+  if (live && live.planId === plan.id && plan.priceCents > 0 && opts.verifiedPayment) {
+    const from = live.renewsAt && live.renewsAt.getTime() > Date.now() ? live.renewsAt : new Date();
+    const renewed = await prisma.subscription.update({
+      where: { id: live.id },
+      data: {
+        status: "active",
+        cancelAtPeriodEnd: false,
+        renewsAt: renewalDateFor(plan.billingCycle, from),
+        priceCents: opts.paidPriceCents ?? plan.priceCents,
+      },
+      include: { plan: true },
+    });
+    await recordAudit({
+      actorId: userId,
+      action: "subscription.renewed",
+      entityType: "Subscription",
+      entityId: live.id,
+      metadata: { planId: plan.id, previousRenewsAt: live.renewsAt, renewsAt: renewed.renewsAt },
+    });
+    return renewed;
+  }
+
   if (existing) {
     await prisma.subscription.update({ where: { id: existing.id }, data: { status: "canceled" } });
   }

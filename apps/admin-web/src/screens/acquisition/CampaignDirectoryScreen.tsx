@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { r1Flags } from "@fitness-ai-app/config";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -89,8 +90,10 @@ export function CampaignDirectoryScreen() {
 
   const campaigns = useQuery({ queryKey: ["admin-campaigns"], queryFn: fetchCampaigns });
   const sources = useQuery({ queryKey: ["admin-acquisition-sources"], queryFn: fetchSources });
-  const influencers = useQuery({ queryKey: ["admin-influencers-for-campaign-form"], queryFn: fetchInfluencers });
-  const gyms = useQuery({ queryKey: ["admin-gyms-for-campaign-form"], queryFn: fetchGyms });
+  // Influencers and gym partners are hidden for now (r1Flags.PARTNER_PROGRAMS_ENABLED).
+  const partners = r1Flags.PARTNER_PROGRAMS_ENABLED;
+  const influencers = useQuery({ queryKey: ["admin-influencers-for-campaign-form"], queryFn: fetchInfluencers, enabled: partners });
+  const gyms = useQuery({ queryKey: ["admin-gyms-for-campaign-form"], queryFn: fetchGyms, enabled: partners });
 
   const resetForm = () => {
     setName("");
@@ -202,6 +205,8 @@ export function CampaignDirectoryScreen() {
                 <option value="inactive">{t("campaignDirectory.inactive")}</option>
               </select>
             </label>
+            {partners ? (
+            <>
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("campaignDirectory.influencerOptional")}
               <select
@@ -232,6 +237,8 @@ export function CampaignDirectoryScreen() {
                 ))}
               </select>
             </label>
+            </>
+            ) : null}
             <button
               type="submit"
               disabled={createMutation.isPending || !sourceId}

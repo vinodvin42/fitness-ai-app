@@ -17,9 +17,12 @@
  * breakdown of what this actually reports. Influencer Payouts (Finance
  * 10.07) still live on the Influencers screen itself.
  */
+import { r1Flags } from "@fitness-ai-app/config";
+
 export const GROWTH_SUB_NAV = [
   { label: "Referrals", path: "/growth" },
-  { label: "Influencers", path: "/growth/influencers" },
+  // Influencers are hidden for now (owner, 20 Oct 2026; r1Flags.PARTNER_PROGRAMS_ENABLED) — the screen stays.
+  ...(r1Flags.PARTNER_PROGRAMS_ENABLED ? [{ label: "Influencers", path: "/growth/influencers" }] : []),
   { label: "Campaigns", path: "/growth/campaigns" },
   { label: "Acquisition Report", path: "/growth/acquisition-report" },
   // Spec §8 (28 Sep 2026) — the public website's forms finally have a

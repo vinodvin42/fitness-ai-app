@@ -487,6 +487,7 @@ type AvailableProfessionalRow = {
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  gender: string | null;
 };
 
 /**
@@ -508,6 +509,9 @@ export async function listAvailableProfessionals(query: ListAvailableProfessiona
   if (excludeProfessionalId) {
     where.id = { not: excludeProfessionalId };
   }
+  if (query.gender) {
+    where.gender = query.gender;
+  }
   if (query.search) {
     where.OR = [
       { fullName: { contains: query.search, mode: "insensitive" } },
@@ -517,7 +521,7 @@ export async function listAvailableProfessionals(query: ListAvailableProfessiona
 
   const candidates = await prisma.professional.findMany({
     where,
-    select: { id: true, fullName: true, bio: true, specializationTags: true, yearsExperience: true },
+    select: { id: true, fullName: true, bio: true, specializationTags: true, yearsExperience: true, gender: true },
     orderBy: { fullName: "asc" },
   });
 
@@ -533,6 +537,7 @@ export async function listAvailableProfessionals(query: ListAvailableProfessiona
         bio: p.bio,
         specializationTags: p.specializationTags,
         yearsExperience: p.yearsExperience,
+        gender: p.gender ?? null,
       })),
   };
 }

@@ -5,12 +5,15 @@ import { requireAdminAuth, AdminAuthedRequest } from "../../middleware/adminAuth
 import { requirePermission } from "../../middleware/adminPermissions";
 import * as service from "./guidanceRequests.service";
 import * as offersService from "../professionalOffers/professionalOffers.service";
+import { COACH_GENDERS, assertCoachGenderFits } from "../../lib/coachGender";
 
 export const guidanceRequestsRouter = Router();
 
 const createSchema = z.object({
   serviceType: z.enum(["fitness", "nutrition"]),
   userNote: z.string().trim().max(1000).optional(),
+  // Coach gender (20 Oct 2026): ask for a male or female coach; omitted or null = no preference.
+  coachGender: z.enum(COACH_GENDERS).nullable().optional(),
 });
 
 const matchSchema = z.object({
@@ -87,6 +90,8 @@ guidanceRequestsRouter.post(
     try {
       const input = matchSchema.parse(req.body);
       const request = await service.getGuidanceRequestForMatch(req.params.id);
+      // A request for a male or female coach only goes to a coach of that gender.
+      await assertCoachGenderFits(request.coachGenderPreference, input.professionalId);
 
       const offer = await offersService.createOffer(req.adminUserId as string, {
         userId: request.userId,

@@ -69,6 +69,15 @@ export const r1Flags = {
    * flipping this back on restores the previous behaviour intact.
    */
   PROFESSIONAL_MARKETPLACE_ENABLED: envFlag("FYNROX_PROFESSIONAL_MARKETPLACE_ENABLED", false),
+  /**
+   * Gym partners and creators/influencers (owner, 20 Oct 2026: "as of now
+   * hide all gym, influencer modules, we later introduce them"). Off: the
+   * member app shows no My Gym, gym card, gym checklist step or gym/creator
+   * invite handling, and the admin console hides Gym Partners, Influencers
+   * and gym/creator applications. Data and API stay as they are; switching
+   * this on brings everything back.
+   */
+  PARTNER_PROGRAMS_ENABLED: envFlag("FYNROX_PARTNER_PROGRAMS_ENABLED", false),
 
   /**
    * §2 decision #13 (LOCKED) — "No streaks, badges or 'Century Club'".

@@ -192,3 +192,16 @@ export const updateConsentSchema = z.object({
 });
 export type UpdateConsentInput = z.infer<typeof updateConsentSchema>;
 
+// Profile photo (20 Oct 2026) — see the UserProfilePhoto model in
+// schema.prisma. A JPEG or PNG data URI. The app sends a 512 px square JPEG
+// (about 30-80 KB); 1,400,000 characters is about 1 MB of image, room for a
+// larger crop and well under app.ts's 10mb body limit. The service also
+// checks the decoded bytes really start like a JPEG or PNG.
+export const profilePhotoSchema = z.object({
+  imageData: z
+    .string()
+    .max(1_400_000, { message: "Photo is too large" })
+    .regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/, { message: "imageData must be a JPEG or PNG data URI" }),
+});
+export type ProfilePhotoInput = z.infer<typeof profilePhotoSchema>;
+

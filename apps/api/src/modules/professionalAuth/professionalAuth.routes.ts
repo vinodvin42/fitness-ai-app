@@ -4,6 +4,7 @@ import * as professionalAuthService from "./professionalAuth.service";
 import { hasSelectedServices } from "../professionalOnboarding/professionalOnboarding.service";
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
 import { authRateLimit, writeRateLimit } from "../../middleware/rateLimit";
+import { setCoachGender, setCoachGenderSchema } from "../../lib/coachGender";
 
 export const professionalAuthRouter = Router();
 
@@ -56,6 +57,23 @@ professionalAuthRouter.post("/professionals/auth/logout", async (req, res, next)
     next(err);
   }
 });
+
+// Coach gender (20 Oct 2026): the coach states their own gender (or clears
+// it), so members who ask for a male or female coach can be matched.
+professionalAuthRouter.patch(
+  "/professionals/me/gender",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = setCoachGenderSchema.parse(req.body);
+      const professionalId = req.professionalId as string;
+      res.status(200).json(await setCoachGender(professionalId, input, { professionalId }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // Mirrors GET /users/me — used by apps/coach-mobile's AuthContext to
 // resolve "who am I + is onboarding done" on launch when a token is

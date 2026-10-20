@@ -40,7 +40,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
   if (!user) throw new ApiHttpError(404, "user_not_found", "User not found");
   const take = ROW_CAP;
 
-  const [onboarding, sessions, meals, recovery, measurements, checkIns, recommendations, messages, tickets, consents, subscriptions, water] =
+  const [onboarding, sessions, meals, recovery, measurements, checkIns, recommendations, messages, tickets, consents, subscriptions, water, photo] =
     await Promise.all([
       // Health fields are encrypted at rest: read through the decrypting accessor so the
       // export holds the user's real declared conditions, never ciphertext (and never the
@@ -70,6 +70,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
       prisma.consent.findMany({ where: { userId } }),
       prisma.subscription.findMany({ where: { userId } }),
       prisma.waterLog.findMany({ where: { userId }, orderBy: { loggedAt: "asc" }, take }),
+      prisma.userProfilePhoto.findUnique({ where: { userId } }),
     ]);
 
   const workoutRows: unknown[][] = [];
@@ -151,6 +152,13 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
     tickets.map((t) => [t.createdAt, t.category, t.status, t.subject, t.message]),
   );
 
+  // Profile photo (20 Oct 2026): the member's own picture, as the image file it was saved as.
+  const photoMatch = photo ? /^data:image\/(jpeg|png);base64,(.*)$/s.exec(photo.imageData) : null;
+  const photoFile = photoMatch
+    ? { name: `profile_photo.${photoMatch[1] === "png" ? "png" : "jpg"}`, group: "summary" as const, data: Buffer.from(photoMatch[2], "base64") }
+    : null;
+  if (photoFile) files.push(photoFile);
+
   const lines: string[] = [
     "# Fynrox - your data summary",
     `Generated ${new Date().toISOString()}`,
@@ -171,6 +179,7 @@ async function buildFiles(userId: string): Promise<{ name: string; group: FileGr
     `Messages with professionals: ${messages.length}`,
     `Support tickets: ${tickets.length}`,
     `Subscriptions: ${subscriptions.length}`,
+    `Profile photo: ${photoFile ? `included as ${photoFile.name}` : "none"}`,
     "",
     "# Consents",
     ...(consents.length ? consents.map((c) => `${c.type}: ${c.granted ? "granted" : "not granted"}`) : ["No consent choices recorded."]),

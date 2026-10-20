@@ -14,6 +14,7 @@ import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GROWTH_SUB_NAV } from "../growth/subNav";
+import { r1Flags } from "@fitness-ai-app/config";
 
 const KIND_LABELS: Record<PublicApplicationKind, string> = {
   early_access: "Early Access",
@@ -107,7 +108,10 @@ export function ApplicationsScreen() {
               className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             >
               <option value="">{t("applications.all")}</option>
-              {(Object.keys(KIND_LABELS) as PublicApplicationKind[]).map((k) => (
+              {/* Gym and creator applications are hidden for now (r1Flags.PARTNER_PROGRAMS_ENABLED). */}
+              {(Object.keys(KIND_LABELS) as PublicApplicationKind[])
+                .filter((k) => r1Flags.PARTNER_PROGRAMS_ENABLED || (k !== "gym" && k !== "creator"))
+                .map((k) => (
                 <option key={k} value={k}>
                   {KIND_LABELS[k]}
                 </option>

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { r1Flags } from "@fitness-ai-app/config";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
@@ -220,7 +221,8 @@ const NAV_ITEMS: NavItem[] = [
   // not one of the original 12-module Figma IA this file's own top comment
   // describes. See docs/admin/07-open-questions-gaps.md's Wave 1/Wave 4
   // entries for the full Gym Partner Lite design.
-  { label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true, module: "gyms" },
+  // Hidden for now (owner, 20 Oct 2026; r1Flags.PARTNER_PROGRAMS_ENABLED) — the screens and routes stay.
+  ...(r1Flags.PARTNER_PROGRAMS_ENABLED ? [{ label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true, module: "gyms" }] : []),
 ];
 
 export function AppShell({

@@ -9,6 +9,7 @@ import {
   editOnboardingProfileSchema,
   enableTwoFactorSchema,
   onboardingProfileSchema,
+  profilePhotoSchema,
   updateConsentSchema,
   updateProfileSchema,
 } from "./users.schema";
@@ -197,6 +198,35 @@ usersRouter.patch("/me/consents", requireAuth, async (req: AuthedRequest, res, n
     const input = updateConsentSchema.parse(req.body);
     const consent = await usersService.updateConsent(req.userId!, input);
     res.json({ consent });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Profile photo (20 Oct 2026): the member's own picture, taken with the
+// camera or chosen from the gallery in the app. See UserProfilePhoto in
+// schema.prisma. `photo` is null when none is set.
+usersRouter.get("/me/photo", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json({ photo: await usersService.getProfilePhoto(req.userId!) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.put("/me/photo", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = profilePhotoSchema.parse(req.body);
+    res.json({ photo: await usersService.setProfilePhoto(req.userId!, input) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.delete("/me/photo", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    await usersService.deleteProfilePhoto(req.userId!);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

@@ -174,12 +174,22 @@ export async function getCheckoutQuote(
  * an independent event the user would think to go looking for.
  */
 export async function listPurchaseHistory(userId: string) {
+  // 20 Oct 2026: only payments that went through. An order that was created
+  // but never paid (abandoned or declined) is not a purchase.
   const payments = await prisma.payment.findMany({
-    where: { userId },
+    where: { userId, status: "paid" },
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { refunds: { orderBy: { createdAt: "desc" } } },
   });
+
+  // What was bought, by name: the plan or program as it is named in admin.
+  const idsFor = (purpose: string) => payments.filter((p) => p.purpose === purpose).map((p) => p.referenceId);
+  const [plans, programs] = await Promise.all([
+    prisma.subscriptionPlan.findMany({ where: { id: { in: idsFor("subscription") } }, select: { id: true, name: true } }),
+    prisma.program.findMany({ where: { id: { in: idsFor("program_purchase") } }, select: { id: true, name: true } }),
+  ]);
+  const names = new Map<string, string>([...plans, ...programs].map((r) => [r.id, r.name]));
 
   return payments.map((p) => {
     const refunds = p.refunds ?? [];
@@ -191,6 +201,7 @@ export async function listPurchaseHistory(userId: string) {
       id: p.id,
       purpose: p.purpose,
       referenceId: p.referenceId,
+      itemName: names.get(p.referenceId) ?? null,
       amountCents: p.amountCents,
       currency: p.currency,
       status: p.status,

@@ -54,5 +54,7 @@ export type ListOffersForProfessionalQuery = z.infer<typeof listOffersForProfess
 // on top of the existing Discovery listing shape.
 export const listAvailableProfessionalsQuerySchema = z.object({
   search: z.string().trim().min(1).max(100).optional(),
+  // Coach gender (20 Oct 2026): only coaches who stated this gender.
+  gender: z.enum(["male", "female"]).optional(),
 });
 export type ListAvailableProfessionalsQuery = z.infer<typeof listAvailableProfessionalsQuerySchema>;

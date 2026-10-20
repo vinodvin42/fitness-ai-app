@@ -21,7 +21,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 
 export async function createGuidanceRequest(
   userId: string,
-  input: { serviceType: "fitness" | "nutrition"; userNote?: string | null },
+  input: { serviceType: "fitness" | "nutrition"; userNote?: string | null; coachGender?: "male" | "female" | null },
 ) {
   // §10's relationship limit: "A user has at most one active Fitness and
   // one active Nutrition professional." A second open request for a
@@ -44,7 +44,12 @@ export async function createGuidanceRequest(
   if (open) return open;
 
   const created = await prisma.guidanceRequest.create({
-    data: { userId, serviceType: input.serviceType, userNote: input.userNote ?? null },
+    data: {
+      userId,
+      serviceType: input.serviceType,
+      userNote: input.userNote ?? null,
+      coachGenderPreference: input.coachGender ?? null,
+    },
   });
 
   await trackEvent(

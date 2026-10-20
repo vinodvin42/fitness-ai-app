@@ -13,6 +13,8 @@ interface GuidanceRequestRow {
   serviceType: "fitness" | "nutrition";
   status: string;
   userNote: string | null;
+  // Coach gender (20 Oct 2026): the member asked for a male or female coach; null = no preference.
+  coachGenderPreference: "male" | "female" | null;
   rematchCount: number;
   closedReason: string | null;
   createdAt: string;
@@ -22,6 +24,7 @@ interface GuidanceRequestRow {
 interface AvailableProfessional {
   id: string;
   fullName: string;
+  gender?: "male" | "female" | null;
   serviceTypes?: string[];
   activeClients?: number;
   maxActiveClients?: number;
@@ -138,7 +141,13 @@ export function AssignmentQueueScreen() {
                   <div className="text-xs text-text-dim">{r.user.email}</div>
                   {r.userNote ? <div className="mt-1 max-w-sm text-xs text-text-dim">“{r.userNote}”</div> : null}
                 </td>
-                <td className="py-3 pr-4 capitalize text-text-primary">{r.serviceType}</td>
+                <td className="py-3 pr-4 text-text-primary">
+                  <div className="capitalize">{r.serviceType}</div>
+                  {/* Coach gender (20 Oct 2026): only coaches of the asked-for gender are listed, and the API refuses any other. */}
+                  {r.coachGenderPreference ? (
+                    <div className="mt-1 text-xs text-accent">Wants a {r.coachGenderPreference} coach</div>
+                  ) : null}
+                </td>
                 <td className="py-3 pr-4 text-xs text-text-dim">
                   {new Date(r.createdAt).toLocaleDateString()}
                   {/* D11's re-match count, shown only once it matters. */}
@@ -162,9 +171,12 @@ export function AssignmentQueueScreen() {
                         className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text-primary"
                       >
                         <option value="">{t("assignmentQueue.selectAProfessional")}</option>
-                        {pros.map((p) => (
+                        {pros
+                          .filter((p) => !r.coachGenderPreference || p.gender === r.coachGenderPreference)
+                          .map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.fullName}
+                            {p.gender ? ` (${p.gender})` : ""}
                             {p.maxActiveClients != null && p.activeClients != null
                               ? ` — ${p.activeClients}/${p.maxActiveClients} clients`
                               : ""}

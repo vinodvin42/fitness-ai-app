@@ -63,6 +63,8 @@ export const en = {
       step: "Service Selection",
       title: "What do you offer?",
       subtitle: "Select at least one — you can update this later.",
+      genderTitle: "Your gender (optional)",
+      genderHelp: "Members can ask for a male or female coach. You can change this later in More > My profile.",
     },
     credentials: {
       subtitle: "Add your certification details. You can update these later from Verification Status.",
@@ -145,6 +147,7 @@ export const en = {
     earnings: { label: "Earnings", subtitle: "What you've been paid, what's owed, and payout status" },
     offers: { label: "Offers", subtitle: "Clients proposed to you, including ones you declined" },
     formReviews: { label: "Form reviews", subtitle: "Review exercise clips submitted by your clients" },
+    profile: { label: "My profile", subtitle: "Your gender, used to match members who ask for a male or female coach" },
   },
 
   notifications: {
@@ -261,6 +264,20 @@ export const en = {
     emptyTitle: "No conversations yet",
     emptySubtitle: "When you have an active client, you can message each other here.",
     placeholder: "Message…",
+  },
+
+  /** My profile (20 Oct 2026): the coach's gender, for members who ask for a male or female coach. */
+  profile: {
+    title: "My profile",
+    back: "‹ More",
+    genderTitle: "Your gender",
+    genderHelp:
+      "Members can ask for a male or female coach. Requests that ask for one only go to coaches of that gender; with \"Prefer not to say\" you only get requests with no preference.",
+    female: "Female",
+    male: "Male",
+    preferNot: "Prefer not to say",
+    saved: "Saved",
+    saveFailed: "Couldn't save",
   },
 } as const;
 

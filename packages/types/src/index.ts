@@ -1146,6 +1146,17 @@ export interface CreateProgressPhotoInput {
   note?: string;
 }
 
+/**
+ * Profile photo (20 Oct 2026): the member's own picture, a
+ * `data:image/jpeg;base64,...` (or png) URI stored in Postgres like
+ * ProgressPhoto. See the UserProfilePhoto model in apps/api's schema.prisma.
+ * GET /users/me/photo returns `{ photo: ProfilePhoto | null }`.
+ */
+export interface ProfilePhoto {
+  imageData: string;
+  updatedAt: string;
+}
+
 export interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
@@ -1380,6 +1391,11 @@ export interface Subscription {
   revokedReason: string | null;
   /** What this subscriber paid for the current period (paise), locked until renewal (D8). */
   priceCents?: number | null;
+  /**
+   * Derived by the API on GET /subscriptions/me. "expiring": a plan that ends within 7 days (cancelled,
+   * or a paid plan not yet renewed — there is no autopay, 20 Oct 2026).
+   */
+  displayState?: "pending" | "active" | "expiring" | "expired" | "suspended" | "revoked" | "canceled" | "past_due";
 }
 
 /**
@@ -1916,6 +1932,9 @@ export type RelationshipStatus =
   | "completed"
   | "ended";
 
+/** Coach gender (20 Oct 2026): a coach's stated gender, and what a member may ask for. */
+export type CoachGender = "male" | "female";
+
 /** Public shape — never carries passwordHash or the raw kycDocumentData (see professionalAuth.service.ts's toPublicProfessional). */
 export interface Professional {
   id: string;
@@ -1925,6 +1944,8 @@ export interface Professional {
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  /** Coach gender (20 Oct 2026): stated by the coach or an admin; null = not stated. */
+  gender?: CoachGender | null;
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
   /** R2 Wave 1 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
@@ -2774,6 +2795,8 @@ export interface AdminProfessionalDetailRecord {
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  /** Coach gender (20 Oct 2026); null = not stated. */
+  gender?: CoachGender | null;
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
   kycDocumentData: string | null;
