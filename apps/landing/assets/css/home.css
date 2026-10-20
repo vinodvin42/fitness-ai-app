@@ -310,11 +310,22 @@ svg {
   margin-bottom: 6px;
 }
 
-/* Beats .btn-ink's full-width, pushed-to-bottom defaults (declared later). */
+.partner--feature .bullets li::before {
+  background: var(--mint);
+}
+
+/* Beats .btn-ink's full-width, pushed-to-bottom, ink defaults (declared
+   later): content width, and mint like the site's other primary actions. */
 .partner .btn-ink--auto {
   width: auto;
   margin-top: 4px;
   padding: 0 28px;
+  background: var(--mint);
+  color: var(--ink);
+}
+
+.partner .btn-ink--auto:hover {
+  background: var(--mint-hover);
 }
 
 @media (max-width: 719px) {
