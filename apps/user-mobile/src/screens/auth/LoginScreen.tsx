@@ -8,6 +8,7 @@ import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
 import { colors, layout, spacing, typography, themed } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
+import { authErrorMessage } from "../../lib/authErrors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
@@ -31,7 +32,8 @@ export function LoginScreen({ navigation }: Props) {
       // Otherwise AuthProvider already flipped isAuthenticated ->
       // RootNavigator swaps to OnboardingStack or MainTabs on its own.
     } catch (err) {
-      setError("Incorrect email or password.");
+      // The real reason: a wrong password, but also offline, server trouble or too many tries.
+      setError(authErrorMessage(err, "login"));
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import {
   gymCodeFromContext,
 } from "../../lib/acquisitionContext";
 import { linkPartnerCode } from "../../api/partner";
+import { authErrorMessage } from "../../lib/authErrors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
 
@@ -61,7 +62,8 @@ export function SignupScreen({ navigation }: Props) {
       const gymCode = gymCodeFromContext(acquisitionContext);
       if (gymCode) await linkPartnerCode(gymCode).catch(() => undefined);
     } catch (err) {
-      setError("Could not create your account — that email may already be taken.");
+      // The real reason: the email in use, but also offline, server trouble or invalid details.
+      setError(authErrorMessage(err, "signup"));
     } finally {
       // Cleared either way — a failed attempt (e.g. email already taken)
       // shouldn't keep re-attaching stale context to whatever the user
