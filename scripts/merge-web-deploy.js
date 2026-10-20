@@ -289,12 +289,14 @@ fs.writeFileSync(
         // fell through to the homepage. While the partner programmes are
         // hidden (see PARTNER_PROGRAMMES_LIVE), these and the partner
         // pages answer 404 instead.
+        // Status code only: Azure rejects a rule that has both a rewrite and
+        // a statusCode. The 404 page itself comes from responseOverrides.
         ...(PARTNER_PROGRAMMES_LIVE
           ? [
               { route: "/gym/*", rewrite: "/gym-invite.html" },
               { route: "/r/*", rewrite: "/referral.html" },
             ]
-          : PARTNER_PATHS.map((route) => ({ route, rewrite: "/404.html", statusCode: 404 }))),
+          : PARTNER_PATHS.map((route) => ({ route, statusCode: 404 }))),
       ],
       // 20 Oct 2026: no navigationFallback. It rewrote every unknown URL to
       // the homepage with a 200, so 404.html was never shown and search
