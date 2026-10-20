@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { NavigationProp } from "@react-navigation/native";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Avatar } from "../../components/Avatar";
+import { MyAvatar } from "../../components/MyAvatar";
 import { Icon, IconName } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { fetchPlans } from "../../api/subscriptions";
@@ -42,15 +42,18 @@ export function MoreScreen({ navigation }: Props) {
   const learn = useQuery({ queryKey: ["learn", "articles", "all"], queryFn: () => fetchLearnArticles(), staleTime: 5 * 60_000 });
   const hasLearn = (learn.data?.articles.length ?? 0) > 0;
 
-  // Paid tiers only (the free tier isn't something to "compare to"), cheapest first.
+  // The plans on sale in the admin portal, cheapest first: "Compare Basic & Prime".
   const planNames = Array.from(
     new Set(
       (plans.data ?? [])
-        .filter((p) => p.priceCents > 0)
         .sort((a, b) => a.priceCents - b.priceCents)
         .map((p) => p.name),
     ),
   );
+  const primeName = (plans.data ?? []).find((p) => p.tier === "prime")?.name;
+  const bannerNote = primeName
+    ? `${primeName} adds coach requests and priority support.`
+    : "See what each plan includes.";
   const bannerTitle =
     planNames.length === 2 ? `Compare ${planNames[0]} & ${planNames[1]}` : planNames.length > 2 ? "Compare plans" : "Explore plans";
 
@@ -87,14 +90,14 @@ export function MoreScreen({ navigation }: Props) {
       subtitle={`${BRAND_NAME} App Settings & Features`}
       right={
         <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open profile">
-          <Avatar name={user?.fullName} size={44} />
+          <MyAvatar name={user?.fullName} size={44} />
         </Pressable>
       }
     >
       <Pressable
         onPress={() => navigation.navigate("Subscription")}
         accessibilityRole="button"
-        accessibilityLabel={`${bannerTitle}. See deeper progress reports and get more help from coaches.`}
+        accessibilityLabel={`${bannerTitle}. ${bannerNote}`}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -111,7 +114,7 @@ export function MoreScreen({ navigation }: Props) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{bannerTitle}</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>See deeper progress reports and get more help from coaches.</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{bannerNote}</Text>
         </View>
         <Icon name="chevron-right" size={18} color={colors.textPrimary} />
       </Pressable>

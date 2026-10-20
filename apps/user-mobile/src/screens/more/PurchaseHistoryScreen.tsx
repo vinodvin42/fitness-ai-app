@@ -41,7 +41,7 @@ const REFUND_TONE: Record<string, "accent" | "success" | "warning" | "danger"> =
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
-  subscription: "Premium",
+  subscription: "Plan",
   program_purchase: "Programme",
   booking: "Coach session",
 };
@@ -98,7 +98,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseRecord }) {
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
         <View style={{ flex: 1, paddingRight: spacing.sm }}>
           <Text style={{ color: colors.textPrimary, ...typography.h3 }}>
-            {PURPOSE_LABEL[purchase.purpose] ?? purchase.purpose}
+            {purchase.itemName ?? PURPOSE_LABEL[purchase.purpose] ?? purchase.purpose}
           </Text>
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
             {new Date(purchase.createdAt).toLocaleDateString()}

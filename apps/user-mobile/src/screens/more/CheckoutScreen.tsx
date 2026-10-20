@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, TextInput, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { BackButton } from "../../components/BackButton";
@@ -39,9 +39,10 @@ type Props = NativeStackScreenProps<MoreStackParamList, "Checkout">;
  */
 export function CheckoutScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
-  const { purpose, referenceId } = route.params;
-  const [codeInput, setCodeInput] = useState("");
-  const [appliedCode, setAppliedCode] = useState<string | undefined>(undefined);
+  const { purpose, referenceId, code } = route.params;
+  // A code typed on the Subscription screen arrives already applied.
+  const [codeInput, setCodeInput] = useState(code ?? "");
+  const [appliedCode, setAppliedCode] = useState<string | undefined>(code?.trim() || undefined);
   const [method, setMethod] = useState<CheckoutMethodId>("upi");
 
   const quote = useQuery({
@@ -49,8 +50,15 @@ export function CheckoutScreen({ route, navigation }: Props) {
     queryFn: () => fetchCheckoutQuote({ purpose, referenceId, code: appliedCode }),
   });
 
+  const queryClient = useQueryClient();
   const purchase = useRazorpayPurchase({
-    onVerified: () => undefined,
+    // The plan and purchase list change once a payment is verified (20 Oct 2026).
+    onVerified: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["subscriptions"] }),
+        queryClient.invalidateQueries({ queryKey: ["purchaseHistory"] }),
+      ]),
+    onVerifyFailed: (paymentId, message) => navigation.replace("PaymentResult", { status: "unconfirmed", message, paymentId }),
     onSuccess: () => navigation.replace("PaymentResult", { status: "success" }),
     onError: (message) => navigation.replace("PaymentResult", { status: "failed", message }),
     onActivationFailed: (paymentId, message) =>

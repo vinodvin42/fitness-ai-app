@@ -15,6 +15,7 @@ import {
   gymCodeFromContext,
 } from "../../lib/acquisitionContext";
 import { linkPartnerCode } from "../../api/partner";
+import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
 import { authErrorMessage } from "../../lib/authErrors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
@@ -59,7 +60,8 @@ export function SignupScreen({ navigation }: Props) {
       // A gym invite's code is that gym's partner code: link it now, so My Gym and the gym's
       // workouts are there from the start. Best-effort: an expired or unknown code (or a network
       // blip) leaves the account as it is, and the member can still enter a code in My Gym.
-      const gymCode = gymCodeFromContext(acquisitionContext);
+      // Gym partners are hidden for now (lib/partnerPrograms.ts): no gym link at sign-up.
+      const gymCode = PARTNER_PROGRAMS_ENABLED ? gymCodeFromContext(acquisitionContext) : null;
       if (gymCode) await linkPartnerCode(gymCode).catch(() => undefined);
     } catch (err) {
       // The real reason: the email in use, but also offline, server trouble or invalid details.
@@ -80,7 +82,7 @@ export function SignupScreen({ navigation }: Props) {
         <Text style={styles.title}>{t("auth.signup.title")}</Text>
         <Text style={styles.subtitle}>{t("auth.signup.subtitle")}</Text>
 
-        {acquisitionContext && describeAcquisitionContext(acquisitionContext) ? (
+        {PARTNER_PROGRAMS_ENABLED && acquisitionContext && describeAcquisitionContext(acquisitionContext) ? (
           <View style={styles.acquisitionBanner}>
             <Text style={styles.acquisitionBannerText}>{describeAcquisitionContext(acquisitionContext)}</Text>
           </View>

@@ -28,7 +28,8 @@ function monthlyLabel(plan: SubscriptionPlan) {
  */
 export function AiLimitReached({ usage, onUpgrade, onKeepTracking, onBack }: AiLimitReachedProps) {
   const plansQuery = useQuery({ queryKey: ["subscription-plans"], queryFn: fetchPlans });
-  const tier = usage ? TIER_LABEL[usage.tier] : null;
+  // The plan's name as set in admin (20 Oct 2026), with the tier label as a fallback.
+  const tier = usage ? ((plansQuery.data ?? []).find((p) => p.tier === usage.tier)?.name ?? TIER_LABEL[usage.tier]) : null;
   const tierName = tier ?? "Basic";
   const resets = usage
     ? new Date(usage.resetsAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })

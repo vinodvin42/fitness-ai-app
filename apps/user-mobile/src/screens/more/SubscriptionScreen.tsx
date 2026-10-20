@@ -14,13 +14,13 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } from "../../api/subscriptions";
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
+import { comparisonColumns, hasLaunchOffer, isFreePlan, type PlanTier } from "../../lib/planLineup";
 import { formatRupees } from "../../lib/money";
 import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Subscription">;
 
-const TIER_LABEL: Record<SubscriptionPlan["tier"], string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
 const TIER_ICON: Record<SubscriptionPlan["tier"], IconName> = { basic: "zap", grow: "trophy", prime: "sparkles" };
 const TIER_TINT: Record<SubscriptionPlan["tier"], { color: string; soft: string }> = themed(() => ({
   basic: { color: colors.textSecondary, soft: colors.surfaceHigh },
@@ -78,6 +78,7 @@ function entitlementDisplay(current: {
   status: SubscriptionDetail["status"];
   renewsAt: string | null;
   cancelAtPeriodEnd: boolean;
+  displayState?: SubscriptionDetail["displayState"];
 }): {
   label: string;
   tone: "success" | "accent" | "warning" | "neutral";
@@ -97,7 +98,7 @@ function entitlementDisplay(current: {
       label: "Expired",
       tone: "neutral",
       icon: "alert-triangle" as IconName,
-      note: "This plan's renewal date has passed. Choose a plan below to reactivate.",
+      note: "This plan has ended. Renew it, or choose another plan below.",
     };
   }
   if (current.status === "past_due") {
@@ -105,7 +106,7 @@ function entitlementDisplay(current: {
       label: "Payment issue",
       tone: "warning",
       icon: "alert-triangle" as IconName,
-      note: "Your last payment didn't go through. Update your payment method to keep premium access.",
+      note: "Your last payment didn't go through. Renew to pay again and keep your plan.",
     };
   }
   if (current.cancelAtPeriodEnd) {
@@ -116,6 +117,28 @@ function entitlementDisplay(current: {
       note: current.renewsAt
         ? `Your plan stays active until ${new Date(current.renewsAt).toLocaleDateString()}, then it won't renew.`
         : "This plan is set to cancel and won't renew.",
+    };
+  }
+  if (current.status === "suspended") {
+    return {
+      label: "Suspended",
+      tone: "warning",
+      icon: "alert-triangle" as IconName,
+      note: "This plan is paused by Fynrox. Contact support for details.",
+    };
+  }
+  if (current.status === "pending") {
+    return { label: "Pending", tone: "accent", icon: "clock" as IconName, note: "We're confirming this plan. Check back in a few minutes." };
+  }
+  // 20 Oct 2026: no autopay, so a paid plan ends unless renewed.
+  if (current.displayState === "expiring") {
+    return {
+      label: "Ending soon",
+      tone: "warning",
+      icon: "alert-triangle" as IconName,
+      note: current.renewsAt
+        ? `Your plan is paid until ${new Date(current.renewsAt).toLocaleDateString()}. Renew to keep it.`
+        : "Your plan ends soon. Renew to keep it.",
     };
   }
   if (current.status === "trialing") {
@@ -165,6 +188,13 @@ function annualSavingsPercent(plan: SubscriptionPlan, allPlans: SubscriptionPlan
  * each tier includes; note nothing in the app hard-gates on tier yet
  * (gap §35), so it's a plan-lineup table, not an entitlement enforcement
  * point.
+ *
+ * **20 Oct 2026 (owner):** plans, prices and discounts are owned by the
+ * super admin portal: this screen lists exactly the plans on sale there, and
+ * the comparison has a column for each tier on sale (lib/planLineup.ts).
+ * Basic shows no renewal date and no Cancel. A plan shows "Launch offer"
+ * while a higher price is scheduled for it. A code typed here is carried to
+ * Checkout.
  */
 export function SubscriptionScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -221,7 +251,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         // code?") rather than straight into the gateway modal. The modal
         // showed a total with no breakdown and no way to enter a code,
         // which is what decision #7 and D3 are about.
-        navigation.navigate("Checkout", { purpose: "subscription", referenceId: plan.id });
+        navigation.navigate("Checkout", { purpose: "subscription", referenceId: plan.id, code: couponCode.trim() || undefined });
       }
     } catch (err) {
       Alert.alert("Couldn't subscribe", extractErrorMessage(err, "Check your connection and try again."));
@@ -261,6 +291,11 @@ export function SubscriptionScreen({ navigation, route }: Props) {
       ],
     );
   };
+
+  // 20 Oct 2026: the free plan, as named in admin, and whether a paid plan is running.
+  const freePlan = (plans ?? []).find((p) => isFreePlan(p) && p.billingCycle === "monthly") ?? (plans ?? []).find(isFreePlan);
+  const paidPlanRunning =
+    !!current && !isFreePlan(current.plan) && (current.status === "active" || current.status === "trialing" || current.status === "past_due");
 
   if (plansLoading || currentLoading) {
     return (
@@ -306,13 +341,15 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                      <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{TIER_LABEL[current.plan.tier]}</Text>
+                      <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{current.plan.name}</Text>
                       <Pill label={entitlement.label} tone={entitlement.tone} icon={entitlement.icon} />
                     </View>
                     <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
                       {/* What this subscriber actually pays, locked until renewal (D8). */}
                       {formatPrice(current.priceCents ?? current.plan.priceCents, current.plan.billingCycle)}
-                      {current.renewsAt ? ` · renews ${new Date(current.renewsAt).toLocaleDateString()}` : ""}
+                      {current.renewsAt && !isFreePlan(current.plan) && current.status !== "expired"
+                        ? ` · paid until ${new Date(current.renewsAt).toLocaleDateString()}`
+                        : ""}
                     </Text>
                   </View>
                 </View>
@@ -324,8 +361,24 @@ export function SubscriptionScreen({ navigation, route }: Props) {
               </>
             );
           })()}
-          {/* Gap §57 — only offer Cancel for a still-actionable, not-already-cancelAtPeriodEnd subscription. A terminal (expired/revoked) or already-scheduled-to-lapse row has nothing left to cancel. */}
-          {(current.status === "active" || current.status === "trialing" || current.status === "past_due") &&
+          {/* Manual renewal (20 Oct 2026): a paid plan that is ending, has ended or whose payment failed can be
+              paid for again here (the plan itself isn't in the list below). Renewing early adds a full
+              period after the current end date. Only while the plan is still on sale in admin. */}
+          {paymentsConfigured &&
+          !isFreePlan(current.plan) &&
+          (plans ?? []).some((p) => p.id === current.plan.id) &&
+          (current.displayState === "expiring" || current.status === "expired" || current.status === "past_due") ? (
+            <Button
+              label={`Renew ${current.plan.name}`}
+              onPress={() =>
+                navigation.navigate("Checkout", { purpose: "subscription", referenceId: current.plan.id, code: couponCode.trim() || undefined })
+              }
+              style={{ marginTop: spacing.md }}
+            />
+          ) : null}
+          {/* Gap §57 — only offer Cancel for a still-actionable, not-already-cancelAtPeriodEnd subscription. A terminal (expired/revoked) or already-scheduled-to-lapse row has nothing left to cancel, and neither has the free Basic plan. */}
+          {!isFreePlan(current.plan) &&
+            (current.status === "active" || current.status === "trialing" || current.status === "past_due") &&
             !current.cancelAtPeriodEnd && (
               <Button
                 label={t("subscription.cancel")}
@@ -335,6 +388,30 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                 style={{ marginTop: spacing.md }}
               />
             )}
+        </Card>
+      ) : freePlan ? (
+        // 20 Oct 2026: no subscription row means the member is on the free plan.
+        <Card>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: radius.md,
+                backgroundColor: TIER_TINT[freePlan.tier].soft,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name={TIER_ICON[freePlan.tier]} size={22} color={TIER_TINT[freePlan.tier].color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{freePlan.name}</Text>
+              <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
+                {formatPrice(freePlan.priceCents, freePlan.billingCycle)}
+              </Text>
+            </View>
+          </View>
         </Card>
       ) : (
         <Card style={{ alignItems: "center", gap: spacing.xs, paddingVertical: spacing.lg }}>
@@ -362,6 +439,9 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         {!paymentsConfigured ? <Text style={{ color: colors.warningText, ...typography.meta }}>{t("checkout.paymentsUnavailable")}</Text> : null}
         {(plans ?? [])
           .filter((plan) => plan.id !== current?.planId)
+          // The free plan is not offered while it is already the member's plan (no subscription row),
+          // nor while a paid plan is running: cancelling keeps what was paid for, then it ends (20 Oct 2026).
+          .filter((plan) => !isFreePlan(plan) || (!!current && !paidPlanRunning))
           // Basic (free) has no annual variant — a billing-cycle choice is
           // meaningless for a $0 plan, so it's always shown regardless of
           // which chip is selected above.
@@ -372,7 +452,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
             return (
               <Card
                 key={plan.id}
-                style={plan.tier === "grow" ? { borderColor: colors.accent } : undefined}
+                style={plan.tier === "prime" ? { borderColor: colors.accent } : undefined}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                   <View
@@ -389,8 +469,8 @@ export function SubscriptionScreen({ navigation, route }: Props) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{TIER_LABEL[plan.tier]}</Text>
-                      {plan.tier === "grow" ? <Pill label={t("subscription.popular")} tone="accent" /> : null}
+                      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{plan.name}</Text>
+                      {hasLaunchOffer(plan) ? <Pill label={t("subscription.launchOffer")} tone="accent" /> : null}
                       {savings != null ? <Pill label={t("subscription.save", { percent: savings })} tone="success" /> : null}
                     </View>
                     <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
@@ -437,7 +517,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         </Text>
       </Card>
 
-      <FeatureComparison />
+      <FeatureComparison plans={plans ?? []} />
 
       <Button
         label={t("subscription.purchaseHistory")}
@@ -453,24 +533,31 @@ export function SubscriptionScreen({ navigation, route }: Props) {
 // `label` became `key` on 29 Sep 2026: the copy lives in the catalogue
 // (`subscription.features.*`) and this array carries only which tiers
 // include what, which is the actual product decision.
-// D13: requesting a coach works on every plan (the coach's fee is paid
-// separately), so humanCoaching is ticked for all three.
-const COMPARISON_FEATURES: Array<{ key: string; basic: boolean; grow: boolean; prime: boolean }> = [
+// Owner, 20 Oct 2026: Basic (free) is workout and nutrition tracking, the
+// progress timeline, reminders, AI coach chat and recovery logs; Prime is
+// everything in Basic plus requesting a coach (billed separately) and
+// priority support. The four Fynrox programs are bought separately on either. Grow is archived in the admin portal, so its column only shows if
+// a Grow plan is switched on again; its ticks are the last decided ones (D13).
+const COMPARISON_FEATURES: Array<{ key: string } & Record<PlanTier, boolean>> = [
   { key: "tracking", basic: true, grow: true, prime: true },
   { key: "progress", basic: true, grow: true, prime: true },
-  { key: "aiCoach", basic: false, grow: true, prime: true },
-  { key: "recovery", basic: false, grow: true, prime: true },
-  { key: "humanCoaching", basic: true, grow: true, prime: true },
+  { key: "reminders", basic: true, grow: true, prime: true },
+  { key: "aiCoach", basic: true, grow: true, prime: true },
+  { key: "recovery", basic: true, grow: true, prime: true },
+  { key: "humanCoaching", basic: false, grow: true, prime: true },
   { key: "prioritySupport", basic: false, grow: false, prime: true },
 ];
 
 /**
  * Feature comparison (§M) — an honest plan-lineup table. Nothing in the app
  * hard-gates on tier yet (gap §35), so this communicates what each tier is
- * intended to include, not an enforced entitlement matrix.
+ * intended to include, not an enforced entitlement matrix. One column per
+ * tier on sale, headed with the plan name the super admin gave it.
  */
-function FeatureComparison() {
+function FeatureComparison({ plans }: { plans: SubscriptionPlan[] }) {
   const { t } = useTranslation();
+  const columns = comparisonColumns(plans);
+  if (columns.length === 0) return null;
   const cell = (on: boolean) => (
     <Text style={{ color: on ? colors.accent : colors.textMuted, textAlign: "center", flex: 1 }}>{on ? "✓" : "–"}</Text>
   );
@@ -479,9 +566,11 @@ function FeatureComparison() {
       <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("subscription.comparePlans")}</Text>
       <View style={{ flexDirection: "row", marginBottom: spacing.xs }}>
         <Text style={{ color: colors.textMuted, ...typography.meta, flex: 2 }}>{t("subscription.feature")}</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Basic</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Grow</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>Prime</Text>
+        {columns.map((c) => (
+          <Text key={c.tier} style={{ color: colors.textMuted, ...typography.meta, flex: 1, textAlign: "center" }}>
+            {c.name}
+          </Text>
+        ))}
       </View>
       {COMPARISON_FEATURES.map((f) => (
         <View
@@ -495,9 +584,9 @@ function FeatureComparison() {
           }}
         >
           <Text style={{ color: colors.textSecondary, flex: 2 }}>{t(`subscription.features.${f.key}`)}</Text>
-          {cell(f.basic)}
-          {cell(f.grow)}
-          {cell(f.prime)}
+          {columns.map((c) => (
+            <React.Fragment key={c.tier}>{cell(f[c.tier])}</React.Fragment>
+          ))}
         </View>
       ))}
     </Card>

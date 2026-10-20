@@ -10,7 +10,7 @@ import type { CompositeScreenProps, NavigationProp } from "@react-navigation/nat
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MealType } from "@fitness-ai-app/types";
 import { BRAND_NAME } from "../../lib/brand";
-import { Avatar } from "../../components/Avatar";
+import { MyAvatar } from "../../components/MyAvatar";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
@@ -39,6 +39,7 @@ import { useMeasureUnits } from "../../lib/measureUnits";
 import { MEAL_LABEL as MED_MEAL_LABEL } from "../../lib/medicationReminder";
 import { logDoseWithReminder, MEDICINE_SNOOZE_MINUTES } from "../../lib/medicationDoseActions";
 import { fmtGymRange, gymDayShort } from "../../lib/gymFormat";
+import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
 import { openNotificationDeepLink } from "../../lib/deepLink";
 import { useDailyReview } from "../../lib/useDailyReview";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
@@ -183,7 +184,8 @@ export function TodayScreen({ navigation }: Props) {
   const { data: medications } = useQuery({ queryKey: ["medications"], queryFn: fetchMedications, enabled: !!nextMedication });
   const nextMedicationDetail = medications?.find((m) => m.id === nextMedication?.medicationId);
   // Only a linked, active partner gym; 404 gym_not_linked simply hides the card.
-  const { data: gym } = useQuery({ queryKey: GYM_ME_KEY, queryFn: fetchGymMe, retry: false });
+  // Gym partners are hidden for now (lib/partnerPrograms.ts): no gym card or checklist step.
+  const { data: gym } = useQuery({ queryKey: GYM_ME_KEY, queryFn: fetchGymMe, retry: false, enabled: PARTNER_PROGRAMS_ENABLED });
   const { data: workoutSettings } = useWorkoutSettings();
   const units = useMeasureUnits();
   const toast = useToast();
@@ -405,7 +407,7 @@ export function TodayScreen({ navigation }: Props) {
 
         {/* Header: avatar, greeting, round search + bell */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Avatar name={fullName} size={40} />
+          <MyAvatar name={fullName} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 20 }} numberOfLines={1}>

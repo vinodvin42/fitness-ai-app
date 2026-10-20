@@ -44,6 +44,13 @@ interface Options {
    * just without a Retry action wired to the specific payment.
    */
   onActivationFailed?: (paymentId: string | undefined, message: string) => void;
+  /**
+   * 20 Oct 2026: Razorpay reported the payment, but our server couldn't confirm
+   * it (for example the connection dropped). The money may have been taken, so
+   * this must never be shown as "payment failed, not charged". Receives
+   * Razorpay's payment ID for support.
+   */
+  onVerifyFailed?: (razorpayPaymentId: string, message: string) => void;
 }
 
 /**
@@ -54,7 +61,7 @@ interface Options {
  * Pair with <RazorpayCheckoutModal order={order} onSuccess={onCheckoutSuccess} onDismiss={onCheckoutDismiss} />
  * rendered as a sibling in the same screen.
  */
-export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivationFailed }: Options) {
+export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivationFailed, onVerifyFailed }: Options) {
   const [order, setOrder] = useState<RazorpayOrder | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -99,6 +106,8 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
         if (extractErrorCode(err) === "entitlement_activation_failed" && onActivationFailed) {
           const paymentId = extractErrorDetails(err)?.paymentId as string | undefined;
           onActivationFailed(paymentId, extractErrorMessage(err, "Your payment went through, but activation failed. Please retry."));
+        } else if (onVerifyFailed) {
+          onVerifyFailed(result.razorpayPaymentId, extractErrorMessage(err, "We couldn't confirm your payment."));
         } else {
           reportError(
             "Payment couldn't be verified",

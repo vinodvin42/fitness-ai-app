@@ -46,9 +46,15 @@ export function PaymentResultScreen({ route, navigation }: Props) {
 
   const refresh = () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "current"] }),
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "history"] }),
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] }),
+      queryClient.invalidateQueries({ queryKey: ["purchaseHistory"] }),
     ]);
+
+  // 20 Oct 2026: a success (or a payment still being confirmed) must show the
+  // new plan once the member leaves this screen, never the old one.
+  useEffect(() => {
+    if (status === "success" || status === "unconfirmed") refresh();
+  }, [status]);
 
   // Background poll — only while this screen is genuinely showing the
   // activation_failed state, only when we have a real paymentId to check,
@@ -95,11 +101,20 @@ export function PaymentResultScreen({ route, navigation }: Props) {
   const activated = resolvedActivated || activatedViaPoll;
   const success = status === "success" || (status === "activation_failed" && activated);
   const pendingActivation = status === "activation_failed" && !activated;
+  const unconfirmed = status === "unconfirmed";
 
   return (
     <ScreenContainer
       edges={["top", "bottom"]}
-      title={success ? t("payment.successTitle") : pendingActivation ? t("payment.activatingTitle") : t("payment.failedTitle")}
+      title={
+        success
+          ? t("payment.successTitle")
+          : pendingActivation
+            ? t("payment.activatingTitle")
+            : unconfirmed
+              ? t("payment.unconfirmedTitle")
+              : t("payment.failedTitle")
+      }
     >
       <Card style={{ alignItems: "center", paddingVertical: spacing.xl }}>
         <View
@@ -111,24 +126,32 @@ export function PaymentResultScreen({ route, navigation }: Props) {
             justifyContent: "center",
             backgroundColor: success
               ? "rgba(34,197,94,0.15)"
-              : pendingActivation
+              : pendingActivation || unconfirmed
                 ? colors.warningSoft
                 : "rgba(239,68,68,0.15)",
           }}
         >
-          <Text style={{ fontSize: 32, color: success ? colors.success : pendingActivation ? colors.warning : colors.danger }}>
+          <Text style={{ fontSize: 32, color: success ? colors.success : pendingActivation || unconfirmed ? colors.warning : colors.danger }}>
             {success ? "✓" : "!"}
           </Text>
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.md, textAlign: "center" }}>
-          {success ? t("payment.allSet") : pendingActivation ? t("payment.received") : t("payment.wentWrong")}
+          {success
+            ? t("payment.allSet")
+            : pendingActivation
+              ? t("payment.received")
+              : unconfirmed
+                ? t("payment.unconfirmedHeading")
+                : t("payment.wentWrong")}
         </Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
           {success
             ? t("payment.activeNow")
             : pendingActivation
               ? (message ?? t("payment.activationPending"))
-              : (message ?? t("payment.didNotGoThrough"))}
+              : unconfirmed
+                ? t("payment.unconfirmedBody", { id: paymentId ?? "—" })
+                : (message ?? t("payment.didNotGoThrough"))}
         </Text>
         {/* U-M3 explicitly names this line: a failed payment must say
             "you were not charged". It used to be part of the default
@@ -137,7 +160,7 @@ export function PaymentResultScreen({ route, navigation }: Props) {
             user is most worried, and most likely to try paying again.
             It is now always shown on failure, alongside any specific
             reason. */}
-        {!success && !pendingActivation ? (
+        {!success && !pendingActivation && !unconfirmed ? (
           <Text
             style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm, textAlign: "center" }}
           >
@@ -151,7 +174,7 @@ export function PaymentResultScreen({ route, navigation }: Props) {
       ) : null}
 
       <Button
-        label={success ? t("common.done") : pendingActivation ? t("payment.checkBackLater") : t("payment.backToPlans")}
+        label={success ? t("common.done") : pendingActivation || unconfirmed ? t("payment.checkBackLater") : t("payment.backToPlans")}
         variant={pendingActivation ? "secondary" : "primary"}
         onPress={() => navigation.navigate("Subscription")}
         style={{ marginTop: spacing.md }}

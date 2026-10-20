@@ -29,7 +29,7 @@ const CATEGORIES: Array<{ key: CategoryKey; label: string; hint: string }> = [
   { key: "mealReminders", label: "Meal Logging Reminders", hint: "Nudges at breakfast, lunch, and dinner to record nutrition." },
   { key: "hydrationReminders", label: "Hydration Reminders", hint: "Gentle reminders through the day, within your daily limit." },
   { key: "coachMessages", label: "Messages from your coach", hint: "Alerts when your coach messages you." },
-  { key: "billing", label: "Plan, gym & billing updates", hint: "Plan changes, gym holidays, renewals and payment issues." },
+  { key: "billing", label: "Plan & billing updates", hint: "Plan changes, renewals and payment issues." },
   { key: "marketing", label: "Tips & offers", hint: "Optional product news. Off by default." },
 ];
 const CAP_OPTIONS: Array<number | null> = [null, 3, 5, 10, 20];

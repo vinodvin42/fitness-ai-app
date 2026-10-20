@@ -3,14 +3,18 @@ import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "reac
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
-import { Avatar } from "../../components/Avatar";
+import { MyAvatar } from "../../components/MyAvatar";
+import { ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
+import { toDobString, validateDobParts } from "../../components/AboutYouParts";
 import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
 import { extractErrorMessage } from "../../lib/apiError";
+import { isoToDmy, maskDmy, splitDmy } from "../../lib/dobFormat";
 import { HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, cmToIn, inToCm, kgToLb, lbToKg, useMeasureUnits } from "../../lib/measureUnits";
+import { useProfilePhoto, useProfilePhotoActions } from "../../lib/profilePhoto";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -19,7 +23,6 @@ import { RecoverShell } from "../recover/parts";
 type Props = NativeStackScreenProps<MoreStackParamList, "EditProfile">;
 
 const GENDERS = ["male", "female", "other"] as const;
-const DOB_RE = /^\d{4}-\d{2}-\d{2}$/;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function Field({ label, children, onPress, chevron }: { label: string; children: React.ReactNode; onPress?: () => void; chevron?: boolean }) {
@@ -54,14 +57,20 @@ function Field({ label, children, onPress, chevron }: { label: string; children:
  * the previous Edit Profile). Name/mobile live on User; DOB/gender/height/
  * weight on OnboardingProfile (storage is always cm/kg; the inputs follow the
  * user's Measurement Units). Mobile is optional free text with no OTP check.
- * Profile photos are not supported yet (no image storage for avatars), so the
- * avatar shows initials (no "coming soon" caption — it promised nothing usable).
+ * Date of birth is shown and typed as DD/MM/YYYY (lib/dobFormat.ts) and still
+ * saved as YYYY-MM-DD.
+ * The avatar shows the member's profile photo, or initials without one; tap
+ * it (or Add / Change photo) to take a photo, choose one from the gallery or
+ * remove it (lib/profilePhoto.ts, 20 Oct 2026).
  */
 export function EditProfileScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
   const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
   const units = useMeasureUnits();
+  const photo = useProfilePhoto();
+  const photoActions = useProfilePhotoActions();
+  const [photoSheet, setPhotoSheet] = useState(false);
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,7 +96,7 @@ export function EditProfileScreen({ navigation }: Props) {
   useEffect(() => {
     if (!profile || loaded) return;
     setGender(profile.gender ?? undefined);
-    setDob(profile.dateOfBirth ? profile.dateOfBirth.slice(0, 10) : "");
+    setDob(isoToDmy(profile.dateOfBirth));
     if (profile.heightCm != null) {
       if (ft) {
         const totalIn = Math.round(cmToIn(profile.heightCm));
@@ -110,7 +119,14 @@ export function EditProfileScreen({ navigation }: Props) {
     setError(null);
     const name = fullName.trim();
     if (!name) return setError("Enter your full name.");
-    if (dob && !DOB_RE.test(dob)) return setError("Enter your date of birth as YYYY-MM-DD.");
+    let dateOfBirth: string | undefined;
+    if (dob.trim()) {
+      const parts = splitDmy(dob);
+      if (!parts) return setError("Enter your date of birth as DD/MM/YYYY.");
+      const dobError = validateDobParts(parts.day, parts.month, parts.year);
+      if (dobError) return setError(`${dobError}.`);
+      dateOfBirth = toDobString(parts.day, parts.month, parts.year);
+    }
 
     let heightCm: number | undefined;
     if (heightText.trim() && (heightText !== initial.current.height || heightInText !== initial.current.heightIn)) {
@@ -134,7 +150,7 @@ export function EditProfileScreen({ navigation }: Props) {
       if (loaded) {
         await editOnboardingProfile({
           gender,
-          dateOfBirth: dob || undefined,
+          dateOfBirth,
           heightCm: heightCm != null ? Math.round(heightCm * 10) / 10 : undefined,
           weightKg: weightKg != null ? Math.round(weightKg * 10) / 10 : undefined,
         });
@@ -159,8 +175,27 @@ export function EditProfileScreen({ navigation }: Props) {
   return (
     <RecoverShell centered title="View Profile" onBack={() => navigation.goBack()}>
       <View style={{ alignItems: "center", gap: 6 }}>
-        <Avatar name={fullName || user?.fullName} size={84} />
+        <Pressable
+          onPress={() => setPhotoSheet(true)}
+          disabled={photoActions.busy}
+          accessibilityRole="button"
+          accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
+        >
+          <MyAvatar name={fullName || user?.fullName} size={84} busy={photoActions.busy} />
+        </Pressable>
+        <Pressable onPress={() => setPhotoSheet(true)} disabled={photoActions.busy} accessibilityRole="button" hitSlop={8}>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+            {photo.data ? "Change photo" : "Add photo"}
+          </Text>
+        </Pressable>
       </View>
+      <ProfilePhotoSheet
+        visible={photoSheet}
+        hasPhoto={!!photo.data}
+        onClose={() => setPhotoSheet(false)}
+        onChoose={photoActions.choose}
+        onRemove={photoActions.remove}
+      />
 
       {isLoading ? <ActivityIndicator color={colors.accent} /> : null}
       {isError ? <ErrorState message="Couldn't load your date of birth, gender, height and weight." onRetry={() => refetch()} /> : null}
@@ -180,12 +215,13 @@ export function EditProfileScreen({ navigation }: Props) {
         <TextInput
           style={input}
           value={dob}
-          onChangeText={setDob}
+          onChangeText={(t) => setDob(maskDmy(t))}
           editable={loaded}
-          placeholder="YYYY-MM-DD"
+          placeholder="DD/MM/YYYY"
           placeholderTextColor={colors.textMuted}
+          keyboardType="number-pad"
           maxLength={10}
-          accessibilityLabel="Date of birth"
+          accessibilityLabel="Date of birth, day, month and year"
         />
       </Field>
 

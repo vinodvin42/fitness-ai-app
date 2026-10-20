@@ -115,7 +115,8 @@ export type MoreStackParamList = {
   /** U-M5 / U-M7 — the controlled-assignment request flow. */
   RequestGuidance: undefined;
   /** U-M1 — checkout, with the price and GST line served by the API. */
-  Checkout: { purpose: "subscription" | "program_purchase"; referenceId: string };
+  // `code`: a discount code typed on the Subscription screen, applied when Checkout opens.
+  Checkout: { purpose: "subscription" | "program_purchase"; referenceId: string; code?: string };
   /** U-M22 — purchase history with refund status. */
   Purchases: undefined;
   MoreHub: undefined;
@@ -146,7 +147,8 @@ export type MoreStackParamList = {
   // only the entitlement grant failed, so it gets its own honest copy and a
   // Retry action instead of collapsing into "failed" (a lie in that case).
   // See PaymentResultScreen.tsx and payments.service.ts's activatePayment.
-  PaymentResult: { status: "success" | "failed" | "activation_failed"; message?: string; paymentId?: string };
+  // "unconfirmed" (20 Oct 2026): Razorpay took a payment our server could not confirm yet; paymentId is Razorpay's.
+  PaymentResult: { status: "success" | "failed" | "activation_failed" | "unconfirmed"; message?: string; paymentId?: string };
   TimelineOverview: undefined;
   TimelineMonth: { year?: number; month?: number };
   TimelineEvent: { event: TimelineEvent };

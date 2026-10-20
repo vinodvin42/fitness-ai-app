@@ -26,6 +26,8 @@ export type PurchaseRecord = {
   id: string;
   purpose: string;
   referenceId: string;
+  /** The plan or program as named in admin (20 Oct 2026); null for a coach session. */
+  itemName: string | null;
   amountCents: number;
   currency: string;
   status: string;

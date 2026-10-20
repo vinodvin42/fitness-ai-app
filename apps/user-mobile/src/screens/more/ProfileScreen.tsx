@@ -1,13 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, Share, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { NavigationProp } from "@react-navigation/native";
 import type { SubscriptionDetail } from "@fitness-ai-app/types";
-import { Avatar } from "../../components/Avatar";
+import { MyAvatar } from "../../components/MyAvatar";
+import { ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
 import { Icon, IconName } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
-import { fetchCurrentSubscription } from "../../api/subscriptions";
+import { fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
 import { fetchReferralSummary } from "../../api/referrals";
 import { fetchMyPrograms } from "../../api/programPurchases";
 import { fetchDevices } from "../../api/devices";
@@ -15,6 +16,9 @@ import { fetchOnboardingProfile } from "../../api/users";
 import { fetchPartner, PARTNER_KEY } from "../../api/partner";
 import { useSavedRecipes } from "../../api/savedRecipes";
 import { BRAND_NAME } from "../../lib/brand";
+import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
+import { isFreePlan } from "../../lib/planLineup";
+import { useProfilePhoto, useProfilePhotoActions } from "../../lib/profilePhoto";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -58,13 +62,21 @@ export function ProfileScreen({ navigation }: Props) {
   const subscription = useQuery({ queryKey: ["subscriptions", "current"], queryFn: fetchCurrentSubscription });
   const referral = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary });
   const onboarding = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile });
+  const photo = useProfilePhoto();
+  const photoActions = useProfilePhotoActions();
+  const [photoSheet, setPhotoSheet] = useState(false);
   const programs = useQuery({ queryKey: ["myPrograms"], queryFn: fetchMyPrograms });
   const devices = useQuery({ queryKey: ["devices"], queryFn: fetchDevices });
-  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner });
+  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, enabled: PARTNER_PROGRAMS_ENABLED });
   const saved = useSavedRecipes();
 
   const sub = subscription.data;
   const progress = sub ? periodProgress(sub) : null;
+  // Basic (free) has nothing to renew or cancel: it shows Upgrade instead (owner, 20 Oct 2026).
+  // No subscription row also means the free plan.
+  const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans });
+  const freePlan = subscription.isSuccess && (!sub || isFreePlan(sub.plan));
+  const planName = sub?.plan.name ?? (plans.data ?? []).find((p) => isFreePlan(p))?.name ?? "Basic";
   const memberId = memberIdFor(user?.id);
   const goalCount = onboarding.data?.goals?.length;
   const deviceCount = (devices.data ?? []).filter((d) => d.status !== "disconnected").length;
@@ -106,12 +118,17 @@ export function ProfileScreen({ navigation }: Props) {
     { title: "Subscription", icon: "zap", pill: sub?.plan.name, onPress: () => navigation.navigate("MyPlan") },
     { title: "Data & Privacy", icon: "shield-check", onPress: () => navigation.navigate("PrivacySettings") },
     { title: "Security", icon: "lock", onPress: () => navigation.navigate("Security") },
-    {
-      title: "My Gym",
-      icon: "home",
-      value: partner.data?.gym.name,
-      onPress: () => navigation.navigate(partner.data ? "MyGym" : "PartnerCode"),
-    },
+    // Gym partners are hidden for now (lib/partnerPrograms.ts).
+    ...(PARTNER_PROGRAMS_ENABLED
+      ? [
+          {
+            title: "My Gym",
+            icon: "home" as const,
+            value: partner.data?.gym.name,
+            onPress: () => navigation.navigate(partner.data ? "MyGym" : "PartnerCode"),
+          },
+        ]
+      : []),
     { title: "Purchase history", icon: "file-text", onPress: () => navigation.navigate("Purchases") },
     { title: "Help & Support", icon: "life-buoy", onPress: () => navigation.navigate("Support") },
   ];
@@ -120,11 +137,19 @@ export function ProfileScreen({ navigation }: Props) {
     <RecoverShell centered title="Profile" onBack={() => navigation.goBack()}>
       <View style={{ alignItems: "center", gap: 6, paddingVertical: spacing.sm }}>
         <View>
-          <Avatar name={user?.fullName} size={92} />
           <Pressable
-            onPress={() => navigation.navigate("EditProfile")}
+            onPress={() => setPhotoSheet(true)}
+            disabled={photoActions.busy}
             accessibilityRole="button"
-            accessibilityLabel="Edit profile"
+            accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
+          >
+            <MyAvatar name={user?.fullName} size={92} busy={photoActions.busy} />
+          </Pressable>
+          <Pressable
+            onPress={() => setPhotoSheet(true)}
+            disabled={photoActions.busy}
+            accessibilityRole="button"
+            accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
             style={{
               position: "absolute",
               right: -2,
@@ -139,7 +164,7 @@ export function ProfileScreen({ navigation }: Props) {
               justifyContent: "center",
             }}
           >
-            <Icon name="pencil" size={13} color={theme.textOnAccent} />
+            <Icon name="camera" size={13} color={theme.textOnAccent} />
           </Pressable>
         </View>
         <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22, marginTop: 4 }}>{user?.fullName}</Text>
@@ -155,22 +180,43 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
       </View>
 
+      <ProfilePhotoSheet
+        visible={photoSheet}
+        hasPhoto={!!photo.data}
+        onClose={() => setPhotoSheet(false)}
+        onChoose={photoActions.choose}
+        onRemove={photoActions.remove}
+      />
+
       <Pressable
         onPress={() => navigation.navigate("MyPlan")}
         accessibilityRole="button"
-        accessibilityLabel={sub ? `Current plan ${sub.plan.name}` : "Choose a plan"}
+        accessibilityLabel={`Current plan ${planName}`}
         style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 8 }}
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: colors.textMuted, ...typography.meta }}>Current Plan</Text>
           <Text style={{ color: theme.accentText, fontFamily: fonts.displayBold, fontSize: 14 }}>
-            {subscription.isLoading ? "…" : sub ? sub.plan.name : "None"}
+            {subscription.isLoading ? "…" : subscription.isError ? "—" : planName}
           </Text>
         </View>
-        {sub ? (
+        {freePlan ? (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
+            <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>Free plan</Text>
+            <Pressable
+              onPress={() => navigation.navigate("Subscription")}
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade your plan"
+              hitSlop={8}
+              style={{ backgroundColor: theme.accent, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 6 }}
+            >
+              <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodySemi, fontSize: 13 }}>Upgrade</Text>
+            </Pressable>
+          </View>
+        ) : sub ? (
           <>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-              {sub.renewsAt ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${fmtDate(sub.renewsAt)}` : "No renewal date"}
+              {sub.renewsAt ? `${sub.cancelAtPeriodEnd || sub.status === "expired" ? "Ends on" : "Paid until"} ${fmtDate(sub.renewsAt)}` : "No end date"}
             </Text>
             {progress != null ? (
               <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.surfaceHigh, overflow: "hidden" }}>

@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { GymMe, OnboardingProfile, WorkoutHistoryEntry } from "@fitness-ai-app/types";
 import { Icon } from "./Icon";
 import { getNotificationPermissionState } from "../lib/reminderNotifications";
+import { PARTNER_PROGRAMS_ENABLED } from "../lib/partnerPrograms";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -37,7 +38,8 @@ export function setupItems(input: {
   ];
   if (notifications !== null) items.push({ key: "notifications", label: "Reminders switched on", done: notifications });
   items.push({ key: "workout", label: "First workout done", done: (history ?? []).some((h) => h.status === "completed") });
-  items.push({ key: "gym", label: "Gym linked", done: !!gym, optional: true });
+  // Gym partners are hidden for now (lib/partnerPrograms.ts).
+  if (PARTNER_PROGRAMS_ENABLED) items.push({ key: "gym", label: "Gym linked", done: !!gym, optional: true });
   return items;
 }
 

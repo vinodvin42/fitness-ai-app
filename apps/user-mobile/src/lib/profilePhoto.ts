@@ -1,0 +1,104 @@
+import { useState } from "react";
+import { Alert } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ProfilePhoto } from "@fitness-ai-app/types";
+import { deleteProfilePhoto, fetchProfilePhoto, saveProfilePhoto } from "../api/users";
+import { useAuth } from "../context/AuthContext";
+import { extractErrorMessage } from "./apiError";
+import { squarePhotoActions } from "./profilePhotoCrop";
+
+/**
+ * Profile photo (20 Oct 2026): the member's own picture, set from Profile or
+ * View Profile by taking a photo or choosing one from the gallery. The picker
+ * crops it square; it is then shrunk to 512 px and saved as a JPEG data URI
+ * (the API keeps it in Postgres, see UserProfilePhoto in apps/api's
+ * schema.prisma). Held in memory only: lib/queryClient.ts never persists
+ * photos to the device, and sign-out clears it.
+ */
+export const PROFILE_PHOTO_KEY = ["profilePhoto"] as const;
+
+export type PhotoSource = "camera" | "library";
+
+/** The signed-in member's profile photo (null when none is set). */
+export function useProfilePhoto() {
+  const { user } = useAuth();
+  return useQuery({ queryKey: PROFILE_PHOTO_KEY, queryFn: fetchProfilePhoto, enabled: !!user, staleTime: 10 * 60_000 });
+}
+
+/**
+ * Opens the camera or the gallery (asking for access first) and returns the
+ * photo as a square 512 px JPEG data URI, or null when cancelled or refused.
+ */
+export async function pickProfilePhoto(source: PhotoSource): Promise<string | null> {
+  const camera = source === "camera";
+  const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (perm.status !== "granted") {
+    Alert.alert(
+      camera ? "Camera access needed" : "Photo library access needed",
+      camera
+        ? "Enable camera access in your device Settings to take a profile photo."
+        : "Enable photo access in your device Settings to choose a profile photo.",
+    );
+    return null;
+  }
+  const options: ImagePicker.ImagePickerOptions = { allowsEditing: true, aspect: [1, 1], quality: 1 };
+  const result = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  const asset = result.canceled ? null : result.assets[0];
+  if (!asset?.uri) return null;
+  const out = await manipulateAsync(asset.uri, squarePhotoActions(asset.width, asset.height), {
+    compress: 0.8,
+    format: SaveFormat.JPEG,
+    base64: true,
+  });
+  return out.base64 ? `data:image/jpeg;base64,${out.base64}` : null;
+}
+
+/** Take / choose / remove, with the saving state and error alerts the screens share. */
+export function useProfilePhotoActions() {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const choose = async (source: PhotoSource) => {
+    let imageData: string | null;
+    try {
+      imageData = await pickProfilePhoto(source);
+    } catch {
+      Alert.alert(source === "camera" ? "Couldn't open the camera" : "Couldn't open your photos", "Please try again.");
+      return;
+    }
+    if (!imageData) return;
+    setBusy(true);
+    try {
+      const photo = await saveProfilePhoto(imageData);
+      queryClient.setQueryData<ProfilePhoto | null>(PROFILE_PHOTO_KEY, photo);
+    } catch (err) {
+      Alert.alert("Couldn't save photo", extractErrorMessage(err, "Check your connection and try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = () =>
+    Alert.alert("Remove profile photo?", "Your initials will show instead.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await deleteProfilePhoto();
+            queryClient.setQueryData<ProfilePhoto | null>(PROFILE_PHOTO_KEY, null);
+          } catch (err) {
+            Alert.alert("Couldn't remove photo", extractErrorMessage(err, "Check your connection and try again."));
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
+
+  return { busy, choose, remove };
+}

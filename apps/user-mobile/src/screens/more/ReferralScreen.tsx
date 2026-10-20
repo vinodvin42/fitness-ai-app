@@ -179,7 +179,7 @@ export function ReferralScreen({ navigation }: Props) {
           • Your friend enters your invite code when they create their account.{"\n"}
           • When that friend first subscribes to a paid plan, you earn one month of subscription credit.{"\n"}
           • Credit is added to your balance and applied toward your membership; it has no cash value.{"\n"}
-          • Invite codes are separate from partner (gym) codes and never share your data.{"\n"}
+          • Invite codes never share your data.{"\n"}
           • Rewards can change or end; the terms shown here are the ones currently in effect.
         </Text>
       </BottomSheet>

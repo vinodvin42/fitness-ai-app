@@ -12,13 +12,19 @@ export type GuidanceRequest = {
   serviceType: "fitness" | "nutrition";
   status: GuidanceRequestStatus;
   userNote: string | null;
+  /** Coach gender (20 Oct 2026): the member asked for a male or female coach; null = no preference. */
+  coachGenderPreference: "male" | "female" | null;
   rematchCount: number;
   closedReason: string | null;
   createdAt: string;
   resolvedAt: string | null;
 };
 
-export function createGuidanceRequest(input: { serviceType: "fitness" | "nutrition"; userNote?: string }) {
+export function createGuidanceRequest(input: {
+  serviceType: "fitness" | "nutrition";
+  userNote?: string;
+  coachGender?: "male" | "female";
+}) {
   return apiClient.post<GuidanceRequest>("/coaching/guidance-requests", input).then((r) => r.data);
 }
 

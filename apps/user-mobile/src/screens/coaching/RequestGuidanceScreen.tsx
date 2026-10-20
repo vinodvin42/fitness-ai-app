@@ -35,9 +35,10 @@ type Props = NativeStackScreenProps<MoreStackParamList, "RequestGuidance">;
  * skip the screen.
  *
  * Deliberately shows no professional names, photos, ratings or prices
- * anywhere: the user is asking Fynrox for help, not shopping. The only
- * choice offered is fitness vs nutrition, which is the choice §10's
- * relationship limit is expressed in.
+ * anywhere: the user is asking Fynrox for help, not shopping. The choices
+ * offered are fitness vs nutrition, which is the choice §10's relationship
+ * limit is expressed in, and (owner, 20 Oct 2026) a male or female coach or
+ * no preference; the request then only goes to a coach of that gender.
  */
 
 /**
@@ -66,6 +67,7 @@ export function RequestGuidanceScreen(_props: Props) {
   const queryClient = useQueryClient();
   const [serviceType, setServiceType] = useState<"fitness" | "nutrition">("fitness");
   const [note, setNote] = useState("");
+  const [coachGender, setCoachGender] = useState<"any" | "female" | "male">("any");
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["guidanceRequests"],
@@ -73,7 +75,12 @@ export function RequestGuidanceScreen(_props: Props) {
   });
 
   const create = useMutation({
-    mutationFn: () => createGuidanceRequest({ serviceType, userNote: note.trim() || undefined }),
+    mutationFn: () =>
+      createGuidanceRequest({
+        serviceType,
+        userNote: note.trim() || undefined,
+        coachGender: coachGender === "any" ? undefined : coachGender,
+      }),
     onSuccess: () => {
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["guidanceRequests"] });
@@ -132,6 +139,15 @@ export function RequestGuidanceScreen(_props: Props) {
                 onPress={() => setServiceType(s.value)}
               />
             ))}
+          </View>
+
+          <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.md }}>
+            {t("guidance.coachGender.label")}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs }}>
+            <Chip label={t("guidance.coachGender.any")} selected={coachGender === "any"} onPress={() => setCoachGender("any")} />
+            <Chip label={t("guidance.coachGender.female")} selected={coachGender === "female"} onPress={() => setCoachGender("female")} />
+            <Chip label={t("guidance.coachGender.male")} selected={coachGender === "male"} onPress={() => setCoachGender("male")} />
           </View>
 
           <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.md }}>
@@ -206,6 +222,14 @@ function RequestCard({
       <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
         {t(`guidance.status.${request.status}.detail`)}
       </Text>
+
+      {request.coachGenderPreference ? (
+        <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+          {request.coachGenderPreference === "female"
+            ? t("guidance.coachGender.requestedFemale")
+            : t("guidance.coachGender.requestedMale")}
+        </Text>
+      ) : null}
 
       {/* U-M7's re-match visibility. Shown only once it has actually
           happened — a "0 attempts so far" line would be noise. */}

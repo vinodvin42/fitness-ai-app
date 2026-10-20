@@ -7,6 +7,7 @@ import type {
   EnableTwoFactorResponse,
   OnboardingProfile,
   OnboardingProfileInput,
+  ProfilePhoto,
   Session,
   SetupTwoFactorResponse,
   UpdateProfileInput,
@@ -23,6 +24,20 @@ export function submitOnboarding(input: OnboardingProfileInput) {
 
 export function updateProfile(input: UpdateProfileInput) {
   return apiClient.patch<{ user: User }>("/users/me", input).then((r) => r.data.user);
+}
+
+/** Profile photo (20 Oct 2026): the member's own picture, or null when none is set. */
+export function fetchProfilePhoto() {
+  return apiClient.get<{ photo: ProfilePhoto | null }>("/users/me/photo").then((r) => r.data.photo);
+}
+
+/** Sets or replaces the profile photo; `imageData` is a JPEG or PNG data URI. */
+export function saveProfilePhoto(imageData: string) {
+  return apiClient.put<{ photo: ProfilePhoto }>("/users/me/photo", { imageData }).then((r) => r.data.photo);
+}
+
+export function deleteProfilePhoto() {
+  return apiClient.delete("/users/me/photo").then(() => undefined);
 }
 
 /** gender/age/height/weight — backs Edit Profile's onboarding-data fields. */
