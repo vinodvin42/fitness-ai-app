@@ -1,5 +1,6 @@
 import React from "react";
 import type { ActivityKind } from "@fitness-ai-app/types";
+import type { SwapReason } from "../lib/exerciseMatch";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ProgramsMarketplaceScreen, TrainScreen } from "../screens/train/TrainScreen";
 import { ProgramDetailScreen } from "../screens/train/ProgramDetailScreen";
@@ -61,7 +62,15 @@ export type TrainStackParamList = {
   WorkoutHistory: undefined;
   // Train 09 - client-side swap of one WorkoutExercise (see lib/exerciseSwaps.ts).
   // Batch 3b: with sessionId + sessionExerciseId the swap is saved on the session's own list.
-  ExerciseSwap: { workoutId: string; workoutExerciseId: string; exerciseId: string; sessionId?: string; sessionExerciseId?: string };
+  // `reason` preselects a reason chip (the in-workout safety sheet opens it as joint_pain or equipment_busy).
+  ExerciseSwap: {
+    workoutId: string;
+    workoutExerciseId: string;
+    exerciseId: string;
+    sessionId?: string;
+    sessionExerciseId?: string;
+    reason?: SwapReason;
+  };
   // Wave B (Oct 2026): Train 12-16, 18 + set edit/delete.
   TrainingAnalytics: undefined;
   Routines: undefined;

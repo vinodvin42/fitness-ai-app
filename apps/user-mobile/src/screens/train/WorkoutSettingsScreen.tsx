@@ -272,8 +272,9 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
           </Pressable>
 
           <Text style={{ color: colors.textMuted, ...typography.meta }}>
-            Rest length, units, equipment and training days are used across the app. Audio coaching and auto-deload are saved to your
-            account; voice prompts and automatic deload weeks are not available yet.
+            Rest length, units, equipment and training days are used across the app. Audio coaching reads out each new exercise
+            in a workout and each kilometre of an outdoor run. Auto-deload is saved to your account; automatic deload weeks are not
+            available yet.
           </Text>
         </>
       )}

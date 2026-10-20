@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Card } from "../../components/Card";
 import { Chip } from "../../components/Chip";
@@ -13,6 +13,7 @@ import {
 } from "../../content/recover";
 import { useLogMindfulness } from "../../lib/useMindfulnessLog";
 import { extractErrorMessage } from "../../lib/apiError";
+import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { ActionButton, ProgressBar, RecoverShell } from "./parts";
@@ -26,19 +27,6 @@ const RING = 200;
 type Phase = "setup" | "running" | "done";
 
 const PHASE_TEXT = { Inhale: "Breathe in", Hold: "Hold", Exhale: "Breathe out" } as const;
-
-function canSpeak() {
-  return Platform.OS === "web" && typeof window !== "undefined" && "speechSynthesis" in window;
-}
-function say(text: string) {
-  try {
-    const synth = (window as unknown as { speechSynthesis: SpeechSynthesis }).speechSynthesis;
-    synth.cancel();
-    synth.speak(new SpeechSynthesisUtterance(text));
-  } catch {
-    // optional
-  }
-}
 
 /**
  * Recover 09 - Guided breathing. Defaults to Easy paced breathing (inhale 4 /
@@ -107,11 +95,11 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
   }, [elapsed, phase]);
 
   useEffect(() => {
-    if (voice && canSpeak() && phase === "running" && !paused) say(PHASE_TEXT[current.label]);
+    if (voice && phase === "running" && !paused) speak(PHASE_TEXT[current.label]);
   }, [idx, voice]);
   useEffect(
     () => () => {
-      if (canSpeak()) (window as unknown as { speechSynthesis: SpeechSynthesis }).speechSynthesis.cancel();
+      stopSpeech();
     },
     [],
   );
@@ -137,7 +125,7 @@ export function GuidedBreathingScreen({ navigation, route }: Props) {
     }
   };
 
-  const speakable = canSpeak();
+  const speakable = speechAvailable();
 
   if (phase === "setup") {
     return (

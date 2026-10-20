@@ -29,6 +29,7 @@ import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchDueMedications, fetchMedications, localDateString } from "../../api/medications";
 import { useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchGymMe, GYM_ME_KEY } from "../../api/gym";
+import { SetupChecklistCard, type SetupStep } from "../../components/SetupChecklistCard";
 import { useToast } from "../../components/Toast";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
@@ -419,6 +420,20 @@ export function TodayScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("Notifications")}
           />
         </View>
+
+        {/* Setup checklist (Figma today/00): until the required steps are done, or the member hides it */}
+        <SetupChecklistCard
+          profile={onboardingProfile}
+          history={history}
+          gym={gym}
+          onOpen={(step: SetupStep) => {
+            if (step === "workout") navigation.navigate("Train", { screen: "TrainDashboard" });
+            else if (step === "goal") navigation.navigate("More", { screen: "MyGoals", initial: false });
+            else if (step === "body") navigation.navigate("More", { screen: "EditProfile", initial: false });
+            else if (step === "notifications") navigation.navigate("More", { screen: "NotificationPermission", initial: false });
+            else navigation.navigate("More", { screen: "MyGym", initial: false });
+          }}
+        />
 
         {/* Daily review (Figma 02b today/01) */}
         {dailyReview.suggestions.length > 0 ? (

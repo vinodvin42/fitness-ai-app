@@ -14,6 +14,8 @@ import { ExerciseMenuSheet, type ExerciseMenuItem } from "../../components/Exerc
 import { PlateCalculatorSheet } from "../../components/PlateCalculatorSheet";
 import { SetEditSheet } from "../../components/SetEditSheet";
 import { AddExerciseSheet } from "../../components/AddExerciseSheet";
+import { InWorkoutSafetySheet } from "../../components/InWorkoutSafetySheet";
+import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { clearExerciseRest, setExerciseRest, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchExercises, fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
@@ -233,6 +235,9 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [quickEdit, setQuickEdit] = useState<QuickEditTarget | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [platesOpen, setPlatesOpen] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  // Whether the safety sheet paused the workout (so closing it resumes only a pause it made).
+  const pausedBySafety = useRef(false);
   const [editingSet, setEditingSet] = useState<ExerciseSetLog | null>(null);
   // Batch 3b: the next set's type, and the sheets for add / superset / rest.
   const [setType, setSetType] = useState<SetType>("normal");
@@ -322,6 +327,20 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   );
 
   const currentExercise = orderedExercises[exerciseIndex];
+
+  // Audio coaching (saved setting, on unless switched off): say which exercise is up each time it
+  // changes, including the first one. Kept above the early returns below: these are hooks.
+  const audioCoaching = (workoutSettings?.audioCoaching ?? true) && speechAvailable();
+  const announcedExercise = useRef<string | null>(null);
+  useEffect(() => {
+    if (!audioCoaching || !hasHydrated || !currentExercise) return;
+    if (announcedExercise.current === currentExercise.id) return;
+    announcedExercise.current = currentExercise.id;
+    const sets = currentExercise.targetSets === 1 ? "1 set" : `${currentExercise.targetSets} sets`;
+    speak(`${currentExercise.exercise.name}. ${sets} of ${currentExercise.targetReps}.`);
+    // Keyed by the exercise id on purpose: announce once per exercise.
+  }, [audioCoaching, hasHydrated, currentExercise?.id]);
+  useEffect(() => () => stopSpeech(), []);
   // This exercise's recorded sets, read from the shared session data (the same cache the Set/Rest Tracker reads
   // and writes), so a set logged or deleted there shows here too and a number is never reused.
   const loggedSets: LoggedSet[] = useMemo(
@@ -448,8 +467,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
   };
 
-  const onNextExercise = async () => {
+  const onNextExercise = () => {
     if (paused) return;
+    void advance();
+  };
+
+  const advance = async () => {
     if (isLastExercise) {
       setIsFinishing(true);
       try {
@@ -505,6 +528,33 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     );
   };
   abandonRef.current = onAbandon;
+
+  // Figma train/in-workout-safety-sheet: pause while the member chooses, then swap or move on.
+  const openSafety = () => {
+    pausedBySafety.current = !paused;
+    if (!paused) setPaused(true);
+    setSafetyOpen(true);
+  };
+  const closeSafety = () => {
+    setSafetyOpen(false);
+    if (pausedBySafety.current) setPaused(false);
+    pausedBySafety.current = false;
+  };
+  const swapFor = (reason: "joint_pain" | "equipment_busy") => {
+    closeSafety();
+    if (!currentExercise) return;
+    navigation.navigate("ExerciseSwap", {
+      workoutId,
+      workoutExerciseId: currentExercise.id,
+      exerciseId: currentExercise.exercise.id,
+      ...(sessionExerciseId ? { sessionId, sessionExerciseId } : {}),
+      reason,
+    });
+  };
+  const skipFromSafety = () => {
+    closeSafety();
+    void advance();
+  };
 
   // Warm-ups don't use up the target; "+ Add set" raises it for this visit.
   const targetSets = (currentExercise?.targetSets ?? 0) + extraSets;
@@ -1073,6 +1123,18 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       </ScrollView>
 
       <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.sm }}>
+        {currentExercise ? (
+          <Pressable
+            onPress={openSafety}
+            accessibilityRole="button"
+            accessibilityLabel="Pain or equipment busy?"
+            hitSlop={6}
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: spacing.xs, marginBottom: spacing.xs }}
+          >
+            <Icon name="alert-triangle" size={15} color={colors.warningText} />
+            <Text style={{ color: colors.warningText, ...typography.label, fontSize: 13 }}>Pain or equipment busy?</Text>
+          </Pressable>
+        ) : null}
         <Button
           label={isLastExercise ? "Finish Workout" : "Next Exercise"}
           onPress={onNextExercise}
@@ -1165,6 +1227,15 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         ]}
         footnote="Saved for this exercise in every workout."
         onClose={() => setRestOpen(false)}
+      />
+      <InWorkoutSafetySheet
+        visible={safetyOpen}
+        canSwap={!!currentExercise && loggedSets.length === 0}
+        isLastExercise={isLastExercise}
+        onPainSwap={() => swapFor("joint_pain")}
+        onEquipmentSwap={() => swapFor("equipment_busy")}
+        onSkip={skipFromSafety}
+        onResume={closeSafety}
       />
       <AddExerciseSheet
         visible={addOpen}

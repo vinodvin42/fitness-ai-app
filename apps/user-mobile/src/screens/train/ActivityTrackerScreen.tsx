@@ -20,6 +20,8 @@ import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toast";
 import { createActivity, fetchActivities, fetchActivitySummary } from "../../api/activities";
 import { extractErrorMessage } from "../../lib/apiError";
+import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
+import { useWorkoutSettings } from "../../api/workoutSettings";
 import { miToKm, useMeasureUnits } from "../../lib/measureUnits";
 import { formatDateTime, formatDuration, formatKm, formatPace, formatRate, formatSpeed, kindLabel } from "../../lib/activityFormat";
 import { TrackAccumulator, encodeRouteWithinLimit, paceSecPerKm, routeToSvgPath, speedKmh, type GpsFix } from "../../lib/gpsTrack";
@@ -284,6 +286,25 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   const liveRoute = mode === "gps" ? accRef.current.getRoute() : [];
   const mapPath = mapWidth > 0 ? routeToSvgPath(liveRoute, mapWidth, 190) : null;
   const splits = mode === "gps" && isRun ? accRef.current.getSplits() : [];
+
+  // Audio coaching (saved setting, on unless the member switched it off): each completed kilometre
+  // is announced with its pace, the same numbers as the Splits list.
+  const { data: workoutSettings } = useWorkoutSettings();
+  const audioCoaching = (workoutSettings?.audioCoaching ?? true) && speechAvailable();
+  const spokenSplits = useRef(0);
+  useEffect(() => {
+    if (phase === "idle") spokenSplits.current = 0;
+    if (splits.length <= spokenSplits.current) return;
+    const latest = splits[splits.length - 1];
+    spokenSplits.current = splits.length;
+    if (!audioCoaching || phase !== "running" || latest == null) return;
+    const total = Math.round(latest);
+    const min = Math.floor(total / 60);
+    const sec = total % 60;
+    const km = splits.length === 1 ? "1 kilometre" : `${splits.length} kilometres`;
+    speak(`${km}. Pace ${min} minute${min === 1 ? "" : "s"} ${sec} second${sec === 1 ? "" : "s"} per kilometre.`);
+  }, [splits.length, phase, audioCoaching]);
+  useEffect(() => () => stopSpeech(), []);
   const gpsBadge =
     phase === "idle"
       ? "GPS ready"
@@ -479,16 +500,16 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
         </>
       ) : null}
 
-      {isRun ? (
+      {isRun && mode === "gps" && speechAvailable() ? (
         <Pressable
           onPress={() => navigation.navigate("WorkoutSettings")}
           accessibilityRole="button"
-          accessibilityLabel="Audio coaching is not available yet. Open preferences."
+          accessibilityLabel={`Audio coaching ${audioCoaching ? "on: each kilometre and its pace are read out" : "off"}. Open workout settings.`}
           style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.aiSurface, borderRadius: radius.md, paddingVertical: 11 }}
         >
-          <Icon name="mic" size={14} color={colors.aiAccent} />
+          <Icon name={audioCoaching ? "volume-2" : "mic"} size={14} color={colors.aiAccent} />
           <Text style={{ color: colors.aiText, fontFamily: fonts.bodyMedium, fontSize: 13 }}>
-            Audio coaching prompts are not available yet
+            {audioCoaching ? "Audio coaching on · each kilometre and pace" : "Audio coaching off · tap to change"}
           </Text>
         </Pressable>
       ) : null}

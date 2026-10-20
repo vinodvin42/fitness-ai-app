@@ -24,11 +24,10 @@ const REASONS: Array<{ value: ChangeReasonCategory; label: string }> = [
 /**
  * Change Professional (docs/coach/03-screen-inventory.md §E) — this is
  * the user-facing counterpart to the admin console's Change/Intervention
- * Queue (04.03, not built — see schema.prisma's RelationshipChangeStatus
- * comment). Submitting creates a real, persisted RelationshipChangeRequest
- * and — per the design's own warning banner — deliberately does NOT end
- * the relationship itself; that stays a reviewed action for a future
- * admin screen. "Find New [Service] Coach" routes back into Discovery,
+ * Queue (GET /admin/relationships/change-requests). Submitting creates a
+ * real, persisted RelationshipChangeRequest and — per the design's own
+ * warning banner — deliberately does NOT end the relationship itself; the
+ * admin team reviews the request. "Find New [Service] Coach" routes back into Discovery,
  * pre-filtered to this relationship's service type.
  */
 export function ChangeProfessionalScreen({ navigation, route }: Props) {

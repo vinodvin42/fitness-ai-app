@@ -12,7 +12,9 @@ import {
   clearStoredAcquisitionContext,
   describeAcquisitionContext,
   getStoredAcquisitionContext,
+  gymCodeFromContext,
 } from "../../lib/acquisitionContext";
+import { linkPartnerCode } from "../../api/partner";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup">;
 
@@ -52,6 +54,12 @@ export function SignupScreen({ navigation }: Props) {
       // A fresh signup always has onboardingCompleted: false, so
       // RootNavigator automatically shows OnboardingStack next — no
       // explicit navigation call needed here.
+      //
+      // A gym invite's code is that gym's partner code: link it now, so My Gym and the gym's
+      // workouts are there from the start. Best-effort: an expired or unknown code (or a network
+      // blip) leaves the account as it is, and the member can still enter a code in My Gym.
+      const gymCode = gymCodeFromContext(acquisitionContext);
+      if (gymCode) await linkPartnerCode(gymCode).catch(() => undefined);
     } catch (err) {
       setError("Could not create your account — that email may already be taken.");
     } finally {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Card } from "../../components/Card";
@@ -9,6 +9,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { getRoutine, routineSeconds } from "../../content/recover";
 import { useLogMindfulness } from "../../lib/useMindfulnessLog";
 import { extractErrorMessage } from "../../lib/apiError";
+import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { colors, fonts, layout, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { ActionButton, PracticeArt, ProgressBar, RecoverShell } from "./parts";
@@ -24,27 +25,6 @@ interface RunState {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 export const clock = (s: number) => `${pad(Math.floor(Math.max(0, s) / 60))}:${pad(Math.max(0, s) % 60)}`;
-
-/** Browser speech synthesis, when present (web). Native has no TTS module in this build. */
-function speechAvailable(): boolean {
-  return Platform.OS === "web" && typeof window !== "undefined" && "speechSynthesis" in window;
-}
-function speak(text: string) {
-  try {
-    const synth = (window as unknown as { speechSynthesis: SpeechSynthesis }).speechSynthesis;
-    synth.cancel();
-    synth.speak(new SpeechSynthesisUtterance(text));
-  } catch {
-    // speech is a nice-to-have only
-  }
-}
-function stopSpeech() {
-  try {
-    (window as unknown as { speechSynthesis: SpeechSynthesis }).speechSynthesis.cancel();
-  } catch {
-    // ignore
-  }
-}
 
 function PulseLogo() {
   const pulse = useRef(new Animated.Value(0)).current;

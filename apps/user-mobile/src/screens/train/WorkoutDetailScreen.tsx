@@ -12,6 +12,8 @@ import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
 import { startWorkoutSession } from "../../api/workoutSessions";
+import { useWorkoutSettings } from "../../api/workoutSettings";
+import { formatMmSs } from "../../lib/format";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatRupees } from "../../lib/money";
@@ -54,6 +56,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
   const [whyOpen, setWhyOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
+  const { data: workoutSettings } = useWorkoutSettings();
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
@@ -204,7 +207,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{we.exercise.name}</Text>
                         <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
-                          {we.targetSets}×{we.targetReps} · {we.exercise.muscleGroup}
+                          {we.targetSets} {we.targetSets === 1 ? "set" : "sets"} × {we.targetReps} reps · {we.exercise.muscleGroup}
                         </Text>
                       </View>
                     </Pressable>
@@ -229,6 +232,12 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
           </View>
         );
       })}
+
+      {/* Reconciliation W1: the rest the workout will use (the default; an exercise can have its own). */}
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>
+        Rest {formatMmSs(workoutSettings?.restTimerSeconds ?? 60)} between sets. You can change it for any exercise during the
+        workout.
+      </Text>
 
       {workout.program.purchased ? (
         <>

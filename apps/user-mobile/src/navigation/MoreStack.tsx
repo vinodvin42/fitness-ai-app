@@ -88,8 +88,8 @@ import { MyGoalsScreen } from "../screens/more/MyGoalsScreen";
 // full reply thread against the new `SupportTicketMessage` model. §O
 // (Phase 4, continued 19 Aug 2026): More Menu -> Referral
 // (real code + real signup count, no reward grid — see
-// ReferralScreen.tsx). The other More-hub rows (Programs, Coaching) stay
-// inert placeholders in MoreScreen — later roadmap phases. §F (continued 19
+// ReferralScreen.tsx). The Programs and Coaching rows in MoreScreen now
+// open real screens (Coaching goes to ProfessionalRelationship). §F (continued 19
 // Aug 2026): Progress -> Streak Tracker — training/nutrition/hydration
 // streaks computed from real logs; "mindfulness" (the design's fourth
 // category) is deliberately omitted, see gap §29. Progress -> Progress

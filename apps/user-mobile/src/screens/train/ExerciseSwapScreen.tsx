@@ -60,7 +60,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [equipment, setEquipment] = useState(ALL);
-  const [reason, setReason] = useState<SwapReason>("preference");
+  const [reason, setReason] = useState<SwapReason>(route.params.reason ?? "preference");
   const { data: exercise, isLoading, isError, refetch } = useQuery({
     queryKey: ["exercise", exerciseId],
     queryFn: () => fetchExerciseDetail(exerciseId),

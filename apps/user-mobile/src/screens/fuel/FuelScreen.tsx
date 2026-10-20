@@ -8,6 +8,7 @@ import { Card } from "../../components/Card";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
 import { ErrorState } from "../../components/ErrorState";
+import { NutritionCoachCard } from "../../components/NutritionCoachCard";
 import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nutrition";
 import { fetchNotifications } from "../../api/notifications";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -58,6 +59,9 @@ export function FuelScreen({ navigation }: Props) {
     queryFn: () => fetchNotifications({ filter: "unread", limit: 1 }),
   });
   const [isLoggingWater, setIsLoggingWater] = useState(false);
+  // Same units as Today (litres or oz, from the member's settings). Called before any early return:
+  // it is a hook, so it must run on every render.
+  const units = useMeasureUnits();
 
   const totals = useMemo(() => {
     const logs = mealLogs ?? [];
@@ -139,8 +143,6 @@ export function FuelScreen({ navigation }: Props) {
   };
 
   const kcalLeft = Math.max(0, DAILY_TARGETS.calories - totals.calories);
-  // Same units as Today (litres or oz, from the member's settings).
-  const units = useMeasureUnits();
   const waterGoalText = waterTotalText(WATER_GOAL_GLASSES, units.waterUnit);
   const waterTodayText = waterTotalText(totalGlasses, units.waterUnit);
 
@@ -180,6 +182,9 @@ export function FuelScreen({ navigation }: Props) {
           <QuickLink icon="sparkles" label="Meal plan" onPress={() => navigation.navigate("MealPlan")} />
           <QuickLink icon="calendar" label="History" onPress={() => navigation.navigate("NutritionCalendar")} />
         </View>
+        <NutritionCoachCard
+          onOpen={() => navigation.getParent()?.navigate("More", { screen: "ProfessionalRelationship", initial: false })}
+        />
         <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.sm }}>Meal Timeline</Text>
         <View style={{ gap: spacing.sm }}>
           {TIMELINE.map(({ type, label }) => {

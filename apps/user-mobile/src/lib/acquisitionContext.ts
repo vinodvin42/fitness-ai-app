@@ -1,5 +1,7 @@
-import * as Linking from "expo-linking";
 import * as secureStore from "./secureStore";
+import { parseAcquisitionContext } from "./inviteLinks";
+
+export { describeAcquisitionContext, gymCodeFromContext, parseAcquisitionContext } from "./inviteLinks";
 
 /**
  * Acquisition-context capture — R1 Developer 1 U1 (14 Sep 2026), the
@@ -36,48 +38,16 @@ import * as secureStore from "./secureStore";
  * themselves. This guarantees the context survives that gap without
  * needing to solve deep-link ROUTING in the same pass.
  *
- * URL shape recognized: `fynrox://join?source=<gym|creator>&code=<code>`
- * (also matches the Expo-dev-client-wrapped equivalent via
- * `Linking.parse()`, which handles both forms transparently). An
- * unrecognized URL/shape is not an error — it's simply not captured,
- * same "an unrecognized code doesn't block anything" precedent
- * `referrals.service.ts` already sets for the peer referral-code field
- * this is deliberately separate from.
+ * Recognised links and the parsing itself: lib/inviteLinks.ts (pure string handling, checked by
+ * tests/inviteLinks.check.cjs). An unrecognised URL is not an error; it simply isn't captured.
  *
- * **Honest verification note:** `expo-linking` transitively imports
- * `react-native`'s own entry point (Flow syntax), which only transforms
- * under Metro's own babel config — it can't be exercised via a plain
- * `node`/`tsx` script in this sandbox (confirmed by trying, not assumed
- * — esbuild fails on `react-native/index.js` directly). Same "no device/
- * simulator here to test against" limitation this codebase already
- * documents for other Expo-native-module code (see AiCoachScreen.tsx's
- * own comment on cross-navigator deep-linking). The parsing logic below
- * is deliberately simple (one path check, one allow-list, one trim) and
- * `Linking.parse()` itself is Expo's own well-established, independently
- * tested API — reviewed carefully rather than exercised end-to-end here.
+ * **Oct 2026:** a gym invite now also links the gym after sign-up. Its invite code is the gym's
+ * partner code (userPartner.service.ts looks both up as Gym.inviteCode), so SignupScreen calls
+ * POST /users/me/partner-code with it once the account exists. An expired or unknown code is
+ * ignored: the member signs up with nothing applied, as the website's invite page promises.
  */
 
 const STORAGE_KEY = "pendingAcquisitionContext";
-
-/** Parses a `fynrox://join?source=...&code=...` URL into the raw string persisted/sent to the server — e.g. "gym:ABC123". Returns null for any URL that isn't this shape; never throws on a malformed URL. */
-export function parseAcquisitionContext(url: string): string | null {
-  let parsed: ReturnType<typeof Linking.parse>;
-  try {
-    parsed = Linking.parse(url);
-  } catch {
-    return null;
-  }
-
-  if (parsed.path !== "join") return null;
-  const source = parsed.queryParams?.source;
-  const code = parsed.queryParams?.code;
-  if (typeof source !== "string" || typeof code !== "string") return null;
-  if (source !== "gym" && source !== "creator") return null;
-  const trimmedCode = code.trim();
-  if (!trimmedCode) return null;
-
-  return `${source}:${trimmedCode}`;
-}
 
 /** Parses and persists a URL's acquisition context, if any — first-touch only, never overwrites an already-captured value (the standard "preserve the original acquisition journey" convention Developer 3's own future model will expect). No-op for a URL that doesn't match. */
 export async function captureAcquisitionContext(url: string): Promise<void> {
@@ -95,14 +65,4 @@ export async function getStoredAcquisitionContext(): Promise<string | null> {
 /** Called once signup actually completes (successfully OR not — either way this attempt is over) so a stale value never gets attached to some later, unrelated signup. */
 export async function clearStoredAcquisitionContext(): Promise<void> {
   await secureStore.deleteItemAsync(STORAGE_KEY);
-}
-
-/** A short, honest, human-readable label for whatever raw context was captured — e.g. "gym:ABC123" -> "Invited via gym code ABC123". Returns null for anything it doesn't recognize rather than guessing. */
-export function describeAcquisitionContext(context: string): string | null {
-  const [source, ...rest] = context.split(":");
-  const code = rest.join(":");
-  if (!code) return null;
-  if (source === "gym") return `Invited via gym code ${code}`;
-  if (source === "creator") return `Invited via creator code ${code}`;
-  return null;
 }

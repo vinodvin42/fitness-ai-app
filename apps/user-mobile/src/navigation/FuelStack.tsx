@@ -14,9 +14,9 @@ import { MealPlanScreen } from "../screens/fuel/MealPlanScreen";
 
 // docs/mobile/03-screen-inventory.md §D: Nutrition Dashboard -> Recipes ->
 // Recipe Detail -> Log Meal, mirroring the Train tab's stack pattern
-// (docs/platform/roadmap.md Phase 1 §C). Meal Plan (also §D) isn't built
-// yet — a real AI-generation gap. Barcode Scanner (R2 Wave, 22 Sep 2026) IS
-// now built — see BarcodeScannerScreen.tsx.
+// (docs/platform/roadmap.md Phase 1 §C). Meal Plan (also §D) and Barcode
+// Scanner (R2 Wave, 22 Sep 2026) are both built: MealPlanScreen.tsx and
+// BarcodeScannerScreen.tsx.
 // Nutrition Dashboard -> Nutrition Calendar (added 19 Aug 2026) — a full
 // month grid + compliance/monthly-stats screen, real data (see gap §28 for
 // the "compliance" definition used).
