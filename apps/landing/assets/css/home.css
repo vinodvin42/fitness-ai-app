@@ -275,6 +275,11 @@ svg {
   gap: 16px;
 }
 
+/* Plans shows two cards for now (Basic and Prime). */
+.cards-3--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* Partners shows only the professional card for now (gyms and creators
    are hidden until they launch): a coach photo beside a compact card.
    The card sets the row height; the photo just fills its slot (it is
@@ -1368,6 +1373,47 @@ svg {
 }
 
 .plan--featured .plan__note {
+  color: var(--text-on-dark-muted);
+}
+
+.plan__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.plan__tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan__price {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.plan__price span {
+  margin-left: 2px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--grey-strong);
+}
+
+.plan--featured .plan__price {
+  color: var(--mint);
+}
+
+.plan--featured .plan__price span {
   color: var(--text-on-dark-muted);
 }
 
