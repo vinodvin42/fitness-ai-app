@@ -1246,6 +1246,15 @@ svg {
   color: var(--text-on-dark-muted);
 }
 
+/* Who the programme is for, kept below the promise and set apart in mint. */
+.program__for {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 14px;
+  color: var(--mint);
+}
+
 .programs__note {
   font-size: 15px;
   color: var(--text-on-dark-muted);
