@@ -258,17 +258,20 @@ fs.writeFileSync(
           { route: `/${mount}`, rewrite: `/${mount}/index.html` },
           { route: `/${mount}/*`, rewrite: `/${mount}/index.html` },
         ]),
+        // Gym invite and creator referral links (/gym/<code>, /r/<code>) —
+        // the same rewrites apps/landing/staticwebapp.config.json declares,
+        // which this generated config replaces. Without them those links
+        // fell through to the homepage.
+        { route: "/gym/*", rewrite: "/gym-invite.html" },
+        { route: "/r/*", rewrite: "/referral.html" },
       ],
-      navigationFallback: {
-        rewrite: "/index.html",
-        exclude: [
-          "/app/*",
-          ...extraApps.map(({ mount }) => `/${mount}/*`),
-          "/_expo/*",
-          "/assets/*",
-          "/favicon.svg",
-          "/robots.txt",
-        ],
+      // 20 Oct 2026: no navigationFallback. It rewrote every unknown URL to
+      // the homepage with a 200, so 404.html was never shown and search
+      // engines saw soft 404s. Every real route is listed above or is a
+      // real file, so unknown paths now get the landing 404 page with a
+      // real 404 status.
+      responseOverrides: {
+        "404": { rewrite: "/404.html", statusCode: 404 },
       },
       globalHeaders: {
         "X-Content-Type-Options": "nosniff",
