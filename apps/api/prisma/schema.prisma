@@ -1980,9 +1980,13 @@ model SupportTicket {
   complaintClosedAt        DateTime?
   complaintClosedByAdminId String?
   complaintClosedByAdmin   AdminUser?        @relation("ComplaintClosedBy", fields: [complaintClosedByAdminId], references: [id], onDelete: SetNull)
+  // 08.01 ownership (Oct 2026): the admin working this ticket; null = unassigned.
+  assignedAdminId          String?
+  assignedAdmin            AdminUser?        @relation("SupportTicketAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([category, status])
+  @@index([assignedAdminId])
   @@map("support_tickets")
 }
 
@@ -2557,6 +2561,7 @@ model AdminUser {
   safetyReportsResolved           SafetyReport[]               @relation("SafetyReportResolvedBy")
   aiAnswerReportsReviewed         AiAnswerReport[]             @relation("AiAnswerReportReviewedBy")
   complaintsClosed                SupportTicket[]              @relation("ComplaintClosedBy")
+  supportTicketsAssigned          SupportTicket[]              @relation("SupportTicketAssignee")
   articlesCreated                 Article[]                    @relation("ArticleCreatedBy")
   passwordResetTokens             AdminPasswordResetToken[]
   // Admin Action Required Queue (R2 Wave 1, 20 Sep 2026) — two relations,

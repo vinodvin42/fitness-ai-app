@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { recordAudit } from "../../middleware/auditLog";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { generateCompletion, isAiConfigured } from "../../lib/aiClient";
 import { isAiCoachEnabledByAdmin } from "../adminAiOps/adminAiOps.service";
 import { getCurrentSubscription } from "../subscriptions/subscriptions.service";
@@ -378,6 +379,14 @@ export async function reportAnswer(userId: string, messageId: string, input: { r
     entityType: "AiAnswerReport",
     entityId: report.id,
     metadata: { reason: input.reason },
+  });
+  // Oct 2026: also an Action Required item (AI Safety screen has the detail).
+  await createActionItem({
+    type: "safety_escalation",
+    entityType: "AiAnswerReport",
+    entityId: report.id,
+    severity: input.reason === "unsafe_or_harmful" || input.reason === "medically_wrong" ? "high" : "medium",
+    metadata: { reason: input.reason, userId },
   });
   return report;
 }

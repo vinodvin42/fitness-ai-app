@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { FINANCE_SUB_NAV } from "./subNav";
@@ -29,15 +30,17 @@ async function fetchSettlements(month: string): Promise<AdminSettlementsResponse
  * 2026. Per-coach booking value for a month, net of FynroX's commission.
  * Package 4: each booking keeps the commission rate it was made at, so
  * the rate is read-only here; it is changed on the Coach levels screen
- * and only reaches new bookings. "Settle" records a real
- * CoachSettlement + a Finance Expense (category coach_settlement). "Gross"
- * is delivered booking value, not funds collected — coaching bookings don't
- * run through Razorpay yet. See adminSettlements.service.ts.
+ * and only reaches new bookings. Oct 2026: "Settle" records the month as
+ * owed (an eligible CoachSettlement); it is approved and paid on Payout Runs,
+ * which records the Finance Expense (category coach_settlement) when paid.
+ * See adminSettlements.service.ts.
  */
 export function SettlementsScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("commerce", "create");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-settlements", month],
@@ -108,7 +111,8 @@ export function SettlementsScreen() {
               </thead>
               <tbody>
                 {data.rows.map((r) => {
-                                  const settled = r.settlement?.status === "paid";
+                  // Oct 2026: Settle records the month as owed; it is approved and paid on Payout Runs.
+                  const settled = r.settlement != null;
                   return (
                     <tr key={r.professionalId} className="border-b border-border-subtle last:border-0">
                       <td className="px-4 py-3 font-medium text-text-primary">{r.professionalName}</td>
@@ -127,7 +131,11 @@ export function SettlementsScreen() {
                       </td>
                       <td className="px-4 py-3">
                         {settled ? (
-                          <span className="text-xs text-text-dim">{t("settlements.settled")}</span>
+                          <span className="text-xs text-text-dim">
+                            {r.settlement?.status === "paid" ? t("settlements.settled") : "Pay it on Payout Runs"}
+                          </span>
+                        ) : !canCreate ? (
+                          <span className="text-text-dim">—</span>
                         ) : (
                           <button
                             type="button"

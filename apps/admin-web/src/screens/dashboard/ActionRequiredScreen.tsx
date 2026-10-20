@@ -17,6 +17,7 @@ import { ReasonGatedAction } from "../../components/ReasonGatedAction";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { useAuth } from "../../lib/auth";
+import { useCan } from "../../lib/permissions";
 import { DASHBOARD_SUB_NAV } from "./subNav";
 
 const TYPE_OPTIONS: AdminActionItemType[] = [
@@ -99,7 +100,27 @@ function getDrillThrough(item: AdminActionItem): { label: string; to: string; ex
         : { label: "Open credential queue", to: "/professionals/verification", exact: false };
     }
     case "SupportTicket":
-      return { label: "Open support tickets", to: "/support", exact: false };
+      return meta.category === "complaint"
+        ? { label: "Open complaints", to: "/support/complaints", exact: false }
+        : { label: "Open support tickets", to: "/support", exact: false };
+    // Oct 2026: the rest of the queue's sources.
+    case "User":
+      return { label: "Open user profile", to: `/users/${item.entityId}`, exact: true };
+    case "Payment":
+      return { label: "Open payment", to: `/commerce/${item.entityId}`, exact: true };
+    case "GuidanceRequest":
+      return { label: "Open assignment queue", to: "/relationships/assignment-queue", exact: false };
+    case "GymHelpRequest":
+      return { label: "Open gym help requests", to: "/gyms/help-requests", exact: false };
+    case "PrivacyRequest":
+      return { label: "Open privacy requests", to: "/admin-system/privacy-requests", exact: false };
+    case "SafetyReport":
+      return { label: "Open safety reports", to: "/support/safety-reports", exact: false };
+    case "AiAnswerReport":
+      return { label: "Open AI safety", to: "/ai-operations/safety", exact: false };
+    case "CreatorCommission":
+    case "CoachSettlement":
+      return { label: "Open payout runs", to: "/finance/payout-runs", exact: false };
     case "Escalation":
       return { label: "Open escalations", to: "/support/escalations", exact: false };
     case "SafetyEscalation":
@@ -175,12 +196,9 @@ async function fetchAdminDirectory(): Promise<AdminAccountDirectoryResponse> {
  * grant) — every role with `dashboard: view` can see and filter this queue,
  * but the assign/resolve controls will 403 for non-super_admin roles. That
  * ownership question ("who besides super_admin should be able to triage
- * this queue") is explicitly deferred, same as R2 Wave 1 left it; this
- * screen doesn't hide the controls for a non-super_admin viewer (matching
- * this codebase's existing convention of surfacing a real 403 from
- * extractErrorMessage rather than guessing client-side who holds which
- * grant), so a non-super_admin admin will see the buttons and get a clear
- * "does not have edit access" error if they try.
+ * this queue") is explicitly deferred, same as R2 Wave 1 left it. Oct 2026:
+ * the assign/resolve controls are hidden for roles without `dashboard: edit`
+ * (the signed-in admin's grants); the API still checks every call.
  */
 export function ActionRequiredScreen() {
   const { t } = useTranslation();
@@ -189,6 +207,8 @@ export function ActionRequiredScreen() {
   const [filters, setFilters] = useState<Filters>({ type: "", severity: "", status: "open", assignedToAdminId: "" });
   const [sortKey, setSortKey] = useState<SortKey>("severity");
   const [assignSelection, setAssignSelection] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("dashboard", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-action-items", filters],
@@ -449,7 +469,7 @@ export function ActionRequiredScreen() {
                 </p>
               )}
 
-              {item.status === "open" && (
+              {canEdit && item.status === "open" && (
                 <div className="mt-3 space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <button

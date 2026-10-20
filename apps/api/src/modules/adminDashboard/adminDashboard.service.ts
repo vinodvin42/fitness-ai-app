@@ -21,14 +21,11 @@ import { prisma } from "../../db/prisma";
  * they move as real bookings come in via apps/user-mobile's Discovery &
  * Booking screens.
  *
- * Still cut, and still explicitly named in `notAvailable` rather than
- * faked: the Figma spec's "pending coaching requests" — a `Booking`
- * entity exists now, but bookings confirm immediately (no
- * approval/pending step, see coaching.service.ts's own doc comment), so
- * there is still no "pending request awaiting review" concept anywhere in
- * this schema for this KPI to count. "Expiring credentials" is also still
- * cut (no expiry-date field exists on `ProfessionalCredential` — the
- * reviewed coach-app screens didn't show one).
+ * **Oct 2026:** "pending coaching requests" and "expiring credentials" are
+ * real now. Pending = GuidanceRequests waiting on the team (`open`, or
+ * `exhausted` after automatic re-matches ran out). Expiring = verified
+ * credentials whose `expiresAt` (set to 12 months at verification) is
+ * within 30 days or already past.
  *
  * **6 Sep 2026:** "Open refund requests" is real now, not `notAvailable`
  * — a real `Refund` model has existed since 31 Aug 2026 (`adminRefunds`
@@ -168,6 +165,12 @@ export async function getExecutiveDashboardStats() {
   // subscription history, not just current status, which this schema
   // doesn't retain. Documented simplification, not a silent one.
   const freeRegistered = Math.max(0, totalUsers - trialingSubscriptions - activePaidSubscriptions);
+  const [pendingCoachingRequests, expiringCredentials] = await Promise.all([
+    prisma.guidanceRequest.count({ where: { status: { in: ["open", "exhausted"] } } }),
+    prisma.professionalCredential.count({
+      where: { status: "verified", expiresAt: { lte: new Date(Date.now() + 30 * 86_400_000) } },
+    }),
+  ]);
   const unassignedUsersPool = Math.max(0, totalUsers - usersWithActiveRelationship);
 
   return {
@@ -201,6 +204,8 @@ export async function getExecutiveDashboardStats() {
       pendingProfessionalApplications,
       activeCoachingRelationships,
       unassignedUsersPool,
+      pendingCoachingRequests,
+      expiringCredentials,
     },
     recentSignups: recentSignups.map((u: { id: string; fullName: string; email: string; createdAt: Date }) => ({
       id: u.id,
@@ -208,9 +213,7 @@ export async function getExecutiveDashboardStats() {
       email: u.email,
       createdAt: u.createdAt,
     })),
-    // Named exactly so the frontend can render "Not available yet" for
-    // these specific spec'd KPIs instead of a fabricated number — see this
-    // file's top comment for why each one is cut from this slice.
-    notAvailable: ["pendingCoachingRequests", "expiringCredentials"],
+    // Every spec'd KPI on this screen is real now (see the top comment).
+    notAvailable: [],
   };
 }

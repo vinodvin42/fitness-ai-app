@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { AdminPlatformSettingsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { ADMIN_SYSTEM_SUB_NAV } from "./subNav";
@@ -51,6 +52,8 @@ function YesNo({ on, yes = "On", no = "Off" }: { on: boolean; yes?: string; no?:
 export function PlatformSettingsScreen() {
   const queryClient = useQueryClient();
   const [section, setSection] = useState<Section>("general");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("admin", "edit");
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-platform-settings"],
     queryFn: fetchSettings,
@@ -184,23 +187,29 @@ export function PlatformSettingsScreen() {
                           : "Never changed — on by default."}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={data.aiCoach.isEnabled}
-                      aria-label="AI Coach chat"
-                      disabled={toggleAiCoach.isPending}
-                      onClick={() => toggleAiCoach.mutate(!data.aiCoach.isEnabled)}
-                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
-                        data.aiCoach.isEnabled ? "bg-accent" : "bg-border-subtle"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-canvas transition-transform ${
-                          data.aiCoach.isEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={data.aiCoach.isEnabled}
+                        aria-label="AI Coach chat"
+                        disabled={toggleAiCoach.isPending}
+                        onClick={() => toggleAiCoach.mutate(!data.aiCoach.isEnabled)}
+                        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+                          data.aiCoach.isEnabled ? "bg-accent" : "bg-border-subtle"
                         }`}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-canvas transition-transform ${
+                            data.aiCoach.isEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    ) : (
+                      <span className="shrink-0 text-sm">
+                        <YesNo on={data.aiCoach.isEnabled} />
+                      </span>
+                    )}
                   </div>
                   {toggleAiCoach.isError && (
                     <p className="mt-3 text-xs text-danger">{extractErrorMessage(toggleAiCoach.error, "Couldn't change AI Coach.")}</p>

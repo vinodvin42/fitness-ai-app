@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { RELATIONSHIPS_SUB_NAV } from "./subNav";
@@ -64,6 +65,8 @@ export function AssignmentQueueScreen() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("open");
   const [selected, setSelected] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canMatch = useCan("professionals", "create");
 
   const queue = useQuery({ queryKey: ["guidanceQueue", status], queryFn: () => fetchQueue(status) });
   const professionals = useQuery({ queryKey: ["availableProfessionals"], queryFn: fetchAvailable });
@@ -150,7 +153,7 @@ export function AssignmentQueueScreen() {
                   {r.closedReason ? <div className="mt-1 text-xs text-text-dim">{r.closedReason}</div> : null}
                 </td>
                 <td className="py-3 pr-4">
-                  {r.status === "open" || r.status === "exhausted" ? (
+                  {canMatch && (r.status === "open" || r.status === "exhausted") ? (
                     <div className="flex items-center gap-2">
                       <select
                         aria-label={`Professional for ${r.user.fullName}`}

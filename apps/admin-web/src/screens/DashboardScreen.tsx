@@ -185,6 +185,16 @@ export function DashboardScreen() {
               value={data.marketplaceStatus.unassignedUsersPool}
               hint="Users with no active coaching relationship"
             />
+            <StatCard
+              label={t("dashboard.pendingCoachingRequests")}
+              value={data.marketplaceStatus.pendingCoachingRequests}
+              hint="Waiting for the team to match a coach"
+            />
+            <StatCard
+              label={t("dashboard.expiringCredentials")}
+              value={data.marketplaceStatus.expiringCredentials}
+              hint="Verified credentials ending within 30 days"
+            />
           </div>
 
           <div className="rounded-lg border border-border-subtle bg-surface p-4">

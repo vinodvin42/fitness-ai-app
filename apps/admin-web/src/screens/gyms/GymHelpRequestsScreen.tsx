@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GYMS_SUB_NAV } from "./subNav";
@@ -46,6 +47,8 @@ export function GymHelpRequestsScreen() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("open");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("gyms", "edit");
 
   const requests = useQuery({
     queryKey: ["gymHelpRequestsAdmin", status],
@@ -135,7 +138,7 @@ export function GymHelpRequestsScreen() {
                 </div>
               ) : null}
 
-              {r.status !== "resolved" ? (
+              {canEdit && r.status !== "resolved" ? (
                 <div className="mt-4">
                   <label className="block text-xs text-text-dim" htmlFor={`reply-${r.id}`}>
                     {t("gymHelpRequests.yourReplyToThe")}

@@ -9,6 +9,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GROWTH_SUB_NAV } from "../growth/subNav";
@@ -82,6 +83,9 @@ export function CampaignDirectoryScreen() {
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [influencerId, setInfluencerId] = useState("");
   const [gymId, setGymId] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("growth", "create");
+  const canEdit = useCan("growth", "edit");
 
   const campaigns = useQuery({ queryKey: ["admin-campaigns"], queryFn: fetchCampaigns });
   const sources = useQuery({ queryKey: ["admin-acquisition-sources"], queryFn: fetchSources });
@@ -130,17 +134,19 @@ export function CampaignDirectoryScreen() {
           </div>
         )}
 
-        <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
-          <button
-            type="button"
-            onClick={() => setShowForm((p) => !p)}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm ? "Cancel" : "+ New Campaign"}
-          </button>
-        </div>
+        {canCreate && (
+          <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
+            <button
+              type="button"
+              onClick={() => setShowForm((p) => !p)}
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm ? "Cancel" : "+ New Campaign"}
+            </button>
+          </div>
+        )}
 
-        {showForm && (
+        {canCreate && showForm && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -283,16 +289,18 @@ export function CampaignDirectoryScreen() {
                       <StatusBadge status={c.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        disabled={toggleStatusMutation.isPending && toggleStatusMutation.variables?.id === c.id}
-                        onClick={() =>
-                          toggleStatusMutation.mutate({ id: c.id, nextStatus: c.status === "active" ? "inactive" : "active" })
-                        }
-                        className="text-xs text-accent hover:underline disabled:opacity-50"
-                      >
-                        {c.status === "active" ? "Deactivate" : "Activate"}
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          disabled={toggleStatusMutation.isPending && toggleStatusMutation.variables?.id === c.id}
+                          onClick={() =>
+                            toggleStatusMutation.mutate({ id: c.id, nextStatus: c.status === "active" ? "inactive" : "active" })
+                          }
+                          className="text-xs text-accent hover:underline disabled:opacity-50"
+                        >
+                          {c.status === "active" ? "Deactivate" : "Activate"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

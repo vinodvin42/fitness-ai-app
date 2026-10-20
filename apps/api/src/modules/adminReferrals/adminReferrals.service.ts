@@ -36,12 +36,9 @@ import { ListAdminReferralsQuery } from "./adminReferrals.schema";
  *   failed" stage either. A single-stage bar chart would misrepresent a
  *   funnel that doesn't exist in this data — named in `notAvailable`
  *   rather than faked as a 2-bar funnel.
- * - **Referral economics are NOT built.** No reward/bonus/credit field
- *   exists anywhere for either the referrer or the referee — see the
- *   `Referral` model's own doc comment in `prisma/schema.prisma` for why
- *   ("the design's 'you get / friend gets' rewards grid needs a real
- *   referral-bonus decision this pass can't make"). Nothing here shows a
- *   dollar figure for a reward that was never defined.
+ * - **Rewards (Oct 2026):** each referral's `ReferralReward` (the
+ *   referrer's subscription credit, in months, pending or granted) and the
+ *   totals. No money figure is shown: the reward is credit months, not cash.
  * - What IS real and useful instead: a filterable Directory of every
  *   referral (referrer + referee identity, date), a Total Referrals /
  *   Unique Referrers stats pair computed from the same search+date-scoped
@@ -64,6 +61,7 @@ type ReferralRow = {
   createdAt: Date;
   referrer: { id: string; fullName: string; email: string };
   referee: { id: string; fullName: string; email: string };
+  reward: { type: string; creditMonths: number; status: string; grantedAt: Date | null } | null;
 };
 
 function toListItem(r: ReferralRow) {
@@ -76,6 +74,7 @@ function toListItem(r: ReferralRow) {
     refereeName: r.referee.fullName,
     refereeEmail: r.referee.email,
     createdAt: r.createdAt,
+    reward: r.reward,
   };
 }
 
@@ -102,6 +101,7 @@ export async function listReferrals(query: ListAdminReferralsQuery) {
       include: {
         referrer: { select: { id: true, fullName: true, email: true } },
         referee: { select: { id: true, fullName: true, email: true } },
+        reward: { select: { type: true, creditMonths: true, status: true, grantedAt: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -138,15 +138,18 @@ export async function listReferrals(query: ListAdminReferralsQuery) {
 
   const uniqueReferrers = new Set(referrals.map((r) => r.referrerId)).size;
 
+  const rewards = referrals.map((r) => r.reward).filter((w): w is NonNullable<ReferralRow["reward"]> => w != null);
   return {
     entries: referrals.map(toListItem),
     stats: {
       totalReferrals: referrals.length,
       uniqueReferrers,
+      rewardsGranted: rewards.filter((w) => w.status === "granted").length,
+      rewardsPending: rewards.filter((w) => w.status === "pending").length,
+      creditMonthsGranted: rewards.filter((w) => w.status === "granted").reduce((s, w) => s + w.creditMonths, 0),
     },
     topReferrers,
-    // See this file's top comment: no funnel-stage data and no reward
-    // amount exist anywhere in this build.
-    notAvailable: ["referralFunnel", "referralRewards"],
+    // See this file's top comment: no funnel-stage data exists.
+    notAvailable: ["referralFunnel"],
   };
 }

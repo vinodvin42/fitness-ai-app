@@ -82,6 +82,23 @@ export async function createActionItem(input: {
   return item;
 }
 
+/**
+ * Oct 2026: when the case behind a queue item is closed elsewhere (a complaint
+ * closed, a safety or AI report resolved, a failed payout later paid), its
+ * open items are resolved too, so the queue only shows work still to do.
+ * Never allowed to fail the action that closed the case.
+ */
+export async function resolveActionItemsFor(entityType: string, entityId: string, actorAdminId: string | null, note: string) {
+  try {
+    await prisma.adminActionItem.updateMany({
+      where: { entityType, entityId, status: "open" },
+      data: { status: "resolved", resolvedAt: new Date(), resolvedByAdminId: actorAdminId, resolutionNote: note },
+    });
+  } catch {
+    // Swallowed deliberately — see above.
+  }
+}
+
 type ListActionItemsQuery = {
   type?: AdminActionItemType;
   severity?: AdminActionItemSeverity;

@@ -5,6 +5,7 @@ import type { AdminInfluencerDetail, AdminInfluencerListResponse } from "@fitnes
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GROWTH_SUB_NAV } from "./subNav";
@@ -40,6 +41,9 @@ export function InfluencersScreen() {
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
   const [commissionPct, setCommissionPct] = useState("20");
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("growth", "create");
+  const canEdit = useCan("growth", "edit");
 
   const list = useQuery({ queryKey: ["admin-influencers"], queryFn: fetchInfluencers });
 
@@ -71,17 +75,19 @@ export function InfluencersScreen() {
           </div>
         )}
 
-        <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
-          <button
-            type="button"
-            onClick={() => setShowForm((p) => !p)}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm ? "Cancel" : "+ New Influencer"}
-          </button>
-        </div>
+        {canCreate && (
+          <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
+            <button
+              type="button"
+              onClick={() => setShowForm((p) => !p)}
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm ? "Cancel" : "+ New Influencer"}
+            </button>
+          </div>
+        )}
 
-        {showForm && (
+        {canCreate && showForm && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -172,13 +178,15 @@ export function InfluencersScreen() {
                         >
                           {selectedId === i.id ? "Hide" : "Payouts"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setPasswordFormId(passwordFormId === i.id ? null : i.id)}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                        >
-                          {passwordFormId === i.id ? "Cancel" : "Set Portal Password"}
-                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setPasswordFormId(passwordFormId === i.id ? null : i.id)}
+                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                          >
+                            {passwordFormId === i.id ? "Cancel" : "Set Portal Password"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -195,7 +203,7 @@ export function InfluencersScreen() {
           </div>
         )}
 
-        {passwordFormId && (
+        {canEdit && passwordFormId && (
           <SetPortalPasswordPanel
             influencerId={passwordFormId}
             influencerName={list.data?.influencers.find((i) => i.id === passwordFormId)?.name ?? ""}
@@ -214,6 +222,8 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
   const queryClient = useQueryClient();
   const [amountDisplay, setAmountDisplay] = useState("");
   const [periodLabel, setPeriodLabel] = useState("");
+  const canCreate = useCan("growth", "create");
+  const canEdit = useCan("growth", "edit");
 
   const detail = useQuery({
     queryKey: ["admin-influencer", influencerId],
@@ -249,43 +259,45 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
         Payouts{detail.data ? ` — ${detail.data.name}` : ""}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          createPayout.mutate();
-        }}
-        className="flex flex-wrap items-end gap-3"
-      >
-        <label className="flex flex-col gap-1 text-xs text-text-dim">
-          {t("influencers.amount")}
-          <input
-            required
-            type="number"
-            min={0.01}
-            step="0.01"
-            value={amountDisplay}
-            onChange={(e) => setAmountDisplay(e.target.value)}
-            className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-text-dim">
-          {t("influencers.period")}
-          <input
-            required
-            placeholder={t("influencers.aug2026")}
-            value={periodLabel}
-            onChange={(e) => setPeriodLabel(e.target.value)}
-            className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={createPayout.isPending}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+      {canCreate && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            createPayout.mutate();
+          }}
+          className="flex flex-wrap items-end gap-3"
         >
-          {createPayout.isPending ? "Saving…" : "Record Payout"}
-        </button>
-      </form>
+          <label className="flex flex-col gap-1 text-xs text-text-dim">
+            {t("influencers.amount")}
+            <input
+              required
+              type="number"
+              min={0.01}
+              step="0.01"
+              value={amountDisplay}
+              onChange={(e) => setAmountDisplay(e.target.value)}
+              className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-text-dim">
+            {t("influencers.period")}
+            <input
+              required
+              placeholder={t("influencers.aug2026")}
+              value={periodLabel}
+              onChange={(e) => setPeriodLabel(e.target.value)}
+              className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={createPayout.isPending}
+            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+          >
+            {createPayout.isPending ? "Saving…" : "Record Payout"}
+          </button>
+        </form>
+      )}
 
       {detail.isLoading && <p className="text-sm text-text-secondary">{t("influencers.loading")}</p>}
       {detail.data && detail.data.payouts.length === 0 && (
@@ -302,7 +314,7 @@ function PayoutsPanel({ influencerId }: { influencerId: string }) {
                   <StatusBadge status={p.status} />
                 </td>
                 <td className="py-2 text-right">
-                  {p.status === "pending" && (
+                  {canEdit && p.status === "pending" && (
                     <button
                       type="button"
                       onClick={() => markPaid.mutate(p.id)}

@@ -89,7 +89,11 @@ describe("Admin console: subscriptions, AI usage, notifications, platform settin
         priceLocked: true,
       });
       expect(res.body.counts.active).toBeGreaterThanOrEqual(1);
-      expect(res.body.notAvailable).toContain("country");
+      expect(row.user).toHaveProperty("countryCode");
+      // Country is real now: an "active by country" breakdown, nothing named as missing.
+      expect(Array.isArray(res.body.byCountry)).toBe(true);
+      expect(res.body.byCountry.reduce((n: number, c: { count: number }) => n + c.count, 0)).toBeGreaterThanOrEqual(1);
+      expect(res.body.notAvailable).not.toContain("country");
     });
 
     it("filters by status, tier and cycle; rejects an unknown status", async () => {

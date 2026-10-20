@@ -139,8 +139,7 @@ const LABELS: Record<string, string> = {
   w4RetentionByChannel: "Week-4 Retention by Channel",
 };
 
-const DEFAULT_SUBTITLE =
-  "These Executive Dashboard metrics depend on the coach marketplace (Phase 5), which isn't built — see docs/coach/06-cross-app-integration.md §2.";
+const DEFAULT_SUBTITLE = "The platform doesn't record the data behind these yet, so they aren't shown.";
 
 export function NotAvailablePanel({ keys, subtitle = DEFAULT_SUBTITLE }: { keys: string[]; subtitle?: string }) {
   const { t } = useTranslation();

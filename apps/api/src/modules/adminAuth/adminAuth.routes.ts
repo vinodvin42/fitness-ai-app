@@ -70,6 +70,15 @@ adminAuthRouter.patch(
 
 // Admin MFA set-up (blueprint section 5). Both steps take the short-lived
 // set-up token from login, never a session token.
+// Oct 2026: the Security page's policy card and the admin's own security events.
+adminAuthRouter.get("/admin/auth/security", requireAdminAuth, async (req: AdminAuthedRequest, res, next) => {
+  try {
+    res.json(await adminAuthService.getSecurityOverview(req.adminUserId as string));
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminAuthRouter.post("/admin/auth/mfa/setup", authRateLimit, async (req, res, next) => {
   try {
     const input = adminMfaSetupSchema.parse(req.body);

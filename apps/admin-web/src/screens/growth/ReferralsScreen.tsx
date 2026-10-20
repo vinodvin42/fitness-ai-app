@@ -54,9 +54,11 @@ export function ReferralsScreen() {
     <AppShell title={t("referrals.referrals")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
         {data && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label={t("referrals.totalReferrals")} value={data.stats.totalReferrals} hint="In the current filtered scope" />
             <StatCard label={t("referrals.uniqueReferrers")} value={data.stats.uniqueReferrers} hint="Distinct users who've referred someone" />
+            <StatCard label="Rewards granted" value={data.stats.rewardsGranted} hint={`${data.stats.rewardsPending} pending`} />
+            <StatCard label="Credit months granted" value={data.stats.creditMonthsGranted} hint="Subscription credit to referrers" />
           </div>
         )}
 
@@ -130,6 +132,7 @@ export function ReferralsScreen() {
                   <th className="px-4 py-3 font-normal">{t("referrals.referrer")}</th>
                   <th className="px-4 py-3 font-normal">{t("referrals.referee")}</th>
                   <th className="px-4 py-3 font-normal">{t("referrals.date")}</th>
+                  <th className="px-4 py-3 font-normal">Reward</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,11 +149,14 @@ export function ReferralsScreen() {
                     <td className="px-4 py-3 whitespace-nowrap text-text-secondary">
                       {new Date(r.createdAt).toLocaleString()}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-text-secondary">
+                      {r.reward ? `${r.reward.creditMonths} month${r.reward.creditMonths === 1 ? "" : "s"} credit · ${r.reward.status}` : "—"}
+                    </td>
                   </tr>
                 ))}
                 {data.entries.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
                       {t("referrals.noReferralsMatchThese")}
                     </td>
                   </tr>
@@ -160,7 +166,9 @@ export function ReferralsScreen() {
           </div>
         )}
 
-        {data && <NotAvailablePanel keys={data.notAvailable} subtitle={t("referrals.neitherExistsInThis")} />}
+        {data && (
+          <NotAvailablePanel keys={data.notAvailable} subtitle="Only a completed referral is recorded, so there are no funnel stages to chart." />
+        )}
       </div>
     </AppShell>
   );

@@ -11,6 +11,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { AI_OPS_SUB_NAV } from "./subNav";
@@ -187,6 +188,8 @@ export function AiSafetyScreen() {
 function AiReportDetail({ report, onResolved }: { report: AdminAiAnswerReportDetail; onResolved: () => void }) {
   const [action, setAction] = useState<ResolveAiAnswerReportInput["action"] | "">("");
   const [note, setNote] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("sensitiveData", "edit");
   const resolve = useMutation({
     mutationFn: (input: ResolveAiAnswerReportInput) => apiClient.post(`/admin/ai-ops/reports/${report.id}/resolve`, input),
     onSuccess: () => {
@@ -234,47 +237,49 @@ function AiReportDetail({ report, onResolved }: { report: AdminAiAnswerReportDet
       </div>
 
       {report.status === "open" ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (canSubmit && action) resolve.mutate({ action, reason: note.trim() });
-          }}
-          className="space-y-2 rounded-md border border-border-subtle p-3"
-        >
-          <div className="text-xs font-medium text-text-secondary">Decision</div>
-          <label className="flex items-start gap-2 text-xs text-text-primary">
-            <input type="radio" name="ai-action" checked={action === "reviewed"} onChange={() => setAction("reviewed")} className="mt-0.5" />
-            <span>Reviewed — the answer is fine</span>
-          </label>
-          <label className="flex items-start gap-2 text-xs text-text-primary">
-            <input
-              type="radio"
-              name="ai-action"
-              checked={action === "hide_answer"}
-              onChange={() => setAction("hide_answer")}
-              className="mt-0.5"
-              disabled={!report.answerStillInChat}
-            />
-            <span>
-              Hide the answer from their chat and from what the AI sees next
-              {!report.answerStillInChat && <span className="block text-[11px] text-text-dim">They already cleared their chat.</span>}
-            </span>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Note for the record (at least 10 characters)
-            <textarea
-              rows={3}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
-            />
-          </label>
-          {resolve.isError && <p className="text-xs text-danger">{extractErrorMessage(resolve.error, "The decision wasn't saved.")}</p>}
-          <button type="submit" disabled={!canSubmit} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
-            {resolve.isPending ? "Saving…" : "Save decision"}
-          </button>
-          <p className="text-[11px] text-text-dim">The person who reported it is told the outcome in the app.</p>
-        </form>
+        canEdit && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canSubmit && action) resolve.mutate({ action, reason: note.trim() });
+            }}
+            className="space-y-2 rounded-md border border-border-subtle p-3"
+          >
+            <div className="text-xs font-medium text-text-secondary">Decision</div>
+            <label className="flex items-start gap-2 text-xs text-text-primary">
+              <input type="radio" name="ai-action" checked={action === "reviewed"} onChange={() => setAction("reviewed")} className="mt-0.5" />
+              <span>Reviewed — the answer is fine</span>
+            </label>
+            <label className="flex items-start gap-2 text-xs text-text-primary">
+              <input
+                type="radio"
+                name="ai-action"
+                checked={action === "hide_answer"}
+                onChange={() => setAction("hide_answer")}
+                className="mt-0.5"
+                disabled={!report.answerStillInChat}
+              />
+              <span>
+                Hide the answer from their chat and from what the AI sees next
+                {!report.answerStillInChat && <span className="block text-[11px] text-text-dim">They already cleared their chat.</span>}
+              </span>
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-text-dim">
+              Note for the record (at least 10 characters)
+              <textarea
+                rows={3}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
+              />
+            </label>
+            {resolve.isError && <p className="text-xs text-danger">{extractErrorMessage(resolve.error, "The decision wasn't saved.")}</p>}
+            <button type="submit" disabled={!canSubmit} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
+              {resolve.isPending ? "Saving…" : "Save decision"}
+            </button>
+            <p className="text-[11px] text-text-dim">The person who reported it is told the outcome in the app.</p>
+          </form>
+        )
       ) : (
         <div className="rounded-md border border-border-subtle p-3 text-xs text-text-secondary">
           <div className="font-medium text-text-primary">{STATUS_LABELS[report.status]}</div>

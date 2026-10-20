@@ -42,19 +42,13 @@ import {
  *   users first worked out, only whether they ever did.
  * - **Paid conversion** — real: joins the same user set against a distinct
  *   `Payment.userId` existence check where `status: "paid"`.
- * - **W1/W4 retention — deliberately NOT built, named in `notAvailable`.**
- *   `computeFunnel()` does compute a real "retained week 1" figure (workout
- *   within 7 days of the user's own signup), but only as a single
- *   platform-wide number, and nothing in this codebase computes a W4
- *   (28-day) equivalent at all — there is no existing precedent to reuse
- *   for that half, and building genuinely new time-windowed retention math,
- *   sliced by channel, with no prior art to match against, is exactly the
- *   "guessing at a number with no existing precedent" case this wave's own
- *   brief says to name as a gap rather than invent. A future wave should
- *   build a real `computeWeeklyRetention`-style, channel-sliced version
- *   (see `adminAnalytics.service.ts`'s existing weekly-retention cohort
- *   table for the shape a real implementation would take) rather than this
- *   module improvising a second, inconsistent definition.
+ * - **W1/W4 retention (Oct 2026), by channel and campaign.** W1 is
+ *   `computeFunnel()`'s own "retained week 1" rule (a workout started
+ *   within 7 days of the member's own signup), sliced by channel. W4 is the
+ *   same rule for the 4th week (a workout started 21-28 days after
+ *   signup). Each only counts members whose window has fully passed
+ *   (`eligible`), so a member who signed up yesterday never counts as
+ *   "not retained".
  *
  * Deliberately does NOT import Prisma model types for row shapes (only the
  * `Prisma` namespace for `WhereInput` typing) — same convention as every
@@ -315,6 +309,37 @@ export async function getAcquisitionReport(query: GetAcquisitionReportQuery) {
   const workoutSet = new Set((workoutRows as Array<{ userId: string }>).map((r) => r.userId));
   const paidSet = new Set((paidRows as Array<{ userId: string }>).map((r) => r.userId));
 
+  // W1/W4 retention inputs: each member's signup time and their workouts in the first 28 days.
+  const DAY = 86_400_000;
+  const now = Date.now();
+  const [signupRows, earlyWorkouts] = userIds.length
+    ? await Promise.all([
+        prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, createdAt: true } }),
+        prisma.workoutSession.findMany({ where: { userId: { in: userIds } }, select: { userId: true, startedAt: true } }),
+      ])
+    : [[], []];
+  const signupAt = new Map((signupRows as Array<{ id: string; createdAt: Date }>).map((u) => [u.id, u.createdAt.getTime()]));
+  const w1Retained = new Set<string>();
+  const w4Retained = new Set<string>();
+  for (const w of earlyWorkouts as Array<{ userId: string; startedAt: Date }>) {
+    const s = signupAt.get(w.userId);
+    if (s === undefined) continue;
+    const d = w.startedAt.getTime() - s;
+    if (d >= 0 && d <= 7 * DAY) w1Retained.add(w.userId);
+    if (d >= 21 * DAY && d <= 28 * DAY) w4Retained.add(w.userId);
+  }
+  function retention(userIdSet: Set<string>, days: number, retained: Set<string>) {
+    let eligible = 0;
+    let kept = 0;
+    for (const id of userIdSet) {
+      const s = signupAt.get(id);
+      if (s === undefined || now - s < days * DAY) continue;
+      eligible += 1;
+      if (retained.has(id)) kept += 1;
+    }
+    return { eligible, retained: kept, pct: eligible > 0 ? Math.round((kept / eligible) * 1000) / 10 : null };
+  }
+
   // Every real channel appears even at zero registrations — a founder
   // comparing channels needs to see "Direct: 0" as a real data point, not
   // a silently missing row.
@@ -358,7 +383,13 @@ export async function getAcquisitionReport(query: GetAcquisitionReportQuery) {
       if (workoutSet.has(id)) usersWithFirstWorkout += 1;
       if (paidSet.has(id)) paidConversions += 1;
     }
-    return { activatedUsers, usersWithFirstWorkout, paidConversions };
+    return {
+      activatedUsers,
+      usersWithFirstWorkout,
+      paidConversions,
+      w1Retention: retention(userIdSet, 7, w1Retained),
+      w4Retention: retention(userIdSet, 28, w4Retained),
+    };
   }
 
   const byChannel = ALL_CHANNELS.map((channel) => {
@@ -399,8 +430,6 @@ export async function getAcquisitionReport(query: GetAcquisitionReportQuery) {
       registeredUsers: userIds.length,
       ...summarize(new Set(userIds)),
     },
-    // See this file's top comment for exactly why these two, and only
-    // these two, stay unbuilt this wave.
-    notAvailable: ["w1RetentionByChannel", "w4RetentionByChannel"],
+    notAvailable: [] as string[],
   };
 }

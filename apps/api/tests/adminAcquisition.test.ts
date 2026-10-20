@@ -274,8 +274,11 @@ describe("Acquisition — Campaign directory + registration report", () => {
     `;
     expect(Number(rawPaidCount)).toBe(campaignRow?.paidConversions);
 
-    // Names the honest gap, doesn't fake the columns.
-    expect(report.notAvailable).toEqual(["w1RetentionByChannel", "w4RetentionByChannel"]);
+    // W1/W4 retention by channel are real now: fixture members signed up just now, so none has a
+    // full week yet (eligible 0, pct null rather than a fake 0%).
+    expect(report.notAvailable).toEqual([]);
+    expect(campaignRow?.w1Retention).toEqual({ eligible: 0, retained: 0, pct: null });
+    expect(campaignRow?.w4Retention).toEqual({ eligible: 0, retained: 0, pct: null });
   });
 
   it("date-range-scopes the report to Touchpoint.occurredAt when both dates are given", async () => {

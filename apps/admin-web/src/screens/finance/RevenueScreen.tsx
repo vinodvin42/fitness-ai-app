@@ -166,10 +166,38 @@ export function RevenueScreen() {
               </table>
             </div>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("revenue.noUserRegionField")}
-            />
+            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
+                Revenue by country
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                    <th className="px-4 py-3 font-normal">Country</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.revenue")}</th>
+                    <th className="px-4 py-3 font-normal">{t("revenue.payments")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.byCountry.map((c) => (
+                    <tr key={c.countryCode ?? "none"} className="border-b border-border-subtle last:border-0">
+                      <td className="px-4 py-3 text-text-primary">{c.countryCode ?? "Not set"}</td>
+                      <td className="px-4 py-3 text-text-secondary">{money(c.revenueCents)}</td>
+                      <td className="px-4 py-3 text-text-secondary">{c.count}</td>
+                    </tr>
+                  ))}
+                  {data.byCountry.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center text-text-dim">
+                        {t("revenue.noRevenueInThis")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>

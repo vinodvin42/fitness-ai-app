@@ -6,6 +6,7 @@ import type { AdminChangeRequestDirectoryResponse, ChangeReasonCategory, Relatio
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { RELATIONSHIPS_SUB_NAV } from "./subNav";
@@ -48,6 +49,8 @@ export function ChangeRequestQueueScreen() {
   const [statusFilter, setStatusFilter] = useState<RelationshipChangeStatus | "">("pending");
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("relationships", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-change-requests", statusFilter],
@@ -149,7 +152,7 @@ export function ChangeRequestQueueScreen() {
                 </p>
               )}
 
-              {r.status === "pending" ? (
+              {canEdit && r.status === "pending" ? (
                 <div className="mt-3">
                   <textarea
                     placeholder={t("changeRequestQueue.reviewNotesOptional")}

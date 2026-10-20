@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createNotification } from "../notifications/notifications.service";
 import { REMOVED_MESSAGE_TEXT } from "../coachMessages/coachMessages.service";
@@ -200,6 +201,7 @@ export async function resolveSafetyReport(adminId: string, id: string, input: Re
     entityId: id,
     metadata: { outcome: input.outcome, note: input.reason },
   });
+  await resolveActionItemsFor("SafetyReport", id, adminId, `Report resolved: ${input.outcome}`);
 
   // A warning reaches a reported user in-app. Professionals have no inbox yet.
   if (input.outcome === "warning" && r.reportedUser) {

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminSafetyEscalationListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { SUPPORT_SUB_NAV } from "./subNav";
@@ -33,6 +34,8 @@ export function SafetyEscalationsScreen() {
   const { t } = useTranslation();
   const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("false");
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("support", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-safety-escalations", reviewedFilter],
@@ -129,7 +132,7 @@ export function SafetyEscalationsScreen() {
                   {e.reviewedByAdminName ?? "—"}
                   <span className="text-text-dim"> on {new Date(e.reviewedAt).toLocaleString()}</span>
                 </p>
-              ) : (
+              ) : canEdit && (
                 <div className="mt-3">
                   <button
                     type="button"

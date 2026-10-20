@@ -10,9 +10,14 @@ interface ReasonGatedActionProps {
   isPending: boolean;
   isError?: boolean;
   error?: unknown;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string, confirmation?: string) => void;
   /** danger = destructive/irreversible (red); warning = high-impact but not destructive (amber). Default danger. */
   tone?: "danger" | "warning";
+  /**
+   * Oct 2026: a word the admin must type before the button enables (the API's BR-ADM-005 typed
+   * confirmation, e.g. "RESOLVE" for subscription suspend/reactivate). Passed to onConfirm.
+   */
+  confirmWord?: string;
 }
 
 /**
@@ -45,8 +50,11 @@ export function ReasonGatedAction({
   error,
   onConfirm,
   tone = "danger",
+  confirmWord,
 }: ReasonGatedActionProps) {
   const [reason, setReason] = useState("");
+  const [typed, setTyped] = useState("");
+  const confirmed = !confirmWord || typed.trim() === confirmWord;
   const toneClasses =
     tone === "danger"
       ? {
@@ -75,10 +83,20 @@ export function ReasonGatedAction({
         className={`mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none ${toneClasses.focus}`}
         rows={2}
       />
+      {confirmWord && (
+        <input
+          type="text"
+          placeholder={`Type ${confirmWord} to confirm`}
+          aria-label={`Type ${confirmWord} to confirm`}
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          className={`mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none ${toneClasses.focus}`}
+        />
+      )}
       <button
         type="button"
-        disabled={reason.trim().length < minReasonLength || isPending}
-        onClick={() => onConfirm(reason.trim())}
+        disabled={reason.trim().length < minReasonLength || !confirmed || isPending}
+        onClick={() => onConfirm(reason.trim(), confirmWord ? typed.trim() : undefined)}
         className={`mt-2 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40 ${toneClasses.button}`}
       >
         {actionLabel}

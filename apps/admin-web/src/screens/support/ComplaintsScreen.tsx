@@ -10,6 +10,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { SUPPORT_SUB_NAV } from "./subNav";
@@ -235,6 +236,8 @@ function ComplaintDossier({ complaint, onChanged }: { complaint: AdminComplaintD
   const [outcome, setOutcome] = useState<ComplaintOutcome | "">("");
   const [note, setNote] = useState("");
   const [reply, setReply] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("support", "edit");
   const closed = Boolean(complaint.closedAt);
 
   const close = useMutation({
@@ -348,7 +351,7 @@ function ComplaintDossier({ complaint, onChanged }: { complaint: AdminComplaintD
             </li>
           ))}
         </ul>
-        {!closed && (
+        {canEdit && !closed && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -403,7 +406,7 @@ function ComplaintDossier({ complaint, onChanged }: { complaint: AdminComplaintD
           </div>
           {complaint.resolutionNote && <p className="mt-2 whitespace-pre-wrap">{complaint.resolutionNote}</p>}
         </div>
-      ) : (
+      ) : canEdit && (
         <form
           onSubmit={(e) => {
             e.preventDefault();

@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { FINANCE_SUB_NAV } from "./subNav";
@@ -77,6 +78,9 @@ export function ExpensesScreen() {
   const [filters, setFilters] = useState<Filters>({ category: "", status: "" });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("commerce", "create");
+  const canEdit = useCan("commerce", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-finance-expenses", filters],
@@ -141,16 +145,18 @@ export function ExpensesScreen() {
               <option value="paid">{t("expenses.paid")}</option>
             </select>
           </label>
-          <button
-            type="button"
-            onClick={() => setShowForm((prev) => !prev)}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm ? "Cancel" : "+ Record Expense"}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowForm((prev) => !prev)}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm ? "Cancel" : "+ Record Expense"}
+            </button>
+          )}
         </div>
 
-        {showForm && (
+        {canCreate && showForm && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -275,7 +281,7 @@ export function ExpensesScreen() {
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{e.recordedByAdminName}</td>
                     <td className="px-4 py-3">
-                      {e.status === "pending" && (
+                      {canEdit && e.status === "pending" && (
                         <button
                           type="button"
                           onClick={() => markPaidMutation.mutate(e.id)}
@@ -301,10 +307,7 @@ export function ExpensesScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel
-            keys={data.notAvailable}
-            subtitle={t("expenses.neitherEntityExistsAnywhere")}
-          />
+          <NotAvailablePanel keys={data.notAvailable} />
         )}
       </div>
     </AppShell>

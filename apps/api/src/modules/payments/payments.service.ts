@@ -14,6 +14,7 @@ import { claimRelationship, createBooking, hasBookingConflict } from "../coachin
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
 import { createActionItem } from "../../lib/adminActionQueue";
+import { createCommissionForPayment } from "../creatorCommissions/creatorCommissions.service";
 import { CreateOrderInput } from "./payments.schema";
 import { BRAND_NAME } from "@fitness-ai-app/config";
 
@@ -387,6 +388,10 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
       data: { status: "paid" },
     });
     if (claimed.count === 0) return {}; // a concurrent call (webhook vs. /verify) already claimed it — don't double-grant
+    // Oct 2026: money captured from a member a creator introduced earns that
+    // creator's commission (eligible, then approved in the console and paid in a
+    // payout run). Idempotent per payment, and never allowed to fail the payment.
+    await createCommissionForPayment(payment.id).catch(() => undefined);
   } else {
     // payment.status is already "paid" but activationFailedAt is set: this
     // is a genuine retry of a previously-failed activation attempt, not a

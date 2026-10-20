@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminTaxConfigListResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { FINANCE_SUB_NAV } from "./subNav";
@@ -36,6 +37,8 @@ export function TaxesScreen() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("commerce", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-finance-tax-configs"],
@@ -66,20 +69,22 @@ export function TaxesScreen() {
           filing obligation to track.
         </div>
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setForm(EMPTY_FORM);
-              setShowForm((prev) => !prev);
-            }}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm ? "Cancel" : "+ Add Jurisdiction"}
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setForm(EMPTY_FORM);
+                setShowForm((prev) => !prev);
+              }}
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm ? "Cancel" : "+ Add Jurisdiction"}
+            </button>
+          </div>
+        )}
 
-        {showForm && (
+        {canEdit && showForm && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -171,13 +176,17 @@ export function TaxesScreen() {
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{config.updatedByAdminName}</td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(config)}
-                        className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                      >
-                        {t("taxes.edit")}
-                      </button>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(config)}
+                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                        >
+                          {t("taxes.edit")}
+                        </button>
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

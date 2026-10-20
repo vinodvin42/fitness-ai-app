@@ -264,6 +264,42 @@ export async function resetAdminMfa(actorAdminId: string, targetAdminId: string)
   return toPublicAdminUser(await getAdminUserById(target.id));
 }
 
+/** Audit actions that are security events for an admin account (Security page, Oct 2026). */
+const SECURITY_EVENT_ACTIONS = [
+  "admin_user.login",
+  "admin_user.password_changed",
+  "admin_user.mfa_enabled",
+  "admin_user.mfa_recovery_code_used",
+  "admin_user.mfa_reset",
+  "admin_user.disable",
+  "admin_user.enable",
+  "admin.password_reset_requested",
+  "admin.password_reset_completed",
+];
+
+/**
+ * 12.05 Security's config card and events table (Oct 2026): the rules this API
+ * actually enforces, and the signed-in admin's own security events from the
+ * audit log (entity = their AdminUser row). Nothing here is editable.
+ */
+export async function getSecurityOverview(adminUserId: string) {
+  const events = await prisma.auditLog.findMany({
+    where: { entityType: "AdminUser", entityId: adminUserId, action: { in: SECURITY_EVENT_ACTIONS } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { id: true, action: true, createdAt: true, actorAdminId: true },
+  });
+  return {
+    passwordPolicy: { minLength: 8, maxLength: 72 },
+    session: {
+      lengthMinutes: env.ADMIN_JWT_ACCESS_TTL_MIN,
+      mfaRequired: isAdminMfaRequired(),
+      signInAttempts: { limit: 10, windowMinutes: 15 },
+    },
+    events: events.map((e) => ({ ...e, byYou: e.actorAdminId === adminUserId })),
+  };
+}
+
 export async function getAdminUserById(id: string) {
   const adminUser = await prisma.adminUser.findUnique({ where: { id } });
   if (!adminUser) {

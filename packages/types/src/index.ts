@@ -1331,7 +1331,8 @@ export type BillingCycle = "monthly" | "quarterly" | "annual";
 export interface AdminSubscriptionListItem {
   id: string;
   status: SubscriptionStatus;
-  user: { id: string; fullName: string; email: string };
+  /** countryCode: ISO 3166-1 alpha-2 from the member's Country setting; null when never set. */
+  user: { id: string; fullName: string; email: string; countryCode: string | null };
   plan: { id: string; name: string; tier: SubscriptionTier; billingCycle: BillingCycle; priceCents: number };
   priceCents: number;
   priceLocked: boolean;
@@ -1349,6 +1350,8 @@ export interface AdminSubscriptionDirectoryResponse {
   truncated: boolean;
   /** Counts over all subscriptions (not the filtered set), by status. */
   counts: Record<SubscriptionStatus, number>;
+  /** Oct 2026: subscriptions giving access now (active, trialing, past due), by subscriber country. */
+  byCountry: { countryCode: string | null; count: number }[];
   notAvailable: string[];
 }
 
@@ -1845,6 +1848,10 @@ export interface AdminDashboardStats {
     pendingProfessionalApplications: number;
     activeCoachingRelationships: number;
     unassignedUsersPool: number;
+    /** Oct 2026: GuidanceRequests waiting on the team (open, or out of automatic re-matches). */
+    pendingCoachingRequests: number;
+    /** Oct 2026: verified credentials expiring within 30 days (or already expired). */
+    expiringCredentials: number;
   };
   recentSignups: { id: string; fullName: string; email: string; createdAt: string }[];
   /** Names of spec'd Executive Dashboard KPIs this backend can't compute yet — see adminDashboard.service.ts. */
@@ -2678,6 +2685,46 @@ export interface AdminProfessionalListItem {
   /** R2 Wave 2 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
   lifecycleStatus: ProfessionalLifecycleStatus;
   maxActiveClients: number;
+  /** Oct 2026: net earnings this UTC month (delivered bookings minus commission, the Coach Settlements rule). */
+  earningsMtdCents: number;
+}
+
+/** Oct 2026 (lib/coachActivity.ts): sessions booked with a coach. */
+export interface AdminSessionSummary {
+  total: number;
+  upcoming: number;
+  delivered: number;
+  cancelled: number;
+  lastAt: string | null;
+  nextAt: string | null;
+}
+
+export interface AdminCoachEarnings {
+  sessionsDelivered: number;
+  grossCents: number;
+  commissionCents: number;
+  netCents: number;
+}
+
+export interface AdminSessionItem {
+  bookingId: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  serviceLabel: string;
+  status: "confirmed" | "cancelled";
+  priceCents: number;
+  gstCents: number;
+  commissionPct: number;
+}
+
+/** Per-relationship totals (list screens). */
+export interface AdminRelationshipActivity {
+  sessions: AdminSessionSummary;
+  paidCents: number;
+  paymentsCount: number;
+  lastPriceCents: number | null;
+  lastGstCents: number | null;
+  commissionPct: number | null;
 }
 
 /** The shape returned by GET /professionals/me/lifecycle and used by the admin directory's own capacity edit. */
@@ -2754,7 +2801,13 @@ export interface AdminProfessionalClient {
 export interface AdminProfessionalDetailResponse {
   professional: AdminProfessionalDetailRecord;
   clients: AdminProfessionalClient[];
-  /** 03.02's Sessions/Earnings/Reviews tabs — no backing entity, see adminProfessionals.service.ts. */
+  /** Oct 2026: 03.02's Sessions and Earnings tabs (all-time earnings; newest 50 sessions). */
+  activity: {
+    summary: AdminSessionSummary;
+    earnings: AdminCoachEarnings;
+    sessions: Array<AdminSessionItem & { userId: string; userFullName: string }>;
+  };
+  /** Still missing: "reviews" (no review model). */
   notAvailable: string[];
 }
 
@@ -2779,6 +2832,13 @@ export interface AdminSuspendProfessionalInput {
 // top comment for the full design, including why "Requested (new
 // professional)" has no backing field.
 
+/** GET /admin/auth/security (Oct 2026): the enforced rules and the caller's own security events. */
+export interface AdminSecurityOverview {
+  passwordPolicy: { minLength: number; maxLength: number };
+  session: { lengthMinutes: number; mfaRequired: boolean; signInAttempts: { limit: number; windowMinutes: number } };
+  events: Array<{ id: string; action: string; createdAt: string; actorAdminId: string | null; byYou: boolean }>;
+}
+
 /** One row of GET /admin/relationships — both parties' identity flattened onto the pairing, since 04.01's table shows User and Professional as sibling columns, not a nested object. */
 export interface AdminRelationshipListItem {
   id: string;
@@ -2796,9 +2856,9 @@ export interface AdminRelationshipListItem {
 
 /** The shape returned by GET /admin/relationships. */
 export interface AdminRelationshipDirectoryResponse {
-  relationships: AdminRelationshipListItem[];
+  /** Oct 2026: each row also carries the member's country and the pair's sessions/payments/pricing. */
+  relationships: Array<AdminRelationshipListItem & { userCountryCode: string | null; activity: AdminRelationshipActivity | null }>;
   total: number;
-  /** Figma-spec'd 04.01 columns/filters with no backing field — see adminRelationships.service.ts. */
   notAvailable: string[];
 }
 
@@ -2815,7 +2875,11 @@ export interface AdminRelationshipHistoryEntry {
 export interface AdminRelationshipDetailResponse {
   relationship: AdminRelationshipListItem;
   history: AdminRelationshipHistoryEntry[];
-  /** 04.02 Overview's Pricing/Sessions/Payments — see adminRelationships.service.ts. */
+  /** Oct 2026: 04.02 Overview's Pricing/Sessions/Payments (newest 50 sessions and booking payments). */
+  activity: AdminRelationshipActivity & {
+    sessionList: AdminSessionItem[];
+    paymentList: Array<{ paymentId: string; amountCents: number; status: string; createdAt: string }>;
+  };
   notAvailable: string[];
 }
 
@@ -2956,6 +3020,10 @@ export interface AdminUserListItem {
   membership: MembershipTier;
   channel: UserAcquisitionChannel;
   status: UserAccountStatus;
+  /** Oct 2026: the app's Country setting (ISO alpha-2); null when never set. */
+  countryCode: string | null;
+  /** Oct 2026: newest sync across the member's connected devices; null with none. */
+  lastSyncAt: string | null;
 }
 
 /** The shape returned by GET /admin/users. */
@@ -3091,7 +3159,21 @@ export interface AdminUserDetailResponse {
   relationships: AdminUserRelationship[];
   supportTickets: SupportTicket[];
   recentActivity: AdminUserAuditEvent[];
-  /** 02.02's city/timezone/acquisition source, auto-renew toggle, and the Activity tab — see adminUsers.service.ts. "sensitiveHealthMetrics" is no longer in this list — its availability is real, per-viewing-admin state now, see sensitiveAccess below. */
+  /** Oct 2026: the signup Touchpoint (channel, and campaign when one matched); null for members with none. */
+  acquisitionSource: { channel: string; campaign: { id: string; name: string } | null; at: string } | null;
+  /** Oct 2026: the current subscription doesn't cancel at period end; null with no subscription. */
+  autoRenew: boolean | null;
+  /** Oct 2026: 02.02's Activity tab — the member's last 30 days. */
+  activity: {
+    windowDays: number;
+    workoutsCompleted: number;
+    mealsLogged: number;
+    recoveryLogs: number;
+    lastWorkoutAt: string | null;
+    lastMealAt: string | null;
+    lastSyncAt: string | null;
+  };
+  /** Still missing: "city", "timezone" (not stored). */
   notAvailable: string[];
   sensitiveAccess: AdminUserSensitiveAccess;
   /** Only populated when sensitiveAccess.permitted is true. */
@@ -3377,7 +3459,16 @@ export interface AdminPaymentDetailResponse {
   /** Null only if the referenced Plan/Program row no longer exists — see adminPayments.service.ts. */
   reference: AdminPaymentReference | null;
   auditTrail: AdminPaymentAuditEntry[];
-  /** "ledgerLineItems" — no discount/fee/tax breakdown exists, only the one real gross `amountCents`. */
+  /**
+   * Oct 2026: 06.02's ledger, from the payment's stored fields only (coach fee and GST on bookings,
+   * coupon discount, refunds). `netCents` = charged − processed refunds (0 unless paid).
+   */
+  ledger: {
+    lineItems: Array<{ label: string; amountCents: number; note?: string }>;
+    refunds: Array<{ id: string; amountCents: number; status: string; createdAt: string; processedAt: string | null }>;
+    refundedCents: number;
+    netCents: number;
+  };
   notAvailable: string[];
 }
 
@@ -3393,6 +3484,8 @@ export interface AdminSupportTicketListItem {
   userId: string;
   userFullName: string;
   userEmail: string;
+  /** Oct 2026: the admin working the ticket; null = unassigned. */
+  assignee: { id: string; fullName: string } | null;
   category: SupportTicketCategory;
   subject: string;
   message: string;
@@ -3584,11 +3677,16 @@ export interface AdminReferralListItem {
   refereeName: string;
   refereeEmail: string;
   createdAt: string;
+  /** Oct 2026: the referrer's reward for this referral (subscription credit months); null when none was created. */
+  reward: { type: string; creditMonths: number; status: "pending" | "granted"; grantedAt: string | null } | null;
 }
 
 export interface AdminReferralStats {
   totalReferrals: number;
   uniqueReferrers: number;
+  rewardsGranted: number;
+  rewardsPending: number;
+  creditMonthsGranted: number;
 }
 
 export interface AdminReferralTopReferrer {
@@ -3602,7 +3700,7 @@ export interface AdminReferralDirectoryResponse {
   entries: AdminReferralListItem[];
   stats: AdminReferralStats;
   topReferrers: AdminReferralTopReferrer[];
-  /** Always ["referralFunnel", "referralRewards"] today — see adminReferrals.service.ts. */
+  /** Still missing: "referralFunnel" (only one referral event is recorded). */
   notAvailable: string[];
 }
 
@@ -3697,8 +3795,20 @@ export interface AdminUserAnalyticsResponse {
   nutritionStats: AdminAnalyticsNutritionStats;
   aiStats: AdminAnalyticsAiStats;
   geographic: AdminAnalyticsGeographic;
-  /** Always ["recoveryAnalytics", "businessAnalytics"] today — see adminAnalytics.service.ts. Geographic is no longer in this list as of 26 Aug 2026. */
+  /** Oct 2026: RecoveryLog aggregates for the range. */
+  recoveryStats: AdminAnalyticsRecoveryStats;
   notAvailable: string[];
+}
+
+/** Oct 2026: RecoveryLog aggregates (averages skip blank fields; null when nothing was logged). */
+export interface AdminAnalyticsRecoveryStats {
+  totalLogs: number;
+  usersLogging: number;
+  avgSleepHours: number | null;
+  avgEnergyLevel: number | null;
+  avgSoreness: number | null;
+  avgRestingHeartRate: number | null;
+  avgSteps: number | null;
 }
 
 // ---- Module 09.02 — Engagement, added 26 Aug 2026. A conversion funnel
@@ -3771,7 +3881,7 @@ export interface AdminFitnessNutritionAnalyticsResponse {
   };
   ai: AdminAnalyticsAiStats;
   activeUsers: number;
-  /** Always ["recoveryAnalytics"] today — no wearable/HealthKit integration exists anywhere in this build. */
+  recovery: AdminAnalyticsRecoveryStats;
   notAvailable: string[];
 }
 
@@ -3816,7 +3926,9 @@ export interface AdminUnitEconomicsResponse {
   /** avgLtvCents ÷ the *selected period's* cacCents — a real simplification (a true cohort-matched ratio would need cohort-level LTV, which `cohorts` below provides instead). Null whenever either side is null. */
   ltvToCacRatio: number | null;
   cohorts: AdminCohortEconomics[];
-  /** Always ["acquisitionChannelSplit", "unitEconomicsWaterfall"] today — see adminAnalytics.service.ts. */
+  /** Oct 2026: new members in the period by signup channel ("unknown" = no signup touchpoint). */
+  newUsersByChannel: Array<{ channel: string; count: number }>;
+  /** Still missing: "unitEconomicsWaterfall". */
   notAvailable: string[];
 }
 
@@ -4219,7 +4331,14 @@ export interface AdminFinanceDashboardResponse {
   /** Null when there's no positive burn rate to divide the cash balance by. */
   runwayMonths: number | null;
   /** `openRefundRequests` added 6 Sep 2026 — real since this pass, previously notAvailable. */
-  requiredActions: { overdueReceivables: { count: number; amountCents: number }; openRefundRequests: number };
+  requiredActions: {
+    overdueReceivables: { count: number; amountCents: number };
+    openRefundRequests: number;
+    /** Oct 2026: coach settlements owed (eligible, approved or in a payout run). */
+    pendingSettlements: { count: number; amountCents: number };
+    /** Oct 2026: creator commissions owed (eligible or approved). */
+    pendingPayouts: { count: number; amountCents: number };
+  };
   /** Always ["pendingSettlements", "pendingPayouts"] as of 6 Sep 2026 (openRefundRequests moved into requiredActions). */
   notAvailable: string[];
 }
@@ -4240,7 +4359,8 @@ export interface AdminRevenueResponse {
   byPlan: AdminRevenueByPlanItem[];
   trend: Array<{ month: string; revenueCents: number }>;
   statusBreakdown: { paid: number; created: number; failed: number };
-  /** Always ["regionalBreakdown"] — no User.region field exists, same gap 09.05 Geographic is blocked on. */
+  /** Oct 2026: paid revenue by the payer's country (User.countryCode; null = never set). */
+  byCountry: Array<{ countryCode: string | null; revenueCents: number; count: number }>;
   notAvailable: string[];
 }
 
@@ -4253,9 +4373,10 @@ export interface AdminRevenueWaterfallResponse {
     netOfDiscountsCents: number;
     refundCents: number;
     coachSettlementCents: number;
+    /** Oct 2026: paid creator commissions and admin-recorded influencer payouts (expense category influencer_payout). */
+    influencerPayoutCents: number;
     netRevenueCents: number;
   };
-  /** Always ["influencerPayoutCents"] — not netted against Gross since influencer payouts aren't computed from real attributed revenue. */
   notAvailable: string[];
 }
 
@@ -4323,10 +4444,15 @@ export interface AdminFinancialReportsResponse {
     netProfitCents: number;
   };
   cashFlow: AdminFinanceCashFlowMonth[];
-  revenue: { byPurpose: { subscriptionCents: number; programPurchaseCents: number; bookingCents: number }; byPlan: AdminRevenueByPlanItem[]; trend: Array<{ month: string; revenueCents: number }> };
+  revenue: {
+    byPurpose: { subscriptionCents: number; programPurchaseCents: number; bookingCents: number };
+    byPlan: AdminRevenueByPlanItem[];
+    trend: Array<{ month: string; revenueCents: number }>;
+    byCountry: Array<{ countryCode: string | null; revenueCents: number; count: number }>;
+  };
   expense: { byCategory: Record<string, number>; totalCents: number };
   ratios: { netMarginPct: number | null; expenseToRevenuePct: number | null };
-  /** Always ["pendingSettlements", "pendingPayouts", "regionalBreakdown"] as of 6 Sep 2026. */
+  /** Keys still missing here ("pendingSettlements", "pendingPayouts" until the payout flow fills them). */
   notAvailable: string[];
 }
 
@@ -4493,6 +4619,28 @@ export interface CoachSettlementRow {
   settlement: { id: string; status: PayoutStatus; paidAt: string | null } | null;
 }
 
+/** GET /admin/payout-runs/awaiting-approval (Oct 2026): owed rows that still need an admin's approval. */
+export interface AdminPayoutsAwaitingApproval {
+  commissions: Array<{
+    id: string;
+    grossCents: number;
+    commissionPct: number;
+    commissionCents: number;
+    createdAt: string;
+    influencer: { id: string; name: string };
+    payment: { purpose: string };
+  }>;
+  settlements: Array<{
+    id: string;
+    periodStart: string;
+    grossCents: number;
+    commissionCents: number;
+    netCents: number;
+    status: PayoutStatus;
+    professional: { id: string; fullName: string };
+  }>;
+}
+
 export interface AdminSettlementsResponse {
   month: string;
   periodStart: string;
@@ -4651,6 +4799,8 @@ export interface BusinessAnalyticsResponse {
     settlementsPaidCents: number;
   };
   revenueBySource: Array<{ source: string; amountCents: number; count: number }>;
+  /** Oct 2026: all-time paid revenue by the payer's signup channel ("unknown" = no signup touchpoint). */
+  revenueByChannel: Array<{ channel: string; amountCents: number; payments: number }>;
   notAvailable: string[];
 }
 
@@ -5163,6 +5313,16 @@ export interface AdminAcquisitionReportRow {
   activatedUsers: number;
   usersWithFirstWorkout: number;
   paidConversions: number;
+  /** Oct 2026: a workout within 7 days of signup; only members whose first week has passed count (pct null with none). */
+  w1Retention: AdminRetentionCell;
+  /** Oct 2026: a workout 21-28 days after signup; only members whose 4th week has passed count. */
+  w4Retention: AdminRetentionCell;
+}
+
+export interface AdminRetentionCell {
+  eligible: number;
+  retained: number;
+  pct: number | null;
 }
 
 export interface AdminAcquisitionChannelReportRow extends AdminAcquisitionReportRow {

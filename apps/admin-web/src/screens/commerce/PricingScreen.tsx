@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
@@ -91,6 +92,9 @@ export function PricingScreen() {
   // D8: price changes on plans people have bought are scheduled, not edited.
   const [schedulingPlan, setSchedulingPlan] = useState<AdminPlanListItem | null>(null);
   const [schedule, setSchedule] = useState<ScheduleForm>({ priceDisplay: "", effectiveFrom: "", reason: "" });
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("commerce", "create");
+  const canEdit = useCan("commerce", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-plans", filters],
@@ -231,13 +235,15 @@ export function PricingScreen() {
             </select>
           </label>
 
-          <button
-            type="button"
-            onClick={startCreate}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm && !editingId ? "Cancel" : "+ Create Plan"}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm && !editingId ? "Cancel" : "+ Create Plan"}
+            </button>
+          )}
         </div>
 
         {showForm && (
@@ -431,13 +437,15 @@ export function PricingScreen() {
                       {(p.scheduledPriceChanges ?? []).map((c) => (
                         <div key={c.id} className="mt-1 text-xs text-accent">
                           → {money(c.priceCents)} from {dateText(c.effectiveFrom)}{" "}
-                          <button
-                            type="button"
-                            onClick={() => cancelChangeMutation.mutate({ planId: p.id, changeId: c.id })}
-                            className="text-text-dim underline hover:text-danger"
-                          >
-                            cancel
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => cancelChangeMutation.mutate({ planId: p.id, changeId: c.id })}
+                              className="text-text-dim underline hover:text-danger"
+                            >
+                              cancel
+                            </button>
+                          )}
                         </div>
                       ))}
                     </td>
@@ -448,39 +456,43 @@ export function PricingScreen() {
                     <td className="px-4 py-3 text-text-secondary">{p.subscriberCount}</td>
                     <td className="px-4 py-3 text-text-secondary">{new Date(p.updatedAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(p)}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                        >
-                          {t("pricing.edit")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startSchedule(p)}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                        >
-                          New price
-                        </button>
-                        {p.isActive ? (
+                      {canEdit ? (
+                        <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => archiveMutation.mutate(p.id)}
-                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger"
-                          >
-                            {t("pricing.archive")}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => reactivateMutation.mutate(p.id)}
+                            onClick={() => startEdit(p)}
                             className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                           >
-                            {t("pricing.reactivate")}
+                            {t("pricing.edit")}
                           </button>
-                        )}
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => startSchedule(p)}
+                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                          >
+                            New price
+                          </button>
+                          {p.isActive ? (
+                            <button
+                              type="button"
+                              onClick={() => archiveMutation.mutate(p.id)}
+                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger"
+                            >
+                              {t("pricing.archive")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => reactivateMutation.mutate(p.id)}
+                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
+                            >
+                              {t("pricing.reactivate")}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

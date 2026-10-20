@@ -12,6 +12,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
@@ -52,6 +53,9 @@ export function GymProfileScreen() {
   const [portalPassword, setPortalPassword] = useState("");
   const [showPortalPasswordForm, setShowPortalPasswordForm] = useState(false);
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("gyms", "edit");
+  const canApprove = useCan("gyms", "approve");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-gym-detail", id],
@@ -159,48 +163,60 @@ export function GymProfileScreen() {
               and suspend (ReasonGatedAction, high-impact/destructive), matching
               STATUS_TRANSITIONS in gyms.service.ts exactly (application/suspended
               -> approved; approved -> suspended). */}
-          <div className="flex flex-wrap gap-4">
-            {data.gym.status !== "approved" && (
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.approvePartner")}</div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  Moves this gym from {data.gym.status} to Approved — the normal partner-onboarding path.
-                </p>
-                <button
-                  type="button"
-                  disabled={approveMutation.isPending}
-                  onClick={() => approveMutation.mutate()}
-                  className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
-                >
-                  {approveMutation.isPending ? "Approving…" : "Approve"}
-                </button>
-                {approveMutation.isError && (
-                  <p className="mt-2 text-xs text-danger">{extractErrorMessage(approveMutation.error, "Couldn't approve this gym.")}</p>
-                )}
-              </div>
-            )}
+          {canApprove && (
+            <div className="flex flex-wrap gap-4">
+              {data.gym.status !== "approved" && (
+                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.approvePartner")}</div>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Moves this gym from {data.gym.status} to Approved — the normal partner-onboarding path.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={approveMutation.isPending}
+                    onClick={() => approveMutation.mutate()}
+                    className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                  >
+                    {approveMutation.isPending ? "Approving…" : "Approve"}
+                  </button>
+                  {approveMutation.isError && (
+                    <p className="mt-2 text-xs text-danger">{extractErrorMessage(approveMutation.error, "Couldn't approve this gym.")}</p>
+                  )}
+                </div>
+              )}
 
-            {data.gym.status === "approved" && (
-              <div className="flex-1">
-                <ReasonGatedAction
-                  title={t("gymProfile.suspendPartner")}
-                  description={t("gymProfile.suspendsThisGymPartner")}
-                  actionLabel={suspendMutation.isPending ? "Suspending…" : "Suspend"}
-                  isPending={suspendMutation.isPending}
-                  isError={suspendMutation.isError}
-                  error={suspendMutation.error}
-                  onConfirm={(reason) => suspendMutation.mutate(reason)}
-                  tone="danger"
-                />
-              </div>
-            )}
-          </div>
+              {data.gym.status === "approved" && (
+                <div className="flex-1">
+                  <ReasonGatedAction
+                    title={t("gymProfile.suspendPartner")}
+                    description={t("gymProfile.suspendsThisGymPartner")}
+                    actionLabel={suspendMutation.isPending ? "Suspending…" : "Suspend"}
+                    isPending={suspendMutation.isPending}
+                    isError={suspendMutation.isError}
+                    error={suspendMutation.error}
+                    onConfirm={(reason) => suspendMutation.mutate(reason)}
+                    tone="danger"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Commercial terms */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.commercialTerms")}</div>
-              {draft && (
+              {draft && !canEdit && (
+                <dl className="mt-3 space-y-2 text-sm">
+                  <Row label={t("gymProfile.commission")} value={draft.commissionPct ?? "—"} />
+                  <Row label={t("gymProfile.pricingModel")} value={draft.pricingModel ?? "—"} />
+                  <Row
+                    label="Rate per member (cents)"
+                    value={data.gym.ratePerMemberConfigured ? (draft.ratePerMemberCents ?? "—") : t("gymProfile.notConfigured")}
+                  />
+                </dl>
+              )}
+              {draft && canEdit && (
                 <div className="mt-3 space-y-3">
                   <label className="block">
                     <div className="text-[11px] text-text-dim">{t("gymProfile.commission")}</div>
@@ -290,72 +306,76 @@ export function GymProfileScreen() {
           {/* Gym Partner Lite portal access (R2 Wave 5, 21 Sep 2026) — the real
               bootstrap for apps/gym-portal's login. See
               gyms.service.ts#setGymPortalPassword's own doc comment. */}
-          <div className="rounded-lg border border-border-subtle bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.gymPortalAccess")}</div>
-              <button
-                type="button"
-                onClick={() => setShowPortalPasswordForm((v) => !v)}
-                className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
-              >
-                {showPortalPasswordForm ? "Cancel" : "Set Portal Password"}
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-text-secondary">
-              Sets or resets the password this gym's own point of contact ({data.gym.contactEmail}) uses to sign in
-              to the separate Gym Partner portal. A gym has no portal access at all until this is set for the first
-              time.
-            </p>
-
-            {showPortalPasswordForm && (
-              <form onSubmit={onSubmitPortalPassword} className="mt-3 flex flex-wrap items-end gap-3">
-                <label className="block">
-                  <div className="text-[11px] text-text-dim">{t("gymProfile.newPortalPasswordMin")}</div>
-                  <input
-                    type="password"
-                    value={portalPassword}
-                    onChange={(e) => setPortalPassword(e.target.value)}
-                    minLength={8}
-                    required
-                    autoComplete="new-password"
-                    className="mt-1 w-64 rounded-md border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-                  />
-                </label>
+          {canEdit && (
+            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.gymPortalAccess")}</div>
                 <button
-                  type="submit"
-                  disabled={portalPasswordMutation.isPending || portalPassword.trim().length < 8}
-                  className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                  type="button"
+                  onClick={() => setShowPortalPasswordForm((v) => !v)}
+                  className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
                 >
-                  {portalPasswordMutation.isPending ? "Saving…" : "Save Password"}
+                  {showPortalPasswordForm ? "Cancel" : "Set Portal Password"}
                 </button>
-              </form>
-            )}
-            {portalPasswordMutation.isError && (
-              <p className="mt-2 text-xs text-danger">
-                {extractErrorMessage(portalPasswordMutation.error, "Couldn't set the portal password.")}
+              </div>
+              <p className="mt-2 text-xs text-text-secondary">
+                Sets or resets the password this gym's own point of contact ({data.gym.contactEmail}) uses to sign in
+                to the separate Gym Partner portal. A gym has no portal access at all until this is set for the first
+                time.
               </p>
-            )}
-            {portalPasswordMutation.isSuccess && !portalPasswordMutation.isPending && (
-              <p className="mt-2 text-xs text-accent">
-                {t("gymProfile.portalPasswordSetShare")}
-              </p>
-            )}
-          </div>
+
+              {showPortalPasswordForm && (
+                <form onSubmit={onSubmitPortalPassword} className="mt-3 flex flex-wrap items-end gap-3">
+                  <label className="block">
+                    <div className="text-[11px] text-text-dim">{t("gymProfile.newPortalPasswordMin")}</div>
+                    <input
+                      type="password"
+                      value={portalPassword}
+                      onChange={(e) => setPortalPassword(e.target.value)}
+                      minLength={8}
+                      required
+                      autoComplete="new-password"
+                      className="mt-1 w-64 rounded-md border border-border-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={portalPasswordMutation.isPending || portalPassword.trim().length < 8}
+                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                  >
+                    {portalPasswordMutation.isPending ? "Saving…" : "Save Password"}
+                  </button>
+                </form>
+              )}
+              {portalPasswordMutation.isError && (
+                <p className="mt-2 text-xs text-danger">
+                  {extractErrorMessage(portalPasswordMutation.error, "Couldn't set the portal password.")}
+                </p>
+              )}
+              {portalPasswordMutation.isSuccess && !portalPasswordMutation.isPending && (
+                <p className="mt-2 text-xs text-accent">
+                  {t("gymProfile.portalPasswordSetShare")}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Locations */}
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
             <div className="flex items-center justify-between">
               <div className="text-xs uppercase tracking-wide text-text-dim">Locations ({data.gym.locations.length})</div>
-              <button
-                type="button"
-                onClick={() => setShowLocationForm((v) => !v)}
-                className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
-              >
-                {showLocationForm ? "Cancel" : "Add Location"}
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setShowLocationForm((v) => !v)}
+                  className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+                >
+                  {showLocationForm ? "Cancel" : "Add Location"}
+                </button>
+              )}
             </div>
 
-            {showLocationForm && (
+            {canEdit && showLocationForm && (
               <div className="mt-3 grid grid-cols-1 gap-3 rounded-md border border-border-subtle bg-surface-raised p-3 sm:grid-cols-2">
                 <label className="block">
                   <div className="text-[11px] text-text-dim">{t("gymProfile.locationName")}</div>

@@ -251,6 +251,41 @@ export async function getPaymentDetail(id: string) {
     orderBy: { createdAt: "asc" },
   });
 
+  // Oct 2026: 06.02's ledger lines, only from what this payment stores — never
+  // inferred. A booking stores its coach fee and GST; any purchase can store a
+  // coupon discount; refunds are their own rows.
+  const extra = (await prisma.payment.findUnique({
+    where: { id },
+    select: {
+      couponCode: true,
+      discountCents: true,
+      feeCents: true,
+      taxCents: true,
+      refunds: { select: { id: true, amountCents: true, status: true, createdAt: true, processedAt: true }, orderBy: { createdAt: "asc" } },
+    },
+  })) as {
+    couponCode: string | null;
+    discountCents: number | null;
+    feeCents: number | null;
+    taxCents: number | null;
+    refunds: Array<{ id: string; amountCents: number; status: string; createdAt: Date; processedAt: Date | null }>;
+  } | null;
+  const lineItems: Array<{ label: string; amountCents: number; note?: string }> = [];
+  const discount = extra?.discountCents ?? 0;
+  if (extra?.feeCents != null) lineItems.push({ label: "Coach fee", amountCents: extra.feeCents });
+  if (extra?.taxCents != null) lineItems.push({ label: "GST", amountCents: extra.taxCents });
+  if (extra?.feeCents == null && discount > 0) lineItems.push({ label: "List price", amountCents: payment.amountCents + discount });
+  if (discount > 0) lineItems.push({ label: "Discount", amountCents: -discount, note: extra?.couponCode ? `Coupon ${extra.couponCode}` : undefined });
+  lineItems.push({ label: "Charged", amountCents: payment.amountCents });
+  const refunds = (extra?.refunds ?? []).map((r) => ({
+    id: r.id,
+    amountCents: r.amountCents,
+    status: r.status,
+    createdAt: r.createdAt,
+    processedAt: r.processedAt,
+  }));
+  const refundedCents = refunds.filter((r) => r.status === "processed").reduce((s, r) => s + r.amountCents, 0);
+
   return {
     payment: toListItem(payment, referenceLabel),
     reference,
@@ -263,8 +298,12 @@ export async function getPaymentDetail(id: string) {
       metadata: (a.metadata as Record<string, unknown> | null) ?? null,
       createdAt: a.createdAt,
     })),
-    // 06.02's "ledger flow card" line items beyond the one real gross
-    // amount — see this file's top comment.
-    notAvailable: ["ledgerLineItems"],
+    ledger: {
+      lineItems,
+      refunds,
+      refundedCents,
+      netCents: payment.status === "paid" ? payment.amountCents - refundedCents : 0,
+    },
+    notAvailable: [] as string[],
   };
 }

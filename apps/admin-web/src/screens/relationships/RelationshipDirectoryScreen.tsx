@@ -6,6 +6,10 @@ import type { AdminRelationshipDirectoryResponse, ProfessionalServiceType, Relat
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { RELATIONSHIPS_SUB_NAV } from "./subNav";
@@ -150,6 +154,8 @@ export function RelationshipDirectoryScreen() {
                   <th className="px-4 py-3 font-normal">{t("relationshipDirectory.service")}</th>
                   <th className="px-4 py-3 font-normal">{t("relationshipDirectory.status")}</th>
                   <th className="px-4 py-3 font-normal">{t("relationshipDirectory.start")}</th>
+                  <th className="px-4 py-3 font-normal">Sessions</th>
+                  <th className="px-4 py-3 font-normal">Paid</th>
                   <th className="px-4 py-3 font-normal">{t("relationshipDirectory.actions")}</th>
                 </tr>
               </thead>
@@ -158,7 +164,10 @@ export function RelationshipDirectoryScreen() {
                   <tr key={r.id} className="border-b border-border-subtle last:border-0">
                     <td className="px-4 py-3">
                       <div className="font-medium text-text-primary">{r.userFullName}</div>
-                      <div className="text-xs text-text-dim">{r.userEmail}</div>
+                      <div className="text-xs text-text-dim">
+                        {r.userEmail}
+                        {r.userCountryCode ? ` · ${r.userCountryCode}` : ""}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-text-primary">{r.professionalFullName}</div>
@@ -169,6 +178,12 @@ export function RelationshipDirectoryScreen() {
                       <StatusBadge status={r.status} />
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-text-secondary" title={r.activity ? `${r.activity.sessions.upcoming} upcoming, ${r.activity.sessions.cancelled} cancelled` : undefined}>
+                      {r.activity ? `${r.activity.sessions.delivered} done` : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-text-secondary" title={r.activity?.lastPriceCents != null ? `Last session ${rupees(r.activity.lastPriceCents)} + GST` : undefined}>
+                      {r.activity ? rupees(r.activity.paidCents) : "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <Link to={`/relationships/${r.id}`} className="text-xs text-accent hover:underline">
                         {t("relationshipDirectory.view")}
@@ -178,7 +193,7 @@ export function RelationshipDirectoryScreen() {
                 ))}
                 {data.relationships.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
                       {t("relationshipDirectory.noRelationshipsMatchThese")}
                     </td>
                   </tr>
@@ -189,10 +204,7 @@ export function RelationshipDirectoryScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel
-            keys={data.notAvailable}
-            subtitle={t("relationshipDirectory.noBackingFieldExists")}
-          />
+          <NotAvailablePanel keys={data.notAvailable} />
         )}
       </div>
     </AppShell>

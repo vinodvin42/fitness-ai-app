@@ -14,6 +14,8 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
+import { useAuth } from "../../lib/auth";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { SUPPORT_SUB_NAV } from "./subNav";
@@ -36,6 +38,8 @@ interface Filters {
   category: SupportTicketCategory | "";
   priority: SupportTicketPriority | "";
   search: string;
+  /** "" all, "unassigned", or an admin id (the signed-in admin's for "Mine"). */
+  assignee: string;
 }
 
 async function fetchDirectory(filters: Filters): Promise<AdminSupportTicketDirectoryResponse> {
@@ -45,6 +49,7 @@ async function fetchDirectory(filters: Filters): Promise<AdminSupportTicketDirec
       category: filters.category || undefined,
       priority: filters.priority || undefined,
       search: filters.search || undefined,
+      assignee: filters.assignee || undefined,
     },
   });
   return res.data;
@@ -88,11 +93,14 @@ async function fetchDetail(id: string): Promise<AdminSupportTicketDetailResponse
 export function SupportTicketsScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [filters, setFilters] = useState<Filters>({ status: "", category: "", priority: "", search: "" });
+  const [filters, setFilters] = useState<Filters>({ status: "", category: "", priority: "", search: "", assignee: "" });
+  const { adminUser } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<UpdateAdminSupportTicketInput>({});
   const [escalateReason, setEscalateReason] = useState("");
   const [replyDraft, setReplyDraft] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("support", "edit");
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -121,6 +129,14 @@ export function SupportTicketsScreen() {
       setDraft({ status: detail.ticket.status, priority: detail.ticket.priority, category: detail.ticket.category });
     }
   }, [detail?.ticket.id, detail?.ticket.status, detail?.ticket.priority, detail?.ticket.category]);
+
+  const assignMutation = useMutation({
+    mutationFn: (assignedAdminId: string | null) => apiClient.patch(`/admin/support-tickets/${selectedId}`, { assignedAdminId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-support-ticket-detail", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => apiClient.patch(`/admin/support-tickets/${selectedId}`, draft),
@@ -210,6 +226,18 @@ export function SupportTicketsScreen() {
                   <option value="high">{t("supportTickets.high")}</option>
                 </select>
               </label>
+              <label className="flex flex-col gap-1 text-xs text-text-dim">
+                Assignee
+                <select
+                  value={filters.assignee}
+                  onChange={(e) => setFilter("assignee", e.target.value)}
+                  className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                >
+                  <option value="">{t("supportTickets.all")}</option>
+                  {adminUser && <option value={adminUser.id}>Mine</option>}
+                  <option value="unassigned">Unassigned</option>
+                </select>
+              </label>
               <label className="flex flex-1 min-w-[140px] flex-col gap-1 text-xs text-text-dim">
                 {t("supportTickets.search")}
                 <input
@@ -258,6 +286,7 @@ export function SupportTicketsScreen() {
                           {t.complaint && <span className="font-mono text-accent">{t.complaint.reference}</span>}
                           <span>·</span>
                           <StatusBadge status={t.priority} />
+                          {t.assignee && <span>· {t.assignee.fullName}</span>}
                         </div>
                       </button>
                     </li>
@@ -269,12 +298,7 @@ export function SupportTicketsScreen() {
               </div>
             )}
 
-            {data && (
-              <NotAvailablePanel
-                keys={data.notAvailable}
-                subtitle={t("supportTickets.noBackingDataExists")}
-              />
-            )}
+            {data && <NotAvailablePanel keys={data.notAvailable} />}
           </div>
 
           {/* Right panel — selected ticket detail */}
@@ -327,99 +351,120 @@ export function SupportTicketsScreen() {
                       </div>
                     ))}
                   </div>
-                  <textarea
-                    placeholder={t("supportTickets.writeAReply")}
-                    value={replyDraft}
-                    onChange={(e) => setReplyDraft(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    rows={2}
-                  />
-                  <button
-                    type="button"
-                    disabled={!replyDraft.trim() || sendMessageMutation.isPending}
-                    onClick={() => sendMessageMutation.mutate()}
-                    className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {t("supportTickets.sendReply")}
-                  </button>
-                  {sendMessageMutation.isError && (
-                    <p className="mt-2 text-xs text-danger">
-                      {extractErrorMessage(sendMessageMutation.error, "That reply didn't send.")}
-                    </p>
+                  {canEdit && (
+                    <>
+                      <textarea
+                        placeholder={t("supportTickets.writeAReply")}
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        className="mt-2 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                        rows={2}
+                      />
+                      <button
+                        type="button"
+                        disabled={!replyDraft.trim() || sendMessageMutation.isPending}
+                        onClick={() => sendMessageMutation.mutate()}
+                        className="mt-2 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {t("supportTickets.sendReply")}
+                      </button>
+                      {sendMessageMutation.isError && (
+                        <p className="mt-2 text-xs text-danger">
+                          {extractErrorMessage(sendMessageMutation.error, "That reply didn't send.")}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
-                <div className="rounded-md border border-border-subtle p-3">
-                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.triage")}</div>
-                  {ticket?.complaint && (
-                    <p className="mt-1 text-[11px] text-text-dim">
-                      A complaint ({ticket.complaint.reference}). Close it from{" "}
-                      <Link to="/support/complaints" className="text-accent hover:underline">
-                        Complaints
-                      </Link>{" "}
-                      with an outcome.
-                    </p>
-                  )}
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      {t("supportTickets.status")}
-                      <select
-                        value={draft.status}
-                        onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value as SupportTicketStatus }))}
-                        className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="open">{t("supportTickets.open")}</option>
-                        <option value="in_progress">{t("supportTickets.inProgress")}</option>
-                        <option value="resolved">{t("supportTickets.resolved")}</option>
-                        <option value="closed">{t("supportTickets.closed")}</option>
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      {t("supportTickets.priority")}
-                      <select
-                        value={draft.priority}
-                        onChange={(e) => setDraft((d) => ({ ...d, priority: e.target.value as SupportTicketPriority }))}
-                        className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="low">{t("supportTickets.low")}</option>
-                        <option value="normal">{t("supportTickets.normal")}</option>
-                        <option value="high">{t("supportTickets.high")}</option>
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs text-text-dim">
-                      {t("supportTickets.category")}
-                      <select
-                        value={draft.category}
-                        onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value as SupportTicketCategory }))}
-                        className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-                      >
-                        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                {canEdit && (
+                  <div className="rounded-md border border-border-subtle p-3">
+                    <div className="text-xs uppercase tracking-wide text-text-dim">{t("supportTickets.triage")}</div>
+                    {ticket?.complaint && (
+                      <p className="mt-1 text-[11px] text-text-dim">
+                        A complaint ({ticket.complaint.reference}). Close it from{" "}
+                        <Link to="/support/complaints" className="text-accent hover:underline">
+                          Complaints
+                        </Link>{" "}
+                        with an outcome.
+                      </p>
+                    )}
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <label className="flex flex-col gap-1 text-xs text-text-dim">
+                        {t("supportTickets.status")}
+                        <select
+                          value={draft.status}
+                          onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value as SupportTicketStatus }))}
+                          className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                        >
+                          <option value="open">{t("supportTickets.open")}</option>
+                          <option value="in_progress">{t("supportTickets.inProgress")}</option>
+                          <option value="resolved">{t("supportTickets.resolved")}</option>
+                          <option value="closed">{t("supportTickets.closed")}</option>
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-text-dim">
+                        {t("supportTickets.priority")}
+                        <select
+                          value={draft.priority}
+                          onChange={(e) => setDraft((d) => ({ ...d, priority: e.target.value as SupportTicketPriority }))}
+                          className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                        >
+                          <option value="low">{t("supportTickets.low")}</option>
+                          <option value="normal">{t("supportTickets.normal")}</option>
+                          <option value="high">{t("supportTickets.high")}</option>
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-text-dim">
+                        {t("supportTickets.category")}
+                        <select
+                          value={draft.category}
+                          onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value as SupportTicketCategory }))}
+                          className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                        >
+                          {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!isDirty || updateMutation.isPending}
+                      onClick={() => updateMutation.mutate()}
+                      className="mt-3 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {t("supportTickets.saveTriage")}
+                    </button>
+                    {updateMutation.isError && (
+                      <p className="mt-2 text-xs text-danger">
+                        {extractErrorMessage(updateMutation.error, "That change didn't save.")}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    disabled={!isDirty || updateMutation.isPending}
-                    onClick={() => updateMutation.mutate()}
-                    className="mt-3 rounded-md border border-accent px-3 py-1.5 text-xs text-accent disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {t("supportTickets.saveTriage")}
-                  </button>
-                  {updateMutation.isError && (
-                    <p className="mt-2 text-xs text-danger">
-                      {extractErrorMessage(updateMutation.error, "That change didn't save.")}
-                    </p>
+                )}
+
+                <div className="flex items-center justify-between gap-2 rounded-md border border-border-subtle p-3 text-sm">
+                  <span className="text-text-secondary">
+                    {ticket?.assignee ? `Assigned to ${ticket.assignee.fullName}` : "Not assigned"}
+                  </span>
+                  {canEdit && adminUser && (
+                    <button
+                      type="button"
+                      disabled={assignMutation.isPending}
+                      onClick={() => assignMutation.mutate(ticket?.assignee?.id === adminUser.id ? null : adminUser.id)}
+                      className="rounded-md border border-border-subtle px-2 py-1 text-xs text-text-primary hover:border-accent disabled:opacity-40"
+                    >
+                      {ticket?.assignee?.id === adminUser.id ? "Unassign" : "Assign to me"}
+                    </button>
                   )}
                 </div>
-
-                <NotAvailablePanel
-                  keys={detail?.notAvailable ?? []}
-                  subtitle={t("supportTickets.noBackingDataExists")}
-                />
+                {assignMutation.isError && (
+                  <p className="text-xs text-danger">{extractErrorMessage(assignMutation.error, "That assignment didn't save.")}</p>
+                )}
+                <NotAvailablePanel keys={detail?.notAvailable ?? []} />
 
                 <div className="rounded-md border border-border-subtle p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -444,7 +489,7 @@ export function SupportTicketsScreen() {
                   ) : (
                     <p className="mt-1 text-xs text-text-dim">{t("supportTickets.thisTicketHasnT")}</p>
                   )}
-                  {(!detail?.escalation || detail.escalation.status === "resolved") && (
+                  {canEdit && (!detail?.escalation || detail.escalation.status === "resolved") && (
                     <div className="mt-3">
                       <textarea
                         placeholder={t("supportTickets.whyDoesThisNeed")}

@@ -124,7 +124,8 @@ export async function listPlans(query: ListPlansQuery) {
   return {
     plans: filtered.map(toPlanListItem),
     counts: { total: rows.length, active: rows.filter((r) => r.isActive).length, archived: rows.filter((r) => !r.isActive).length },
-    notAvailable: ["coupons"],
+    // Oct 2026: coupons have their own screen (Commerce > Coupons), so nothing here is missing.
+    notAvailable: [],
   };
 }
 

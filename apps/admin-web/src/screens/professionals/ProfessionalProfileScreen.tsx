@@ -6,6 +6,8 @@ import type { AdminProfessionalDetailResponse, UpdateMaxActiveClientsInput } fro
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { StatCard } from "../../components/StatCard";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
@@ -54,6 +56,8 @@ export function ProfessionalProfileScreen() {
   const [tab, setTab] = useState<Tab>("overview");
   const [draftCapacity, setDraftCapacity] = useState("");
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("professionals", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-professional-detail", id],
@@ -68,9 +72,7 @@ export function ProfessionalProfileScreen() {
   // R2 Wave 2 (20 Sep 2026) — admin override for `maxActiveClients`, the
   // same `PATCH /admin/professionals/:id/capacity` endpoint R2 Wave 1
   // shipped with no UI caller anywhere (`requirePermission("professionals",
-  // "edit")` already gates it server-side, same permission this screen's
-  // Suspend/Reactivate actions already require — no new frontend gating
-  // needed, this mutation just surfaces a 403 the same way those do).
+  // "edit")` gates it server-side; the input is hidden for roles without it).
   const capacityMutation = useMutation({
     mutationFn: (input: UpdateMaxActiveClientsInput) => apiClient.patch(`/admin/professionals/${id}/capacity`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professional-detail", id] }),
@@ -176,37 +178,39 @@ export function ProfessionalProfileScreen() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-[11px] text-text-dim" htmlFor="max-active-clients">
-                      Max active clients (admin override, {MIN_CAPACITY}–{MAX_CAPACITY})
-                    </label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        id="max-active-clients"
-                        type="number"
-                        min={MIN_CAPACITY}
-                        max={MAX_CAPACITY}
-                        step={1}
-                        value={draftCapacity}
-                        onChange={(e) => setDraftCapacity(e.target.value)}
-                        disabled={capacityMutation.isPending}
-                        className="w-24 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
-                      />
-                      <button
-                        type="button"
-                        disabled={!isDirty || capacityMutation.isPending}
-                        onClick={() => capacityMutation.mutate({ maxActiveClients: parsedCapacity })}
-                        className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
-                      >
-                        {capacityMutation.isPending ? "Saving…" : "Save"}
-                      </button>
+                  {canEdit && (
+                    <div>
+                      <label className="text-[11px] text-text-dim" htmlFor="max-active-clients">
+                        Max active clients (admin override, {MIN_CAPACITY}–{MAX_CAPACITY})
+                      </label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          id="max-active-clients"
+                          type="number"
+                          min={MIN_CAPACITY}
+                          max={MAX_CAPACITY}
+                          step={1}
+                          value={draftCapacity}
+                          onChange={(e) => setDraftCapacity(e.target.value)}
+                          disabled={capacityMutation.isPending}
+                          className="w-24 rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                        />
+                        <button
+                          type="button"
+                          disabled={!isDirty || capacityMutation.isPending}
+                          onClick={() => capacityMutation.mutate({ maxActiveClients: parsedCapacity })}
+                          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                        >
+                          {capacityMutation.isPending ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                      {!isValidCapacity && draftCapacity.length > 0 && (
+                        <p className="mt-1 text-[11px] text-danger">
+                          Enter a whole number between {MIN_CAPACITY} and {MAX_CAPACITY}.
+                        </p>
+                      )}
                     </div>
-                    {!isValidCapacity && draftCapacity.length > 0 && (
-                      <p className="mt-1 text-[11px] text-danger">
-                        Enter a whole number between {MIN_CAPACITY} and {MAX_CAPACITY}.
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {capacityMutation.isError && (
@@ -249,8 +253,7 @@ export function ProfessionalProfileScreen() {
                   {data.clients.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
-                        No clients yet — real `Relationship` rows only exist once the (still unbuilt) coach
-                        discovery/booking flow creates one.
+                        No clients yet. A client appears here once a member books this coach or the team matches them.
                       </td>
                     </tr>
                   )}
@@ -284,16 +287,73 @@ export function ProfessionalProfileScreen() {
             </div>
           )}
 
-          {(tab === "sessions" || tab === "earnings" || tab === "reviews") && (
-            <NotAvailablePanel
-              keys={[tab]}
-              subtitle={t("professionalProfile.noBackingEntityExists")}
-            />
+          {tab === "sessions" && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <StatCard label="Booked" value={data.activity.summary.total} />
+                <StatCard label="Upcoming" value={data.activity.summary.upcoming} />
+                <StatCard label="Delivered" value={data.activity.summary.delivered} />
+                <StatCard label="Cancelled" value={data.activity.summary.cancelled} />
+              </div>
+              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+                      <th className="px-4 py-3 font-normal">When</th>
+                      <th className="px-4 py-3 font-normal">Client</th>
+                      <th className="px-4 py-3 font-normal">Service</th>
+                      <th className="px-4 py-3 font-normal">Price</th>
+                      <th className="px-4 py-3 font-normal">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.activity.sessions.map((s) => (
+                      <tr key={s.bookingId} className="border-b border-border-subtle last:border-0">
+                        <td className="px-4 py-3 text-text-secondary">{new Date(s.scheduledAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-text-primary">{s.userFullName}</td>
+                        <td className="px-4 py-3 text-text-secondary">
+                          {s.serviceLabel} · {s.durationMinutes} min
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">{rupees(s.priceCents)}</td>
+                        <td className="px-4 py-3 text-text-secondary">
+                          {s.status === "cancelled" ? "Cancelled" : new Date(s.scheduledAt) > new Date() ? "Upcoming" : "Delivered"}
+                        </td>
+                      </tr>
+                    ))}
+                    {data.activity.sessions.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-text-dim">No sessions booked yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
+
+          {tab === "earnings" && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <StatCard label="Sessions delivered" value={data.activity.earnings.sessionsDelivered} />
+                <StatCard label="Booked value" value={rupees(data.activity.earnings.grossCents)} />
+                <StatCard label="Fynrox commission" value={rupees(data.activity.earnings.commissionCents)} />
+                <StatCard label="Coach earnings" value={rupees(data.activity.earnings.netCents)} />
+              </div>
+              <p className="text-xs text-text-dim">
+                All time, delivered sessions only, using each booking's own commission rate (the same rule as Finance → Settlements).
+              </p>
+            </div>
+          )}
+
+          {tab === "reviews" && <NotAvailablePanel keys={["reviews"]} subtitle="Clients can't leave reviews yet." />}
         </div>
       )}
     </AppShell>
   );
+}
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
 function Row({ label, value }: { label: string; value: string | number }) {

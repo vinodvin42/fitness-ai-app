@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { AdminSecurityOverview } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
-import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { useAuth } from "../../lib/auth";
@@ -40,9 +40,25 @@ const EMPTY_FORM: ChangePasswordForm = { currentPassword: "", newPassword: "", c
  * repo's own RUN-LOCALLY.md) had no way to actually get rotated by
  * someone without direct database access. This closes that gap for real.
  */
+const SECURITY_EVENT_LABELS: Record<string, string> = {
+  "admin_user.login": "Signed in",
+  "admin_user.password_changed": "Password changed",
+  "admin_user.mfa_enabled": "Sign-in code set up",
+  "admin_user.mfa_recovery_code_used": "Recovery code used",
+  "admin_user.mfa_reset": "Sign-in code reset",
+  "admin_user.disable": "Account disabled",
+  "admin_user.enable": "Account enabled",
+  "admin.password_reset_requested": "Password reset requested",
+  "admin.password_reset_completed": "Password reset by email link",
+};
+
 export function SecurityScreen() {
   const { t } = useTranslation();
   const { adminUser } = useAuth();
+  const security = useQuery({
+    queryKey: ["admin-security"],
+    queryFn: () => apiClient.get<AdminSecurityOverview>("/admin/auth/security").then((r) => r.data),
+  });
   const [form, setForm] = useState<ChangePasswordForm>(EMPTY_FORM);
   const [justChanged, setJustChanged] = useState(false);
 
@@ -161,10 +177,42 @@ export function SecurityScreen() {
           </p>
         </div>
 
-        <NotAvailablePanel
-          keys={["passwordPolicy", "sessionSettings", "securityEventsTable"]}
-          subtitle={t("security.theRestOf12")}
-        />
+        {security.data && (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <div className="text-xs uppercase tracking-wide text-text-dim">Password policy</div>
+                <p className="mt-2 text-text-secondary">
+                  {security.data.passwordPolicy.minLength} to {security.data.passwordPolicy.maxLength} characters.
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <div className="text-xs uppercase tracking-wide text-text-dim">Session settings</div>
+                <p className="mt-2 text-text-secondary">
+                  You stay signed in for {Math.round(security.data.session.lengthMinutes / 60)} hours, then sign in again.{" "}
+                  {security.data.session.mfaRequired ? "A sign-in code is required at every sign-in." : "Sign-in codes are off on this server."}{" "}
+                  At most {security.data.session.signInAttempts.limit} sign-in attempts per {security.data.session.signInAttempts.windowMinutes} minutes
+                  from one network.
+                </p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border-subtle bg-surface">
+              <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">Your security events</div>
+              <ul className="divide-y divide-border-subtle text-sm">
+                {security.data.events.map((e) => (
+                  <li key={e.id} className="flex justify-between px-4 py-2">
+                    <span className="text-text-secondary">
+                      {SECURITY_EVENT_LABELS[e.action] ?? e.action}
+                      {!e.byYou && <span className="ml-2 text-xs text-text-dim">by another admin</span>}
+                    </span>
+                    <span className="text-text-dim">{new Date(e.createdAt).toLocaleString()}</span>
+                  </li>
+                ))}
+                {security.data.events.length === 0 && <li className="px-4 py-4 text-center text-text-dim">No security events yet.</li>}
+              </ul>
+            </div>
+          </>
+        )}
       </div>
     </AppShell>
   );

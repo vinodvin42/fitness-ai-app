@@ -5,6 +5,7 @@ import type { AdminEscalationListResponse, EscalationStatus } from "@fitness-ai-
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { SUPPORT_SUB_NAV } from "./subNav";
@@ -36,6 +37,8 @@ export function EscalationsScreen() {
   const [statusFilter, setStatusFilter] = useState<EscalationStatus | "">("open");
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("support", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-escalations", statusFilter],
@@ -62,8 +65,8 @@ export function EscalationsScreen() {
         <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
           Tickets that first-line support flagged as needing more attention. Escalating doesn't change the
           underlying ticket's own Status/Priority — triage that separately from its detail panel — this is just a
-          record of who raised it, why, and when it was handled. Complaints and Safety/Abuse Reports (08.03/08.04)
-          aren't part of this queue — neither has a filing flow anywhere in this build yet.
+          record of who raised it, why, and when it was handled. Formal complaints and safety reports have their own
+          screens (Support → Complaints and Support → Safety Reports).
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
@@ -137,7 +140,7 @@ export function EscalationsScreen() {
                 </div>
               </dl>
 
-              {e.status === "open" ? (
+              {canEdit && e.status === "open" ? (
                 <div className="mt-3">
                   <textarea
                     placeholder={t("escalations.resolutionNotesOptional")}

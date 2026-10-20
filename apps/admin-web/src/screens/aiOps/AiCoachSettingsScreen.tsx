@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { AdminAiCoachSettingsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { AI_OPS_SUB_NAV } from "./subNav";
@@ -41,6 +42,8 @@ async function fetchAiCoachSettings(): Promise<AdminAiCoachSettingsResponse> {
 export function AiCoachSettingsScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("admin", "edit");
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin-ai-ops-ai-coach"],
@@ -66,7 +69,12 @@ export function AiCoachSettingsScreen() {
                 disabled" response to every user — it doesn't just hide a button in the app.
               </p>
             </div>
-            {data && (
+            {data && !canEdit && (
+              <span className={`shrink-0 text-sm ${data.isEnabled ? "text-accent" : "text-text-dim"}`}>
+                {data.isEnabled ? "On" : "Off"}
+              </span>
+            )}
+            {data && canEdit && (
               <button
                 type="button"
                 role="switch"

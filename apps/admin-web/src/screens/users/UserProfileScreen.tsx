@@ -16,7 +16,9 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { StatCard } from "../../components/StatCard";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
@@ -41,6 +43,10 @@ async function fetchDetail(id: string): Promise<AdminUserDetailResponse> {
 
 function money(cents: number) {
   return `₹${(cents / 100).toFixed(2)}`;
+}
+
+function channelLabel(c: string): string {
+  return c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, " ");
 }
 
 function Row({ label, value }: { label: string; value: string | number }) {
@@ -99,6 +105,11 @@ export function UserProfileScreen() {
   const [tab, setTab] = useState<Tab>("overview");
   const [accessReason, setAccessReason] = useState("");
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canRequestSensitive = useCan("sensitiveData", "view");
+  const canReviewSensitive = useCan("sensitiveData", "approve");
+  const canRevoke = useCan("commerce", "approve");
+  const canPropose = useCan("professionals", "create");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-user-detail", id],
@@ -194,7 +205,7 @@ export function UserProfileScreen() {
     },
   });
 
-  const overviewNotAvailable = (data?.notAvailable ?? []).filter((k) => k !== "activity");
+  const overviewNotAvailable = data?.notAvailable ?? [];
 
   return (
     <AppShell title={t("userProfile.userProfile")}>
@@ -255,6 +266,14 @@ export function UserProfileScreen() {
                     <Row label={t("userProfile.referralCode")} value={data.user.referralCode} />
                     <Row label={t("userProfile.joined")} value={new Date(data.user.createdAt).toLocaleDateString()} />
                     <Row label={t("userProfile.lastUpdated")} value={new Date(data.user.updatedAt).toLocaleDateString()} />
+                    <Row
+                      label="Came from"
+                      value={
+                        data.acquisitionSource
+                          ? `${channelLabel(data.acquisitionSource.channel)}${data.acquisitionSource.campaign ? ` · ${data.acquisitionSource.campaign.name}` : ""}`
+                          : "No signup record"
+                      }
+                    />
                   </dl>
                 </div>
 
@@ -290,6 +309,7 @@ export function UserProfileScreen() {
                       label={t("userProfile.renews")}
                       value={data.currentSubscription.renewsAt ? new Date(data.currentSubscription.renewsAt).toLocaleDateString() : "—"}
                     />
+                    <Row label="Auto-renew" value={data.autoRenew == null ? "—" : data.autoRenew ? "On" : "Off (ends at period end)"} />
                   </dl>
                 ) : (
                   <p className="mt-3 text-sm text-text-dim">{t("userProfile.noSubscriptionThisUser")}</p>
@@ -311,10 +331,7 @@ export function UserProfileScreen() {
                 </ul>
               </div>
 
-              <NotAvailablePanel
-                keys={overviewNotAvailable}
-                subtitle={t("userProfile.noBackingFieldExists")}
-              />
+              <NotAvailablePanel keys={overviewNotAvailable} subtitle="The app doesn't store a member's city or time zone." />
 
               <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-text-dim">
@@ -347,7 +364,7 @@ export function UserProfileScreen() {
                       {t("userProfile.visibleBecauseYourAccess")}
                     </p>
                   </div>
-                ) : !data.sensitiveAccess.canRequest ? (
+                ) : !canRequestSensitive || !data.sensitiveAccess.canRequest ? (
                   <p className="mt-1 text-xs text-text-secondary">
                     {t("userProfile.lockedYourAdminRole")}
                   </p>
@@ -394,7 +411,7 @@ export function UserProfileScreen() {
                   </div>
                 )}
 
-                {data.sensitiveAccess.canReview && data.sensitiveAccess.pendingRequestForReview && (
+                {canReviewSensitive && data.sensitiveAccess.canReview && data.sensitiveAccess.pendingRequestForReview && (
                   <div className="mt-4 rounded-md border border-warning/30 bg-warning/5 p-3">
                     <p className="text-xs text-text-primary">
                       <span className="font-medium">{data.sensitiveAccess.pendingRequestForReview.requestedByAdminFullName}</span>{" "}
@@ -432,7 +449,20 @@ export function UserProfileScreen() {
             </div>
           )}
 
-          {tab === "activity" && <NotAvailablePanel keys={["activity"]} subtitle={t("userProfile.seeThisScreenS")} />}
+          {tab === "activity" && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <StatCard label="Workouts completed" value={data.activity.workoutsCompleted} hint={`Last ${data.activity.windowDays} days`} />
+                <StatCard label="Meals logged" value={data.activity.mealsLogged} hint={`Last ${data.activity.windowDays} days`} />
+                <StatCard label="Recovery logs" value={data.activity.recoveryLogs} hint={`Last ${data.activity.windowDays} days`} />
+              </div>
+              <dl className="space-y-2 rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <Row label="Last workout" value={data.activity.lastWorkoutAt ? new Date(data.activity.lastWorkoutAt).toLocaleString() : "—"} />
+                <Row label="Last meal logged" value={data.activity.lastMealAt ? new Date(data.activity.lastMealAt).toLocaleString() : "—"} />
+                <Row label="Last device sync" value={data.activity.lastSyncAt ? new Date(data.activity.lastSyncAt).toLocaleString() : "—"} />
+              </dl>
+            </div>
+          )}
 
           {tab === "subscription" && (
             <div className="space-y-4">
@@ -479,7 +509,8 @@ export function UserProfileScreen() {
                 </table>
               </div>
 
-              {data.canForceRevoke &&
+              {canRevoke &&
+                data.canForceRevoke &&
                 data.currentSubscription &&
                 NON_TERMINAL_SUBSCRIPTION_STATUSES.has(data.currentSubscription.status) && (
                   <ReasonGatedAction
@@ -503,7 +534,7 @@ export function UserProfileScreen() {
                 this screen. `tone="warning"` (not "danger"): this reverses
                 a prior action rather than causing new, irreversible harm.
               */}
-              {data.canForceRevoke && data.currentSubscription && data.currentSubscription.status === "revoked" && (
+              {canRevoke && data.canForceRevoke && data.currentSubscription && data.currentSubscription.status === "revoked" && (
                 <ReasonGatedAction
                   title={t("userProfile.unRevokeSubscription")}
                   description={t("userProfile.reversesAForceRevoke")}
@@ -613,106 +644,112 @@ export function UserProfileScreen() {
                 professionalOffers.service.ts's own doc comment for the
                 full "why a new, parallel model" reasoning.
               */}
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
-                <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.proposeProfessional")}</div>
-                <p className="mt-1 text-xs text-text-secondary">
-                  Manually pair this user with a specific `available` professional (e.g. a VIP user, or a
-                  subscription tier that includes "matched with a coach"). No auto-matching — you pick the exact
-                  professional. The coach still has to accept it before a real Relationship exists.
-                </p>
-
-                <div className="mt-3 flex flex-wrap items-end gap-2">
-                  <div className="flex-1 min-w-[220px]">
-                    <label className="text-[11px] text-text-dim">{t("userProfile.availableProfessional")}</label>
-                    <input
-                      type="text"
-                      placeholder={t("userProfile.searchByName")}
-                      value={proposeSearch}
-                      onChange={(e) => setProposeSearch(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    />
-                    <select
-                      value={proposeProfessionalId}
-                      onChange={(e) => setProposeProfessionalId(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    >
-                      <option value="">
-                        {availableProfessionalsQuery.isLoading ? "Loading…" : "Select a professional"}
-                      </option>
-                      {availableProfessionalsQuery.data?.professionals.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.fullName}
-                          {p.yearsExperience != null ? ` · ${p.yearsExperience}y exp` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {availableProfessionalsQuery.data?.professionals.length === 0 && (
-                      <p className="mt-1 text-[11px] text-text-dim">
-                        {t("userProfile.noProfessionalsAreCurrently")}
+              {(canPropose || (userOffersQuery.data?.offers.length ?? 0) > 0) && (
+                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.proposeProfessional")}</div>
+                  {canPropose && (
+                    <>
+                      <p className="mt-1 text-xs text-text-secondary">
+                        Manually pair this user with a specific `available` professional (e.g. a VIP user, or a
+                        subscription tier that includes "matched with a coach"). No auto-matching — you pick the exact
+                        professional. The coach still has to accept it before a real Relationship exists.
                       </p>
-                    )}
-                  </div>
 
-                  <div>
-                    <label className="text-[11px] text-text-dim">{t("userProfile.service")}</label>
-                    <select
-                      value={proposeServiceType}
-                      onChange={(e) => setProposeServiceType(e.target.value as ProfessionalServiceType)}
-                      className="mt-1 rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    >
-                      <option value="fitness">{t("userProfile.fitness")}</option>
-                      <option value="nutrition">{t("userProfile.nutrition")}</option>
-                    </select>
-                  </div>
+                      <div className="mt-3 flex flex-wrap items-end gap-2">
+                        <div className="flex-1 min-w-[220px]">
+                          <label className="text-[11px] text-text-dim">{t("userProfile.availableProfessional")}</label>
+                          <input
+                            type="text"
+                            placeholder={t("userProfile.searchByName")}
+                            value={proposeSearch}
+                            onChange={(e) => setProposeSearch(e.target.value)}
+                            className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                          />
+                          <select
+                            value={proposeProfessionalId}
+                            onChange={(e) => setProposeProfessionalId(e.target.value)}
+                            className="mt-1 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                          >
+                            <option value="">
+                              {availableProfessionalsQuery.isLoading ? "Loading…" : "Select a professional"}
+                            </option>
+                            {availableProfessionalsQuery.data?.professionals.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.fullName}
+                                {p.yearsExperience != null ? ` · ${p.yearsExperience}y exp` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          {availableProfessionalsQuery.data?.professionals.length === 0 && (
+                            <p className="mt-1 text-[11px] text-text-dim">
+                              {t("userProfile.noProfessionalsAreCurrently")}
+                            </p>
+                          )}
+                        </div>
 
-                  <button
-                    type="button"
-                    disabled={!proposeProfessionalId || createOfferMutation.isPending}
-                    onClick={() =>
-                      createOfferMutation.mutate({ professionalId: proposeProfessionalId, serviceType: proposeServiceType })
-                    }
-                    className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-canvas disabled:opacity-40"
-                  >
-                    {t("userProfile.propose")}
-                  </button>
-                </div>
+                        <div>
+                          <label className="text-[11px] text-text-dim">{t("userProfile.service")}</label>
+                          <select
+                            value={proposeServiceType}
+                            onChange={(e) => setProposeServiceType(e.target.value as ProfessionalServiceType)}
+                            className="mt-1 rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                          >
+                            <option value="fitness">{t("userProfile.fitness")}</option>
+                            <option value="nutrition">{t("userProfile.nutrition")}</option>
+                          </select>
+                        </div>
 
-                {createOfferMutation.isError && (
-                  <p className="mt-2 text-xs text-danger">
-                    {extractErrorMessage(createOfferMutation.error, "Couldn't create this offer.")}
-                  </p>
-                )}
-                {createOfferMutation.isSuccess && (
-                  <p className="mt-2 text-xs text-accent">{t("userProfile.offerCreatedTheProfessional")}</p>
-                )}
+                        <button
+                          type="button"
+                          disabled={!proposeProfessionalId || createOfferMutation.isPending}
+                          onClick={() =>
+                            createOfferMutation.mutate({ professionalId: proposeProfessionalId, serviceType: proposeServiceType })
+                          }
+                          className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-canvas disabled:opacity-40"
+                        >
+                          {t("userProfile.propose")}
+                        </button>
+                      </div>
 
-                {(userOffersQuery.data?.offers.length ?? 0) > 0 && (
-                  <div className="mt-4 overflow-x-auto rounded-md border border-border-subtle">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-border-subtle uppercase tracking-wide text-text-dim">
-                          <th className="px-3 py-2 font-normal">{t("userProfile.professional")}</th>
-                          <th className="px-3 py-2 font-normal">{t("userProfile.service")}</th>
-                          <th className="px-3 py-2 font-normal">{t("userProfile.status")}</th>
-                          <th className="px-3 py-2 font-normal">{t("userProfile.proposed")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {userOffersQuery.data?.offers.map((o) => (
-                          <tr key={o.offerId} className="border-b border-border-subtle last:border-0">
-                            <td className="px-3 py-2 text-text-primary">{o.professionalFullName}</td>
-                            <td className="px-3 py-2 text-text-secondary">{SERVICE_LABELS[o.serviceType] ?? o.serviceType}</td>
-                            <td className="px-3 py-2">
-                              <StatusBadge status={o.status} />
-                            </td>
-                            <td className="px-3 py-2 text-text-secondary">{new Date(o.createdAt).toLocaleDateString()}</td>
+                      {createOfferMutation.isError && (
+                        <p className="mt-2 text-xs text-danger">
+                          {extractErrorMessage(createOfferMutation.error, "Couldn't create this offer.")}
+                        </p>
+                      )}
+                      {createOfferMutation.isSuccess && (
+                        <p className="mt-2 text-xs text-accent">{t("userProfile.offerCreatedTheProfessional")}</p>
+                      )}
+                    </>
+                  )}
+
+                  {(userOffersQuery.data?.offers.length ?? 0) > 0 && (
+                    <div className="mt-4 overflow-x-auto rounded-md border border-border-subtle">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-border-subtle uppercase tracking-wide text-text-dim">
+                            <th className="px-3 py-2 font-normal">{t("userProfile.professional")}</th>
+                            <th className="px-3 py-2 font-normal">{t("userProfile.service")}</th>
+                            <th className="px-3 py-2 font-normal">{t("userProfile.status")}</th>
+                            <th className="px-3 py-2 font-normal">{t("userProfile.proposed")}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                        </thead>
+                        <tbody>
+                          {userOffersQuery.data?.offers.map((o) => (
+                            <tr key={o.offerId} className="border-b border-border-subtle last:border-0">
+                              <td className="px-3 py-2 text-text-primary">{o.professionalFullName}</td>
+                              <td className="px-3 py-2 text-text-secondary">{SERVICE_LABELS[o.serviceType] ?? o.serviceType}</td>
+                              <td className="px-3 py-2">
+                                <StatusBadge status={o.status} />
+                              </td>
+                              <td className="px-3 py-2 text-text-secondary">{new Date(o.createdAt).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

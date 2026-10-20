@@ -10,6 +10,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GROWTH_SUB_NAV } from "../growth/subNav";
@@ -56,6 +57,8 @@ export function ApplicationsScreen() {
   const [kind, setKind] = useState("");
   const [status, setStatus] = useState("");
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("growth", "edit");
 
   const applications = useQuery({
     queryKey: ["admin-applications", kind, status],
@@ -181,27 +184,33 @@ export function ApplicationsScreen() {
                       {row.adminNote && <div className="mt-1 text-xs text-text-dim">{row.adminNote}</div>}
                     </td>
                     <td className="px-4 py-3">
-                      <input
-                        placeholder={t("applications.noteOptional")}
-                        value={noteDraft[row.id] ?? ""}
-                        onChange={(e) => setNoteDraft((p) => ({ ...p, [row.id]: e.target.value }))}
-                        className="mb-2 w-40 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        {STATUSES.filter((s) => s !== row.status).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            disabled={updateMutation.isPending && updateMutation.variables?.id === row.id}
-                            onClick={() =>
-                              updateMutation.mutate({ id: row.id, nextStatus: s, note: noteDraft[row.id] })
-                            }
-                            className="text-xs text-accent hover:underline disabled:opacity-50"
-                          >
-                            {s.replace("_", " ")}
-                          </button>
-                        ))}
-                      </div>
+                      {canEdit ? (
+                        <>
+                          <input
+                            placeholder={t("applications.noteOptional")}
+                            value={noteDraft[row.id] ?? ""}
+                            onChange={(e) => setNoteDraft((p) => ({ ...p, [row.id]: e.target.value }))}
+                            className="mb-2 w-40 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            {STATUSES.filter((s) => s !== row.status).map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                disabled={updateMutation.isPending && updateMutation.variables?.id === row.id}
+                                onClick={() =>
+                                  updateMutation.mutate({ id: row.id, nextStatus: s, note: noteDraft[row.id] })
+                                }
+                                className="text-xs text-accent hover:underline disabled:opacity-50"
+                              >
+                                {s.replace("_", " ")}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

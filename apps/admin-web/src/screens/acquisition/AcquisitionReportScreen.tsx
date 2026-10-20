@@ -135,6 +135,8 @@ export function AcquisitionReportScreen() {
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.activated")}</th>
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.n1stWorkout")}</th>
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.paid")}</th>
+                    <th className="px-4 py-3 font-normal" title="A workout within 7 days of signup">W1</th>
+                    <th className="px-4 py-3 font-normal" title="A workout 21-28 days after signup">W4</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,6 +153,12 @@ export function AcquisitionReportScreen() {
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {row.paidConversions} <span className="text-text-dim">({pct(row.paidConversions, row.registeredUsers)})</span>
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary" title={`${row.w1Retention.retained} of ${row.w1Retention.eligible} members whose window has passed`}>
+                        {row.w1Retention.pct === null ? "—" : `${row.w1Retention.pct}%`}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary" title={`${row.w4Retention.retained} of ${row.w4Retention.eligible} members whose window has passed`}>
+                        {row.w4Retention.pct === null ? "—" : `${row.w4Retention.pct}%`}
                       </td>
                     </tr>
                   ))}
@@ -170,6 +178,8 @@ export function AcquisitionReportScreen() {
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.activated")}</th>
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.n1stWorkout")}</th>
                     <th className="px-4 py-3 font-normal">{t("acquisitionReport.paid")}</th>
+                    <th className="px-4 py-3 font-normal" title="A workout within 7 days of signup">W1</th>
+                    <th className="px-4 py-3 font-normal" title="A workout 21-28 days after signup">W4</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,11 +197,17 @@ export function AcquisitionReportScreen() {
                       <td className="px-4 py-3 text-text-secondary">{row.activatedUsers}</td>
                       <td className="px-4 py-3 text-text-secondary">{row.usersWithFirstWorkout}</td>
                       <td className="px-4 py-3 text-text-secondary">{row.paidConversions}</td>
+                      <td className="px-4 py-3 text-text-secondary" title={`${row.w1Retention.retained} of ${row.w1Retention.eligible} members whose window has passed`}>
+                        {row.w1Retention.pct === null ? "—" : `${row.w1Retention.pct}%`}
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary" title={`${row.w4Retention.retained} of ${row.w4Retention.eligible} members whose window has passed`}>
+                        {row.w4Retention.pct === null ? "—" : `${row.w4Retention.pct}%`}
+                      </td>
                     </tr>
                   ))}
                   {data.byCampaign.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
+                      <td colSpan={9} className="px-4 py-8 text-center text-text-dim">
                         {t("acquisitionReport.noCampaignAttributedRegistrations")}
                       </td>
                     </tr>
@@ -200,10 +216,11 @@ export function AcquisitionReportScreen() {
               </table>
             </div>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("acquisitionReport.noExistingPrecedentIn")}
-            />
+            <p className="text-xs text-text-dim">
+              W1: a workout within 7 days of signup. W4: a workout 21-28 days after signup. Each counts only members whose
+              window has passed; — means none yet.
+            </p>
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>

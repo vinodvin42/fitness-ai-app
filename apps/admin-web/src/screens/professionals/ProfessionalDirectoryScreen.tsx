@@ -6,6 +6,7 @@ import type { AdminProfessionalDirectoryResponse, ProfessionalDirectoryTab } fro
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
@@ -77,6 +78,8 @@ export function ProfessionalDirectoryScreen() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<CapacitySort>("recent");
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("professionals", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-professionals", tab, search],
@@ -164,6 +167,7 @@ export function ProfessionalDirectoryScreen() {
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.services")}</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.experience")}</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.activeClients")}</th>
+                  <th className="px-4 py-3 font-normal" title="Delivered sessions this month, after commission">Earned this month</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.status")}</th>
                   <th className="px-4 py-3 font-normal">KYC</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.lifecycle")}</th>
@@ -223,6 +227,7 @@ export function ProfessionalDirectoryScreen() {
                         {p.activeClients} / {p.maxActiveClients}
                         {overCapacity ? " ⚠" : idleDespiteAvailable ? " ○" : ""}
                       </td>
+                      <td className="px-4 py-3 text-text-secondary">₹{(p.earningsMtdCents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={p.status} />
                       </td>
@@ -237,7 +242,7 @@ export function ProfessionalDirectoryScreen() {
                           <Link to={`/professionals/${p.id}`} className="text-xs text-accent hover:underline">
                             {t("professionalDirectory.view")}
                           </Link>
-                          {p.status === "suspended" && (
+                          {canEdit && p.status === "suspended" && (
                             <button
                               type="button"
                               disabled={reactivateMutation.isPending && reactivateMutation.variables === p.id}
@@ -256,7 +261,7 @@ export function ProfessionalDirectoryScreen() {
                 })}
                 {sortedProfessionals.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={9} className="px-4 py-8 text-center text-text-dim">
                       {t("professionalDirectory.noProfessionalsInThis")}
                     </td>
                   </tr>
@@ -273,10 +278,7 @@ export function ProfessionalDirectoryScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel
-            keys={data.notAvailable}
-            subtitle={t("professionalDirectory.noBackingFieldExists")}
-          />
+          <NotAvailablePanel keys={data.notAvailable} subtitle="Coaches don't record a region, languages or a rating." />
         )}
       </div>
     </AppShell>

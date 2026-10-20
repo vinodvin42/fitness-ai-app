@@ -177,8 +177,13 @@ export function FitnessNutritionScreen() {
                   <StatCard label={t("fitnessNutrition.usersUsingAi")} value={data.ai.usersUsingAi} />
                   <StatCard label={t("fitnessNutrition.avgAiUser")} value={data.ai.avgMessagesPerAiUser ?? "—"} />
                 </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <StatCard label="Recovery logs" value={data.recovery.totalLogs} />
+                  <StatCard label="Avg sleep (hours)" value={data.recovery.avgSleepHours ?? "—"} />
+                  <StatCard label="Avg energy (1-5)" value={data.recovery.avgEnergyLevel ?? "—"} />
+                </div>
                 <div className="mt-3">
-                  <NotAvailablePanel keys={data.notAvailable} subtitle={t("fitnessNutrition.noWearableHealthkitIntegration")} />
+                  <NotAvailablePanel keys={data.notAvailable} />
                 </div>
               </div>
             </div>

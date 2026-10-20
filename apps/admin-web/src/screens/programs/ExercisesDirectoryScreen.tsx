@@ -5,6 +5,7 @@ import type { AdminExerciseDirectoryResponse, AdminExerciseListItem } from "@fit
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import {
@@ -105,6 +106,10 @@ export function ExercisesDirectoryScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [videoError, setVideoError] = useState<string | null>(null);
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("programs", "create");
+  const canEdit = useCan("programs", "edit");
+  const canApprove = useCan("programs", "approve");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-exercises", filters],
@@ -248,13 +253,15 @@ export function ExercisesDirectoryScreen() {
             />
           </label>
 
-          <button
-            type="button"
-            onClick={startCreate}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm && !editingId ? "Cancel" : "+ Create Exercise"}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm && !editingId ? "Cancel" : "+ Create Exercise"}
+            </button>
+          )}
         </div>
 
         {showForm && (
@@ -532,40 +539,48 @@ export function ExercisesDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{new Date(ex.updatedAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(ex)}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                        >
-                          {t("exercisesDirectory.edit")}
-                        </button>
-                        {ex.status === "published" ? (
+                        {canEdit && (
                           <button
                             type="button"
-                            disabled={unpublishMutation.isPending}
-                            onClick={() => unpublishMutation.mutate(ex.id)}
-                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
+                            onClick={() => startEdit(ex)}
+                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                           >
-                            {t("exercisesDirectory.unpublish")}
+                            {t("exercisesDirectory.edit")}
                           </button>
+                        )}
+                        {ex.status === "published" ? (
+                          canApprove && (
+                            <button
+                              type="button"
+                              disabled={unpublishMutation.isPending}
+                              onClick={() => unpublishMutation.mutate(ex.id)}
+                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
+                            >
+                              {t("exercisesDirectory.unpublish")}
+                            </button>
+                          )
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              disabled={publishMutation.isPending}
-                              onClick={() => publishMutation.mutate(ex.id)}
-                              className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
-                            >
-                              {t("exercisesDirectory.publish")}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={submitReviewMutation.isPending}
-                              onClick={() => submitReviewMutation.mutate(ex.id)}
-                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
-                            >
-                              {t("exercisesDirectory.submitForReview")}
-                            </button>
+                            {canApprove && (
+                              <button
+                                type="button"
+                                disabled={publishMutation.isPending}
+                                onClick={() => publishMutation.mutate(ex.id)}
+                                className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
+                              >
+                                {t("exercisesDirectory.publish")}
+                              </button>
+                            )}
+                            {canEdit && (
+                              <button
+                                type="button"
+                                disabled={submitReviewMutation.isPending}
+                                onClick={() => submitReviewMutation.mutate(ex.id)}
+                                className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+                              >
+                                {t("exercisesDirectory.submitForReview")}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

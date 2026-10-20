@@ -1,7 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { createActionItem } from "../../lib/adminActionQueue";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { COMPLAINT_OUTCOME_LABELS, complaintDueDate, complaintReference } from "../../lib/complaints";
 import { hasPermission } from "../../middleware/adminPermissions";
 import { createNotification } from "../notifications/notifications.service";
@@ -184,7 +184,15 @@ type SupportTicketRow = {
   complaintDueAt?: Date | null;
   complaintOutcome?: string | null;
   complaintClosedAt?: Date | null;
+  // 08.01 ownership (Oct 2026).
+  assignedAdminId?: string | null;
+  assignedAdmin?: { id: string; fullName: string } | null;
 };
+
+const TICKET_INCLUDE = {
+  user: { select: { id: true, fullName: true, email: true } },
+  assignedAdmin: { select: { id: true, fullName: true } },
+} as const;
 
 function toListItem(t: SupportTicketRow) {
   return {
@@ -199,6 +207,7 @@ function toListItem(t: SupportTicketRow) {
     status: t.status,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
+    assignee: t.assignedAdmin ?? null,
     // 08.03 Complaints: the reference staff and the member quote, and where
     // it stands. Closing happens on the Complaints screen, with an outcome.
     complaint:
@@ -226,7 +235,7 @@ export async function listSupportTickets(query: ListSupportTicketsQuery) {
 
   const tickets = await prisma.supportTicket.findMany({
     where,
-    include: { user: { select: { id: true, fullName: true, email: true } } },
+    include: TICKET_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
 
@@ -249,26 +258,22 @@ export async function listSupportTickets(query: ListSupportTicketsQuery) {
     (r) =>
       (query.status ? r.status === query.status : true) &&
       (query.category ? r.category === query.category : true) &&
-      (query.priority ? r.priority === query.priority : true),
+      (query.priority ? r.priority === query.priority : true) &&
+      (query.assignee === "unassigned" ? !r.assignedAdminId : query.assignee ? r.assignedAdminId === query.assignee : true),
   );
 
   return {
     tickets: filtered.map(toListItem),
     stats,
-    // "assignee" — 08.01's spec'd ownership field, still genuinely
-    // unmodeled (see this file's top comment). "conversationThread" is
-    // real now (3 Sep 2026) — see getSupportTicketDetail below, where the
-    // actual message list lives; this directory-level response only
-    // carries what's still missing, for a single shared NotAvailablePanel
-    // copy across both list and detail.
-    notAvailable: ["assignee"],
+    // Oct 2026: the assignee is real (SupportTicket.assignedAdminId).
+    notAvailable: [] as string[],
   };
 }
 
 async function getSupportTicketOrThrow(id: string): Promise<SupportTicketRow> {
   const ticket = await prisma.supportTicket.findUnique({
     where: { id },
-    include: { user: { select: { id: true, fullName: true, email: true } } },
+    include: TICKET_INCLUDE,
   });
   if (!ticket) {
     throw new ApiHttpError(404, "not_found", "Support ticket not found");
@@ -314,7 +319,7 @@ export async function getSupportTicketDetail(id: string) {
     })),
     escalation: latestEscalation ? toEscalationListItem(latestEscalation as EscalationRow) : null,
     messages,
-    notAvailable: ["assignee"],
+    notAvailable: [] as string[],
   };
 }
 
@@ -334,7 +339,7 @@ export async function updateSupportTicket(adminId: string, id: string, input: Up
     }
   }
 
-  const changes: Record<string, { from: string; to: string }> = {};
+  const changes: Record<string, { from: string | null; to: string | null }> = {};
   const data: Record<string, string | Date | null> = {};
   for (const field of ["status", "priority", "category"] as const) {
     const next = input[field];
@@ -342,6 +347,19 @@ export async function updateSupportTicket(adminId: string, id: string, input: Up
       changes[field] = { from: ticket[field], to: next };
       data[field] = next;
     }
+  }
+
+  // Oct 2026: assigning a ticket to an admin (or back to nobody). Only an
+  // active admin can be given work.
+  if (input.assignedAdminId !== undefined && input.assignedAdminId !== (ticket.assignedAdminId ?? null)) {
+    if (input.assignedAdminId) {
+      const assignee = await prisma.adminUser.findUnique({ where: { id: input.assignedAdminId }, select: { status: true } });
+      if (!assignee || assignee.status !== "active") {
+        throw new ApiHttpError(400, "invalid_assignee", "Assign the ticket to an active admin");
+      }
+    }
+    changes.assignee = { from: ticket.assignedAdminId ?? null, to: input.assignedAdminId };
+    data.assignedAdminId = input.assignedAdminId;
   }
 
   // Becoming a complaint starts the one-month clock from when the member
@@ -356,7 +374,7 @@ export async function updateSupportTicket(adminId: string, id: string, input: Up
     return toListItem(ticket);
   }
 
-  const updated = await prisma.supportTicket.update({ where: { id }, data });
+  const updated = await prisma.supportTicket.update({ where: { id }, data, include: TICKET_INCLUDE });
 
   await recordAudit({
     actorAdminId: adminId,
@@ -366,7 +384,7 @@ export async function updateSupportTicket(adminId: string, id: string, input: Up
     metadata: { changes },
   });
 
-  return toListItem({ ...updated, user: ticket.user } as SupportTicketRow);
+  return toListItem(updated as SupportTicketRow);
 }
 
 // ---- 08.02 Escalations — see this file's top comment for the full
@@ -806,6 +824,7 @@ export async function closeComplaint(adminId: string, id: string, input: CloseCo
     reason: input.reason,
     metadata: { outcome: input.outcome, closedLate },
   });
+  await resolveActionItemsFor("SupportTicket", id, adminId, `Complaint closed: ${label}`);
   await createNotification(t.userId, {
     kind: "system",
     title: "Your complaint has been closed",

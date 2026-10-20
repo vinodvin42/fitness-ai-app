@@ -21,7 +21,7 @@ import { ListSubscriptionsQuery } from "./adminSubscriptions.schema";
 const LIST_LIMIT = 500;
 
 const listInclude = {
-  user: { select: { id: true, fullName: true, email: true } },
+  user: { select: { id: true, fullName: true, email: true, countryCode: true } },
   plan: { select: { id: true, name: true, tier: true, billingCycle: true, priceCents: true } },
 } satisfies Prisma.SubscriptionInclude;
 
@@ -63,11 +63,22 @@ export async function listSubscriptions(query: ListSubscriptionsQuery) {
       : {}),
   };
 
-  const [rows, matched, byStatus] = await Promise.all([
+  const [rows, matched, byStatus, live] = await Promise.all([
     prisma.subscription.findMany({ where, include: listInclude, orderBy: { createdAt: "desc" }, take: LIST_LIMIT }),
     prisma.subscription.count({ where }),
     prisma.subscription.groupBy({ by: ["status"], _count: { _all: true } }),
+    // Oct 2026: subscriptions that currently give access, by the subscriber's country (User.countryCode,
+    // set from the app's Country screen; null when the member never chose one).
+    prisma.subscription.findMany({
+      where: { status: { in: ["active", "trialing", "past_due"] } },
+      select: { user: { select: { countryCode: true } } },
+    }),
   ]);
+  const countryCounts = new Map<string | null, number>();
+  for (const s of live) countryCounts.set(s.user.countryCode ?? null, (countryCounts.get(s.user.countryCode ?? null) ?? 0) + 1);
+  const byCountry = [...countryCounts.entries()]
+    .map(([countryCode, count]) => ({ countryCode, count }))
+    .sort((a, b) => b.count - a.count || String(a.countryCode).localeCompare(String(b.countryCode)));
 
   const counts = Object.fromEntries(Object.values(SubscriptionStatus).map((st) => [st, 0])) as Record<SubscriptionStatus, number>;
   for (const g of byStatus) counts[g.status] = g._count._all;
@@ -77,6 +88,7 @@ export async function listSubscriptions(query: ListSubscriptionsQuery) {
     matched,
     truncated: matched > rows.length,
     counts,
-    notAvailable: ["country"],
+    byCountry,
+    notAvailable: [],
   };
 }

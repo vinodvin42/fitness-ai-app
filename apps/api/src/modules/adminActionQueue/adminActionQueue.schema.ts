@@ -22,6 +22,8 @@ export const adminActionItemTypes = [
   "support_escalation",
   "relationship_change_pending",
   "credential_verification_pending",
+  // Oct 2026: the screen offered this filter but the API refused it.
+  "partner_application_received",
 ] as const;
 
 export const adminActionItemSeverities = ["low", "medium", "high"] as const;

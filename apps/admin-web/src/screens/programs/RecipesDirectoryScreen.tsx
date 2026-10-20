@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatStepTimes, videoFromForm } from "../../lib/recipeVideoForm";
@@ -114,6 +115,10 @@ export function RecipesDirectoryScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [videoError, setVideoError] = useState<string | null>(null);
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("programs", "create");
+  const canEdit = useCan("programs", "edit");
+  const canApprove = useCan("programs", "approve");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-recipes", filters],
@@ -244,13 +249,15 @@ export function RecipesDirectoryScreen() {
             />
           </label>
 
-          <button
-            type="button"
-            onClick={startCreate}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm && !editingId ? "Cancel" : "+ Create Recipe"}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={startCreate}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm && !editingId ? "Cancel" : "+ Create Recipe"}
+            </button>
+          )}
         </div>
 
         {showForm && (
@@ -506,40 +513,48 @@ export function RecipesDirectoryScreen() {
                     <td className="px-4 py-3 text-text-secondary">{new Date(r.updatedAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(r)}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
-                        >
-                          {t("recipesDirectory.edit")}
-                        </button>
-                        {r.status === "published" ? (
+                        {canEdit && (
                           <button
                             type="button"
-                            disabled={unpublishMutation.isPending}
-                            onClick={() => unpublishMutation.mutate(r.id)}
-                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
+                            onClick={() => startEdit(r)}
+                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent"
                           >
-                            {t("recipesDirectory.unpublish")}
+                            {t("recipesDirectory.edit")}
                           </button>
+                        )}
+                        {r.status === "published" ? (
+                          canApprove && (
+                            <button
+                              type="button"
+                              disabled={unpublishMutation.isPending}
+                              onClick={() => unpublishMutation.mutate(r.id)}
+                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-danger hover:text-danger disabled:opacity-40"
+                            >
+                              {t("recipesDirectory.unpublish")}
+                            </button>
+                          )
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              disabled={publishMutation.isPending}
-                              onClick={() => publishMutation.mutate(r.id)}
-                              className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
-                            >
-                              {t("recipesDirectory.publish")}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={submitReviewMutation.isPending}
-                              onClick={() => submitReviewMutation.mutate(r.id)}
-                              className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
-                            >
-                              {t("recipesDirectory.submitForReview")}
-                            </button>
+                            {canApprove && (
+                              <button
+                                type="button"
+                                disabled={publishMutation.isPending}
+                                onClick={() => publishMutation.mutate(r.id)}
+                                className="rounded-md border border-accent/40 px-2.5 py-1 text-xs text-accent disabled:opacity-40"
+                              >
+                                {t("recipesDirectory.publish")}
+                              </button>
+                            )}
+                            {canEdit && (
+                              <button
+                                type="button"
+                                disabled={submitReviewMutation.isPending}
+                                onClick={() => submitReviewMutation.mutate(r.id)}
+                                className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+                              >
+                                {t("recipesDirectory.submitForReview")}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

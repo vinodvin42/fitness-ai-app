@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AdminPayoutsAwaitingApproval } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { FINANCE_SUB_NAV } from "./subNav";
@@ -60,6 +62,23 @@ export function PayoutRunsScreen() {
   const [kind, setKind] = useState<RunKind>("professional_earning");
   const [settling, setSettling] = useState<string | null>(null);
   const [failedIdsText, setFailedIdsText] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canApprove = useCan("commerce", "approve");
+
+  // Oct 2026: owed rows waiting for approval. Approved rows are what a run pays.
+  const awaiting = useQuery({
+    queryKey: ["payoutsAwaitingApproval"],
+    queryFn: () => apiClient.get<AdminPayoutsAwaitingApproval>("/admin/payout-runs/awaiting-approval").then((r) => r.data),
+  });
+  const approve = useMutation({
+    // The console asks for the reason (lib/reasonPrompt.ts) before this is sent.
+    mutationFn: ({ kind, id }: { kind: "commission" | "settlement"; id: string }) =>
+      apiClient.post(kind === "commission" ? `/admin/commissions/${id}/approve` : `/admin/settlements/${id}/approve`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payoutsAwaitingApproval"] });
+      queryClient.invalidateQueries({ queryKey: ["payoutPreview"] });
+    },
+  });
 
   const preview = useQuery({
     queryKey: ["payoutPreview", kind],
@@ -116,6 +135,57 @@ export function PayoutRunsScreen() {
         </p>
       ) : null}
 
+      {awaiting.data && (awaiting.data.commissions.length > 0 || awaiting.data.settlements.length > 0) && (
+        <div className="mb-5 rounded-lg border border-border-subtle bg-surface">
+          <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
+            Waiting for approval · approved rows are paid by the next run
+          </div>
+          <ul className="divide-y divide-border-subtle text-sm">
+            {awaiting.data.settlements.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                <span className="text-text-secondary">
+                  Coach · {s.professional.fullName} · {new Date(s.periodStart).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-text-primary">₹{(s.netCents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                  {canApprove && (
+                    <button
+                      type="button"
+                      disabled={approve.isPending}
+                      onClick={() => approve.mutate({ kind: "settlement", id: s.id })}
+                      className="rounded-md border border-border-subtle px-2 py-1 text-xs text-text-primary hover:border-accent disabled:opacity-40"
+                    >
+                      Approve
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+            {awaiting.data.commissions.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                <span className="text-text-secondary">
+                  Creator · {c.influencer.name} · {c.commissionPct}% of ₹{(c.grossCents / 100).toLocaleString("en-IN")} ({c.payment.purpose.replace(/_/g, " ")})
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-text-primary">₹{(c.commissionCents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                  {canApprove && (
+                    <button
+                      type="button"
+                      disabled={approve.isPending}
+                      onClick={() => approve.mutate({ kind: "commission", id: c.id })}
+                      className="rounded-md border border-border-subtle px-2 py-1 text-xs text-text-primary hover:border-accent disabled:opacity-40"
+                    >
+                      Approve
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {approve.isError && <p className="px-4 pb-3 text-xs text-danger">{extractErrorMessage(approve.error, "That approval didn't go through.")}</p>}
+        </div>
+      )}
+
       <div className="mb-5 flex items-center gap-3">
         <label className="text-xs text-text-dim" htmlFor="payout-kind">
           {t("payoutRuns.ledger")}
@@ -155,25 +225,27 @@ export function PayoutRunsScreen() {
             </div>
 
             {p && p.itemCount > 0 ? (
-              <div className="mt-5">
-                {createRun.isError ? (
-                  <p className="mb-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
-                    {extractErrorMessage(createRun.error, "Couldn't start the run.")}
-                  </p>
-                ) : null}
-                <ReasonGatedAction
-                  title={`Start ${KIND_LABEL[kind].toLowerCase()} run`}
-                  description={`This will claim ${p.itemCount} approved row${
-                    p.itemCount === 1 ? "" : "s"
-                  } totalling ${money(p.totalCents)} across ${p.payeeCount} payee${
-                    p.payeeCount === 1 ? "" : "s"
-                  } into a new batch.`}
-                  actionLabel={t("payoutRuns.startRun")}
-                  isPending={createRun.isPending}
-                  onConfirm={(reason) => createRun.mutate(reason)}
-                  tone="warning"
-                />
-              </div>
+              canApprove && (
+                <div className="mt-5">
+                  {createRun.isError ? (
+                    <p className="mb-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+                      {extractErrorMessage(createRun.error, "Couldn't start the run.")}
+                    </p>
+                  ) : null}
+                  <ReasonGatedAction
+                    title={`Start ${KIND_LABEL[kind].toLowerCase()} run`}
+                    description={`This will claim ${p.itemCount} approved row${
+                      p.itemCount === 1 ? "" : "s"
+                    } totalling ${money(p.totalCents)} across ${p.payeeCount} payee${
+                      p.payeeCount === 1 ? "" : "s"
+                    } into a new batch.`}
+                    actionLabel={t("payoutRuns.startRun")}
+                    isPending={createRun.isPending}
+                    onConfirm={(reason) => createRun.mutate(reason)}
+                    tone="warning"
+                  />
+                </div>
+              )
             ) : (
               <p className="mt-4 text-sm text-text-dim">
                 {t("payoutRuns.nothingApprovedAndUnbatched")}
@@ -212,7 +284,7 @@ export function PayoutRunsScreen() {
                   <p className="mt-1 max-w-xs text-[11px] text-text-dim">{r.reason}</p>
                 </td>
                 <td className="py-3 pr-4">
-                  {r.status === "processing" ? (
+                  {r.status === "processing" && canApprove ? (
                     settling === r.id ? (
                       <div className="max-w-sm">
                         <label className="block text-[11px] text-text-dim" htmlFor={`failed-${r.id}`}>

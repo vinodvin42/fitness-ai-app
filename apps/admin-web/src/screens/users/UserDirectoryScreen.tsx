@@ -6,6 +6,7 @@ import type { AdminUserDirectoryResponse, MembershipTier, UserAccountStatus } fr
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
@@ -77,6 +78,8 @@ export function UserDirectoryScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkError, setBulkError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("users", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-users", filters],
@@ -187,7 +190,7 @@ export function UserDirectoryScreen() {
           </label>
         </div>
 
-        {selected.size > 0 && (
+        {canEdit && selected.size > 0 && (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <span className="font-medium text-text-primary">{selected.size} selected</span>
             <button
@@ -238,18 +241,21 @@ export function UserDirectoryScreen() {
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
                   <th className="w-8 px-4 py-3 font-normal">
-                    <input
-                      type="checkbox"
-                      checked={allOnPageSelected}
-                      onChange={toggleAllOnPage}
-                      aria-label={t("userDirectory.selectAllUsersOn")}
-                    />
+                    {canEdit && (
+                      <input
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={toggleAllOnPage}
+                        aria-label={t("userDirectory.selectAllUsersOn")}
+                      />
+                    )}
                   </th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.userAccountId")}</th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.membership")}</th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.channel")}</th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.status")}</th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.registered")}</th>
+                  <th className="px-4 py-3 font-normal">Last device sync</th>
                   <th className="px-4 py-3 font-normal">{t("userDirectory.actions")}</th>
                 </tr>
               </thead>
@@ -257,16 +263,21 @@ export function UserDirectoryScreen() {
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-border-subtle last:border-0">
                     <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(u.id)}
-                        onChange={() => toggleOne(u.id)}
-                        aria-label={`Select ${u.fullName}`}
-                      />
+                      {canEdit && (
+                        <input
+                          type="checkbox"
+                          checked={selected.has(u.id)}
+                          onChange={() => toggleOne(u.id)}
+                          aria-label={`Select ${u.fullName}`}
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-text-primary">{u.fullName}</div>
-                      <div className="text-xs text-text-dim">{u.email}</div>
+                      <div className="text-xs text-text-dim">
+                        {u.email}
+                        {u.countryCode ? ` · ${u.countryCode}` : ""}
+                      </div>
                       <div className="text-[10px] text-text-dim">{u.id}</div>
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{MEMBERSHIP_LABELS[u.membership]}</td>
@@ -275,6 +286,7 @@ export function UserDirectoryScreen() {
                       <StatusBadge status={u.status} />
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-text-secondary">{u.lastSyncAt ? new Date(u.lastSyncAt).toLocaleString() : "—"}</td>
                     <td className="px-4 py-3">
                       <Link to={`/users/${u.id}`} className="text-xs text-accent hover:underline">
                         {t("userDirectory.view")}
@@ -284,7 +296,7 @@ export function UserDirectoryScreen() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={8} className="px-4 py-8 text-center text-text-dim">
                       {t("userDirectory.noUsersMatchThese")}
                     </td>
                   </tr>
@@ -295,10 +307,7 @@ export function UserDirectoryScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel
-            keys={data.notAvailable}
-            subtitle={t("userDirectory.noBackingFieldExists")}
-          />
+          <NotAvailablePanel keys={data.notAvailable} />
         )}
       </div>
     </AppShell>

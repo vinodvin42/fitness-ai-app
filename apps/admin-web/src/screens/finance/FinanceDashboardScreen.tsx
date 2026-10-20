@@ -112,12 +112,21 @@ export function FinanceDashboardScreen() {
                 <span className="text-text-secondary">{t("financeDashboard.openRefundRequests")}</span>
                 <span className="text-text-primary">{data.requiredActions.openRefundRequests}</span>
               </div>
+              <div className="mt-2 flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
+                <span className="text-text-secondary">Coach settlements owed</span>
+                <span className="text-text-primary">
+                  {data.requiredActions.pendingSettlements.count} · {money(data.requiredActions.pendingSettlements.amountCents)}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
+                <span className="text-text-secondary">Creator commissions owed</span>
+                <span className="text-text-primary">
+                  {data.requiredActions.pendingPayouts.count} · {money(data.requiredActions.pendingPayouts.amountCents)}
+                </span>
+              </div>
             </div>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("financeDashboard.noBackingDataExists")}
-            />
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>

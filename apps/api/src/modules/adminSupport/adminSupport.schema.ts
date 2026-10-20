@@ -16,6 +16,8 @@ export const listSupportTicketsQuerySchema = z.object({
   category: z.enum(supportTicketCategories).optional(),
   priority: z.enum(supportTicketPriorities).optional(),
   search: z.string().trim().max(200).optional(),
+  // Oct 2026: "unassigned", or an admin's id (the console sends its own for "Mine").
+  assignee: z.union([z.literal("unassigned"), z.string().uuid()]).optional(),
 });
 
 // The one real state-changing action this module ships: re-triaging a
@@ -27,6 +29,8 @@ export const updateSupportTicketSchema = z
     status: z.enum(supportTicketStatuses).optional(),
     priority: z.enum(supportTicketPriorities).optional(),
     category: z.enum(supportTicketCategories).optional(),
+    // Oct 2026: the admin working the ticket; null unassigns.
+    assignedAdminId: z.string().uuid().nullable().optional(),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "At least one field is required" });

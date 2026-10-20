@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { relationshipActivity, relationshipHistory } from "../../lib/coachActivity";
 import { EndRelationshipInput, ListChangeRequestsQuery, ListRelationshipsQuery, ReviewChangeRequestInput } from "./adminRelationships.schema";
 import type { HandoverRelationshipInput } from "../relationshipLifecycle/relationshipLifecycle.schema";
 import * as relationshipLifecycleService from "../relationshipLifecycle/relationshipLifecycle.service";
@@ -122,21 +123,29 @@ export async function listRelationships(query: ListRelationshipsQuery) {
     ];
   }
 
-  const relationships = await prisma.relationship.findMany({
+  const relationships = (await prisma.relationship.findMany({
     where,
     include: {
-      user: { select: { id: true, fullName: true, email: true } },
+      user: { select: { id: true, fullName: true, email: true, countryCode: true } },
       professional: { select: { id: true, fullName: true, email: true } },
     },
     orderBy: { createdAt: "desc" },
-  });
+  })) as Array<RelationshipRow & { user: { countryCode: string | null } }>;
+
+  // Oct 2026: pricing, sessions and payments from the pair's real Bookings and
+  // booking Payments (lib/coachActivity.ts), and the member's country.
+  const activity = await relationshipActivity(
+    relationships.map((r) => ({ id: r.id, userId: r.user.id, professionalId: r.professional.id, serviceType: r.serviceType })),
+  );
 
   return {
-    relationships: (relationships as RelationshipRow[]).map(toListItem),
-    total: (relationships as RelationshipRow[]).length,
-    // Figma-spec'd 04.01 columns/filters with no backing field — see this
-    // file's top comment.
-    notAvailable: ["pricing", "sessions", "payments", "country"],
+    relationships: relationships.map((r) => ({
+      ...toListItem(r),
+      userCountryCode: r.user.countryCode ?? null,
+      activity: activity.get(r.id) ?? null,
+    })),
+    total: relationships.length,
+    notAvailable: [] as string[],
   };
 }
 
@@ -182,10 +191,15 @@ export async function getRelationshipDetail(id: string) {
       metadata: (h.metadata as Record<string, unknown> | null) ?? null,
       createdAt: h.createdAt,
     })),
-    // 04.02 Overview's Pricing/Sessions/Payments — see this file's top
-    // comment. "History" isn't listed here since the tab itself is real,
-    // just narrower in meaning than the Figma spec envisioned.
-    notAvailable: ["pricing", "sessions", "payments"],
+    // 04.02 Overview's Pricing/Sessions/Payments, Oct 2026: real, from the
+    // pair's Bookings and booking Payments (lib/coachActivity.ts).
+    activity: await relationshipHistory({
+      id: relationship.id,
+      userId: relationship.user.id,
+      professionalId: relationship.professional.id,
+      serviceType: relationship.serviceType,
+    }),
+    notAvailable: [] as string[],
   };
 }
 

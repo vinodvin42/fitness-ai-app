@@ -155,12 +155,24 @@ export async function listUsers(query: ListUsersQuery) {
 
   const filtered = query.plan ? rows.filter((r) => r.membership === query.plan) : rows;
 
+  // Oct 2026: country (User.countryCode, the app's Country setting) and the
+  // newest device sync (ConnectedDevice.lastSyncAt) for each listed user.
+  const ids = filtered.map((r) => r.id);
+  const [countries, syncs] = ids.length
+    ? await Promise.all([
+        prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, countryCode: true } }),
+        prisma.connectedDevice.groupBy({ by: ["userId"], where: { userId: { in: ids } }, _max: { lastSyncAt: true } }),
+      ])
+    : [[], []];
+  const countryById = new Map((countries as Array<{ id: string; countryCode: string | null }>).map((u) => [u.id, u.countryCode]));
+  const syncById = new Map(
+    (syncs as Array<{ userId: string; _max: { lastSyncAt: Date | null } }>).map((s) => [s.userId, s._max.lastSyncAt]),
+  );
+
   return {
-    users: filtered,
+    users: filtered.map((r) => ({ ...r, countryCode: countryById.get(r.id) ?? null, lastSyncAt: syncById.get(r.id) ?? null })),
     total: filtered.length,
-    // Figma-spec'd 02.01 columns/filters with no backing field — see this
-    // file's top comment. "status" removed 26 Aug 2026, now real.
-    notAvailable: ["region", "lastSync"],
+    notAvailable: [] as string[],
   };
 }
 
@@ -235,6 +247,35 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     createdAt: Date;
     plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
   }>;
+
+  // Oct 2026: acquisition source (the signup Touchpoint), and the member's last
+  // 30 days in the app — the 02.02 Activity tab.
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const [signupTouchpoint, workoutsCompleted, mealsLogged, recoveryLogs, lastWorkout, lastMeal, lastSync] = await Promise.all([
+    prisma.touchpoint.findFirst({
+      where: { userId: id, touchpointType: "signup" },
+      orderBy: { occurredAt: "asc" },
+      select: { channel: true, occurredAt: true, campaign: { select: { id: true, name: true } } },
+    }),
+    prisma.workoutSession.count({ where: { userId: id, status: "completed", completedAt: { gte: since } } }),
+    prisma.mealLog.count({ where: { userId: id, loggedAt: { gte: since } } }),
+    prisma.recoveryLog.count({ where: { userId: id, date: { gte: since } } }),
+    prisma.workoutSession.findFirst({ where: { userId: id, status: "completed" }, orderBy: { completedAt: "desc" }, select: { completedAt: true } }),
+    prisma.mealLog.findFirst({ where: { userId: id }, orderBy: { loggedAt: "desc" }, select: { loggedAt: true } }),
+    prisma.connectedDevice.aggregate({ where: { userId: id }, _max: { lastSyncAt: true } }),
+  ]);
+  const acquisitionSource = signupTouchpoint
+    ? { channel: signupTouchpoint.channel, campaign: signupTouchpoint.campaign, at: signupTouchpoint.occurredAt }
+    : null;
+  const activity = {
+    windowDays: 30,
+    workoutsCompleted,
+    mealsLogged,
+    recoveryLogs,
+    lastWorkoutAt: (lastWorkout as { completedAt: Date | null } | null)?.completedAt ?? null,
+    lastMealAt: (lastMeal as { loggedAt: Date } | null)?.loggedAt ?? null,
+    lastSyncAt: (lastSync as { _max: { lastSyncAt: Date | null } })._max.lastSyncAt ?? null,
+  };
 
   const typedPayments = payments as Array<{
     id: string;
@@ -366,12 +407,16 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     recentActivity: (
       recentActivity as Array<{ id: string; action: string; entityType: string; createdAt: Date }>
     ).map((a) => ({ id: a.id, action: a.action, entityType: a.entityType, createdAt: a.createdAt })),
-    // 02.02's city/timezone/acquisition source, auto-renew toggle, and the
-    // Activity tab — see this file's top comment.
+    acquisitionSource,
+    // Auto-renew = the current subscription isn't set to cancel at period end
+    // (null when there's no subscription). Read-only here.
+    autoRenew: typedSubscriptions[0] ? !typedSubscriptions[0].cancelAtPeriodEnd : null,
+    activity,
+    // 02.02's city and timezone: the app doesn't store either.
     // "sensitiveHealthMetrics" is deliberately NOT in this list any more —
     // its availability is a real, per-viewing-admin state now (see
     // `sensitiveAccess`/`sensitiveHealthMetrics` below), not a blanket gap.
-    notAvailable: ["city", "timezone", "acquisitionSource", "autoRenew", "activity"],
+    notAvailable: ["city", "timezone"],
     sensitiveAccess: {
       // Whether this VIEWING admin's role even carries the `sensitiveData`
       // module permission at all — false means the frontend shouldn't

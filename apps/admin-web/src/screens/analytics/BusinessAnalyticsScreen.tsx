@@ -8,6 +8,10 @@ import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { ANALYTICS_SUB_NAV } from "./subNav";
 
+function channelLabel(c: string): string {
+  return c === "unknown" ? "Unknown (no signup record)" : c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, " ");
+}
+
 function money(cents: number): string {
   return (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -95,10 +99,29 @@ export function BusinessAnalyticsScreen() {
               </table>
             </div>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("businessAnalytics.noChannelAttributionDimension")}
-            />
+            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
+                Revenue by signup channel (all time)
+              </div>
+              <table className="w-full text-left text-sm">
+                <tbody>
+                  {data.revenueByChannel.map((c) => (
+                    <tr key={c.channel} className="border-b border-border-subtle last:border-0">
+                      <td className="px-4 py-3 text-text-primary">{channelLabel(c.channel)}</td>
+                      <td className="px-4 py-3 text-text-secondary">{money(c.amountCents)}</td>
+                      <td className="px-4 py-3 text-text-dim">{c.payments} payments</td>
+                    </tr>
+                  ))}
+                  {data.revenueByChannel.length === 0 && (
+                    <tr>
+                      <td className="px-4 py-6 text-center text-text-dim">No paid revenue yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>

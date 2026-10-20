@@ -12,6 +12,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROGRAMS_SUB_NAV } from "./subNav";
@@ -76,8 +77,10 @@ function reviewLabel(a: AdminArticleListItem): string {
  */
 export function EducationalContentScreen() {
   const [params, setParams] = useSearchParams();
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("programs", "create");
   const selectedId = params.get("id");
-  const creating = params.get("new") === "1";
+  const creating = canCreate && params.get("new") === "1";
   const [status, setStatus] = useState<"" | "draft" | "published">("");
   const [topic, setTopic] = useState<ArticleTopic | "">("");
   const [audience, setAudience] = useState<ArticleAudience | "">("");
@@ -166,9 +169,11 @@ export function EducationalContentScreen() {
             Search
             <input type="search" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Title or summary" className={INPUT_CLASS} />
           </label>
-          <button type="button" onClick={() => open(null, true)} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas">
-            New article
-          </button>
+          {canCreate && (
+            <button type="button" onClick={() => open(null, true)} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas">
+              New article
+            </button>
+          )}
         </div>
 
         {list.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
@@ -275,6 +280,10 @@ function ArticleEditor({ existing, onSaved }: { existing?: AdminArticleDetailRes
       : EMPTY_DRAFT,
   );
   const [preview, setPreview] = useState(false);
+  const canCreate = useCan("programs", "create");
+  const canEdit = useCan("programs", "edit");
+  const canApprove = useCan("programs", "approve");
+  const canSave = article ? canEdit : canCreate;
 
   const published = article?.status === "published";
   const pending = article?.reviewStatus === "pending";
@@ -366,7 +375,7 @@ function ArticleEditor({ existing, onSaved }: { existing?: AdminArticleDetailRes
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (valid && dirty && !save.isPending) save.mutate();
+          if (canSave && valid && dirty && !save.isPending) save.mutate();
         }}
         className="space-y-3"
       >
@@ -431,10 +440,12 @@ function ArticleEditor({ existing, onSaved }: { existing?: AdminArticleDetailRes
         {error && <p className="text-xs text-danger">{extractErrorMessage(error, "That didn't go through.")}</p>}
 
         <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={!valid || !dirty || save.isPending} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
-            {save.isPending ? "Saving…" : article ? "Save changes" : "Save draft"}
-          </button>
-          {article && !published && !pending && (
+          {canSave && (
+            <button type="submit" disabled={!valid || !dirty || save.isPending} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
+              {save.isPending ? "Saving…" : article ? "Save changes" : "Save draft"}
+            </button>
+          )}
+          {canEdit && article && !published && !pending && (
             <button
               type="button"
               disabled={dirty || submit.isPending}
@@ -445,7 +456,7 @@ function ArticleEditor({ existing, onSaved }: { existing?: AdminArticleDetailRes
               {submit.isPending ? "Submitting…" : "Submit for review"}
             </button>
           )}
-          {published && (
+          {canApprove && published && (
             <button
               type="button"
               disabled={unpublish.isPending}

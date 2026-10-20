@@ -266,6 +266,34 @@ async function computeNutritionStats(start: Date, end: Date, activeUsers: number
 }
 
 /**
+ * Recovery (09.01 tab, 09.03 card), Oct 2026: real aggregates over
+ * `RecoveryLog` in the range — what members log themselves (sleep, energy,
+ * soreness, and steps or heart rate when they enter or import them).
+ * Averages skip blank fields and are null when nothing was logged.
+ */
+async function computeRecoveryStats(start: Date, end: Date) {
+  const where = { date: { gte: start, lte: end } };
+  const [logs, users, avg] = await Promise.all([
+    prisma.recoveryLog.count({ where }),
+    prisma.recoveryLog.findMany({ where, distinct: ["userId"], select: { userId: true } }),
+    prisma.recoveryLog.aggregate({
+      where,
+      _avg: { sleepHours: true, energyLevel: true, soreness: true, restingHeartRate: true, steps: true },
+    }),
+  ]);
+  const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
+  return {
+    totalLogs: logs,
+    usersLogging: (users as Array<{ userId: string }>).length,
+    avgSleepHours: round1(avg._avg.sleepHours),
+    avgEnergyLevel: round1(avg._avg.energyLevel),
+    avgSoreness: round1(avg._avg.soreness),
+    avgRestingHeartRate: round1(avg._avg.restingHeartRate),
+    avgSteps: avg._avg.steps == null ? null : Math.round(avg._avg.steps),
+  };
+}
+
+/**
  * AI tab (09.01) and the AI/Recovery card (09.03) — real aggregates over
  * `AiCoachMessage`, added 26 Aug 2026 once its existence was actually
  * noticed (see this file's top comment). `role: "user"` rows are the
@@ -400,10 +428,10 @@ export async function getUserAnalytics(query: GetUserAnalyticsQuery) {
     nutritionStats,
     aiStats,
     geographic,
-    // Recovery/Business tabs — see this file's top comment for why each
-    // still has no real backing data. AI, the compare toggle, and
-    // Geographic are no longer in this list — see 26 Aug 2026 above.
-    notAvailable: ["recoveryAnalytics", "businessAnalytics"],
+    // Oct 2026: Recovery is real (computeRecoveryStats); Business has its own
+    // page (09.04, getBusinessAnalytics).
+    recoveryStats: await computeRecoveryStats(start, end),
+    notAvailable: [] as string[],
   };
 }
 
@@ -638,9 +666,8 @@ export async function getFitnessNutritionAnalytics(query: GetUserAnalyticsQuery)
     nutrition: { stats: nutritionStats, topMeals },
     ai: aiStats,
     activeUsers,
-    // Recovery has no backing data anywhere in this build (no wearable
-    // integration) — see this file's top comment.
-    notAvailable: ["recoveryAnalytics"],
+    recovery: await computeRecoveryStats(start, end),
+    notAvailable: [] as string[],
   };
 }
 
@@ -752,6 +779,34 @@ async function computeCohortEconomics(now: Date) {
   );
 }
 
+/**
+ * Oct 2026: each member's signup channel (their first `signup` Touchpoint,
+ * lib/acquisition.ts). Members with none are "unknown", never guessed.
+ */
+async function signupChannels(userIds: string[]): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map();
+  const rows = (await prisma.touchpoint.findMany({
+    where: { userId: { in: userIds }, touchpointType: "signup" },
+    orderBy: { occurredAt: "asc" },
+    select: { userId: true, channel: true },
+  })) as Array<{ userId: string | null; channel: string }>;
+  const out = new Map<string, string>();
+  for (const r of rows) if (r.userId && !out.has(r.userId)) out.set(r.userId, r.channel);
+  return out;
+}
+
+function splitByChannel<T>(items: T[], userIdOf: (t: T) => string, valueOf: (t: T) => number, channels: Map<string, string>) {
+  const out = new Map<string, { channel: string; count: number; value: number }>();
+  for (const it of items) {
+    const channel = channels.get(userIdOf(it)) ?? "unknown";
+    const row = out.get(channel) ?? { channel, count: 0, value: 0 };
+    row.count += 1;
+    row.value += valueOf(it);
+    out.set(channel, row);
+  }
+  return [...out.values()].sort((a, b) => b.value - a.value || b.count - a.count);
+}
+
 export async function getUnitEconomics(query: GetUserAnalyticsQuery) {
   const { start, end, prevStart, prevEnd } = resolvePeriod(query);
   const now = new Date();
@@ -792,7 +847,13 @@ export async function getUnitEconomics(query: GetUserAnalyticsQuery) {
     // any more honestly than a genuinely missing one can.
     ltvToCacRatio: avgLtvCents !== null && cacCents !== null && cacCents > 0 ? Math.round((avgLtvCents / cacCents) * 100) / 100 : null,
     cohorts,
-    notAvailable: ["acquisitionChannelSplit", "unitEconomicsWaterfall"],
+    newUsersByChannel: await (async () => {
+      const users = (await prisma.user.findMany({ where: { createdAt: { gte: start, lte: end } }, select: { id: true } })) as Array<{ id: string }>;
+      const channels = await signupChannels(users.map((u) => u.id));
+      return splitByChannel(users, (u) => u.id, () => 1, channels).map((r) => ({ channel: r.channel, count: r.count }));
+    })(),
+    // The Figma's unit-economics waterfall needs per-member cost data that isn't stored.
+    notAvailable: ["unitEconomicsWaterfall"],
   };
 }
 
@@ -862,6 +923,19 @@ export async function getBusinessAnalytics() {
       { source: "programs", amountCents: programRevenueCents, count: programPayments._count },
       { source: "coaching_gmv", amountCents: gmvCents, count: bookingRows.length },
     ],
-    notAvailable: ["acquisitionChannelSplit"],
+    // Oct 2026: all-time paid revenue by the payer's signup channel.
+    revenueByChannel: await (async () => {
+      const paid = (await prisma.payment.findMany({ where: { status: "paid" }, select: { userId: true, amountCents: true } })) as Array<{
+        userId: string;
+        amountCents: number;
+      }>;
+      const channels = await signupChannels([...new Set(paid.map((p) => p.userId))]);
+      return splitByChannel(paid, (p) => p.userId, (p) => p.amountCents, channels).map((r) => ({
+        channel: r.channel,
+        amountCents: r.value,
+        payments: r.count,
+      }));
+    })(),
+    notAvailable: [] as string[],
   };
 }

@@ -13,6 +13,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { useAuth } from "../../lib/auth";
+import { useCan } from "../../lib/permissions";
 import { ADMIN_SYSTEM_SUB_NAV } from "./subNav";
 
 const ROLE_OPTIONS: AdminRole[] = ["super_admin", "co_founder", "operations", "finance", "safety_privacy", "support"];
@@ -88,6 +89,9 @@ export function AdminUsersScreen() {
   const [form, setForm] = useState<CreateAdminUserInput>(EMPTY_FORM);
   const [createdResult, setCreatedResult] = useState<CreateAdminUserResult | null>(null);
   const [copyConfirmed, setCopyConfirmed] = useState(false);
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("admin", "create");
+  const canEdit = useCan("admin", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-accounts", filters],
@@ -199,16 +203,18 @@ export function AdminUsersScreen() {
             />
           </label>
 
-          <button
-            type="button"
-            onClick={() => setShowCreateForm((prev) => !prev)}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showCreateForm ? "Cancel" : "+ Create Admin User"}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((prev) => !prev)}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showCreateForm ? "Cancel" : "+ Create Admin User"}
+            </button>
+          )}
         </div>
 
-        {showCreateForm && !createdResult && (
+        {canCreate && showCreateForm && !createdResult && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -258,10 +264,8 @@ export function AdminUsersScreen() {
             </div>
             {form.role !== "super_admin" && (
               <p className="text-[11px] text-text-dim">
-                This role's permissions are enforced (see
-                apps/api/src/middleware/adminPermissions.ts), but they're a starter matrix derived
-                from role descriptions, not a confirmed spec — see docs/admin/07-open-questions-gaps.md
-                gap §7. Review the grants before relying on them for a real hire.
+                This role's access is checked on every request. See what it can do on Roles &amp; Permissions before
+                you create the account.
               </p>
             )}
             {createMutation.isError && (
@@ -368,7 +372,7 @@ export function AdminUsersScreen() {
                       </td>
                       <td className="px-4 py-3 text-text-secondary">{new Date(a.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
-                        {a.status === "active" ? (
+                        {canEdit && (a.status === "active" ? (
                           <button
                             type="button"
                             disabled={isSelf || disableMutation.isPending}
@@ -387,8 +391,8 @@ export function AdminUsersScreen() {
                           >
                             {t("adminUsers.enable")}
                           </button>
-                        )}
-                        {canResetMfa && !isSelf && a.mfaEnabled && (
+                        ))}
+                        {canEdit && canResetMfa && !isSelf && a.mfaEnabled && (
                           <button
                             type="button"
                             disabled={resetMfaMutation.isPending}

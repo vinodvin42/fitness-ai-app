@@ -104,7 +104,8 @@ export async function createTicket(userId: string, input: CreateSupportTicketInp
     type: "support_ticket_open",
     entityType: "SupportTicket",
     entityId: ticket.id,
-    severity: isComplaint ? "medium" : "low",
+    // A complaint has a legal resolve-by date (rule 4(5)), so it is high.
+    severity: isComplaint ? "high" : "low",
     metadata: { category: ticket.category, priority: ticket.priority },
   });
 

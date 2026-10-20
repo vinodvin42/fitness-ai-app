@@ -43,7 +43,9 @@ import { ListSettlementsQuery, SetCommissionInput, SettleCoachInput } from "./ad
  * `@prisma/client` stub has no real model exports in this sandbox.
  */
 
-const SETTLEMENTS_NOT_AVAILABLE = ["pendingPayouts"];
+// Oct 2026: nothing missing — what is owed shows per row (eligible / approved
+// / pending) and in total on the Finance dashboard.
+const SETTLEMENTS_NOT_AVAILABLE: string[] = [];
 
 function monthBounds(month?: string): { periodStart: Date; periodEnd: Date; monthKey: string } {
   const now = new Date();
@@ -197,10 +199,11 @@ export async function setCommission(actorAdminId: string, professionalId: string
 
 /**
  * Settle one coach for one month: recompute gross from real bookings (never
- * trust a client-sent amount), persist a CoachSettlement, and record a real
- * Expense (category coach_settlement) so it lands in Finance's ledger. The
- * unique on (professionalId, periodStart) makes double-settling a month a
- * 409, not a duplicate payout.
+ * trust a client-sent amount) and persist a CoachSettlement as **eligible**
+ * (owed). Oct 2026: it is then approved (Payout Runs) and paid by a payout
+ * run, which records the Finance Expense (category coach_settlement) for
+ * what was actually paid. The unique on (professionalId, periodStart) makes
+ * double-settling a month a 409, not a duplicate payout.
  */
 export async function settleCoach(actorAdminId: string, input: SettleCoachInput) {
   const { periodStart, periodEnd } = monthBounds(input.month);
@@ -243,8 +246,7 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
       commissionPct: effectivePct,
       commissionCents,
       netCents,
-      status: "paid",
-      paidAt: now,
+      status: "eligible",
       note: input.note ?? null,
     },
   });
@@ -263,23 +265,9 @@ export async function settleCoach(actorAdminId: string, input: SettleCoachInput)
     metadata: { professionalId: input.professionalId, grossCents, commissionCents },
   });
 
-  // Flow the payout into Finance's real ledger.
-  await prisma.expense.create({
-    data: {
-      category: "coach_settlement",
-      description: `Coach settlement — ${prof.fullName} (${input.month ?? monthBounds().monthKey})`,
-      amountCents: netCents,
-      status: "paid",
-      incurredAt: now,
-      recordedByAdminId: actorAdminId,
-      paidAt: now,
-      notes: input.note ?? null,
-    },
-  });
-
   await recordAudit({
     actorAdminId,
-    action: "coach_settlement.paid",
+    action: "coach_settlement.recorded",
     entityType: "CoachSettlement",
     entityId: settlement.id,
     metadata: { professionalId: input.professionalId, grossCents, netCents, commissionPct: effectivePct },

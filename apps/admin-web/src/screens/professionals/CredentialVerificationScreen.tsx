@@ -9,6 +9,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
@@ -73,6 +74,9 @@ export function CredentialVerificationScreen() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canApprove = useCan("professionals", "approve");
+  const canEdit = useCan("professionals", "edit");
 
   const queueQuery = useQuery({ queryKey: ["admin-professionals-queue"], queryFn: fetchQueue });
   const detailQuery = useQuery({
@@ -193,55 +197,59 @@ export function CredentialVerificationScreen() {
                     <DocLink label={t("credentialVerification.certificationDocument")} dataUri={c.certificationDocData} />
                     <DocLink label={t("credentialVerification.qualificationCertificate")} dataUri={c.qualificationDocData} />
                   </div>
-                  <textarea
-                    placeholder={`Admin notes (optional to Approve, required — ${MIN_REJECT_REASON_LENGTH}+ characters — to Reject)`}
-                    value={notes[c.id] ?? ""}
-                    onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                    className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                    rows={2}
-                  />
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      disabled={c.status === "not_verified" || credentialMutation.isPending}
-                      onClick={() =>
-                        credentialMutation.mutate({ credentialId: c.id, input: { status: "verified", adminNotes: notes[c.id] } })
-                      }
-                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
-                    >
-                      {t("credentialVerification.approve")}
-                    </button>
-                    <button
-                      type="button"
-                      title={
-                        (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
-                          ? `Rejecting requires a reason of at least ${MIN_REJECT_REASON_LENGTH} characters (BR-ADM-005)`
-                          : undefined
-                      }
-                      disabled={
-                        c.status === "not_verified" ||
-                        credentialMutation.isPending ||
-                        (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
-                      }
-                      onClick={() =>
-                        credentialMutation.mutate({
-                          credentialId: c.id,
-                          input: { status: "rejected", adminNotes: notes[c.id]?.trim() },
-                        })
-                      }
-                      className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
-                    >
-                      {t("credentialVerification.reject")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      title={t("credentialVerification.notBuiltCredentialstatusHas")}
-                      className="cursor-not-allowed rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-dim"
-                    >
-                      {t("credentialVerification.requestInfo")}
-                    </button>
-                  </div>
+                  {canApprove && (
+                    <>
+                      <textarea
+                        placeholder={`Admin notes (optional to Approve, required — ${MIN_REJECT_REASON_LENGTH}+ characters — to Reject)`}
+                        value={notes[c.id] ?? ""}
+                        onChange={(e) => setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                        className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                        rows={2}
+                      />
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={c.status === "not_verified" || credentialMutation.isPending}
+                          onClick={() =>
+                            credentialMutation.mutate({ credentialId: c.id, input: { status: "verified", adminNotes: notes[c.id] } })
+                          }
+                          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                        >
+                          {t("credentialVerification.approve")}
+                        </button>
+                        <button
+                          type="button"
+                          title={
+                            (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
+                              ? `Rejecting requires a reason of at least ${MIN_REJECT_REASON_LENGTH} characters (BR-ADM-005)`
+                              : undefined
+                          }
+                          disabled={
+                            c.status === "not_verified" ||
+                            credentialMutation.isPending ||
+                            (notes[c.id]?.trim().length ?? 0) < MIN_REJECT_REASON_LENGTH
+                          }
+                          onClick={() =>
+                            credentialMutation.mutate({
+                              credentialId: c.id,
+                              input: { status: "rejected", adminNotes: notes[c.id]?.trim() },
+                            })
+                          }
+                          className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
+                        >
+                          {t("credentialVerification.reject")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          title={t("credentialVerification.notBuiltCredentialstatusHas")}
+                          className="cursor-not-allowed rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-dim"
+                        >
+                          {t("credentialVerification.requestInfo")}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
 
@@ -253,36 +261,40 @@ export function CredentialVerificationScreen() {
                 <div className="mt-3">
                   <DocLink label={t("credentialVerification.governmentIdEG")} dataUri={detail.professional.kycDocumentData} />
                 </div>
-                <textarea
-                  placeholder={t("credentialVerification.adminNotesOptional")}
-                  value={notes.kyc ?? ""}
-                  onChange={(e) => setNotes((prev) => ({ ...prev, kyc: e.target.value }))}
-                  className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
-                  rows={2}
-                />
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    disabled={detail.professional.kycStatus === "not_verified" || kycMutation.isPending}
-                    onClick={() => kycMutation.mutate({ status: "verified", adminNotes: notes.kyc })}
-                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
-                  >
-                    {t("credentialVerification.approve")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={detail.professional.kycStatus === "not_verified" || kycMutation.isPending}
-                    onClick={() => kycMutation.mutate({ status: "rejected", adminNotes: notes.kyc })}
-                    className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
-                  >
-                    {t("credentialVerification.reject")}
-                  </button>
-                </div>
+                {canApprove && (
+                  <>
+                    <textarea
+                      placeholder={t("credentialVerification.adminNotesOptional")}
+                      value={notes.kyc ?? ""}
+                      onChange={(e) => setNotes((prev) => ({ ...prev, kyc: e.target.value }))}
+                      className="mt-3 w-full rounded-md border border-border-subtle bg-surface-raised p-2 text-xs text-text-primary outline-none focus:border-accent"
+                      rows={2}
+                    />
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={detail.professional.kycStatus === "not_verified" || kycMutation.isPending}
+                        onClick={() => kycMutation.mutate({ status: "verified", adminNotes: notes.kyc })}
+                        className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40"
+                      >
+                        {t("credentialVerification.approve")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={detail.professional.kycStatus === "not_verified" || kycMutation.isPending}
+                        onClick={() => kycMutation.mutate({ status: "rejected", adminNotes: notes.kyc })}
+                        className="rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger disabled:opacity-40"
+                      >
+                        {t("credentialVerification.reject")}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {detail.professional.status === "suspended" ? (
                 <div className="rounded-lg border border-border-subtle bg-surface p-4 text-xs text-text-dim">{t("credentialVerification.alreadySuspended")}</div>
-              ) : (
+              ) : canEdit && (
                 <ReasonGatedAction
                   title={t("credentialVerification.suspendApplication")}
                   description={t("credentialVerification.setsThisProfessionalS")}

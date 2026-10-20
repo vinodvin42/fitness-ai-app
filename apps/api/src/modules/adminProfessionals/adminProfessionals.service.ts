@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { coachEarnings, coachSessions } from "../../lib/coachActivity";
 import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
@@ -215,6 +216,15 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
           (r) => r.bucket[query.tab as "pendingVerification" | "active" | "rejected" | "suspended" | "credentialsExpiring"],
         );
 
+  // Oct 2026: earnings this UTC month (delivered, confirmed bookings, net of commission — the
+  // Coach Settlements rule; lib/coachActivity.ts).
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const earningsMtd = await coachEarnings(
+    filtered.map((p) => p.id),
+    { from: monthStart },
+    now,
+  );
+
   return {
     professionals: filtered.map((p) => ({
       id: p.id,
@@ -232,12 +242,12 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       // this just stops dropping them on the floor before the response.
       lifecycleStatus: p.lifecycleStatus,
       maxActiveClients: p.maxActiveClients,
+      earningsMtdCents: earningsMtd.get(p.id)?.netCents ?? 0,
     })),
     counts,
-    // Figma-spec'd columns with no backing field — see this file's top
-    // comment. Named here so the frontend can render them as an honest
-    // "not available" note rather than assuming they were forgotten.
-    notAvailable: ["region", "languages", "rating", "earningsMtd"],
+    // Figma-spec'd columns with no backing field (no region, language or
+    // rating is stored for a coach). Named so the frontend can say so.
+    notAvailable: ["region", "languages", "rating"],
   };
 }
 
@@ -315,12 +325,11 @@ export async function getProfessionalDetail(id: string) {
       createdAt: r.createdAt,
       endedAt: r.endedAt,
     })),
-    // Sessions/Earnings/Reviews tabs (03.02) — Sessions could now be
-    // derived from the real `Booking` entity (25 Aug 2026, `coaching`
-    // module) as a follow-up; Earnings/Reviews still have no backing
-    // entity (no per-professional payment ledger, no Review model). See
-    // this file's top comment.
-    notAvailable: ["sessions", "earnings", "reviews"],
+    // Sessions/Earnings tabs (03.02), Oct 2026: real, from Bookings
+    // (lib/coachActivity.ts; earnings follow the Coach Settlements rule).
+    // Reviews still have no backing model.
+    activity: await coachSessions(p.id),
+    notAvailable: ["reviews"],
   };
 }
 

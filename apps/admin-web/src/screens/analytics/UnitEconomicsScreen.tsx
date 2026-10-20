@@ -14,6 +14,10 @@ interface Filters {
   endDate: string;
 }
 
+function channelLabel(c: string): string {
+  return c === "unknown" ? "Unknown (no signup record)" : c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, " ");
+}
+
 function money(cents: number | null): string {
   return cents === null ? "—" : `₹${(cents / 100).toFixed(2)}`;
 }
@@ -169,10 +173,19 @@ export function UnitEconomicsScreen() {
               </div>
             </div>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("unitEconomics.theFigmaSDonut")}
-            />
+            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-text-dim">New members by signup channel</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data.newUsersByChannel.map((c) => (
+                  <span key={c.channel} className="rounded-full bg-surface-raised px-3 py-1 text-xs text-text-secondary">
+                    {channelLabel(c.channel)} · {c.count}
+                  </span>
+                ))}
+                {data.newUsersByChannel.length === 0 && <span className="text-xs text-text-dim">No new members in this period.</span>}
+              </div>
+            </div>
+
+            <NotAvailablePanel keys={data.notAvailable} subtitle="The cost waterfall needs per-member cost data that isn't stored." />
           </>
         )}
       </div>

@@ -138,10 +138,36 @@ export function TransactionDetailScreen() {
             </div>
           </div>
 
-          <NotAvailablePanel
-            keys={data.notAvailable}
-            subtitle={t("transactionDetail.noBackingDataExists")}
-          />
+          <div className="rounded-lg border border-border-subtle bg-surface">
+            <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">Ledger</div>
+            <table className="w-full text-left text-sm">
+              <tbody>
+                {data.ledger.lineItems.map((l) => (
+                  <tr key={l.label} className="border-b border-border-subtle last:border-0">
+                    <td className="px-4 py-2 text-text-secondary">
+                      {l.label}
+                      {l.note && <span className="ml-2 text-xs text-text-dim">{l.note}</span>}
+                    </td>
+                    <td className="px-4 py-2 text-right text-text-primary">{money(l.amountCents)}</td>
+                  </tr>
+                ))}
+                {data.ledger.refunds.map((r) => (
+                  <tr key={r.id} className="border-b border-border-subtle last:border-0">
+                    <td className="px-4 py-2 text-text-secondary">
+                      Refund <span className="ml-2 text-xs text-text-dim">{r.status} · {new Date(r.createdAt).toLocaleDateString()}</span>
+                    </td>
+                    <td className="px-4 py-2 text-right text-text-primary">{money(-r.amountCents)}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className="px-4 py-2 font-medium text-text-primary">Net kept</td>
+                  <td className="px-4 py-2 text-right font-medium text-text-primary">{money(data.ledger.netCents)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <NotAvailablePanel keys={data.notAvailable} />
 
           <div className="rounded-lg border border-border-subtle bg-surface">
             <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">

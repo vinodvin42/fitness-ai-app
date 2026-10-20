@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { getAiProviderStatus } from "../../lib/aiClient";
 import {
   AiUsageQuery,
@@ -324,6 +325,7 @@ export async function resolveAiAnswerReport(adminId: string, id: string, input: 
     reason: input.reason,
     metadata: { messageId: r.messageId },
   });
+  await resolveActionItemsFor("AiAnswerReport", id, adminId, input.action === "hide_answer" ? "Answer hidden" : "Reviewed, no problem found");
   await createNotification(r.userId, {
     kind: "system",
     title: "About the AI Coach answer you reported",

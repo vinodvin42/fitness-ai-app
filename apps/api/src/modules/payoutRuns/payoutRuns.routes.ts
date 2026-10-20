@@ -4,6 +4,7 @@ import { requireAdminAuth, AdminAuthedRequest } from "../../middleware/adminAuth
 import { requirePermission } from "../../middleware/adminPermissions";
 import { MIN_REASON_LENGTH } from "../../lib/highImpactAction";
 import * as service from "./payoutRuns.service";
+import { approveCommission } from "../creatorCommissions/creatorCommissions.service";
 
 export const payoutRunsRouter = Router();
 
@@ -81,6 +82,35 @@ payoutRunsRouter.post(
     try {
       const input = settleSchema.parse(req.body);
       res.json(await service.settlePayoutRun(req.adminUserId!, req.params.id, input));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Oct 2026: owed creator commissions and coach settlements waiting for approval.
+payoutRunsRouter.get(
+  "/admin/payout-runs/awaiting-approval",
+  requireAdminAuth,
+  requirePermission("commerce", "view"),
+  async (_req, res, next) => {
+    try {
+      res.json(await service.awaitingApproval());
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Oct 2026: approve a creator commission so the next payout run picks it up.
+payoutRunsRouter.post(
+  "/admin/commissions/:id/approve",
+  requireAdminAuth,
+  requirePermission("commerce", "approve"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = approveSchema.parse(req.body);
+      res.json(await approveCommission(req.adminUserId!, req.params.id, input.reason));
     } catch (err) {
       next(err);
     }

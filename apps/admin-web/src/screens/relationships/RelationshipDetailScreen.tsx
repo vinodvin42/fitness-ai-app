@@ -11,9 +11,14 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { RELATIONSHIPS_SUB_NAV } from "./subNav";
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 
@@ -82,6 +87,8 @@ export function RelationshipDetailScreen() {
   const [tab, setTab] = useState<Tab>("overview");
   const [handoverProfessionalId, setHandoverProfessionalId] = useState("");
   const [handoverSearch, setHandoverSearch] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("relationships", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-relationship-detail", id],
@@ -200,12 +207,75 @@ export function RelationshipDetailScreen() {
                 </dl>
               </div>
 
-              <NotAvailablePanel
-                keys={data.notAvailable}
-                subtitle={t("relationshipDetail.noBackingFieldExists")}
-              />
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">Pricing</div>
+                  {data.activity.lastPriceCents != null ? (
+                    <dl className="mt-2 space-y-1">
+                      <div className="flex justify-between">
+                        <dt className="text-text-dim">Last session</dt>
+                        <dd className="text-text-secondary">{rupees(data.activity.lastPriceCents)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-text-dim">GST</dt>
+                        <dd className="text-text-secondary">{rupees(data.activity.lastGstCents ?? 0)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-text-dim">Fynrox commission</dt>
+                        <dd className="text-text-secondary">{data.activity.commissionPct}%</dd>
+                      </div>
+                    </dl>
+                  ) : (
+                    <p className="mt-2 text-text-dim">No sessions booked yet.</p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">Sessions</div>
+                  <p className="mt-2 text-text-secondary">
+                    {data.activity.sessions.delivered} done · {data.activity.sessions.upcoming} upcoming · {data.activity.sessions.cancelled} cancelled
+                  </p>
+                  {data.activity.sessions.nextAt && (
+                    <p className="mt-1 text-xs text-text-dim">Next: {new Date(data.activity.sessions.nextAt).toLocaleString()}</p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-dim">Payments</div>
+                  <p className="mt-2 text-text-secondary">
+                    {rupees(data.activity.paidCents)} paid over {data.activity.paymentsCount} payment{data.activity.paymentsCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
 
-              {relationship.status === "active" ? (
+              {(data.activity.sessionList.length > 0 || data.activity.paymentList.length > 0) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
+                    {data.activity.sessionList.map((s) => (
+                      <li key={s.bookingId} className="flex justify-between px-4 py-2">
+                        <span className="text-text-secondary">
+                          {new Date(s.scheduledAt).toLocaleString()} · {s.serviceLabel}
+                        </span>
+                        <span className="text-text-dim">{s.status === "cancelled" ? "Cancelled" : rupees(s.priceCents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
+                    {data.activity.paymentList.map((p) => (
+                      <li key={p.paymentId} className="flex justify-between px-4 py-2">
+                        <Link to={`/commerce/${p.paymentId}`} className="text-accent hover:underline">
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </Link>
+                        <span className="text-text-dim">
+                          {rupees(p.amountCents)} · {p.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <NotAvailablePanel keys={data.notAvailable} />
+
+              {canEdit && (relationship.status === "active" ? (
                 <>
                   <ReasonGatedAction
                     title={t("relationshipDetail.endRelationship")}
@@ -296,7 +366,7 @@ export function RelationshipDetailScreen() {
                     </p>
                   )}
                 </div>
-              )}
+              ))}
             </div>
           )}
 

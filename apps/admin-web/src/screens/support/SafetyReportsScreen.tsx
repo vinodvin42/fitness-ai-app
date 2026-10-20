@@ -12,6 +12,7 @@ import type {
 } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { SUPPORT_SUB_NAV } from "./subNav";
@@ -182,6 +183,8 @@ export function SafetyReportsScreen() {
 function ReportDossier({ report, onResolved }: { report: AdminSafetyReportDetail; onResolved: () => void }) {
   const [outcome, setOutcome] = useState<SafetyReportOutcome | "">("");
   const [note, setNote] = useState("");
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("support", "edit");
   const resolve = useMutation({
     mutationFn: (input: ResolveSafetyReportInput) => apiClient.post(`/admin/safety-reports/${report.id}/resolve`, input),
     onSuccess: () => {
@@ -273,51 +276,53 @@ function ReportDossier({ report, onResolved }: { report: AdminSafetyReportDetail
       </div>
 
       {report.status === "open" ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (canSubmit && outcome) resolve.mutate({ outcome, reason: note.trim() });
-          }}
-          className="space-y-2 rounded-md border border-border-subtle p-3"
-        >
-          <div className="text-xs font-medium text-text-secondary">Decision</div>
-          {outcomes.map((o) => (
-            <label key={o} className="flex items-start gap-2 text-xs text-text-primary">
-              <input type="radio" name="outcome" value={o} checked={outcome === o} onChange={() => setOutcome(o)} className="mt-0.5" />
-              <span>
-                {OUTCOME_LABELS[o]}
-                {o === "account_suspended" && !reportedSuspended && report.reported && (
-                  <span className="block text-[11px] text-text-dim">
-                    Suspend them first on their{" "}
-                    <Link to={profilePath(report.reported.kind, report.reported.id)} className="text-accent hover:underline">
-                      profile
-                    </Link>{" "}
-                    (reason required there), then record it here.
-                  </span>
-                )}
-                {o === "warning" && report.reported?.kind === "professional" && (
-                  <span className="block text-[11px] text-text-dim">Coaches have no in-app inbox yet, so contact them directly.</span>
-                )}
-              </span>
+        canEdit && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canSubmit && outcome) resolve.mutate({ outcome, reason: note.trim() });
+            }}
+            className="space-y-2 rounded-md border border-border-subtle p-3"
+          >
+            <div className="text-xs font-medium text-text-secondary">Decision</div>
+            {outcomes.map((o) => (
+              <label key={o} className="flex items-start gap-2 text-xs text-text-primary">
+                <input type="radio" name="outcome" value={o} checked={outcome === o} onChange={() => setOutcome(o)} className="mt-0.5" />
+                <span>
+                  {OUTCOME_LABELS[o]}
+                  {o === "account_suspended" && !reportedSuspended && report.reported && (
+                    <span className="block text-[11px] text-text-dim">
+                      Suspend them first on their{" "}
+                      <Link to={profilePath(report.reported.kind, report.reported.id)} className="text-accent hover:underline">
+                        profile
+                      </Link>{" "}
+                      (reason required there), then record it here.
+                    </span>
+                  )}
+                  {o === "warning" && report.reported?.kind === "professional" && (
+                    <span className="block text-[11px] text-text-dim">Coaches have no in-app inbox yet, so contact them directly.</span>
+                  )}
+                </span>
+              </label>
+            ))}
+            <label className="flex flex-col gap-1 text-xs text-text-dim">
+              Note for the record (at least 10 characters)
+              <textarea
+                rows={3}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
+              />
             </label>
-          ))}
-          <label className="flex flex-col gap-1 text-xs text-text-dim">
-            Note for the record (at least 10 characters)
-            <textarea
-              rows={3}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="rounded-md border border-border-subtle bg-surface-raised p-2 text-sm text-text-primary outline-none focus:border-accent"
-            />
-          </label>
-          {resolve.isError && <p className="text-xs text-danger">{extractErrorMessage(resolve.error, "The decision wasn't saved.")}</p>}
-          <button type="submit" disabled={!canSubmit} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
-            {resolve.isPending ? "Saving…" : "Save decision"}
-          </button>
-          <p className="text-[11px] text-text-dim">
-            A client who reported is told it was reviewed, never what happened to the other person.
-          </p>
-        </form>
+            {resolve.isError && <p className="text-xs text-danger">{extractErrorMessage(resolve.error, "The decision wasn't saved.")}</p>}
+            <button type="submit" disabled={!canSubmit} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas disabled:opacity-40">
+              {resolve.isPending ? "Saving…" : "Save decision"}
+            </button>
+            <p className="text-[11px] text-text-dim">
+              A client who reported is told it was reviewed, never what happened to the other person.
+            </p>
+          </form>
+        )
       ) : (
         <div className="rounded-md border border-border-subtle p-3 text-xs text-text-secondary">
           <div className="font-medium text-text-primary">

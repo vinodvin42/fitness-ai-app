@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { AdminGymDirectoryResponse, CreateGymInput, GymStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { GYMS_SUB_NAV } from "./subNav";
@@ -42,13 +43,9 @@ async function fetchDirectory(status: GymStatus | "all", search: string): Promis
  * screen filters client-request-side via `status` query param instead of
  * faking counts it doesn't have.
  *
- * No client-side permission check gates this screen or the Add Gym form —
- * same "rely on the real server-side 403" precedent
- * `ProfessionalDirectoryScreen.tsx`/`ProfessionalProfileScreen.tsx` already
- * establish (see docs/admin/07-open-questions-gaps.md's Wave 2 entries):
- * every mutation here already requires `gyms:create`/`gyms:edit`/
- * `gyms:approve` server-side via `requirePermission`, and a non-permitted
- * admin role simply gets a real 403 surfaced through `extractErrorMessage`.
+ * Oct 2026: the Add Gym form is hidden for roles without `gyms:create` (the
+ * signed-in admin's grants). Every mutation still requires `gyms:create`/
+ * `gyms:edit`/`gyms:approve` server-side via `requirePermission`.
  */
 export function GymDirectoryScreen() {
   const { t } = useTranslation();
@@ -57,6 +54,8 @@ export function GymDirectoryScreen() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<CreateGymInput>(EMPTY_CREATE_INPUT);
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("gyms", "create");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-gyms", status, search],
@@ -103,17 +102,19 @@ export function GymDirectoryScreen() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-64 rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
             />
-            <button
-              type="button"
-              onClick={() => setShowAddForm((v) => !v)}
-              className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-            >
-              {showAddForm ? "Cancel" : "Add Gym"}
-            </button>
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => setShowAddForm((v) => !v)}
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+              >
+                {showAddForm ? "Cancel" : "Add Gym"}
+              </button>
+            )}
           </div>
         </div>
 
-        {showAddForm && (
+        {canCreate && showAddForm && (
           <div className="rounded-lg border border-border-subtle bg-surface p-4">
             <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymDirectory.newGymPartner")}</div>
             <p className="mt-1 text-xs text-text-secondary">

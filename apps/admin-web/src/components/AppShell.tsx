@@ -259,23 +259,6 @@ export function AppShell({
             const isActive =
               location.pathname === item.activePrefix ||
               (item.activePrefix !== "/" && location.pathname.startsWith(`${item.activePrefix}/`));
-            if (!item.builtIn) {
-              return (
-                <div
-                  key={item.path}
-                  title={t("appShell.notBuiltYetSee")}
-                  className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-text-dim"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="w-4 text-center">{item.glyph}</span>
-                    {item.label}
-                  </span>
-                  <span className="rounded bg-surface-raised px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-dim">
-                    {t("appShell.soon")}
-                  </span>
-                </div>
-              );
-            }
             return (
               <Link
                 key={item.path}

@@ -209,6 +209,11 @@ export async function listCommissions(filter: { influencerId?: string; status?: 
       ...(filter.influencerId ? { influencerId: filter.influencerId } : {}),
       ...(filter.status ? { status: filter.status as never } : {}),
     },
+    // Oct 2026: who earned it and what the member paid for, for the console.
+    include: {
+      influencer: { select: { id: true, name: true } },
+      payment: { select: { id: true, purpose: true, amountCents: true, createdAt: true } },
+    },
     orderBy: { createdAt: "desc" },
     take: 200,
   });

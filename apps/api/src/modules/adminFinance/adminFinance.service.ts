@@ -367,6 +367,24 @@ export async function getFinanceDashboard(query: FinanceDateRangeQuery) {
   // had, fixed there this same pass).
   const openRefundRequests = await prisma.refund.count({ where: { status: "pending" } });
 
+  // Oct 2026: money owed but not yet paid out — coach settlements (eligible,
+  // approved or in a payout run) and creator commissions (eligible or approved,
+  // not yet paid).
+  const [pendingSettlementRows, pendingCommissionRows] = await Promise.all([
+    prisma.coachSettlement.aggregate({
+      where: { status: { in: ["eligible", "approved", "pending"] } },
+      _sum: { netCents: true },
+      _count: true,
+    }),
+    prisma.creatorCommission.aggregate({
+      where: { status: { in: ["eligible", "approved"] } },
+      _sum: { commissionCents: true },
+      _count: true,
+    }),
+  ]);
+  const pendingSettlements = { count: pendingSettlementRows._count, amountCents: pendingSettlementRows._sum.netCents ?? 0 };
+  const pendingPayouts = { count: pendingCommissionRows._count, amountCents: pendingCommissionRows._sum.commissionCents ?? 0 };
+
   return {
     range: { startDate: mtdStart, endDate: mtdEnd },
     kpis: {
@@ -380,16 +398,8 @@ export async function getFinanceDashboard(query: FinanceDateRangeQuery) {
     cashFlow,
     burnRateCents,
     runwayMonths,
-    requiredActions: { ...requiredActions, openRefundRequests },
-    // "pendingPayouts" (Influencer) stays notAvailable — still admin-entered,
-    // not computed from real attributed revenue (see getRevenueWaterfall's
-    // own comment). "pendingSettlements" (Coach) is a real, buildable-now
-    // gap this pass didn't close: adminSettlements.service.ts computes
-    // unsettled net per-coach-per-month, but nothing aggregates "pending
-    // across every coach, right now" into one number yet — a genuine
-    // follow-up, not the same "no entity to compute from" blocker
-    // Influencer Payouts still has.
-    notAvailable: ["pendingSettlements", "pendingPayouts"],
+    requiredActions: { ...requiredActions, openRefundRequests, pendingSettlements, pendingPayouts },
+    notAvailable: [] as string[],
   };
 }
 
@@ -458,10 +468,29 @@ export async function listRevenue(query: FinanceDateRangeQuery) {
     revenueCents,
   }));
 
+  // Oct 2026: the region half of 10.02's "region/transaction breakdown" —
+  // paid revenue by the payer's country (User.countryCode, from the app's
+  // Country setting; null when the member never chose one).
+  const payerIds = [...new Set(payments.map((p) => p.userId))];
+  const payers = payerIds.length
+    ? ((await prisma.user.findMany({ where: { id: { in: payerIds } }, select: { id: true, countryCode: true } })) as Array<{
+        id: string;
+        countryCode: string | null;
+      }>)
+    : [];
+  const countryByUser = new Map(payers.map((u) => [u.id, u.countryCode]));
+  const byCountryMap = new Map<string | null, { countryCode: string | null; revenueCents: number; count: number }>();
+  for (const p of payments) {
+    const code = countryByUser.get(p.userId) ?? null;
+    const row = byCountryMap.get(code) ?? { countryCode: code, revenueCents: 0, count: 0 };
+    row.revenueCents += p.amountCents;
+    row.count += 1;
+    byCountryMap.set(code, row);
+  }
+  const byCountry = [...byCountryMap.values()].sort((a, b) => b.revenueCents - a.revenueCents);
+
   // Real transaction-status breakdown (all statuses, not just this
-  // range's "paid" set) — the one honest slice of 10.02's spec'd
-  // "region/transaction breakdown with status" this pass can build; the
-  // region half is notAvailable (see below).
+  // range's "paid" set).
   const statusRows = (await prisma.payment.findMany({
     where:
       query.startDate || query.endDate
@@ -482,9 +511,8 @@ export async function listRevenue(query: FinanceDateRangeQuery) {
     byPlan: [...byPlan.values()].sort((a, b) => b.revenueCents - a.revenueCents),
     trend,
     statusBreakdown,
-    // "regionalBreakdown" — no User.region field exists, same gap 09.05
-    // Geographic is blocked on.
-    notAvailable: ["regionalBreakdown"],
+    byCountry,
+    notAvailable: [] as string[],
   };
 }
 
@@ -544,7 +572,7 @@ export async function getRevenueWaterfall(query: FinanceDateRangeQuery) {
   const discountCents = payments.reduce((sum, p) => sum + (p.discountCents ?? 0), 0);
   const grossCents = netOfDiscountsCents + discountCents;
 
-  const expenseWhere: Record<string, unknown> = { category: { in: ["refund", "coach_settlement"] } };
+  const expenseWhere: Record<string, unknown> = { category: { in: ["refund", "coach_settlement", "influencer_payout"] } };
   if (query.startDate || query.endDate) {
     expenseWhere.incurredAt = {
       ...(query.startDate ? { gte: query.startDate } : {}),
@@ -561,7 +589,12 @@ export async function getRevenueWaterfall(query: FinanceDateRangeQuery) {
     .filter((e) => e.category === "coach_settlement")
     .reduce((s, e) => s + e.amountCents, 0);
 
-  const netRevenueCents = netOfDiscountsCents - refundCents - coachSettlementCents;
+  // Oct 2026: creator payouts (paid commissions and admin-recorded influencer payouts).
+  const influencerPayoutCents = ledgerExpenses
+    .filter((e) => e.category === "influencer_payout")
+    .reduce((s, e) => s + e.amountCents, 0);
+
+  const netRevenueCents = netOfDiscountsCents - refundCents - coachSettlementCents - influencerPayoutCents;
 
   return {
     range: { startDate: query.startDate ?? null, endDate: query.endDate ?? null },
@@ -571,15 +604,14 @@ export async function getRevenueWaterfall(query: FinanceDateRangeQuery) {
       netOfDiscountsCents,
       refundCents,
       coachSettlementCents,
+      // Oct 2026: a stage now — creator commissions are computed from attributed
+      // payments (creatorCommissions.service.ts) and paid through payout runs,
+      // alongside any admin-recorded influencer payouts (both expense
+      // category influencer_payout).
+      influencerPayoutCents,
       netRevenueCents,
     },
-    // "influencerPayoutCents" — deliberately not a seventh stage: unlike
-    // coach settlements, InfluencerPayout amounts are admin-entered, not
-    // computed from real attributed revenue (no campaign/attribution
-    // pipeline exists — see that model's own schema.prisma comment), so
-    // netting one against Gross here would imply a reconciliation this
-    // build can't actually make.
-    notAvailable: ["influencerPayoutCents"],
+    notAvailable: [] as string[],
   };
 }
 
@@ -613,8 +645,9 @@ export async function listExpenses(query: ListExpensesQuery) {
   return {
     expenses: rows.map(toExpenseListItem),
     summary,
-    // Payouts half of 10.03 — see this file's top comment.
-    notAvailable: ["coachSettlements", "influencerPayouts"],
+    // Oct 2026: coach settlements and creator payouts are recorded here when
+    // a payout run pays them (category coach_settlement / influencer_payout).
+    notAvailable: [] as string[],
   };
 }
 
@@ -833,7 +866,7 @@ export async function financialReports(query: FinanceDateRangeQuery) {
       netProfitCents: dashboard.kpis.netProfitMtdCents,
     },
     cashFlow: dashboard.cashFlow,
-    revenue: { byPurpose: revenue.byPurpose, byPlan: revenue.byPlan, trend: revenue.trend },
+    revenue: { byPurpose: revenue.byPurpose, byPlan: revenue.byPlan, trend: revenue.trend, byCountry: revenue.byCountry },
     expense: { byCategory: expenses.summary.byCategory, totalCents: expenses.summary.totalCents },
     ratios: {
       // Real, simple ratios only — anything needing a prior-period
@@ -842,11 +875,9 @@ export async function financialReports(query: FinanceDateRangeQuery) {
       netMarginPct: revenueCents > 0 ? Math.round((dashboard.kpis.netProfitMtdCents / revenueCents) * 1000) / 10 : null,
       expenseToRevenuePct: revenueCents > 0 ? Math.round((expensesCents / revenueCents) * 1000) / 10 : null,
     },
-    // 6 Sep 2026 — "openRefundRequests" dropped, matching getFinanceDashboard's
-    // own notAvailable above (real since this same pass); see that
-    // function's comment for why "pendingSettlements"/"pendingPayouts"
-    // still belong here.
-    notAvailable: ["pendingSettlements", "pendingPayouts", "regionalBreakdown"],
+    // Oct 2026: pending settlements/payouts are on the Finance dashboard, and
+    // "regionalBreakdown" is real (revenue.byCountry).
+    notAvailable: [] as string[],
   };
 }
 

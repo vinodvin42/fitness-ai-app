@@ -1,6 +1,7 @@
 import { createNotification } from "../notifications/notifications.service";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { ReportConversationInput, SendCoachMessageInput } from "./coachMessages.schema";
 
@@ -282,6 +283,16 @@ export async function reportPartner(userId: string, professionalId: string, repo
     entityType: "SafetyReport",
     entityId: report.id,
     metadata: { reason: input.reason, hasMessage: Boolean(input.messageId) },
+  });
+  // Oct 2026: every new report is also an Action Required item. A member
+  // reporting their coach is a complaint about a professional; a coach
+  // reporting a member is an abuse review for a partner.
+  await createActionItem({
+    type: reporter === "user" ? "professional_complaint" : "partner_abuse_review",
+    entityType: "SafetyReport",
+    entityId: report.id,
+    severity: HIGH_SEVERITY_REASONS.has(input.reason) ? "high" : "medium",
+    metadata: { reason: input.reason, userId, professionalId },
   });
   return report;
 }

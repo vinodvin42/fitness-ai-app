@@ -171,6 +171,13 @@ export function RevenueWaterfallScreen() {
               <WaterfallRow
                 label={t("revenueWaterfall.coachSettlements")}
                 cents={data.stages.coachSettlementCents}
+                runningTotalCents={data.stages.netRevenueCents + data.stages.influencerPayoutCents}
+                grossCents={data.stages.grossCents}
+                tone="negative"
+              />
+              <WaterfallRow
+                label="Creator payouts"
+                cents={data.stages.influencerPayoutCents}
                 runningTotalCents={data.stages.netRevenueCents}
                 grossCents={data.stages.grossCents}
                 tone="negative"
@@ -186,15 +193,12 @@ export function RevenueWaterfallScreen() {
             </div>
 
             <p className="text-xs text-text-dim">
-              Coach Settlements above is what's actually been paid out to coaches in this range, not gross booking
-              value delivered-but-unsettled — a deliberately conservative number. Discounts and Refunds are real
-              redeemed coupons and processed Razorpay refunds, not estimates.
+              Coach settlements and creator payouts above are what has actually been paid out in this range, not what
+              is still owed — a deliberately conservative number. Discounts and Refunds are real redeemed coupons and
+              processed Razorpay refunds, not estimates.
             </p>
 
-            <NotAvailablePanel
-              keys={data.notAvailable}
-              subtitle={t("revenueWaterfall.influencerPayoutsAreAdmin")}
-            />
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>

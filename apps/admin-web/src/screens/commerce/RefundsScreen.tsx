@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
@@ -46,6 +47,8 @@ export function RefundsScreen() {
   const [filters, setFilters] = useState<Filters>({ status: "" });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // Hide what this role can't do (the API still checks every call).
+  const canEdit = useCan("commerce", "edit");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-refunds", filters],
@@ -90,16 +93,18 @@ export function RefundsScreen() {
               <option value="failed">{t("refunds.failed")}</option>
             </select>
           </label>
-          <button
-            type="button"
-            onClick={() => setShowForm((p) => !p)}
-            className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
-          >
-            {showForm ? "Cancel" : "+ New Refund"}
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setShowForm((p) => !p)}
+              className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-canvas"
+            >
+              {showForm ? "Cancel" : "+ New Refund"}
+            </button>
+          )}
         </div>
 
-        {showForm && (
+        {canEdit && showForm && (
           <form
             onSubmit={(e) => {
               e.preventDefault();

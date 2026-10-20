@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { ADMIN_SYSTEM_SUB_NAV } from "./subNav";
@@ -47,6 +48,8 @@ export function PrivacyRequestsScreen() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("received");
   const [exportUrl, setExportUrl] = useState<Record<string, string>>({});
+  // Hide what this role can't do (the API still checks every call).
+  const canApprove = useCan("sensitiveData", "approve");
 
   const requests = useQuery({
     queryKey: ["privacyRequests", status],
@@ -138,78 +141,80 @@ export function PrivacyRequestsScreen() {
                 <StatusBadge status={r.status} />
               </div>
 
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                {r.status === "received" ? (
-                  <ReasonGatedAction
-                    title={t("privacyRequests.verifyIdentity")}
-                    description={t("privacyRequests.recordHowYouConfirmed")}
-                    actionLabel={t("privacyRequests.markVerified")}
-                    isPending={step.isPending}
-                    onConfirm={(reason) => step.mutate({ id: r.id, action: "verify", reason })}
-                    tone="warning"
-                  />
-                ) : null}
-
-                {r.status === "verifying" ? (
-                  <ReasonGatedAction
-                    title={t("privacyRequests.startFulfilment")}
-                    description={
-                      r.type === "deletion"
-                        ? "Schedules the deletion 30 days out. The user can cancel during that window."
-                        : "Moves the request into fulfilment so an export can be prepared."
-                    }
-                    actionLabel={t("privacyRequests.start")}
-                    isPending={step.isPending}
-                    onConfirm={(reason) => step.mutate({ id: r.id, action: "start", reason })}
-                    tone="warning"
-                  />
-                ) : null}
-
-                {r.status === "in_progress" ? (
-                  <>
-                    {r.type === "export" ? (
-                      <div>
-                        <label className="block text-xs text-text-dim" htmlFor={`url-${r.id}`}>
-                          {t("privacyRequests.exportDownloadLink")}
-                        </label>
-                        <input
-                          id={`url-${r.id}`}
-                          value={exportUrl[r.id] ?? ""}
-                          onChange={(e) => setExportUrl((s) => ({ ...s, [r.id]: e.target.value }))}
-                          placeholder="https://…"
-                          className="mt-1 w-full rounded-md border border-border bg-canvas px-2 py-1 text-sm text-text-primary"
-                        />
-                        <p className="mt-1 text-[11px] text-text-dim">{t("privacyRequests.expires72HoursAfter")}</p>
-                      </div>
-                    ) : null}
+              {canApprove ? (
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  {r.status === "received" ? (
                     <ReasonGatedAction
-                      title={r.type === "deletion" ? "Complete deletion" : "Complete export"}
+                      title={t("privacyRequests.verifyIdentity")}
+                      description={t("privacyRequests.recordHowYouConfirmed")}
+                      actionLabel={t("privacyRequests.markVerified")}
+                      isPending={step.isPending}
+                      onConfirm={(reason) => step.mutate({ id: r.id, action: "verify", reason })}
+                      tone="warning"
+                    />
+                  ) : null}
+
+                  {r.status === "verifying" ? (
+                    <ReasonGatedAction
+                      title={t("privacyRequests.startFulfilment")}
                       description={
                         r.type === "deletion"
-                          ? "Irreversible. Removes this person's data; the audit trail survives with an anonymized actor."
-                          : "Marks the export ready and sends the link to the user."
+                          ? "Schedules the deletion 30 days out. The user can cancel during that window."
+                          : "Moves the request into fulfilment so an export can be prepared."
                       }
-                      actionLabel={t("privacyRequests.complete")}
+                      actionLabel={t("privacyRequests.start")}
+                      isPending={step.isPending}
+                      onConfirm={(reason) => step.mutate({ id: r.id, action: "start", reason })}
+                      tone="warning"
+                    />
+                  ) : null}
+
+                  {r.status === "in_progress" ? (
+                    <>
+                      {r.type === "export" ? (
+                        <div>
+                          <label className="block text-xs text-text-dim" htmlFor={`url-${r.id}`}>
+                            {t("privacyRequests.exportDownloadLink")}
+                          </label>
+                          <input
+                            id={`url-${r.id}`}
+                            value={exportUrl[r.id] ?? ""}
+                            onChange={(e) => setExportUrl((s) => ({ ...s, [r.id]: e.target.value }))}
+                            placeholder="https://…"
+                            className="mt-1 w-full rounded-md border border-border bg-canvas px-2 py-1 text-sm text-text-primary"
+                          />
+                          <p className="mt-1 text-[11px] text-text-dim">{t("privacyRequests.expires72HoursAfter")}</p>
+                        </div>
+                      ) : null}
+                      <ReasonGatedAction
+                        title={r.type === "deletion" ? "Complete deletion" : "Complete export"}
+                        description={
+                          r.type === "deletion"
+                            ? "Irreversible. Removes this person's data; the audit trail survives with an anonymized actor."
+                            : "Marks the export ready and sends the link to the user."
+                        }
+                        actionLabel={t("privacyRequests.complete")}
+                        isPending={resolve.isPending}
+                        onConfirm={(reason) =>
+                          resolve.mutate({ id: r.id, action: "complete", reason, url: exportUrl[r.id] })
+                        }
+                        tone="danger"
+                      />
+                    </>
+                  ) : null}
+
+                  {r.status !== "completed" && r.status !== "rejected" ? (
+                    <ReasonGatedAction
+                      title={t("privacyRequests.refuseThisRequest")}
+                      description={t("privacyRequests.giveAReasonThe")}
+                      actionLabel={t("privacyRequests.refuse")}
                       isPending={resolve.isPending}
-                      onConfirm={(reason) =>
-                        resolve.mutate({ id: r.id, action: "complete", reason, url: exportUrl[r.id] })
-                      }
+                      onConfirm={(reason) => resolve.mutate({ id: r.id, action: "reject", reason })}
                       tone="danger"
                     />
-                  </>
-                ) : null}
-
-                {r.status !== "completed" && r.status !== "rejected" ? (
-                  <ReasonGatedAction
-                    title={t("privacyRequests.refuseThisRequest")}
-                    description={t("privacyRequests.giveAReasonThe")}
-                    actionLabel={t("privacyRequests.refuse")}
-                    isPending={resolve.isPending}
-                    onConfirm={(reason) => resolve.mutate({ id: r.id, action: "reject", reason })}
-                    tone="danger"
-                  />
-                ) : null}
-              </div>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { COMMON_COUNTRIES, type AdminUserAnalyticsResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
@@ -92,10 +93,7 @@ export function UserAnalyticsScreen() {
     queryFn: () => fetchUserAnalytics(filters),
   });
 
-  const notAvailableTab: Record<string, string> = {
-    recovery: "recoveryAnalytics",
-    business: "businessAnalytics",
-  };
+  const notAvailableTab: Record<string, string> = {};
 
   return (
     <AppShell title={t("userAnalytics.analytics")} subNav={ANALYTICS_SUB_NAV}>
@@ -278,6 +276,28 @@ export function UserAnalyticsScreen() {
             <StatCard label={t("userAnalytics.mealsLogged")} value={data.nutritionStats.totalMealsLogged} hint="In the selected date range" />
             <StatCard label={t("userAnalytics.waterLogs")} value={data.nutritionStats.totalWaterLogs} hint="In the selected date range" />
             <StatCard label={t("userAnalytics.avgWaterLogsActive")} value={data.nutritionStats.avgWaterLogsPerActiveUser ?? "—"} />
+          </div>
+        )}
+
+        {data && tab === "recovery" && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatCard label="Recovery logs" value={data.recoveryStats.totalLogs} hint="In the selected date range" />
+            <StatCard label="Members logging" value={data.recoveryStats.usersLogging} />
+            <StatCard label="Avg sleep (hours)" value={data.recoveryStats.avgSleepHours ?? "—"} />
+            <StatCard label="Avg energy (1-5)" value={data.recoveryStats.avgEnergyLevel ?? "—"} />
+            <StatCard label="Avg soreness (1-5)" value={data.recoveryStats.avgSoreness ?? "—"} />
+            <StatCard label="Avg resting heart rate" value={data.recoveryStats.avgRestingHeartRate ?? "—"} />
+            <StatCard label="Avg steps" value={data.recoveryStats.avgSteps ?? "—"} />
+          </div>
+        )}
+
+        {data && tab === "business" && (
+          <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm text-text-secondary">
+            Marketplace and revenue numbers have their own page:{" "}
+            <Link to="/analytics/business" className="text-accent hover:underline">
+              Business analytics
+            </Link>
+            .
           </div>
         )}
 

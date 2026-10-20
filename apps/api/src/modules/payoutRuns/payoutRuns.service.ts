@@ -1,5 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { payoutProvider } from "../../providers";
@@ -63,6 +64,41 @@ export async function previewPayoutRun(kind: PayoutRunKind) {
  * Approves an eligible earning, moving it to `approved` so a payout run
  * can pick it up. This is the step the handoff says was missing.
  */
+/** Oct 2026: what is owed but not yet approved, across every month (Payout Runs screen). */
+export async function awaitingApproval() {
+  const [commissions, settlements] = await Promise.all([
+    prisma.creatorCommission.findMany({
+      where: { status: "eligible" },
+      select: {
+        id: true,
+        grossCents: true,
+        commissionPct: true,
+        commissionCents: true,
+        createdAt: true,
+        influencer: { select: { id: true, name: true } },
+        payment: { select: { purpose: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+    }),
+    prisma.coachSettlement.findMany({
+      where: { status: { in: ["eligible", "pending"] }, payoutBatchId: null },
+      select: {
+        id: true,
+        periodStart: true,
+        grossCents: true,
+        commissionCents: true,
+        netCents: true,
+        status: true,
+        professional: { select: { id: true, fullName: true } },
+      },
+      orderBy: { periodStart: "asc" },
+      take: 200,
+    }),
+  ]);
+  return { commissions, settlements };
+}
+
 export async function approveEarning(adminId: string, settlementId: string, reason: string) {
   const settlement = await prisma.coachSettlement.findUnique({ where: { id: settlementId } });
   if (!settlement) throw new ApiHttpError(404, "settlement_not_found", "Settlement not found");
@@ -187,7 +223,7 @@ export async function settlePayoutRun(
   if (batch.kind === "creator_commission") {
     const toPay = await prisma.creatorCommission.findMany({
       where: { payoutBatchId: batchId, id: { notIn: failedIds }, status: { notIn: ["disputed", "reversed"] } },
-      select: { id: true, influencerId: true, commissionCents: true },
+      select: { id: true, influencerId: true, commissionCents: true, influencer: { select: { name: true } } },
     });
     await prisma.creatorCommission.updateMany({
       where: { payoutBatchId: batchId, id: { notIn: failedIds }, status: { notIn: ["disputed", "reversed"] } },
@@ -209,6 +245,21 @@ export async function settlePayoutRun(
         stateAfter: { status: "paid" },
         metadata: { batchId, influencerId: c.influencerId, commissionCents: c.commissionCents },
       });
+      // A commission that failed in an earlier run is paid now.
+      await resolveActionItemsFor("CreatorCommission", c.id, adminId, "Paid in a later payout run");
+      // Oct 2026: what was paid lands in Finance's ledger.
+      await prisma.expense.create({
+        data: {
+          category: "influencer_payout",
+          description: `Creator commission — ${c.influencer.name}`,
+          amountCents: c.commissionCents,
+          status: "paid",
+          incurredAt: now,
+          recordedByAdminId: adminId,
+          paidAt: now,
+          notes: `Payout run ${batchId}`,
+        },
+      });
     }
     if (failedIds.length > 0) {
       // A failed commission goes back to `approved`, not to a failed
@@ -226,17 +277,57 @@ export async function settlePayoutRun(
           lastPayoutFailedAt: now,
         },
       });
+      for (const id of failedIds) {
+        await createActionItem({
+          type: "payout_failed",
+          entityType: "CreatorCommission",
+          entityId: id,
+          severity: "high",
+          metadata: { batchId, failureReason },
+        });
+      }
     }
   } else {
+    const paidSettlements = await prisma.coachSettlement.findMany({
+      where: { payoutBatchId: batchId, id: { notIn: failedIds } },
+      select: { id: true, netCents: true, periodStart: true, professional: { select: { fullName: true } } },
+    });
     await prisma.coachSettlement.updateMany({
       where: { payoutBatchId: batchId, id: { notIn: failedIds } },
       data: { status: "paid", paidAt: now },
     });
+    // Oct 2026: the coach_settlement expense is recorded when the money is
+    // actually paid (it used to be recorded when "Settle" was pressed).
+    for (const s of paidSettlements) {
+      const month = s.periodStart.toISOString().slice(0, 7);
+      await prisma.expense.create({
+        data: {
+          category: "coach_settlement",
+          description: `Coach settlement — ${s.professional.fullName} (${month})`,
+          amountCents: s.netCents,
+          status: "paid",
+          incurredAt: now,
+          recordedByAdminId: adminId,
+          paidAt: now,
+          notes: `Payout run ${batchId}`,
+        },
+      });
+      await resolveActionItemsFor("CoachSettlement", s.id, adminId, "Paid in a payout run");
+    }
     if (failedIds.length > 0) {
       await prisma.coachSettlement.updateMany({
         where: { payoutBatchId: batchId, id: { in: failedIds } },
         data: { status: "payout_failed", payoutFailureReason: failureReason },
       });
+      for (const id of failedIds) {
+        await createActionItem({
+          type: "payout_failed",
+          entityType: "CoachSettlement",
+          entityId: id,
+          severity: "high",
+          metadata: { batchId, failureReason },
+        });
+      }
     }
   }
 

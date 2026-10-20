@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Fragment, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type {
   AdminSubscriptionDirectoryResponse,
+  AdminSubscriptionListItem,
   BillingCycle,
   SubscriptionStatus,
   SubscriptionTier,
@@ -11,6 +12,8 @@ import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
@@ -57,8 +60,13 @@ const SELECT_CLASS =
  * spec's revenue waterfall already lives at Finance → Revenue waterfall, so
  * this screen is the list the spec's "Subscriptions" tab names. Price shows
  * the subscriber's locked price when there is one. Revoking or restoring a
- * subscription stays on the user's profile (reason-gated), which each row
- * links to. The KPI row counts all subscriptions, not just the filtered ones.
+ * subscription is also on the user's profile. The KPI row counts all
+ * subscriptions, not just the filtered ones.
+ *
+ * Oct 2026 (admin audit item 2): each row has Manage for roles with
+ * commerce:approve: suspend or reactivate (reason + typed RESOLVE, which the
+ * API checks) and revoke or restore (reason). Only the actions the row's
+ * status allows are offered (subscriptions.service.ts has the same rules).
  */
 export function SubscriptionsScreen() {
   const [filters, setFilters] = useState<Filters>({ status: "", tier: "", billingCycle: "", search: "" });
@@ -68,6 +76,8 @@ export function SubscriptionsScreen() {
   });
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const canManage = useCan("commerce", "approve");
+  const [managing, setManaging] = useState<string | null>(null);
 
   return (
     <AppShell title="Subscriptions" subNav={COMMERCE_SUB_NAV}>
@@ -163,10 +173,14 @@ export function SubscriptionsScreen() {
                 </thead>
                 <tbody>
                   {data.subscriptions.map((s) => (
-                    <tr key={s.id} className="border-b border-border-subtle last:border-0">
+                    <Fragment key={s.id}>
+                    <tr className="border-b border-border-subtle last:border-0">
                       <td className="px-4 py-3">
                         <div className="font-medium text-text-primary">{s.user.fullName}</div>
-                        <div className="text-xs text-text-dim">{s.user.email}</div>
+                        <div className="text-xs text-text-dim">
+                          {s.user.email}
+                          {s.user.countryCode ? ` · ${s.user.countryCode}` : ""}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-text-secondary">{s.plan.name}</div>
@@ -193,11 +207,31 @@ export function SubscriptionsScreen() {
                       <td className="px-4 py-3 text-text-secondary">{s.renewsAt ? new Date(s.renewsAt).toLocaleDateString() : "—"}</td>
                       <td className="px-4 py-3 text-text-secondary">{new Date(s.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
-                        <Link to={`/users/${s.user.id}`} className="text-xs text-accent hover:underline">
-                          View user
-                        </Link>
+                        <div className="flex flex-col items-start gap-1">
+                          <Link to={`/users/${s.user.id}`} className="text-xs text-accent hover:underline">
+                            View user
+                          </Link>
+                          {canManage && availableActions(s.status).length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setManaging(managing === s.id ? null : s.id)}
+                              aria-expanded={managing === s.id}
+                              className="text-xs text-text-secondary hover:text-text-primary hover:underline"
+                            >
+                              {managing === s.id ? "Close" : "Manage"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
+                    {managing === s.id && (
+                      <tr className="border-b border-border-subtle bg-surface-raised/40">
+                        <td colSpan={7} className="px-4 py-3">
+                          <SubscriptionActions subscription={s} onDone={() => setManaging(null)} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                   {data.subscriptions.length === 0 && (
                     <tr>
@@ -209,10 +243,96 @@ export function SubscriptionsScreen() {
                 </tbody>
               </table>
             </div>
-            <NotAvailablePanel keys={data.notAvailable} subtitle="No country is stored for users, so there's no country breakdown." />
+            {data.byCountry.length > 0 && (
+              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-text-dim">Giving access now, by country</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {data.byCountry.map((c) => (
+                    <span key={c.countryCode ?? "none"} className="rounded-full bg-surface-raised px-3 py-1 text-xs text-text-secondary">
+                      {c.countryCode ?? "Not set"} · {c.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <NotAvailablePanel keys={data.notAvailable} />
           </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+type SubscriptionAction = "suspend" | "reactivate" | "revoke" | "unrevoke";
+
+/** What subscriptions.service.ts allows from each status. */
+function availableActions(status: SubscriptionStatus): SubscriptionAction[] {
+  if (status === "active" || status === "trialing" || status === "past_due") return ["suspend", "revoke"];
+  if (status === "suspended") return ["reactivate", "revoke"];
+  if (status === "pending") return ["revoke"];
+  if (status === "revoked") return ["unrevoke"];
+  return [];
+}
+
+const ACTION_COPY: Record<SubscriptionAction, { title: string; description: string; label: string; tone: "danger" | "warning"; confirm?: string }> = {
+  suspend: {
+    title: "Suspend subscription",
+    description: "Pauses access straight away. It can be reactivated later. The member isn't refunded by this.",
+    label: "Suspend",
+    tone: "warning",
+    confirm: "RESOLVE",
+  },
+  reactivate: {
+    title: "Reactivate subscription",
+    description: "Gives access back, with the status it had before it was suspended.",
+    label: "Reactivate",
+    tone: "warning",
+    confirm: "RESOLVE",
+  },
+  revoke: {
+    title: "Revoke subscription",
+    description: "Ends access now. It can be restored later from here or the user's profile. The member isn't refunded by this.",
+    label: "Revoke",
+    tone: "danger",
+  },
+  unrevoke: {
+    title: "Restore revoked subscription",
+    description: "Gives access back, with the status it had before it was revoked.",
+    label: "Restore",
+    tone: "warning",
+  },
+};
+
+function SubscriptionActions({ subscription, onDone }: { subscription: AdminSubscriptionListItem; onDone: () => void }) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: ({ action, reason, confirmation }: { action: SubscriptionAction; reason: string; confirmation?: string }) =>
+      apiClient.post(`/admin/subscriptions/${subscription.id}/${action}`, confirmation ? { reason, confirmation } : { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      onDone();
+    },
+  });
+  const actions = availableActions(subscription.status);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {actions.map((action) => {
+        const copy = ACTION_COPY[action];
+        return (
+          <ReasonGatedAction
+            key={action}
+            title={`${copy.title} · ${subscription.user.fullName}`}
+            description={copy.description}
+            actionLabel={copy.label}
+            tone={copy.tone}
+            confirmWord={copy.confirm}
+            isPending={mutation.isPending && mutation.variables?.action === action}
+            isError={mutation.isError && mutation.variables?.action === action}
+            error={mutation.error}
+            onConfirm={(reason, confirmation) => mutation.mutate({ action, reason, confirmation })}
+          />
+        );
+      })}
+    </div>
   );
 }

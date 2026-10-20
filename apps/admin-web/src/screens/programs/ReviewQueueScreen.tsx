@@ -7,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROGRAMS_SUB_NAV } from "./subNav";
@@ -58,6 +59,8 @@ export function ReviewQueueScreen() {
   const [expert, setExpert] = useState<Record<string, { name: string; credentials: string }>>({});
   const expertFor = (id: string) => expert[id] ?? { name: "", credentials: "" };
   const queryClient = useQueryClient();
+  // Hide what this role can't do (the API still checks every call).
+  const canApprove = useCan("programs", "approve");
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-content-reviews", statusFilter],
@@ -171,7 +174,7 @@ export function ReviewQueueScreen() {
                 </div>
               </dl>
 
-              {r.status === "pending" ? (
+              {canApprove && r.status === "pending" ? (
                 <div className="mt-3">
                   <textarea
                     placeholder={t("reviewQueue.reviewNotesOptional")}

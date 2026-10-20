@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminCoachPricingResponse, ProfessionalServiceType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
+import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
@@ -58,6 +59,10 @@ type Panel =
 export function CoachLevelsScreen() {
   const queryClient = useQueryClient();
   const [panel, setPanel] = useState<Panel>(null);
+  // Hide what this role can't do (the API still checks every call).
+  const canCreate = useCan("commerce", "create");
+  const canEdit = useCan("commerce", "edit");
+  const canPlaceCoach = useCan("professionals", "edit");
   const { data, isLoading, isError, error } = useQuery({ queryKey: ["admin-coach-levels"], queryFn: fetchPricing });
 
   const save = useMutation({
@@ -293,16 +298,18 @@ export function CoachLevelsScreen() {
                       <td className="px-4 py-3 align-top">
                         <p className="font-medium text-text-primary">{l.name}</p>
                         <p className="text-xs text-text-dim">{l.description ?? ""} · {l.coachCount} coach{l.coachCount === 1 ? "" : "es"}</p>
-                        <div className="mt-1 flex gap-2">
-                          <button type="button" className={LINK}
-                            onClick={() => open({ kind: "renameLevel", levelId: l.id, name: l.name, description: l.description ?? "" })}>
-                            Rename
-                          </button>
-                          <button type="button" className={LINK}
-                            onClick={() => action.mutate({ method: "patch", url: `/admin/coach-levels/${l.id}`, body: { isActive: !l.isActive } })}>
-                            {l.isActive ? "Switch off" : "Switch on"}
-                          </button>
-                        </div>
+                        {canEdit && (
+                          <div className="mt-1 flex gap-2">
+                            <button type="button" className={LINK}
+                              onClick={() => open({ kind: "renameLevel", levelId: l.id, name: l.name, description: l.description ?? "" })}>
+                              Rename
+                            </button>
+                            <button type="button" className={LINK}
+                              onClick={() => action.mutate({ method: "patch", url: `/admin/coach-levels/${l.id}`, body: { isActive: !l.isActive } })}>
+                              {l.isActive ? "Switch off" : "Switch on"}
+                            </button>
+                          </div>
+                        )}
                       </td>
                       {data.services.filter((s) => s.isActive).map((s) => {
                         const fee = l.fees.find((f) => f.serviceId === s.id);
@@ -312,16 +319,20 @@ export function CoachLevelsScreen() {
                             {fee?.scheduled.map((sc) => (
                               <p key={sc.id} className="text-xs text-text-dim">
                                 → {money(sc.priceCents)} from {dateText(sc.effectiveFrom)}{" "}
-                                <button type="button" className={LINK}
-                                  onClick={() => action.mutate({ method: "post", url: `/admin/coach-fees/${sc.id}/cancel` })}>
-                                  cancel
-                                </button>
+                                {canEdit && (
+                                  <button type="button" className={LINK}
+                                    onClick={() => action.mutate({ method: "post", url: `/admin/coach-fees/${sc.id}/cancel` })}>
+                                    cancel
+                                  </button>
+                                )}
                               </p>
                             ))}
-                            <button type="button" className={LINK}
-                              onClick={() => open({ kind: "fee", levelId: l.id, serviceId: s.id, price: fee?.priceCents != null ? String(fee.priceCents / 100) : "", effectiveFrom: "", reason: "" })}>
-                              Change fee
-                            </button>
+                            {canEdit && (
+                              <button type="button" className={LINK}
+                                onClick={() => open({ kind: "fee", levelId: l.id, serviceId: s.id, price: fee?.priceCents != null ? String(fee.priceCents / 100) : "", effectiveFrom: "", reason: "" })}>
+                                Change fee
+                              </button>
+                            )}
                           </td>
                         );
                       })}
@@ -330,46 +341,58 @@ export function CoachLevelsScreen() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className={BUTTON} onClick={() => open({ kind: "newLevel", name: "", description: "" })}>
-                + Add level
-              </button>
-              <button type="button" className={BUTTON}
-                onClick={() => open({ kind: "newService", label: "", serviceType: "fitness", duration: "45" })}>
-                + Add service
-              </button>
-              {data.services.filter((s) => !s.isActive).map((s) => (
-                <button key={s.id} type="button" className={LINK}
-                  onClick={() => action.mutate({ method: "patch", url: `/admin/coach-services/${s.id}`, body: { isActive: true } })}>
-                  Switch on “{s.label}”
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-3 text-xs text-text-dim">
-              {data.services.filter((s) => s.isActive).map((s) => (
-                <button key={s.id} type="button" className={LINK}
-                  onClick={() => action.mutate({ method: "patch", url: `/admin/coach-services/${s.id}`, body: { isActive: false } })}>
-                  Switch off “{s.label}”
-                </button>
-              ))}
-            </div>
+            {(canCreate || canEdit) && (
+              <div className="flex flex-wrap gap-3">
+                {canCreate && (
+                  <>
+                    <button type="button" className={BUTTON} onClick={() => open({ kind: "newLevel", name: "", description: "" })}>
+                      + Add level
+                    </button>
+                    <button type="button" className={BUTTON}
+                      onClick={() => open({ kind: "newService", label: "", serviceType: "fitness", duration: "45" })}>
+                      + Add service
+                    </button>
+                  </>
+                )}
+                {canEdit && data.services.filter((s) => !s.isActive).map((s) => (
+                  <button key={s.id} type="button" className={LINK}
+                    onClick={() => action.mutate({ method: "patch", url: `/admin/coach-services/${s.id}`, body: { isActive: true } })}>
+                    Switch on “{s.label}”
+                  </button>
+                ))}
+              </div>
+            )}
+            {canEdit && (
+              <div className="flex flex-wrap gap-3 text-xs text-text-dim">
+                {data.services.filter((s) => s.isActive).map((s) => (
+                  <button key={s.id} type="button" className={LINK}
+                    onClick={() => action.mutate({ method: "patch", url: `/admin/coach-services/${s.id}`, body: { isActive: false } })}>
+                    Switch off “{s.label}”
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* ---- Commission ---- */}
             <div className="rounded-lg border border-border-subtle bg-surface p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-text-primary">FynroX commission on coach fees: {data.commission.defaultPct}%</p>
-                <button type="button" className={LINK}
-                  onClick={() => open({ kind: "defaultCommission", pct: String(data.commission.defaultPct), effectiveFrom: "", reason: "" })}>
-                  Change
-                </button>
+                {canEdit && (
+                  <button type="button" className={LINK}
+                    onClick={() => open({ kind: "defaultCommission", pct: String(data.commission.defaultPct), effectiveFrom: "", reason: "" })}>
+                    Change
+                  </button>
+                )}
               </div>
               {data.commission.scheduled.map((r) => (
                 <p key={r.id} className="text-xs text-text-dim">
                   → {r.pct}% from {dateText(r.effectiveFrom)}{" "}
-                  <button type="button" className={LINK}
-                    onClick={() => action.mutate({ method: "post", url: `/admin/commission-rates/${r.id}/cancel` })}>
-                    cancel
-                  </button>
+                  {canEdit && (
+                    <button type="button" className={LINK}
+                      onClick={() => action.mutate({ method: "post", url: `/admin/commission-rates/${r.id}/cancel` })}>
+                      cancel
+                    </button>
+                  )}
                 </p>
               ))}
             </div>
@@ -399,25 +422,31 @@ export function CoachLevelsScreen() {
                         <span className={c.coachLevelId ? "text-text-primary" : "text-danger"}>
                           {data.levels.find((l) => l.id === c.coachLevelId)?.name ?? "Not placed"}
                         </span>{" "}
-                        <button type="button" className={LINK}
-                          onClick={() => open({ kind: "coachLevel", professionalId: c.id, coachLevelId: c.coachLevelId ?? "", reason: "" })}>
-                          Change
-                        </button>
+                        {canPlaceCoach && (
+                          <button type="button" className={LINK}
+                            onClick={() => open({ kind: "coachLevel", professionalId: c.id, coachLevelId: c.coachLevelId ?? "", reason: "" })}>
+                            Change
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-text-primary">{c.commissionPct}%</span>
                         <span className="text-xs text-text-dim"> {c.hasCommissionOverride ? "(own rate)" : "(default)"}</span>{" "}
-                        <button type="button" className={LINK}
-                          onClick={() => open({ kind: "coachCommission", professionalId: c.id, pct: c.hasCommissionOverride ? String(c.commissionPct) : "", effectiveFrom: "", reason: "" })}>
-                          Change
-                        </button>
+                        {canEdit && (
+                          <button type="button" className={LINK}
+                            onClick={() => open({ kind: "coachCommission", professionalId: c.id, pct: c.hasCommissionOverride ? String(c.commissionPct) : "", effectiveFrom: "", reason: "" })}>
+                            Change
+                          </button>
+                        )}
                         {c.scheduledCommission.map((r) => (
                           <p key={r.id} className="text-xs text-text-dim">
                             → {r.pct === null ? "default" : `${r.pct}%`} from {dateText(r.effectiveFrom)}{" "}
-                            <button type="button" className={LINK}
-                              onClick={() => action.mutate({ method: "post", url: `/admin/commission-rates/${r.id}/cancel` })}>
-                              cancel
-                            </button>
+                            {canEdit && (
+                              <button type="button" className={LINK}
+                                onClick={() => action.mutate({ method: "post", url: `/admin/commission-rates/${r.id}/cancel` })}>
+                                cancel
+                              </button>
+                            )}
                           </p>
                         ))}
                       </td>
