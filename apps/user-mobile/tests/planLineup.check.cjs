@@ -11,7 +11,7 @@ const src = fs.readFileSync(path.join(__dirname, "..", "src", "lib", "planLineup
 const out = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019 } }).outputText;
 const m = { exports: {} };
 new Function("module", "exports", "require", out)(m, m.exports, require);
-const { comparisonColumns, isFreePlan, hasLaunchOffer } = m.exports;
+const { comparisonColumns, isFreePlan, hasLaunchOffer, freePlanNeverEnds } = m.exports;
 
 const results = [];
 let failures = 0;
@@ -52,6 +52,21 @@ t("L3 launch offer only while a higher price is scheduled", () => {
   assert.strictEqual(hasLaunchOffer({ ...prime, upcomingPrice: { priceCents: 19900, effectiveFrom: "2027-01-01" } }), false);
   assert.strictEqual(hasLaunchOffer({ ...prime, upcomingPrice: null }), false);
   assert.strictEqual(hasLaunchOffer(prime), false);
+});
+
+t("L4 the free plan never ends, whatever older data says", () => {
+  const base = { plan: basic, priceCents: 0, status: "active", renewsAt: "2026-11-09T00:00:00Z", cancelAtPeriodEnd: true, displayState: "expiring" };
+  const s = freePlanNeverEnds(base);
+  assert.strictEqual(s.renewsAt, null);
+  assert.strictEqual(s.cancelAtPeriodEnd, false);
+  assert.strictEqual(s.displayState, "active");
+  assert.strictEqual(s.status, "active");
+  assert.strictEqual(freePlanNeverEnds({ ...base, status: "expired", displayState: "expired" }).status, "active");
+  assert.strictEqual(freePlanNeverEnds({ ...base, status: "revoked", displayState: "revoked" }).status, "revoked");
+  const paid = { ...base, plan: prime, priceCents: 29900 };
+  assert.deepStrictEqual(freePlanNeverEnds(paid), paid);
+  const promo = { ...base, plan: basic, priceCents: 29900 };
+  assert.strictEqual(freePlanNeverEnds(promo).cancelAtPeriodEnd, true);
 });
 
 console.log(results.join("\n"));

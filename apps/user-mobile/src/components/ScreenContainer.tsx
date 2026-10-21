@@ -5,7 +5,8 @@ import type { Edge } from "react-native-safe-area-context";
 import { colors, layout, spacing, typography, themed } from "../theme/tokens";
 
 interface ScreenContainerProps {
-  title: string;
+  /** Omit when the screen draws its own header (Body Measurements, Figma 06b). */
+  title?: string;
   /** Optional muted line under the title (e.g. a date or greeting subtitle). */
   subtitle?: string;
   /** Optional small accent label above the title (Figma brand eyebrow). */
@@ -24,14 +25,16 @@ interface ScreenContainerProps {
 export function ScreenContainer({ title, subtitle, eyebrow, right, children, scroll = true, refreshControl, edges = ["top"] }: ScreenContainerProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={edges}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {title || subtitle || eyebrow || right ? (
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+            {title ? <Text style={styles.title}>{title}</Text> : null}
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </View>
+          {right}
         </View>
-        {right}
-      </View>
+      ) : null}
       {scroll ? (
         // contentContainerStyle carries the max-width/centered column + padding.
         <ScrollView

@@ -46,7 +46,7 @@ export type ProgressStackParamList = {
   LogMeasurement: undefined;
   MeasurementHistory: undefined;
   // Figma 06b measure-05: two logged dates side by side.
-  MeasurementCompare: undefined;
+  MeasurementCompare: { fromId?: string; toId?: string } | undefined;
   StreakTracker: undefined;
   ProgressPhotos: undefined;
   // U5 (15 Sep 2026) — the required "Daily / weekly Check-In" screen, see

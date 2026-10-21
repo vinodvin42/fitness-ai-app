@@ -11,10 +11,14 @@ interface BottomSheetProps {
   children: React.ReactNode;
   /** Show a close "x" icon (Figma AI 04) instead of the "Close" text link. */
   closeIcon?: boolean;
+  /** Figma sheets (06b measure-03/06): 24 px title, 16 px between blocks, 20 px sides. */
+  titleSize?: number;
+  gap?: number;
+  paddingX?: number;
 }
 
 /** Modal bottom sheet with a tap-to-dismiss backdrop (no drag gesture). */
-export function BottomSheet({ visible, onClose, title, children, closeIcon }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, title, children, closeIcon, titleSize, gap, paddingX }: BottomSheetProps) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: colors.overlay }}>
@@ -34,8 +38,11 @@ export function BottomSheet({ visible, onClose, title, children, closeIcon }: Bo
           <View
             style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, marginTop: spacing.sm }}
           />
-          <View style={{ flexDirection: "row", alignItems: "center", padding: spacing.md }}>
-            <Text accessibilityRole="header" style={{ flex: 1, color: colors.textPrimary, ...typography.h2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: spacing.md, paddingHorizontal: paddingX ?? spacing.md }}>
+            <Text
+              accessibilityRole="header"
+              style={{ flex: 1, color: colors.textPrimary, ...typography.h2, ...(titleSize ? { fontSize: titleSize, lineHeight: titleSize + 6 } : null) }}
+            >
               {title}
             </Text>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
@@ -46,7 +53,7 @@ export function BottomSheet({ visible, onClose, title, children, closeIcon }: Bo
               )}
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.lg, gap: spacing.sm }}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: paddingX ?? spacing.md, paddingBottom: spacing.lg, gap: gap ?? spacing.sm }}>
             {children}
           </ScrollView>
         </SafeAreaView>

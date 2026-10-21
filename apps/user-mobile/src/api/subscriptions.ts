@@ -1,5 +1,6 @@
 import type { SubscribeInput, SubscriptionDetail, SubscriptionPlan } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
+import { freePlanNeverEnds } from "../lib/planLineup";
 
 export function fetchPlans() {
   return apiClient.get<{ items: SubscriptionPlan[] }>("/subscription-plans").then((r) => r.data.items);
@@ -8,7 +9,7 @@ export function fetchPlans() {
 export function fetchCurrentSubscription() {
   return apiClient
     .get<{ subscription: SubscriptionDetail | null }>("/subscriptions/me")
-    .then((r) => r.data.subscription);
+    .then((r) => (r.data.subscription ? freePlanNeverEnds(r.data.subscription) : null));
 }
 
 export function fetchSubscriptionHistory() {

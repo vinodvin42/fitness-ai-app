@@ -4,55 +4,63 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { BodyMeasurement } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { BottomSheet } from "../../components/BottomSheet";
 import { Button } from "../../components/Button";
+import { IconButton } from "../../components/IconButton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { SkeletonCard } from "../../components/Skeleton";
+import { FigmaArt, MeasureHeader, MiniSegment, PillChip, measureSvg } from "../../components/MeasureUi";
 import { fetchMeasurements } from "../../api/progress";
-import { COMPARE_ROWS, MEASUREMENT_PARTS, rowMean } from "../../lib/measurementParts";
+import { COMPARE_ROWS, MEASUREMENT_PARTS, changeArrow, defaultComparePair, measureDate, rowMean, tapeCount, trimLen } from "../../lib/measurementParts";
 import { useMeasureUnits } from "../../lib/measureUnits";
-import { colors, fonts, radius, spacing, themed, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "MeasurementCompare">;
 
-const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-const dayMonth = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+const INSET = 8;
 
 /**
- * Compare dates (Figma 06b measure-05): every tape measurement from two logged
- * entries side by side, with the change. Defaults to your first and latest
- * entries; "Change dates" picks any two. Parts missing from either entry show
- * "—" and no change.
+ * Compare dates (Figma 06b measure-05): two logged checks side by side, the
+ * body outline for each date, and every tape measurement with its change.
+ * Opens on the dates the Body Measurements chip showed (or the latest full
+ * check and the one about four weeks before it); "Change dates" picks any
+ * two. Front/Back filters the rows. Rows with nothing on either date are left
+ * out; a part missing on one date shows "—" and no change.
  */
-export function MeasurementCompareScreen({ navigation }: Props) {
+export function MeasurementCompareScreen({ navigation, route }: Props) {
   const units = useMeasureUnits();
   const { colors: theme } = useTheme();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["progress", "measurements"], queryFn: fetchMeasurements });
-  const entries = [...(data ?? [])].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
-  const [fromId, setFromId] = useState<string | null>(null);
-  const [toId, setToId] = useState<string | null>(null);
+  const entries = [...(data ?? [])].filter((m) => tapeCount(m) > 0).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+  const [fromId, setFromId] = useState<string | null>(route.params?.fromId ?? null);
+  const [toId, setToId] = useState<string | null>(route.params?.toId ?? null);
   const [picking, setPicking] = useState<"from" | "to" | null>(null);
+  const [view, setView] = useState<"front" | "back">("front");
 
-  const from = entries.find((e) => e.id === fromId) ?? entries[0];
-  const to = entries.find((e) => e.id === toId) ?? entries[entries.length - 1];
+  const fallback = defaultComparePair(entries);
+  const from = entries.find((e) => e.id === fromId) ?? fallback?.from;
+  const to = entries.find((e) => e.id === toId) ?? fallback?.to;
 
   const cell = (m: BodyMeasurement, keys: readonly (keyof typeof MEASUREMENT_PARTS)[]) => {
     const vals = keys.map((k) => m[MEASUREMENT_PARTS[k].field]);
     if (vals.every((v) => v == null)) return "—";
-    return vals.map((v) => (v == null ? "—" : String(units.len(v)))).join(" / ");
+    return vals.map((v) => (v == null ? "—" : trimLen(units.len(v)))).join(" / ");
   };
 
   return (
-    <ScreenContainer
-      title="Compare dates"
-      subtitle={from && to ? `${longDate(from.loggedAt)} vs ${longDate(to.loggedAt)}` : undefined}
-    >
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer>
+      <View style={{ paddingHorizontal: INSET, paddingTop: 12 }}>
+        <MeasureHeader
+          title="Compare dates"
+          subtitle={from && to ? `${measureDate(from.loggedAt, "day")} vs ${measureDate(to.loggedAt, "day")}` : null}
+          onBack={() => navigation.goBack()}
+          right={<IconButton icon="plus" accessibilityLabel="Log new measurements" onPress={() => navigation.navigate("LogMeasurement")} size={32} iconSize={16} />}
+        />
+      </View>
       {isLoading ? (
         <SkeletonCard lines={6} />
       ) : isError ? (
@@ -61,64 +69,79 @@ export function MeasurementCompareScreen({ navigation }: Props) {
         <EmptyState
           title="Log measurements twice to compare"
           subtitle="Compare shows how each part changed between two logged dates."
-          actionLabel="Log New Measurements"
+          actionLabel="Log new measurements"
           onAction={() => navigation.navigate("LogMeasurement")}
         />
       ) : (
-        <>
-          <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-            <Pressable
-              onPress={() => setPicking("from")}
-              accessibilityRole="button"
-              accessibilityLabel="Change dates"
-              style={{ borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 7 }}
-            >
-              <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Change dates</Text>
-            </Pressable>
+        <View style={{ marginTop: -16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingHorizontal: INSET, paddingTop: 4, paddingBottom: 8 }}>
+            <MiniSegment
+              options={[
+                { value: "front", label: "Front" },
+                { value: "back", label: "Back" },
+              ]}
+              value={view}
+              onChange={setView}
+            />
+            <PillChip label="Change dates" onPress={() => setPicking("from")} />
           </View>
 
-          <View style={{ borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
-            <View style={[rowStyle, { backgroundColor: colors.surfaceRaised }]}>
-              <Text style={[headStyle, { flex: 1.3 }]}>Part</Text>
-              <Text style={[headStyle, { flex: 1 }]}>{dayMonth(from.loggedAt)}</Text>
-              <Text style={[headStyle, { flex: 1 }]}>{dayMonth(to.loggedAt)}</Text>
-              <Text style={[headStyle, { width: 56, textAlign: "right" }]}>Change</Text>
+          <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: INSET, paddingTop: 4, paddingBottom: 8 }}>
+            {[from, to].map((m, i) => (
+              <View key={m.id} style={{ flex: 1, alignItems: "center", gap: 6, paddingVertical: 10, borderRadius: 14, backgroundColor: colors.surface }}>
+                <Text style={{ color: i === 0 ? colors.textSecondary : colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+                  {measureDate(m.loggedAt, "day")}
+                </Text>
+                <FigmaArt svg={measureSvg(view === "front" ? "bodyPlain" : "bodyBack")} width={72} height={133.2} />
+              </View>
+            ))}
+          </View>
+
+          <View style={{ paddingHorizontal: INSET, paddingTop: 2 }}>
+            <View style={{ borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: "hidden" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surfaceRaised }}>
+                <Text style={[head, { width: 96 }]}>Part</Text>
+                <Text style={[head, { width: 82 }]}>{measureDate(from.loggedAt, "dm")}</Text>
+                <Text style={[head, { width: 82 }]}>{measureDate(to.loggedAt, "dm")}</Text>
+                <Text style={[head, { flex: 1, textAlign: "right" }]}>Change</Text>
+              </View>
+              {COMPARE_ROWS.filter((r) => r.view === "both" || r.view === view)
+                .filter((r) => rowMean(from, r.keys) != null || rowMean(to, r.keys) != null)
+                .map((r) => {
+                  const a = rowMean(from, r.keys);
+                  const b = rowMean(to, r.keys);
+                  const change = a != null && b != null ? changeArrow(Math.round((units.len(b) - units.len(a)) * 10) / 10) : "";
+                  return (
+                    <View
+                      key={r.label}
+                      accessible
+                      accessibilityLabel={`${r.label}: ${cell(from, r.keys)} then ${cell(to, r.keys)} ${units.lenUnit}${change ? `, change ${change === "—" ? "none" : change}` : ""}`}
+                      style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: colors.border }}
+                    >
+                      <Text style={{ width: 96, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13 }}>{r.label}</Text>
+                      <Text style={{ width: 82, color: colors.textSecondary, fontFamily: fonts.body, fontSize: 13 }}>{cell(from, r.keys)}</Text>
+                      <Text style={{ width: 82, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{cell(to, r.keys)}</Text>
+                      <Text style={{ flex: 1, textAlign: "right", color: colors.textPrimary, fontFamily: fonts.body, fontSize: 13 }}>{change}</Text>
+                    </View>
+                  );
+                })}
             </View>
-            {COMPARE_ROWS.filter((r) => rowMean(from, r.keys) != null || rowMean(to, r.keys) != null).map((r) => {
-              const a = rowMean(from, r.keys);
-              const b = rowMean(to, r.keys);
-              const d = a != null && b != null ? Math.round((units.len(b) - units.len(a)) * 10) / 10 : null;
-              const change = d == null ? "" : d === 0 ? "—" : `${d < 0 ? "↓" : "↑"}${Math.abs(d).toFixed(1)}`;
-              return (
-                <View
-                  key={r.label}
-                  accessible
-                  accessibilityLabel={`${r.label}: ${cell(from, r.keys)} then ${cell(to, r.keys)} ${units.lenUnit}${change ? `, change ${change}` : ""}`}
-                  style={[rowStyle, { borderTopWidth: 1, borderTopColor: colors.border }]}
-                >
-                  <Text style={{ flex: 1.3, color: colors.textPrimary, fontSize: 14 }}>{r.label}</Text>
-                  <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}>{cell(from, r.keys)}</Text>
-                  <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 }}>{cell(to, r.keys)}</Text>
-                  <Text style={{ width: 56, textAlign: "right", color: colors.textSecondary, fontSize: 14 }}>{change}</Text>
-                </View>
-              );
-            })}
           </View>
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>
-            In {units.lenUnit}. L/R pairs show left / right; the change uses their average.
-          </Text>
 
-          <Pressable onPress={() => navigation.navigate("ProgressPhotos")} accessibilityRole="button" hitSlop={6}>
-            <Text style={{ color: theme.accentText, ...typography.label, fontSize: 14 }}>Add progress photos</Text>
-          </Pressable>
-        </>
+          <View style={{ paddingHorizontal: INSET, paddingTop: 12, paddingBottom: 24, gap: 2 }}>
+            <Pressable onPress={() => navigation.navigate("ProgressPhotos")} accessibilityRole="button" hitSlop={6} style={{ alignSelf: "flex-start" }}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Add progress photos</Text>
+            </Pressable>
+            <Text style={{ color: colors.textSecondary, fontFamily: fonts.body, fontSize: 12 }}>Photos stay private to you.</Text>
+          </View>
+        </View>
       )}
 
       <BottomSheet visible={picking !== null} onClose={() => setPicking(null)} title="Change dates">
         <SegmentedControl
           options={[
-            { value: "from", label: from ? `From · ${dayMonth(from.loggedAt)}` : "From" },
-            { value: "to", label: to ? `To · ${dayMonth(to.loggedAt)}` : "To" },
+            { value: "from", label: from ? `From · ${measureDate(from.loggedAt, "dm")}` : "From" },
+            { value: "to", label: to ? `To · ${measureDate(to.loggedAt, "dm")}` : "To" },
           ]}
           value={picking ?? "from"}
           onChange={setPicking}
@@ -145,10 +168,8 @@ export function MeasurementCompareScreen({ navigation }: Props) {
                 opacity: disabled ? 0.4 : 1,
               }}
             >
-              <Text style={{ color: colors.textPrimary, fontSize: 14 }}>{longDate(e.loggedAt)}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                {COMPARE_ROWS.filter((r) => rowMean(e, r.keys) != null).length} parts
-              </Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 14 }}>{measureDate(e.loggedAt, "day")}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{tapeCount(e)} parts</Text>
             </Pressable>
           );
         })}
@@ -158,5 +179,5 @@ export function MeasurementCompareScreen({ navigation }: Props) {
   );
 }
 
-const rowStyle = { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.md, paddingVertical: 10 } as const;
-const headStyle = themed(() => ({ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13 } as const));
+// themed(): rebuilt when the theme changes, like the rest of the app's static styles.
+const head = themed(() => ({ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 12 }) as const);
