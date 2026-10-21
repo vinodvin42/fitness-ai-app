@@ -7,7 +7,8 @@ import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
 /**
- * The four Fynrox programs (content/fynroxPrograms.ts) on My plan: who each
+ * The four Fynrox programs (content/fynroxPrograms.ts) on My plan and the
+ * Workouts > Programs tab: who each
  * is for, its goal, its length and its price (incl. GST). Programs are
  * bought separately, not part of any plan; there is no buy button until a
  * purchase flow is agreed.

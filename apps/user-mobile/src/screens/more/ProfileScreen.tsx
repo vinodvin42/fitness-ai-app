@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { NavigationProp } from "@react-navigation/native";
 import type { SubscriptionDetail } from "@fitness-ai-app/types";
 import { MyAvatar } from "../../components/MyAvatar";
-import { ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
+import { ProfilePhotoButtons, ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
 import { Icon, IconName } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
@@ -177,6 +177,14 @@ export function ProfileScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.navigate("EditProfile")} accessibilityRole="button" accessibilityLabel="View profile" hitSlop={8}>
             <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>View Profile</Text>
           </Pressable>
+        </View>
+        <View style={{ marginTop: 6 }}>
+          <ProfilePhotoButtons
+            hasPhoto={!!photo.data}
+            busy={photoActions.busy}
+            onChoose={photoActions.choose}
+            onRemove={photoActions.remove}
+          />
         </View>
       </View>
 

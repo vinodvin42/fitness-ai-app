@@ -24,7 +24,7 @@ import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
 import { clearOwnedDraft, draftOwner, readOwnedDraft, writeOwnedDraft } from "../../lib/ownedDrafts";
 import { exitTaskToHome } from "../../navigation/taskExits";
-import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
+import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
 
@@ -70,10 +70,11 @@ function defaultMealType(): MealType {
  * (Fuel 08). Sections: search (your recent foods, saved meals and recipes —
  * there is no public food catalog) with a barcode shortcut, Take Photo,
  * Recent Foods (distinct foods from the user's own meal logs), My Saved Meals
- * (the user's own SavedMeal rows), and Manual Macro Entry whose "Quick Log"
- * posts a meal with calories derived 4/4/9. Exact name/calories entry (and
- * the barcode prefill and AI describe-a-meal estimate) stay available under
- * "Add name or exact calories" / the search results. A failed save keeps the
+ * (the user's own SavedMeal rows). The always-on "Enter protein, carbs and
+ * fat / Quick Log" panel was removed (owner, 21 Oct 2026): a name-and-calories
+ * form appears only for a barcode result (its macros shown, calories worked
+ * out 4/4/9 unless typed), "Enter it manually" from search, or a draft that
+ * didn't save. A failed save keeps the
  * draft on-device and offers Retry (which first checks today's log so a save
  * that actually succeeded is never duplicated) and Edit draft.
  */
@@ -201,7 +202,9 @@ export function LogMealScreen({ route, navigation }: Props) {
   const typedCalories = calories.trim().length > 0 ? toInt(calories) : null;
   const finalCalories = typedCalories ?? macroCalories;
   const finalName = name.trim() || "Quick log";
-  const canSubmit = finalCalories > 0 && (showDetails ? name.trim().length > 0 || typedCalories === null : true);
+  const canSubmit = showDetails && finalCalories > 0 && name.trim().length > 0;
+  // A barcode result (or a restored draft) carries macros; manual entry is name and calories only.
+  const hasMacros = [protein, carbs, fat].some((v) => v.trim().length > 0);
 
   const buildInput = (): LogMealInput => ({
     mealType,
@@ -425,24 +428,6 @@ export function LogMealScreen({ route, navigation }: Props) {
   // ---------------------------------------------------------------------
   // Fuel 02 — Log Food
   // ---------------------------------------------------------------------
-  const macroInput = (label: string, value: string, set: (v: string) => void) => (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceRaised, borderRadius: radius.sm, paddingVertical: spacing.sm, alignItems: "center" }}>
-      <Text style={{ color: colors.textMuted, ...typography.caption }}>{label}</Text>
-      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "center" }}>
-        <TextInput
-          value={value}
-          onChangeText={(t) => set(t.replace(/[^0-9]/g, "").slice(0, 4))}
-          placeholder="0"
-          placeholderTextColor={colors.textPrimary}
-          keyboardType="number-pad"
-          accessibilityLabel={`${label} grams`}
-          style={{ color: colors.textPrimary, fontSize: 20, fontFamily: fonts.displayBold, width: 46, textAlign: "right", padding: 0 }}
-        />
-        <Text style={{ color: colors.textPrimary, fontSize: 20, fontFamily: fonts.displayBold }}>g</Text>
-      </View>
-    </View>
-  );
-
   const sectionTitle = (t: string) => (
     <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16, marginTop: spacing.xs }}>{t}</Text>
   );
@@ -573,7 +558,7 @@ export function LogMealScreen({ route, navigation }: Props) {
           <TakeRow
             icon="pencil"
             title="Enter it manually"
-            subtitle="Type the name, protein, carbs and fat yourself"
+            subtitle="Type the name and calories yourself"
             onPress={() => {
               setName(query.trim());
               setShowDetails(true);
@@ -651,99 +636,73 @@ export function LogMealScreen({ route, navigation }: Props) {
         </>
       )}
 
-      <View
-        style={{
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: radius.md,
-          padding: spacing.md,
-          gap: spacing.md,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Enter protein, carbs and fat</Text>
-          <Pressable
-            onPress={() => onSubmit(false)}
-            disabled={!canSubmit || isSubmitting}
-            accessibilityRole="button"
-            accessibilityLabel="Quick Log"
-            hitSlop={8}
-          >
-            <Text style={{ color: theme.accentText, ...typography.label, opacity: canSubmit && !isSubmitting ? 1 : 0.5 }}>
-              {isSubmitting ? "Logging…" : "Quick Log"}
-            </Text>
-          </Pressable>
-        </View>
-        {scannedLabel ? <Text style={{ color: theme.accentText, ...typography.caption }}>{scannedLabel}</Text> : null}
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          {macroInput("Carbs", carbs, setCarbs)}
-          {macroInput("Protein", protein, setProtein)}
-          {macroInput("Fat", fat, setFat)}
-        </View>
-        <Text style={{ color: colors.textMuted, ...typography.meta }}>
-          {typedCalories === null
-            ? `Calories are worked out from the protein, carbs and fat you typed: ${macroCalories} kcal.`
-            : `Using your exact ${typedCalories} kcal.`}
-        </Text>
-
-        <Pressable
-          onPress={() => setShowDetails((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showDetails }}
-          accessibilityLabel="Add name or exact calories"
+      {/* Owner, 21 Oct 2026: no manual protein/carbs/fat entry. This form appears only for a barcode
+          result, "Enter it manually" from search, or a draft that didn't save. */}
+      {showDetails ? (
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.md,
+            padding: spacing.md,
+            gap: spacing.md,
+          }}
         >
-          <Text style={{ color: theme.accentText, ...typography.label }}>
-            {showDetails ? "Hide name and exact calories" : "Add name or exact calories"}
-          </Text>
-        </Pressable>
-        {showDetails ? (
-          <View style={{ gap: spacing.sm }}>
-            <TextInput
-              style={styles.input}
-              placeholder="What did you eat?"
-              placeholderTextColor={colors.textMuted}
-              value={name}
-              onChangeText={setName}
-              maxLength={120}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Calories (optional — we work it out for you)"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              value={calories}
-              onChangeText={(t) => setCalories(t.replace(/[^0-9]/g, "").slice(0, 5))}
-            />
-            <Pressable
-              onPress={() => setSaveForLater((v) => !v)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: saveForLater }}
-              accessibilityLabel="Save to My Saved Meals"
-              style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
-            >
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 5,
-                  borderWidth: 1.5,
-                  borderColor: saveForLater ? theme.accent : colors.borderStrong,
-                  backgroundColor: saveForLater ? theme.accent : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {saveForLater ? <Icon name="check" size={13} color={theme.textOnAccent} strokeWidth={3} /> : null}
-              </View>
-              <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>Save to My Saved Meals</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{scannedLabel ? "Scanned food" : "Enter it manually"}</Text>
+            <Pressable onPress={clearForm} disabled={isSubmitting} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={8}>
+              <Text style={{ color: colors.textSecondary, ...typography.label }}>Cancel</Text>
             </Pressable>
           </View>
-        ) : null}
-        {showDetails ? (
+          {scannedLabel ? <Text style={{ color: theme.accentText, ...typography.caption }}>{scannedLabel}</Text> : null}
+          {hasMacros ? (
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>
+              Protein {toInt(protein)} g · Carbs {toInt(carbs)} g · Fat {toInt(fat)} g
+            </Text>
+          ) : null}
+          <TextInput
+            style={styles.input}
+            placeholder="What did you eat?"
+            placeholderTextColor={colors.textMuted}
+            value={name}
+            onChangeText={setName}
+            maxLength={120}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={hasMacros ? `Calories (optional, ${macroCalories} kcal from the scan)` : "Calories"}
+            placeholderTextColor={colors.textMuted}
+            keyboardType="number-pad"
+            value={calories}
+            onChangeText={(t) => setCalories(t.replace(/[^0-9]/g, "").slice(0, 5))}
+          />
+          <Pressable
+            onPress={() => setSaveForLater((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: saveForLater }}
+            accessibilityLabel="Save to My Saved Meals"
+            style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 5,
+                borderWidth: 1.5,
+                borderColor: saveForLater ? theme.accent : colors.borderStrong,
+                backgroundColor: saveForLater ? theme.accent : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {saveForLater ? <Icon name="check" size={13} color={theme.textOnAccent} strokeWidth={3} /> : null}
+            </View>
+            <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>Save to My Saved Meals</Text>
+          </Pressable>
           <Button label="Log Meal" onPress={() => onSubmit(false)} loading={isSubmitting} disabled={!canSubmit} />
-        ) : null}
-      </View>
+        </View>
+      ) : null}
     </ScreenContainer>
   );
 }

@@ -11,6 +11,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MealType } from "@fitness-ai-app/types";
 import { BRAND_NAME } from "../../lib/brand";
 import { MyAvatar } from "../../components/MyAvatar";
+import { useRecoverProfilePhoto } from "../../lib/profilePhoto";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
@@ -106,6 +107,7 @@ export function TodayScreen({ navigation }: Props) {
   const { colors: theme } = useTheme();
   const queryClient = useQueryClient();
   const net = useNetInfo();
+  useRecoverProfilePhoto();
   const isOffline = net.isConnected === false;
   const [retrying, setRetrying] = useState(false);
 
@@ -407,7 +409,14 @@ export function TodayScreen({ navigation }: Props) {
 
         {/* Header: avatar, greeting, round search + bell */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <MyAvatar name={fullName} size={40} />
+          <Pressable
+            onPress={() => navigation.navigate("More", { screen: "Profile", initial: false })}
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+            hitSlop={4}
+          >
+            <MyAvatar name={fullName} size={40} />
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 20 }} numberOfLines={1}>

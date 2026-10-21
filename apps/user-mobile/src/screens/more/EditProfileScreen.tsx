@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
 import { MyAvatar } from "../../components/MyAvatar";
-import { ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
+import { ProfilePhotoButtons, ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { toDobString, validateDobParts } from "../../components/AboutYouParts";
@@ -183,11 +183,12 @@ export function EditProfileScreen({ navigation }: Props) {
         >
           <MyAvatar name={fullName || user?.fullName} size={84} busy={photoActions.busy} />
         </Pressable>
-        <Pressable onPress={() => setPhotoSheet(true)} disabled={photoActions.busy} accessibilityRole="button" hitSlop={8}>
-          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-            {photo.data ? "Change photo" : "Add photo"}
-          </Text>
-        </Pressable>
+        <ProfilePhotoButtons
+          hasPhoto={!!photo.data}
+          busy={photoActions.busy}
+          onChoose={photoActions.choose}
+          onRemove={photoActions.remove}
+        />
       </View>
       <ProfilePhotoSheet
         visible={photoSheet}

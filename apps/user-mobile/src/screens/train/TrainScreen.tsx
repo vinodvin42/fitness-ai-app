@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EquipmentContext, WorkoutPhase } from "@fitness-ai-app/types";
-import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
@@ -225,7 +225,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
         <TabPill label="History" selected={false} onPress={() => navigation.navigate("WorkoutHistory")} />
       </View>
 
-      {tab === "programs" ? <ProgramsCatalog navigation={navigation as unknown as NativeStackNavigationProp<TrainStackParamList>} /> : null}
+      {tab === "programs" ? <ProgramsCatalog /> : null}
 
       {/* The Classes tab is not shown (classes don't exist yet); this state is
           kept only so the feature can be switched back on in one place. */}

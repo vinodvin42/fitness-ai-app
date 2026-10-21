@@ -9,7 +9,9 @@ import { SearchBar } from "../../components/SearchBar";
 import { ListRow } from "../../components/ListRow";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon, IconName } from "../../components/Icon";
-import { fetchExercises, fetchPrograms, fetchRecipes, fetchTrendingWorkout } from "../../api/programs";
+import { fetchExercises, fetchRecipes, fetchTrendingWorkout } from "../../api/programs";
+import { FYNROX_PROGRAMS } from "../../content/fynroxPrograms";
+import { formatRupees } from "../../lib/money";
 import { discoverCoaches } from "../../api/coaching";
 import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -42,7 +44,6 @@ function capitalise(s: string): string {
 export function SearchScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
-  const programs = useQuery({ queryKey: ["programs"], queryFn: fetchPrograms });
   const exercises = useQuery({ queryKey: ["exercises"], queryFn: fetchExercises });
   const recipes = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes });
   const trending = useQuery({ queryKey: ["trending", "workout"], queryFn: fetchTrendingWorkout, staleTime: 5 * 60_000 });
@@ -83,14 +84,15 @@ export function SearchScreen({ navigation }: Props) {
   const results = useMemo(() => {
     if (q.length < 2) return null;
     return {
-      programs: (programs.data ?? []).filter((p) => matches(q, p.name, p.description)).slice(0, MAX_PER_GROUP),
+      // Owner, 21 Oct 2026: only the four Fynrox programs are listed (see train/ProgramsMarketplaceScreen.tsx).
+      programs: FYNROX_PROGRAMS.filter((p) => matches(q, p.name, p.goal, p.forWhom)).slice(0, MAX_PER_GROUP),
       exercises: (exercises.data ?? [])
         .filter((e) => matches(q, e.name, e.muscleGroup, e.equipment))
         .slice(0, MAX_PER_GROUP),
       recipes: (recipes.data ?? []).filter((r) => matches(q, r.name, ...r.tags)).slice(0, MAX_PER_GROUP),
       pros: (pros.data?.items ?? []).slice(0, MAX_PER_GROUP),
     };
-  }, [q, programs.data, exercises.data, recipes.data, pros.data]);
+  }, [q, exercises.data, recipes.data, pros.data]);
 
   const total = results ? results.programs.length + results.exercises.length + results.recipes.length + results.pros.length : 0;
   const parent = navigation.getParent();
@@ -219,14 +221,13 @@ export function SearchScreen({ navigation }: Props) {
             <Group title="Programs">
               {results.programs.map((p) => (
                 <ListRow
-                  key={p.id}
-                  icon="trophy"
-                  imageUrl={p.imageUrl}
+                  key={p.key}
+                  icon={p.icon}
                   title={p.name}
-                  subtitle={`${p.durationWeeks} weeks`}
+                  subtitle={`${p.duration} · ${formatRupees(p.priceCents)} incl. GST`}
                   onPress={() => {
                     remember(q);
-                    parent?.navigate("Train", { screen: "ProgramDetail", params: { programId: p.id }, initial: false });
+                    parent?.navigate("Train", { screen: "ProgramsMarketplace", initial: false });
                   }}
                 />
               ))}
