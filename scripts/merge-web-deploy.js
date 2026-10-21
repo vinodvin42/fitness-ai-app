@@ -318,6 +318,7 @@ fs.writeFileSync(
       mimeTypes: {
         ".svg": "image/svg+xml",
         ".webmanifest": "application/manifest+json",
+        ".xml": "application/xml",
       },
     },
     null,
