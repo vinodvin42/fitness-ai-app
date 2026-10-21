@@ -166,7 +166,7 @@ export const en = {
     team: {
       title: "My coaches",
       emptyTitle: "No coaches yet",
-      emptySubtitle: "Book a session with a coach and they'll show up here.",
+      emptySubtitle: "Ask for a coach and they'll show up here once they accept.",
       findCoach: "Find a coach",
       bookSession: "Book session",
       message: "Message",
@@ -323,7 +323,7 @@ export const en = {
   },
 
   lock: {
-    subtitle: "Unlock with Face ID or Touch ID to continue.",
+    subtitle: "Unlock with your fingerprint or face to continue.",
     unlock: "Unlock",
     logOut: "Log Out",
   },

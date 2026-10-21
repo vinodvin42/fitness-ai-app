@@ -180,6 +180,7 @@ export function RemindersRoutinesScreen({ navigation }: Props) {
           onPress={addReminder}
           accessibilityRole="button"
           accessibilityLabel="Add reminder"
+          hitSlop={6}
           style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceHigh, alignItems: "center", justifyContent: "center" }}
         >
           <Icon name="plus" size={17} color={colors.textPrimary} />

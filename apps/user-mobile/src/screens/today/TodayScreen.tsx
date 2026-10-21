@@ -335,7 +335,7 @@ export function TodayScreen({ navigation }: Props) {
     const parts: string[] = [];
     if (score != null) parts.push(`Your recovery score is ${score}/100 today.`);
     if (nextWorkout?.workout) parts.push(`${nextWorkout.workout.name} fits your plan.`);
-    if (parts.length > 0) parts.push(`Aim for your ${DAILY_TARGETS.proteinG}g protein target.`);
+    if (parts.length > 0) parts.push(`A general guide is ${DAILY_TARGETS.proteinG} g of protein a day.`);
     return parts.length > 0 ? parts.join(" ") : `Ask ${BRAND_NAME} AI for training, nutrition, or recovery guidance grounded in your real progress.`;
   }, [score, nextWorkout?.workout]);
 

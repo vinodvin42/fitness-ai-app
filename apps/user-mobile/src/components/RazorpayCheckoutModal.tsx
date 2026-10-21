@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
-import { Modal, StyleSheet, View } from "react-native";
+import React, { useMemo, useRef } from "react";
+import { Linking, Modal, StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import type { RazorpayOrder, VerifyRazorpayPaymentInput } from "@fitness-ai-app/types";
 import { colors, themed } from "../theme/tokens";
+import { externalPaymentUrl } from "../lib/paymentLinks";
 
 interface Props {
   order: RazorpayOrder | null;
@@ -10,6 +11,12 @@ interface Props {
   preferredMethod?: "upi" | "card" | "netbanking";
   onSuccess: (result: VerifyRazorpayPaymentInput) => void;
   onDismiss: () => void;
+  /**
+   * Razorpay declined at least one attempt and the member then closed the sheet
+   * (21 Oct 2026). The sheet stays open after a decline so Razorpay's own retry
+   * shows; without this prop a closed sheet is just a dismiss.
+   */
+  onFailed?: (reason: string | null) => void;
 }
 
 /**
@@ -32,8 +39,17 @@ interface Props {
  * flag on top of the order state. See src/lib/useRazorpayPurchase.ts for
  * the hook that manages this component's props end to end.
  */
-export function RazorpayCheckoutModal({ order, preferredMethod, onSuccess, onDismiss }: Props) {
+export function RazorpayCheckoutModal({ order, preferredMethod, onSuccess, onDismiss, onFailed }: Props) {
   const html = useMemo(() => (order ? buildCheckoutHtml(order, preferredMethod) : ""), [order, preferredMethod]);
+  // The last decline Razorpay reported for this sheet ("" when it gave no reason); null if none.
+  const lastFailure = useRef<string | null>(null);
+
+  const close = () => {
+    const failure = lastFailure.current;
+    lastFailure.current = null;
+    if (failure !== null && onFailed) onFailed(failure || null);
+    else onDismiss();
+  };
 
   if (!order) return null;
 
@@ -46,22 +62,34 @@ export function RazorpayCheckoutModal({ order, preferredMethod, onSuccess, onDis
           razorpayPaymentId: data.razorpayPaymentId,
           razorpaySignature: data.razorpaySignature,
         });
+      } else if (data.type === "failed") {
+        // Razorpay keeps its sheet open after a decline so the member can retry
+        // there; remember why, and report it only if they then close the sheet.
+        lastFailure.current = typeof data.reason === "string" ? data.reason : "";
       } else {
-        // "dismiss" (user closed the checkout sheet) and "failed" (Razorpay
-        // itself reported a failed payment) both just close this modal —
-        // there's no partial/pending state to show, the user can simply
-        // retry from the screen that opened this.
-        onDismiss();
+        close();
       }
     } catch {
-      onDismiss();
+      close();
     }
   };
 
   return (
-    <Modal visible animationType="slide" onRequestClose={onDismiss} presentationStyle="pageSheet">
+    <Modal visible animationType="slide" onRequestClose={close} presentationStyle="pageSheet">
       <View style={styles.container}>
-        <WebView originWhitelist={["*"]} source={{ html }} onMessage={onMessage} style={styles.webview} />
+        <WebView
+          originWhitelist={["*"]}
+          source={{ html }}
+          onMessage={onMessage}
+          // UPI apps (upi://, intent://) open outside the WebView (lib/paymentLinks.ts).
+          onShouldStartLoadWithRequest={(request) => {
+            const external = externalPaymentUrl(request.url);
+            if (!external) return true;
+            Linking.openURL(external).catch(() => undefined);
+            return false;
+          }}
+          style={styles.webview}
+        />
       </View>
     </Modal>
   );
@@ -103,8 +131,11 @@ function buildCheckoutHtml(order: RazorpayOrder, preferredMethod?: "upi" | "card
     },
   };
   var rzp = new Razorpay(options);
-  rzp.on("payment.failed", function () {
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: "failed" }));
+  rzp.on("payment.failed", function (response) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: "failed",
+      reason: response && response.error ? response.error.description : null,
+    }));
   });
   rzp.open();
 </script>

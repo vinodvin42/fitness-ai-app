@@ -172,7 +172,7 @@ export async function reviewSubmission(professionalId: string, id: string, coach
     kind: "coach",
     title: "Your form check was reviewed",
     body: exName ? `Your coach left feedback on your ${exName} clip.` : "Your coach left feedback on your form clip.",
-    deepLink: "primefit://train/form-analysis",
+    deepLink: "fynrox://train/form-analysis",
   });
   return toSubmission(updated, false, exName);
 }

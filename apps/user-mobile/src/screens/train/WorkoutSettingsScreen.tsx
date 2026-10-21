@@ -77,7 +77,6 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
   const toggles: Array<{ key: ToggleKey; label: string; help: string }> = [
     { key: "autoStartRest", label: "Rest timer auto-start", help: "Start rest period instantly" },
     { key: "audioCoaching", label: "Audio coaching", help: "Voice instructions for exercises" },
-    { key: "autoDeloadWeek", label: "Auto-deload week", help: "Reduce strain every 6 weeks" },
   ];
 
   const cardStyle = { gap: spacing.sm, paddingVertical: spacing.md - 2 } as const;
@@ -273,8 +272,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
 
           <Text style={{ color: colors.textMuted, ...typography.meta }}>
             Rest length, units, equipment and training days are used across the app. Audio coaching reads out each new exercise
-            in a workout and each kilometre of an outdoor run. Auto-deload is saved to your account; automatic deload weeks are not
-            available yet.
+            in a workout and each kilometre of an outdoor run.
           </Text>
         </>
       )}

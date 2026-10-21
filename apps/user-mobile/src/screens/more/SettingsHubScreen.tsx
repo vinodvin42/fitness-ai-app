@@ -5,12 +5,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Pill } from "../../components/Pill";
 import { useAuth } from "../../context/AuthContext";
-import { fetchDevices } from "../../api/devices";
 import { fetchCurrentSubscription } from "../../api/subscriptions";
 import { updateWorkoutSettings, useWorkoutSettings, WORKOUT_SETTINGS_KEY } from "../../api/workoutSettings";
 import { BRAND_NAME } from "../../lib/brand";
 import { languageLabel } from "../../lib/languages";
-import { HR_SYNC_KEY, LARGER_TEXT_KEY, useLocalFlag } from "../../lib/localSettings";
+import { LARGER_TEXT_KEY, useLocalFlag } from "../../lib/localSettings";
+import { useTheme } from "../../theme/ThemeProvider";
 import { resolveUnits } from "../../lib/measureUnits";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -48,12 +48,9 @@ export function SettingsHubScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const workout = useWorkoutSettings();
   const plan = useQuery({ queryKey: ["subscriptions", "current"], queryFn: fetchCurrentSubscription });
-  const devices = useQuery({ queryKey: ["devices"], queryFn: fetchDevices });
   const [largerText, setLargerText] = useLocalFlag(LARGER_TEXT_KEY, true);
   const suggestions = useDailyReviewStore();
-  const [hrSync, setHrSync] = useLocalFlag(HR_SYNC_KEY, false);
-
-  const hasDevice = (devices.data ?? []).length > 0;
+  const { mode } = useTheme();
   const planName = plan.data?.plan.name;
 
   const setWorkout = async (patch: { countdownSound?: boolean; keepScreenAwake?: boolean; audioCoaching?: boolean }) => {
@@ -108,7 +105,7 @@ export function SettingsHubScreen({ navigation }: Props) {
           value={largerText}
           onValueChange={setLargerText}
         />
-        <SettingRow icon="moon" title="Appearance" value="Dark" onPress={() => navigation.navigate("Appearance")} />
+        <SettingRow icon="moon" title="Appearance" value={mode === "system" ? "Same as phone" : mode === "light" ? "Light" : "Dark"} onPress={() => navigation.navigate("Appearance")} />
       </RowGroup>
 
       <GroupHeader>General Preferences</GroupHeader>
@@ -152,14 +149,6 @@ export function SettingsHubScreen({ navigation }: Props) {
 
       <GroupHeader>Workout & Tracking</GroupHeader>
       <RowGroup>
-        <ToggleRow
-          icon="heart-pulse"
-          title="Real-time HR Sync"
-          subtitle={hasDevice ? "Use your connected device's heart rate in workouts" : "Connect a device to turn this on"}
-          value={hasDevice && hrSync}
-          disabled={!hasDevice}
-          onValueChange={setHrSync}
-        />
         <ToggleRow
           icon="mic"
           title="Audio cues"

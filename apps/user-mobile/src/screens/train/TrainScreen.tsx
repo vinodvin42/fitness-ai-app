@@ -6,6 +6,8 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-n
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
 import { Icon, IconName } from "../../components/Icon";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { fetchTrendingWorkout, fetchWorkoutDetail } from "../../api/programs";
@@ -128,7 +130,8 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
   const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
   const myPrograms = useQuery({ queryKey: ["programs", "mine"], queryFn: fetchMyPrograms });
-  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, staleTime: 60_000 });
+  // Gym partners are hidden for now (lib/partnerPrograms.ts).
+  const partner = useQuery({ queryKey: PARTNER_KEY, queryFn: fetchPartner, staleTime: 60_000, enabled: PARTNER_PROGRAMS_ENABLED });
   const trending = useQuery({ queryKey: ["trending", "workout"], queryFn: fetchTrendingWorkout, staleTime: 5 * 60_000 });
 
   const todayWorkout = nextWorkout.data?.workout ?? null;
@@ -278,6 +281,8 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
 
           {nextWorkout.isLoading ? (
             <ActivityIndicator color={colors.accent} />
+          ) : nextWorkout.isError ? (
+            <ErrorState message="Couldn't load today's workout." onRetry={() => nextWorkout.refetch()} />
           ) : todayWorkout ? (
             <>
               <View
@@ -351,7 +356,7 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
             />
           )}
 
-          {partner.data ? (
+          {PARTNER_PROGRAMS_ENABLED && partner.data ? (
             <Pressable
               onPress={() => navigation.navigate("GymWorkout")}
               accessibilityRole="button"
@@ -418,7 +423,9 @@ export function TrainScreen({ navigation, initialTab = "today" }: Props) {
           </View>
 
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>Active Programs</Text>
-          {activePrograms.length === 0 ? (
+          {myPrograms.isError ? (
+            <ErrorState message="Couldn't load your programs." onRetry={() => myPrograms.refetch()} />
+          ) : activePrograms.length === 0 ? (
             <Text style={{ color: colors.textMuted, ...typography.meta }}>
               {myPrograms.isLoading ? "Loading…" : "No active programs yet. Start one from the Programs tab."}
             </Text>

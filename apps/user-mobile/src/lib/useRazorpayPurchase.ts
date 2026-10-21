@@ -122,6 +122,14 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
   );
 
   const onCheckoutDismiss = useCallback(() => setOrder(null), []);
+  // Razorpay declined and the member closed the sheet (21 Oct 2026): not charged.
+  const onCheckoutFailed = useCallback(
+    (reason: string | null) => {
+      setOrder(null);
+      reportError("Payment didn't go through", reason || "Your payment didn't go through.");
+    },
+    [reportError],
+  );
 
   return {
     order,
@@ -129,5 +137,6 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
     isPurchasing: isCreatingOrder || isVerifying,
     onCheckoutSuccess,
     onCheckoutDismiss,
+    onCheckoutFailed,
   };
 }

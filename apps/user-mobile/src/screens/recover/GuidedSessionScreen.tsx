@@ -12,6 +12,7 @@ import { extractErrorMessage } from "../../lib/apiError";
 import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { colors, fonts, layout, spacing, typography } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import { exitTaskToHome } from "../../navigation/taskExits";
 import { ActionButton, PracticeArt, ProgressBar, RecoverShell } from "./parts";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "GuidedSession">;
@@ -164,7 +165,8 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
             onPress={() => logger.mutate({ seconds: run.elapsed, type: routine.logType, note: routine.title })}
           />
         ) : null}
-        <ActionButton label="Done" onPress={() => navigation.navigate("YogaLibrary")} />
+        {/* Back to where the session was opened from, never on top of the finished session. */}
+        <ActionButton label="Done" onPress={() => (navigation.canGoBack() ? navigation.goBack() : exitTaskToHome(navigation, "RecoverHub"))} />
       </RecoverShell>
     );
   }
@@ -221,6 +223,7 @@ export function GuidedSessionScreen({ navigation, route }: Props) {
               onPress={() => (run.elapsed > 0 ? setConfirmEnd(true) : navigation.goBack())}
               accessibilityRole="button"
               accessibilityLabel="Back"
+              hitSlop={6}
               style={{
                 width: 34,
                 height: 34,

@@ -175,6 +175,7 @@ export function FuelScreen({ navigation }: Props) {
             <MacroBar label="Fat" value={totals.fatG} target={DAILY_TARGETS.fatG} color={colors.aiAccent} />
           </View>
         </View>
+        <Text style={{ color: colors.textMuted, ...typography.meta }}>General daily targets for now, not yet personalised to you.</Text>
 
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <QuickLink icon="search" label="Log food" onPress={() => navigation.navigate("LogMeal", { mealType: defaultMealType() })} />

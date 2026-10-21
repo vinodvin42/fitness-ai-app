@@ -197,8 +197,10 @@ export function CheckoutScreen({ route, navigation }: Props) {
 
       <RazorpayCheckoutModal
         order={purchase.order}
+        preferredMethod={method}
         onSuccess={purchase.onCheckoutSuccess}
         onDismiss={purchase.onCheckoutDismiss}
+        onFailed={purchase.onCheckoutFailed}
       />
     </ScreenContainer>
   );

@@ -226,7 +226,12 @@ export function ProgressPhotosScreen({ navigation }: Props) {
 
       {viewing ? (
         <Card style={{ gap: spacing.sm }}>
-          <Image source={{ uri: viewing.imageData }} style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }} />
+          <Image
+            source={{ uri: viewing.imageData }}
+            style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: radius.card }}
+            accessible
+            accessibilityLabel="Progress photo"
+          />
           <Text style={{ color: colors.textSecondary }}>
             {new Date(viewing.takenAt).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
             {wtLabel(viewing) ? ` · ${wtLabel(viewing)}` : ""}

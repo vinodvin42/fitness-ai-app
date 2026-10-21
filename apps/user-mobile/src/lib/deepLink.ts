@@ -26,7 +26,9 @@ export function openNotificationDeepLink(
       return true;
     case "train":
     case "workouts":
-      navigation.navigate("Train");
+      // "train/form-analysis": a coach reviewed a form-check clip.
+      if (second === "form-analysis") navigation.navigate("Train", { screen: "FormAnalysis", initial: false });
+      else navigation.navigate("Train");
       return true;
     case "fuel":
     case "nutrition":
@@ -63,11 +65,17 @@ export function openNotificationDeepLink(
     case "coaching":
     case "messages":
     case "coach":
+    case "coach-messages":
       navigation.navigate("More", { screen: "Conversations", initial: false });
       return true;
     case "billing":
     case "subscription":
       navigation.navigate("More", { screen: "Subscription", initial: false });
+      return true;
+    case "payments":
+    case "purchases":
+      // "Payment received" notices.
+      navigation.navigate("More", { screen: "Purchases", initial: false });
       return true;
     case "settings":
       navigation.navigate("More", { screen: "SettingsHub", initial: false });

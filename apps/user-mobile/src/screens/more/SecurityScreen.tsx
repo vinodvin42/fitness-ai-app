@@ -239,7 +239,7 @@ export function SecurityScreen({ navigation, route }: Props) {
     if (!deletePassword) return;
     confirmAction(
       "Delete your account?",
-      "This permanently deletes your profile, workout history, meal logs, measurements, purchases, and reminders. This can't be undone.",
+      "This permanently deletes your profile, workout history, meal logs, measurements, purchases, and reminders, and ends any paid plan. This can't be undone.",
       "Delete Account",
       async () => {
         setIsDeleting(true);
@@ -382,7 +382,12 @@ export function SecurityScreen({ navigation, route }: Props) {
               Scan this with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.
             </Text>
             <View style={styles.qrWrapper}>
-              <Image source={{ uri: twoFactorSetupData.qrCodeDataUrl }} style={styles.qrImage} />
+              <Image
+                source={{ uri: twoFactorSetupData.qrCodeDataUrl }}
+                style={styles.qrImage}
+                accessible
+                accessibilityLabel="QR code to scan with your authenticator app"
+              />
             </View>
             <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.xs }}>Can't scan it? Enter this code manually:</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>

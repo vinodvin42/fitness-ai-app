@@ -20,7 +20,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "What is Fynrox?",
     order: 1,
     body:
-      "Fynrox brings your training, food, recovery and professional support into one app. The bottom tabs are Today (your day at a glance), Train (programs, routines and workouts), Fuel (meals and nutrition), Recover (sleep, devices and guided sessions) and More (profile, settings and support).",
+      "Fynrox brings your training, food, recovery and professional support into one app. The bottom tabs are Today (your day at a glance), Workouts (programs, routines and workouts), Food (meals and nutrition), Recovery (sleep, devices and guided sessions) and More (profile, settings and support).",
   },
   {
     slug: "set-up-your-plan",
@@ -54,7 +54,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Starting and logging a workout",
     order: 1,
     body:
-      "Open Train, pick a program, routine or workout, and tap Start. Log each set with the weight and reps as you go, use the rest timer between sets, and tap Finish when you are done. Finished sessions appear in your progress and history.",
+      "Open Workouts, pick a program, routine or workout, and tap Start. Log each set with the weight and reps as you go, use the rest timer between sets, and tap Finish when you are done. Finished sessions appear in your progress and history.",
   },
   {
     slug: "swap-an-exercise",
@@ -70,7 +70,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Setting workout reminders",
     order: 3,
     body:
-      "Under Train > Reminders & Routines you can save reminders for workouts, water and medicines. They are stored on your device and sent as local notifications, so they do not sync between phones.",
+      "Under Workouts > Reminders & Routines you can save reminders for workouts, water and medicines. They are stored on your device and sent as local notifications, so they do not sync between phones.",
   },
   {
     slug: "track-an-activity",
@@ -78,7 +78,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Tracking a run, walk or ride",
     order: 4,
     body:
-      "Use the Activity Tracker in Train to record outdoor activities with your phone's location. Distance, pace and duration are saved with the activity. Location is only used while you are tracking, and only if you allow it.",
+      "Use the Activity Tracker in Workouts to record outdoor activities with your phone's location. Distance, pace and duration are saved with the activity. Location is only used while you are tracking, and only if you allow it.",
   },
 
   // ---- Nutrition ----
@@ -88,7 +88,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Logging a meal",
     order: 1,
     body:
-      "Open Fuel and tap Log food. You can search foods, scan a barcode, snap a photo for an estimate, reuse a saved meal or pick a recent food. Photo estimates are approximate - check the numbers before you confirm.",
+      "Open Food and tap Log food. You can search foods, scan a barcode, snap a photo for an estimate, reuse a saved meal or pick a recent food. Photo estimates are approximate - check the numbers before you confirm.",
   },
   {
     slug: "calorie-and-macro-targets",
@@ -104,7 +104,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Meal plans and recipes",
     order: 3,
     body:
-      "Fuel has recipes you can open for ingredients and steps, and a meal plan you can follow day by day. Your food preferences from onboarding shape what is suggested.",
+      "Food has recipes you can open for ingredients and steps, and a meal plan you can follow day by day. Your food preferences from onboarding shape what is suggested.",
   },
   {
     slug: "log-water",
@@ -112,7 +112,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Logging water",
     order: 4,
     body:
-      "Use the Water Intake card in Fuel to add glasses through the day. You can also turn on hydration reminders in Settings > Notifications.",
+      "Use the Water Intake card in Food to add glasses through the day. You can also turn on hydration reminders in Settings > Notifications.",
   },
 
   // ---- Billing ----
@@ -122,7 +122,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Plans and pricing",
     order: 1,
     body:
-      "Fynrox has Basic (free), Grow and Prime plans, billed monthly, every 3 months or yearly. Open More > Subscription to compare what each includes and to subscribe or change plan. Prices are shown in rupees before you pay.",
+      "Fynrox has a free Basic plan and a paid Prime plan, billed monthly. Open More > Subscription to compare what each includes and to subscribe, renew or change plan. Prices are shown in rupees, including GST, before you pay. Programs are bought separately.",
   },
   {
     slug: "cancel-a-subscription",
@@ -146,7 +146,7 @@ export const seedHelpArticles: SeedHelpArticle[] = [
     title: "Buying a program",
     order: 4,
     body:
-      "Some programs in Train are sold individually. Open the program, review the details and tap the purchase button. Purchased programs appear under My Programs in Train.",
+      "Some programs in Workouts are sold individually. Open the program, review the details and tap the purchase button. Purchased programs appear under My Programs in Train.",
   },
 
   // ---- Professionals & refunds ----

@@ -325,7 +325,7 @@ export function NutritionCalendarScreen(_props: Props) {
           </View>
         </View>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>
-          Perfect = within 10% of your {DAILY_TARGETS.calories.toLocaleString()} kcal target; close = within 20%. {balance.daysWithLogs} logged{" "}
+          Perfect = within 10% of the general {DAILY_TARGETS.calories.toLocaleString()} kcal daily target; close = within 20%. {balance.daysWithLogs} logged{" "}
           {balance.daysWithLogs === 1 ? "day" : "days"} this month.
         </Text>
       </View>

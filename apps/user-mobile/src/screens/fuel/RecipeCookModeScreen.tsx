@@ -157,8 +157,8 @@ export function RecipeCookModeScreen({ route, navigation }: Props) {
               <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 0.6 }}>PROTEIN TODAY</Text>
               <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 15 }}>
                 {proteinLeft > 0
-                  ? `Logging this covers ${covers} g of the ${proteinLeft} g left of today's ${DAILY_TARGETS.proteinG} g target.`
-                  : `You've already reached today's ${DAILY_TARGETS.proteinG} g protein target.`}
+                  ? `Logging this covers ${covers} g of the ${proteinLeft} g left of the general ${DAILY_TARGETS.proteinG} g daily target.`
+                  : `You've already reached the general ${DAILY_TARGETS.proteinG} g daily protein target.`}
               </Text>
               {proteinLeft > 0 ? (
                 <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceHigh, overflow: "hidden" }}>

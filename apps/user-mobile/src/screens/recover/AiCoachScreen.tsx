@@ -40,6 +40,7 @@ import { draftOwner } from "../../lib/ownedDrafts";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
+import { exitTaskToHome } from "../../navigation/taskExits";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 
 type Props = NativeStackScreenProps<RecoverStackParamList, "AiCoach">;
@@ -321,6 +322,8 @@ export function AiCoachScreen({ navigation }: Props) {
       queryClient.invalidateQueries({ queryKey: ["ai-coach", "usage"] });
       setSettingsOpen(false);
       setConfirmClear(false);
+    } catch {
+      Alert.alert("Couldn't delete the conversation", "Check your connection and try again.");
     } finally {
       setClearing(false);
     }
@@ -349,7 +352,15 @@ export function AiCoachScreen({ navigation }: Props) {
   if (!isConfigured) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: "row", alignItems: "center", gap: spacing.sm }]}>
+          <Pressable
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : exitTaskToHome(navigation, "RecoverHub"))}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+          >
+            <Icon name="chevron-left" size={24} color={colors.textPrimary} />
+          </Pressable>
           <Text style={styles.headerTitle}>Fynrox AI</Text>
         </View>
         <View style={{ padding: spacing.md }}>
@@ -457,12 +468,23 @@ export function AiCoachScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={[styles.header, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
-        <View>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.headerTitle}>Fynrox AI</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          {/* 21 Oct 2026: a way out when the chat was opened straight from a link or another tab. */}
+          <Pressable
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : exitTaskToHome(navigation, "RecoverHub"))}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+          >
+            <Icon name="chevron-left" size={24} color={colors.textPrimary} />
+          </Pressable>
+          <View>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.headerTitle}>Fynrox AI</Text>
+            </View>
+            <Text style={styles.headerSubtitle}>Online · Instant Answers</Text>
           </View>
-          <Text style={styles.headerSubtitle}>Online · Instant Answers</Text>
         </View>
         <Pressable
           onPress={() => {
