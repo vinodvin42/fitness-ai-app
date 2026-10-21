@@ -1506,6 +1506,8 @@ model BodyMeasurement {
   bicepRightCm   Float?
   forearmLeftCm  Float?
   forearmRightCm Float?
+  /// Upper back (Figma 06b measure-02 back view), tape just below the shoulder blades. 21 Oct 2026.
+  upperBackCm    Float?
   thighLeftCm    Float?
   thighRightCm   Float?
   calfLeftCm     Float?

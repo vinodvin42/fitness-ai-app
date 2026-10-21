@@ -23,6 +23,8 @@ export const logMeasurementSchema = z
     bicepRightCm: z.number().positive().max(100).optional(),
     forearmLeftCm: z.number().positive().max(100).optional(),
     forearmRightCm: z.number().positive().max(100).optional(),
+    // Upper back (Figma 06b back view), 21 Oct 2026.
+    upperBackCm: z.number().positive().max(250).optional(),
     thighLeftCm: z.number().positive().max(200).optional(),
     thighRightCm: z.number().positive().max(200).optional(),
     calfLeftCm: z.number().positive().max(100).optional(),

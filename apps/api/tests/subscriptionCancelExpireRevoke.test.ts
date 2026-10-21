@@ -25,7 +25,8 @@ describe("Subscription cancel-at-period-end, lazy expiry, and admin force-revoke
         id: `test-plan-${suffix}`,
         tier: "grow",
         name: "Gap 57 Test Plan",
-        priceCents: 0,
+        // A paid plan: the free plan can't be cancelled and never expires (owner, 21 Oct 2026; basicNeverEnds.test.ts).
+        priceCents: 29900,
         billingCycle: "monthly",
         isActive: true,
       },

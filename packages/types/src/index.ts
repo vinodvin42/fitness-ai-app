@@ -1094,6 +1094,7 @@ export interface BodyMeasurement {
   bicepRightCm: number | null;
   forearmLeftCm: number | null;
   forearmRightCm: number | null;
+  upperBackCm: number | null;
   thighLeftCm: number | null;
   thighRightCm: number | null;
   calfLeftCm: number | null;
@@ -1119,6 +1120,7 @@ export interface LogMeasurementInput {
   bicepRightCm?: number;
   forearmLeftCm?: number;
   forearmRightCm?: number;
+  upperBackCm?: number;
   thighLeftCm?: number;
   thighRightCm?: number;
   calfLeftCm?: number;

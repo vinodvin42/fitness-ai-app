@@ -73,7 +73,7 @@ export async function getCurrentSubscription(userId: string) {
     orderBy: { createdAt: "desc" },
   });
   if (!current) return null;
-  return maybeExpireLapsed(current as SubscriptionWithPlan);
+  return maybeExpireLapsed(await settleFreePlan(current as SubscriptionWithPlan));
 }
 
 /**
@@ -101,7 +101,7 @@ export async function getSubscriptionForDisplay(userId: string) {
     orderBy: { createdAt: "desc" },
   });
   if (!latest || latest.status === "canceled") return null;
-  const settled = await maybeExpireLapsed(latest as SubscriptionWithPlan);
+  const settled = await maybeExpireLapsed(await settleFreePlan(latest as SubscriptionWithPlan));
   return { ...settled, displayState: deriveDisplayState(settled) };
 }
 
@@ -215,6 +215,40 @@ function isPaidSubscription(s: { priceCents?: number | null; plan?: { priceCents
   return (s.plan?.priceCents ?? 0) > 0 || (s.priceCents ?? 0) > 0;
 }
 
+/**
+ * Owner, 21 Oct 2026: "basic plan never expire". The free plan has no end
+ * date and can't be set to cancel. Rows from before that (Basic joined with a
+ * monthly `renewsAt`, set to cancel at period end, or already lapsed to
+ * `expired` through such a cancel; the free plan has no other way to expire)
+ * are put back to a plain, never-ending Basic when read. Admin actions
+ * (revoked, suspended) are left as they are.
+ */
+async function settleFreePlan(subscription: SubscriptionWithPlan): Promise<SubscriptionWithPlan> {
+  if (isPaidSubscription(subscription)) return subscription;
+  const lapsed = subscription.status === "expired";
+  if (!subscription.cancelAtPeriodEnd && subscription.renewsAt == null && !lapsed) return subscription;
+
+  const settled = await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: { cancelAtPeriodEnd: false, renewsAt: null, ...(lapsed ? { status: "active" as const } : {}) },
+    include: { plan: true },
+  });
+  if (subscription.cancelAtPeriodEnd || lapsed) {
+    await recordAudit({
+      actorId: subscription.userId,
+      action: "subscription.free_plan_restored",
+      entityType: "Subscription",
+      entityId: subscription.id,
+      metadata: {
+        previousStatus: subscription.status,
+        wasSetToCancel: subscription.cancelAtPeriodEnd,
+        previousRenewsAt: subscription.renewsAt,
+      },
+    });
+  }
+  return settled as SubscriptionWithPlan;
+}
+
 async function maybeExpireLapsed(subscription: SubscriptionWithPlan): Promise<SubscriptionWithPlan> {
   // 20 Oct 2026 (owner): payments are one-time, with no autopay, so a paid plan
   // ends when the period paid for ends unless the member renews it — not only
@@ -324,7 +358,8 @@ export async function subscribe(
       userId,
       planId: plan.id,
       status: "active",
-      renewsAt: renewalDateFor(plan.billingCycle),
+      // The free plan never ends (owner, 21 Oct 2026), so it has no end date.
+      renewsAt: plan.priceCents > 0 ? renewalDateFor(plan.billingCycle) : null,
       priceCents: opts.paidPriceCents ?? plan.priceCents,
     },
     include: { plan: true },
@@ -376,6 +411,9 @@ export async function cancelSubscription(userId: string) {
   const existing = await getCurrentSubscription(userId);
   if (!existing) {
     throw new ApiHttpError(404, "no_active_subscription", "No active subscription to cancel");
+  }
+  if (!isPaidSubscription(existing)) {
+    throw new ApiHttpError(409, "free_plan_never_ends", `${existing.plan.name} is free and never ends, so there is nothing to cancel`);
   }
   if (existing.cancelAtPeriodEnd) {
     throw new ApiHttpError(
