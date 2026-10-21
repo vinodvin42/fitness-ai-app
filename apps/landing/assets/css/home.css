@@ -2809,3 +2809,26 @@ body:has(.cookie-bar) .site-foot {
     font-size: 16px;
   }
 }
+
+/* Social profiles in the footer. */
+.site-foot__social {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  list-style: none;
+}
+
+.site-foot__social a {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-dark);
+  border-radius: 50%;
+  color: var(--surface);
+}
+
+.site-foot__social a:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}

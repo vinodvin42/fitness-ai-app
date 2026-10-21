@@ -2522,3 +2522,28 @@ button {
 .band-dark .btn--primary:hover {
   background: #8ADCB9;
 }
+
+/* Social profiles in the footer. */
+.footer__social {
+  display: flex;
+  gap: 10px;
+  margin-top: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.footer__social-link {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-primary);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.footer__social-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
