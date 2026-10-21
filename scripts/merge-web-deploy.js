@@ -78,8 +78,8 @@ const appDistDir = path.resolve(repoRoot, appDistArg);
 // 20 Oct 2026, owner's decision: the gym and creator (influencer) programmes
 // are hidden until they launch. While this is false the two partner portals
 // are not mounted even though the workflow still builds them, and the
-// partner pages and invite/referral links answer 404. Flip to true to bring
-// them all back.
+// partner pages and invite/referral links redirect to the homepage (21 Oct
+// 2026, owner: "do not show not found"). Flip to true to bring them all back.
 const PARTNER_PROGRAMMES_LIVE = false;
 const PARTNER_MOUNTS = new Set(["portal/gym", "portal/creator"]);
 const PARTNER_PATHS = [
@@ -195,6 +195,11 @@ fs.mkdirSync(outputDir, { recursive: true });
 //    own staticwebapp.config.json, which this script replaces below with
 //    one that also knows about /app/.
 const landingSkip = new Set(["package.json", "serve.js", "README.md", "staticwebapp.config.json", "node_modules"]);
+// While the partner programmes are hidden their pages are not deployed at
+// all, so nothing about them can be read even if a redirect rule were missed.
+if (!PARTNER_PROGRAMMES_LIVE) {
+  for (const page of ["gyms.html", "creators.html", "gym-invite.html", "referral.html"]) landingSkip.add(page);
+}
 for (const entry of fs.readdirSync(landingDir)) {
   if (landingSkip.has(entry)) continue;
   copyRecursive(path.join(landingDir, entry), path.join(outputDir, entry));
@@ -287,16 +292,16 @@ fs.writeFileSync(
         // the same rewrites apps/landing/staticwebapp.config.json declares,
         // which this generated config replaces. Without them those links
         // fell through to the homepage. While the partner programmes are
-        // hidden (see PARTNER_PROGRAMMES_LIVE), these and the partner
-        // pages answer 404 instead.
-        // Status code only: Azure rejects a rule that has both a rewrite and
-        // a statusCode. The 404 page itself comes from responseOverrides.
+        // hidden (see PARTNER_PROGRAMMES_LIVE), these, the partner pages and
+        // the portal paths redirect to the homepage instead. 302, not 301:
+        // the redirect is temporary, so browsers and search engines must not
+        // remember it once the programmes launch.
         ...(PARTNER_PROGRAMMES_LIVE
           ? [
               { route: "/gym/*", rewrite: "/gym-invite.html" },
               { route: "/r/*", rewrite: "/referral.html" },
             ]
-          : PARTNER_PATHS.map((route) => ({ route, statusCode: 404 }))),
+          : PARTNER_PATHS.map((route) => ({ route, redirect: "/", statusCode: 302 }))),
       ],
       // 20 Oct 2026: no navigationFallback. It rewrote every unknown URL to
       // the homepage with a 200, so 404.html was never shown and search
