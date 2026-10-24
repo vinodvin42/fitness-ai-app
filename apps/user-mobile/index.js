@@ -15,7 +15,16 @@
 // hoisted to. See package.json's "main" field, which points here instead
 // of "expo/AppEntry".
 import { registerRootComponent } from "expo";
+import { Platform } from "react-native";
+import { registerWidgetTaskHandler } from "react-native-android-widget";
 
 import App from "./App";
+import { widgetTaskHandler } from "./src/widget/widgetTaskHandler";
 
 registerRootComponent(App);
+
+// The Android home-screen widget (Figma widgets/02) is drawn by a headless task, so its handler is registered at
+// start-up next to the app.
+if (Platform.OS === "android") {
+  registerWidgetTaskHandler(widgetTaskHandler);
+}

@@ -17,6 +17,8 @@ import { useToast } from "../../components/Toast";
 import { connectHealthProvider, fetchHealthConnections, revokeHealthConnection } from "../../api/healthConnections";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROVIDER_LABEL } from "../../lib/format";
+import { HEALTH_CONNECT_RECORD_LABEL, openHealthConnectInstall, openHealthConnectSettings } from "../../lib/healthConnect";
+import { useHealthConnect } from "../../lib/useHealthConnect";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -50,10 +52,80 @@ function providerDefs(): ProviderDef[] {
 }
 
 /**
- * Settings 08 - Health Connect. Honest scope: this build has no HealthKit /
- * Health Connect SDK, so "Connect" only records the user's consent and the
- * data types they allow (POST /health-connections); "Revoke" withdraws it
- * (DELETE). Readings are imported only when a device syncs.
+ * Android's Health Connect card: the real connection (lib/useHealthConnect).
+ * Health Connect's own sheet picks the data types, so there's no scope sheet.
+ */
+function HealthConnectCard() {
+  const toast = useToast();
+  const hc = useHealthConnect();
+  const failed = (fallback: string) => (err: unknown) => toast.show(extractErrorMessage(err, fallback), "error");
+  const blurb =
+    hc.status === undefined
+      ? "Checking Health Connect…"
+      : hc.status === "available"
+        ? hc.connected
+          ? `Reading: ${hc.granted.map((r) => HEALTH_CONNECT_RECORD_LABEL[r]).join(", ")}`
+          : "Android and Wear OS data: steps, sleep, heart rate, blood oxygen, weight"
+        : hc.status === "update_required"
+          ? "Install or update Health Connect from the Play Store first"
+          : "Health Connect isn't available on this phone";
+  const confirmDisconnect = () =>
+    Alert.alert("Disconnect Health Connect?", "Fynrox stops reading new data. Readings already synced stay in your history.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Disconnect", style: "destructive", onPress: () => hc.disconnect.mutate(undefined, { onError: failed("Couldn't disconnect.") }) },
+    ]);
+  return (
+    <Card style={{ gap: spacing.sm }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <Icon name="heart-pulse" size={22} color={hc.connected ? colors.success : colors.textSecondary} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{PROVIDER_LABEL.health_connect}</Text>
+          <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>{blurb}</Text>
+        </View>
+        {hc.connected ? <Pill label="Connected" tone="success" /> : null}
+      </View>
+      {hc.connected ? (
+        <>
+          <Button
+            label="Sync now"
+            loading={hc.sync.isPending}
+            onPress={() =>
+              hc.sync.mutate(undefined, {
+                onSuccess: ({ days }) => toast.show(days > 0 ? `Synced ${days} day${days === 1 ? "" : "s"}` : "Up to date", "success"),
+                onError: failed("Couldn't sync Health Connect."),
+              })
+            }
+          />
+          <Button label="Manage in Health Connect" variant="secondary" onPress={openHealthConnectSettings} />
+          <Button label="Disconnect" variant="secondary" loading={hc.disconnect.isPending} onPress={confirmDisconnect} />
+        </>
+      ) : hc.status === "update_required" ? (
+        <Button label="Get Health Connect" onPress={() => void openHealthConnectInstall()} />
+      ) : hc.status === "available" ? (
+        <Button
+          label="Connect"
+          loading={hc.connect.isPending}
+          onPress={() =>
+            hc.connect.mutate(undefined, {
+              onSuccess: ({ allowed, days }) =>
+                allowed.length === 0
+                  ? toast.show("Health Connect didn't share any data with Fynrox.", "error")
+                  : toast.show(days > 0 ? `Synced ${days} day${days === 1 ? "" : "s"} from Health Connect` : "Connected", "success"),
+              onError: failed("Couldn't connect Health Connect."),
+            })
+          }
+        />
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * Settings 08 - Health Connect. On Android, Health Connect is a real
+ * connection (HealthConnectCard): Fynrox reads it and syncs the readings.
+ * Other sources have no SDK in this build, so "Connect" only records the
+ * user's consent and the data types they allow (POST /health-connections);
+ * "Revoke" withdraws it (DELETE). Their readings arrive only when a device syncs.
  */
 export function HealthConnectScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
@@ -104,9 +176,15 @@ export function HealthConnectScreen({ navigation }: Props) {
       <BackButton onPress={() => navigation.goBack()} />
       <InfoCard
         tone="accent"
-        title="This saves your permission"
-        body="Connecting here saves your permission and the kinds of data you allow. Your readings come in when your device syncs (see Recovery > Connected devices)."
+        title={Platform.OS === "android" ? "Bring in your watch's data" : "This saves your permission"}
+        body={
+          Platform.OS === "android"
+            ? "Health Connect holds what your watch, band, ring or scale records. Connect it and choose what Fynrox may read; Fynrox syncs it when you open the app."
+            : "Connecting here saves your permission and the kinds of data you allow. Reading data from your phone is Android-only (Health Connect); here, readings come in when your device syncs (see Recovery > Connected devices)."
+        }
       />
+
+      {Platform.OS === "android" ? <HealthConnectCard /> : null}
 
       {isLoading ? (
         <SkeletonCard lines={3} />
@@ -117,6 +195,7 @@ export function HealthConnectScreen({ navigation }: Props) {
         // Garmin, Fitbit, Whoop and Oura aren't supported yet, and a list
         // of greyed-out "Coming soon" rows is just clutter.
         providerDefs()
+          .filter((def) => !(Platform.OS === "android" && def.provider === "health_connect"))
           .filter((def) => def.available || byProvider.get(def.provider)?.status === "connected")
           .map((def) => {
             const conn = byProvider.get(def.provider);

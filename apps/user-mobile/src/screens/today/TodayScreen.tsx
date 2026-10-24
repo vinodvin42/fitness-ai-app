@@ -48,6 +48,7 @@ import { activeLightWeek, shortDay } from "../../lib/dailySuggestions";
 import { useOfflineSets } from "../../lib/offlineSets";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
+import { useTodayWidgetSync } from "../../widget/useTodayWidgetSync";
 import { TodayLoadingView, TodayOfflineView } from "./TodayStates";
 import type { MainTabsParamList } from "../../navigation/MainTabs";
 import type { TodayStackParamList } from "../../navigation/TodayStack";
@@ -114,6 +115,8 @@ export function TodayScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const net = useNetInfo();
   useRecoverProfilePhoto();
+  // Keeps the Android home-screen widget (Figma widgets/02) in step with this screen.
+  useTodayWidgetSync();
   const isOffline = net.isConnected === false;
   // Sets logged without a connection and not yet synced (Figma 08, lib/offlineSets.ts).
   const offlineSets = useOfflineSets();

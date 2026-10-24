@@ -203,6 +203,20 @@ describe("Progress endpoints", () => {
     expect(await prisma.bodyMeasurement.count({ where: { userId } })).toBe(before);
   });
 
+  it("Health Connect weight is kept as one device reading per day (24 Oct 2026)", async () => {
+    const pair = await request(app).post("/devices").set("Authorization", auth).send({ provider: "health_connect", name: "Health Connect", kind: "other" });
+    expect(pair.status).toBe(201);
+    deviceIds.push(pair.body.id);
+    const day = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const sync = (weightKg: number) =>
+      request(app).post(`/devices/${pair.body.id}/sync`).set("Authorization", auth).send({ samples: [{ date: day, weightKg }] });
+    expect((await sync(81.2)).status).toBe(200);
+    expect((await sync(80.9)).status).toBe(200);
+    const rows = await prisma.bodyMeasurement.findMany({ where: { userId, source: "device", deviceName: "Health Connect" } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].weightKg).toBe(80.9);
+  });
+
   it("insights: empty for thin data, then plateau + sleep + recovery cards from real logs", async () => {
     // Clean slate for this user's logs, then only 2 weigh-ins and nothing else.
     await prisma.bodyMeasurement.deleteMany({ where: { userId } });

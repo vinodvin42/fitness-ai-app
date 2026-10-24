@@ -150,7 +150,9 @@ export async function syncDevice(userId: string, deviceId: string, input: SyncDe
     };
     const date = dateOnlyUtc(s.date);
     // Smart-scale body readings become a BodyMeasurement (source "device"), one per device per day.
-    if (device.kind === "scale" && (s.weightKg != null || s.bodyFatPercent != null)) {
+    // Health Connect too (24 Oct 2026): it carries the weight from the member's scale or app; the
+    // phone sends that day's latest reading, so one row per day is kept the same way.
+    if ((device.kind === "scale" || device.provider === "health_connect") && (s.weightKg != null || s.bodyFatPercent != null)) {
       const loggedAt = new Date(date.getTime() + 8 * 60 * 60 * 1000);
       const existing = await prisma.bodyMeasurement.findFirst({ where: { userId, source: "device", deviceName: device.name, loggedAt } });
       const reading = {

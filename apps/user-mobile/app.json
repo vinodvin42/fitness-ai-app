@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fynrox",
     "slug": "23primefit-user-mobile",
-    "version": "0.8.4",
+    "version": "0.8.5",
     "orientation": "portrait",
     "scheme": "fynrox",
     "userInterfaceStyle": "automatic",
@@ -27,7 +27,14 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_WEIGHT"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -59,6 +66,35 @@
           "cameraPermission": "Fynrox uses your camera to take a Progress Photo or your profile photo.",
           "photosPermission": "Fynrox uses your photo library so you can upload a Progress Photo or your profile photo.",
           "microphonePermission": false
+        }
+      ],
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34
+          }
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "TodayWidget",
+              "label": "Fynrox Today",
+              "description": "Your next workout, water and protein for today",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
         }
       ]
     ],

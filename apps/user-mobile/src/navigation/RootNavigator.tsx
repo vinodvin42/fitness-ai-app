@@ -10,6 +10,8 @@ import { MainTabs } from "./MainTabs";
 import { LockScreen } from "../screens/lock/LockScreen";
 import { colors, getScheme } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
+import { useClearTodayWidgetWhenSignedOut } from "../widget/todayWidgetUpdate";
+import { useHealthConnectAutoSync } from "../lib/useHealthConnect";
 
 /** Navigation chrome colours for the current theme (rebuilt when the theme changes). */
 function buildNavigationTheme() {
@@ -92,6 +94,9 @@ export function RootNavigator() {
   useEffect(() => {
     flush();
   }, [flush]);
+  useClearTodayWidgetWhenSignedOut(!isLoading && !isAuthenticated);
+  // Android: refresh Health Connect readings on open / foreground once the member connected it.
+  useHealthConnectAutoSync(ready);
 
   if (isLoading) {
     return (

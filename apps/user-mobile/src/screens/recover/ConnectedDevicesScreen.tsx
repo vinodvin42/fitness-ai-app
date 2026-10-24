@@ -9,7 +9,11 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchDevices } from "../../api/devices";
+import { useToast } from "../../components/Toast";
+import { extractErrorMessage } from "../../lib/apiError";
 import { PROVIDER_LABEL, timeAgo } from "../../lib/format";
+import { findHealthConnectDevice } from "../../lib/healthConnect";
+import { useHealthConnect } from "../../lib/useHealthConnect";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { RecoverStackParamList } from "../../navigation/RecoverStack";
 import { CircleButton, RecoverShell, SectionLabel } from "./parts";
@@ -107,8 +111,22 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["devices"], queryFn: fetchDevices });
   const devices = data ?? [];
   const allowed = new Set(devices.flatMap((d) => d.permissions));
+  const toast = useToast();
+  const hc = useHealthConnect();
+  const healthConnectDevice = findHealthConnectDevice(devices);
 
   const openHealthConnect = () => navigation.getParent()?.navigate("More", { screen: "HealthConnect", initial: false });
+  // The Health Connect device syncs for real on Android; other devices open the manual import.
+  const onSync = (d: ConnectedDevice) => {
+    if (hc.android && d.id === healthConnectDevice?.id) {
+      hc.sync.mutate(undefined, {
+        onSuccess: ({ days }) => toast.show(days > 0 ? `Synced ${days} day${days === 1 ? "" : "s"}` : "Up to date", "success"),
+        onError: (err) => toast.show(extractErrorMessage(err, "Couldn't sync Health Connect."), "error"),
+      });
+      return;
+    }
+    navigation.navigate("SyncDashboard", { importDeviceId: d.id });
+  };
 
   return (
     <RecoverShell
@@ -158,7 +176,7 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
           <Pressable key={d.id} onPress={() => navigation.navigate("DevicePairing", { provider: d.provider, kind: d.kind, name: d.name, deviceId: d.id })}
             accessibilityRole="button"
           >
-            <DeviceCard device={d} onSync={() => navigation.navigate("SyncDashboard", { importDeviceId: d.id })} />
+            <DeviceCard device={d} onSync={() => onSync(d)} />
           </Pressable>
         ))
       )}
@@ -201,8 +219,9 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
         </Card>
       ))}
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
-        Connect opens the consent screen. This build has no Bluetooth or HealthKit/Health Connect SDK, so values are
-        recorded when you import them from a device&apos;s sync button.
+        {hc.android
+          ? "Connect opens Health Connect, which brings in what your watch, band or scale records. Other devices' values are recorded when you import them from their sync button."
+          : "Connect opens the consent screen. Reading from Health Connect is Android-only, so here values are recorded when you import them from a device's sync button."}
       </Text>
     </RecoverShell>
   );
