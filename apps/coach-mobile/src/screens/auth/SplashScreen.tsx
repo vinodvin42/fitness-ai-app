@@ -1,14 +1,10 @@
 import React from "react";
-// A product name, identical in every language, from the one constant
-// the spec requires (packages/config/src/brand.ts).
-import { BRAND_NAME } from "@fitness-ai-app/config";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { BrandMark } from "../../components/BrandMark";
+import { AuthLayout } from "../../components/AuthLayout";
 import { Button } from "../../components/Button";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, spacing } from "../../theme/tokens";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Splash">;
@@ -17,33 +13,21 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Splash">;
 export function SplashScreen({ navigation }: Props) {
   const { t } = useTranslation();
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.mark}>
-          <BrandMark size={88} />
-        </View>
-        <Text style={styles.logo}>{`${BRAND_NAME} Coach`}</Text>
-        <Text style={styles.tagline}>{t("auth.splash.tagline")}</Text>
-      </View>
-
+    <AuthLayout showBenefits pinToBottom>
+      <Text style={styles.title}>{t("auth.splash.title")}</Text>
+      <Text style={styles.tagline}>{t("auth.splash.tagline")}</Text>
       <View style={styles.actions}>
         <Button label={t("auth.splash.createAccount")} onPress={() => navigation.navigate("Signup")} />
         <Button label={t("auth.splash.signIn")} variant="secondary" onPress={() => navigation.navigate("Login")} />
       </View>
-    </SafeAreaView>
+      <Text style={styles.note}>{t("auth.layout.reviewNote")}</Text>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, justifyContent: "space-between" },
-  content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.lg },
-  mark: { marginBottom: spacing.md },
-  logo: { ...typography.metricLarge, fontSize: 32, color: colors.textPrimary, textAlign: "center" },
-  tagline: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.sm,
-  },
-  actions: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
+  title: { color: colors.textPrimary, fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -0.6 },
+  tagline: { color: colors.textSecondary, fontSize: 16, lineHeight: 23, marginTop: spacing.sm },
+  actions: { gap: spacing.sm, marginTop: spacing.lg },
+  note: { color: colors.textMuted, fontSize: 13, lineHeight: 19, marginTop: spacing.md, textAlign: "center" },
 });

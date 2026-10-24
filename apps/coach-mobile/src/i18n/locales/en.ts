@@ -32,8 +32,23 @@ export const en = {
   },
 
   auth: {
+    layout: {
+      eyebrow: "For trainers and nutritionists",
+      headline: "Coach with",
+      headlineAccent: "better tools.",
+      benefitMatched: "Client requests matched to you, no bidding",
+      benefitSummary: "A recent summary of each client's logs, with their consent",
+      benefitDecide: "Accept or decline each match within 48 hours",
+      reviewNote: "We review every application before an account goes live.",
+      help: "Questions? Email support@fynrox.com",
+    },
+    show: "Show",
+    hide: "Hide",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     splash: {
-      tagline: "Join as a Professional — connect with clients and grow your practice.",
+      title: "Join as a professional",
+      tagline: "Connect with clients and grow your practice on Fynrox.",
       createAccount: "Create Account",
       signIn: "Sign In",
     },
@@ -43,6 +58,7 @@ export const en = {
       email: "Email",
       password: "Password",
       submit: "Log In",
+      newHere: "New to Fynrox Coach?",
       createAccount: "Create an account",
     },
     signup: {
@@ -54,7 +70,8 @@ export const en = {
       password: "Password (min. 8 characters)",
       confirmPassword: "Confirm password",
       submit: "Create Account",
-      haveAccount: "Already have an account? Log in",
+      haveAccount: "Already have an account?",
+      logIn: "Log in",
     },
   },
 
