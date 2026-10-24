@@ -38,9 +38,6 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <AuthLayout>
-      <Pressable onPress={() => navigation.navigate("Splash")} accessibilityRole="link" style={authStyles.back}>
-        <Text style={authStyles.backText}>{`← ${t("common.back")}`}</Text>
-      </Pressable>
       <Text style={authStyles.title}>{t("auth.login.title")}</Text>
       <Text style={authStyles.subtitle}>{t("auth.login.subtitle")}</Text>
 
@@ -73,6 +70,7 @@ export function LoginScreen({ navigation }: Props) {
           <Text style={authStyles.switchLink}>{t("auth.login.createAccount")}</Text>
         </Pressable>
       </View>
+      <Text style={authStyles.note}>{t("auth.layout.reviewNote")}</Text>
     </AuthLayout>
   );
 }

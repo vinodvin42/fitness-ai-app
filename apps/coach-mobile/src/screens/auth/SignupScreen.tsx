@@ -44,7 +44,7 @@ export function SignupScreen({ navigation }: Props) {
 
   return (
     <AuthLayout>
-      <Pressable onPress={() => navigation.navigate("Splash")} accessibilityRole="link" style={authStyles.back}>
+      <Pressable onPress={() => navigation.navigate("Login")} accessibilityRole="link" style={authStyles.back}>
         <Text style={authStyles.backText}>{`← ${t("common.back")}`}</Text>
       </Pressable>
       <Text style={authStyles.title}>{t("auth.signup.title")}</Text>

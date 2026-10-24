@@ -46,12 +46,6 @@ export const en = {
     hide: "Hide",
     showPassword: "Show password",
     hidePassword: "Hide password",
-    splash: {
-      title: "Join as a professional",
-      tagline: "Connect with clients and grow your practice on Fynrox.",
-      createAccount: "Create Account",
-      signIn: "Sign In",
-    },
     login: {
       title: "Welcome back, Coach",
       subtitle: "Log in to manage your clients.",

@@ -6,26 +6,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BrandMark } from "./BrandMark";
 import { colors, radius, spacing } from "../theme/tokens";
 
-/** Width at which the welcome, login and sign-up screens split into a brand panel and a form panel (web on a laptop or tablet). */
+/** Width at which the login and sign-up screens split into a brand panel and a form panel (web on a laptop or tablet). */
 const WIDE = 900;
 
 /**
- * Frame shared by the three signed-out screens. Wide screens get a brand
- * panel on the left (what coaches get, in the website's own words) and the
- * form in a fixed-width column on the right; phones get one column with
- * the brand row on top. `showBenefits` repeats the benefits on phones too,
- * for the welcome screen where there is no form to make room for.
+ * Frame shared by the signed-out screens. Wide screens get a brand panel on
+ * the left (what coaches get, in the website's own words) and the form in a
+ * fixed-width column on the right; phones get one column with the brand row
+ * on top.
  */
-export function AuthLayout({
-  children,
-  showBenefits = false,
-  pinToBottom = false,
-}: {
-  children: React.ReactNode;
-  showBenefits?: boolean;
-  /** Phones only: keep the content at the bottom of the screen, in thumb reach (the welcome screen). */
-  pinToBottom?: boolean;
-}) {
+export function AuthLayout({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const wide = width >= WIDE;
 
@@ -47,12 +37,7 @@ export function AuthLayout({
       <ScrollView contentContainerStyle={styles.narrow} keyboardShouldPersistTaps="handled">
         <View style={styles.narrowColumn}>
           <BrandRow />
-          {showBenefits ? (
-            <View style={styles.narrowHero}>
-              <Pitch size="compact" />
-            </View>
-          ) : null}
-          <View style={[styles.narrowForm, pinToBottom && styles.narrowFormBottom]}>{children}</View>
+          <View style={styles.narrowForm}>{children}</View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -76,40 +61,29 @@ function BrandPanel() {
     <View style={styles.panel}>
       <BrandRow />
       <View style={styles.panelBody}>
-        <Pitch size="large" />
+        <Text style={styles.eyebrow}>{t("auth.layout.eyebrow")}</Text>
+        <Text style={styles.headline}>
+          {`${t("auth.layout.headline")}\n`}
+          <Text style={styles.headlineAccent}>{t("auth.layout.headlineAccent")}</Text>
+        </Text>
+        <Benefits />
       </View>
       <Text style={styles.panelFoot}>{t("auth.layout.help")}</Text>
     </View>
   );
 }
 
-/** Eyebrow, two-line headline and the three benefits: the brand panel on wide screens, the top of the welcome screen on phones. */
-function Pitch({ size }: { size: "large" | "compact" }) {
-  const { t } = useTranslation();
-  const large = size === "large";
-  return (
-    <View style={styles.pitch}>
-      <Text style={styles.eyebrow}>{t("auth.layout.eyebrow")}</Text>
-      <Text style={[styles.headline, !large && styles.headlineCompact]}>
-        {`${t("auth.layout.headline")}\n`}
-        <Text style={styles.headlineAccent}>{t("auth.layout.headlineAccent")}</Text>
-      </Text>
-      <Benefits compact={!large} />
-    </View>
-  );
-}
-
-function Benefits({ compact = false }: { compact?: boolean }) {
+function Benefits() {
   const { t } = useTranslation();
   const items = [t("auth.layout.benefitMatched"), t("auth.layout.benefitSummary"), t("auth.layout.benefitDecide")];
   return (
-    <View style={[styles.benefits, compact && styles.benefitsCompact]}>
+    <View style={styles.benefits}>
       {items.map((item) => (
         <View key={item} style={styles.benefit}>
           <View style={styles.tick}>
             <Text style={styles.tickMark}>✓</Text>
           </View>
-          <Text style={[styles.benefitText, compact && styles.benefitTextCompact]}>{item}</Text>
+          <Text style={styles.benefitText}>{item}</Text>
         </View>
       ))}
     </View>
@@ -182,6 +156,7 @@ export const authStyles = StyleSheet.create({
   switchRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: spacing.lg },
   switchText: { color: colors.textSecondary, fontSize: 14 },
   switchLink: { color: colors.accent, fontSize: 14, fontWeight: "700" },
+  note: { color: colors.textMuted, fontSize: 13, lineHeight: 19, marginTop: spacing.md, textAlign: "center" },
 });
 
 const styles = StyleSheet.create({
@@ -200,9 +175,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     overflow: "hidden",
   },
-  panelBody: { maxWidth: 460 },
-  pitch: { gap: spacing.md },
-  narrowHero: { marginTop: 40 },
+  panelBody: { maxWidth: 460, gap: spacing.md },
   eyebrow: {
     color: colors.accent,
     fontSize: 12,
@@ -211,7 +184,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   headline: { color: colors.textPrimary, fontSize: 48, lineHeight: 52, fontWeight: "800", letterSpacing: -1.2 },
-  headlineCompact: { fontSize: 36, lineHeight: 40, letterSpacing: -0.8 },
   headlineAccent: { color: colors.accent },
   panelFoot: { color: colors.textMuted, fontSize: 13, lineHeight: 19, maxWidth: 420 },
 
@@ -220,7 +192,6 @@ const styles = StyleSheet.create({
   brandCoach: { color: colors.accent, fontWeight: "800" },
 
   benefits: { gap: 14, marginTop: spacing.sm },
-  benefitsCompact: { gap: 10, marginTop: spacing.xs },
   benefit: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   tick: {
     width: 22,
@@ -233,7 +204,6 @@ const styles = StyleSheet.create({
   },
   tickMark: { color: "#0B0B0F", fontSize: 13, fontWeight: "800" },
   benefitText: { flex: 1, color: colors.textPrimary, fontSize: 16, lineHeight: 23 },
-  benefitTextCompact: { fontSize: 15, lineHeight: 21, color: colors.textSecondary },
 
   formPane: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 48, paddingVertical: 48 },
   formColumn: { width: "100%", maxWidth: 400 },
@@ -241,7 +211,6 @@ const styles = StyleSheet.create({
   narrow: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl },
   narrowColumn: { flex: 1, width: "100%", maxWidth: 480, alignSelf: "center" },
   narrowForm: { flex: 1, justifyContent: "center", marginTop: spacing.xl },
-  narrowFormBottom: { justifyContent: "flex-end" },
 
   fieldLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: "600", marginBottom: 6 },
   passwordInput: { paddingRight: 76 },
