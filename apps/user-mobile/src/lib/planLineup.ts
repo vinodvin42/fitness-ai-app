@@ -8,7 +8,7 @@
 
 export type PlanTier = "basic" | "grow" | "prime";
 
-const TIER_ORDER: PlanTier[] = ["basic", "grow", "prime"];
+export const TIER_ORDER: PlanTier[] = ["basic", "grow", "prime"];
 
 /** The free plan (Basic, or any plan priced at zero): nothing renews and nothing to cancel. */
 export function isFreePlan(plan: { tier: string; priceCents: number }): boolean {

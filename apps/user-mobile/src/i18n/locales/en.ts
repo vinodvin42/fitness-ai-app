@@ -127,8 +127,6 @@ export const en = {
     purchaseHistory: "Purchase History",
     comparePlans: "Compare plans",
     feature: "Feature",
-    switch: "Switch",
-    choose: "Choose",
     // Plan TIER names (Basic / Pro / Elite) are deliberately absent: they
     // are product names, like Fynrox itself, and translating them would
     // make a user's plan unrecognisable against their receipt.

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SubscriptionDetail, SubscriptionPlan } from "@fitness-ai-app/types";
@@ -14,9 +14,10 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCurrentSubscription, fetchPlans, subscribe } from "../../api/subscriptions";
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
-import { comparisonColumns, hasLaunchOffer, isFreePlan, type PlanTier } from "../../lib/planLineup";
+import { TIER_ORDER, comparisonColumns, hasLaunchOffer, isFreePlan, type PlanTier } from "../../lib/planLineup";
 import { formatRupees } from "../../lib/money";
-import { colors, radius, spacing, typography, themed } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Subscription">;
@@ -195,6 +196,13 @@ function annualSavingsPercent(plan: SubscriptionPlan, allPlans: SubscriptionPlan
  * Basic shows no renewal date and no Cancel. A plan shows "Launch offer"
  * while a higher price is scheduled for it. A code typed here is carried to
  * Checkout.
+ *
+ * **24 Oct 2026 (owner: "not so clear and easy how subscription works"):**
+ * redesigned around three questions. "Your plan": what you pay, until when,
+ * and that nothing renews automatically. "Plans": one card per tier for the
+ * chosen period (price, GST, per-month cost, what it adds over the tier
+ * below, one clear button, your own plan marked). "How it works": the real
+ * billing rules in plain words.
  */
 export function SubscriptionScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -285,101 +293,47 @@ export function SubscriptionScreen({ navigation, route }: Props) {
     );
   }
 
+  // 24 Oct 2026 (owner: "not so clear and easy how subscription works"): one plan card per tier for
+  // the chosen period, the member's own plan marked on it, and a plain "How it works".
+  const periods = (["monthly", "quarterly", "annual"] as const).filter(
+    (c) => c === "monthly" || (plans ?? []).some((p) => p.priceCents > 0 && p.billingCycle === c),
+  );
+  const tierCards = TIER_ORDER.flatMap((tier) => {
+    const inTier = (plans ?? []).filter((p) => p.tier === tier);
+    const plan = inTier.find((p) => p.priceCents === 0) ?? inTier.find((p) => p.billingCycle === billingCycle);
+    return plan ? [plan] : [];
+  });
+  const liveCurrent = !!current && (current.status === "active" || current.status === "trialing" || current.status === "past_due");
+
   return (
-    <ScreenContainer title={t("subscription.title")}>
-      {current ? (
-        <Card>
-          {(() => {
-            const entitlement = entitlementDisplay(current);
-            return (
-              <>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: radius.md,
-                      backgroundColor: TIER_TINT[current.plan.tier].soft,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Icon name={TIER_ICON[current.plan.tier]} size={22} color={TIER_TINT[current.plan.tier].color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                      <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{current.plan.name}</Text>
-                      <Pill label={entitlement.label} tone={entitlement.tone} icon={entitlement.icon} />
-                    </View>
-                    <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                      {/* What this subscriber actually pays, locked until renewal (D8). */}
-                      {formatPrice(current.priceCents ?? current.plan.priceCents, current.plan.billingCycle)}
-                      {current.renewsAt && !isFreePlan(current.plan) && current.status !== "expired"
-                        ? ` · paid until ${new Date(current.renewsAt).toLocaleDateString()}`
-                        : ""}
-                    </Text>
-                  </View>
-                </View>
-                {entitlement.note ? (
-                  <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
-                    {entitlement.note}
-                  </Text>
-                ) : null}
-              </>
-            );
-          })()}
-          {/* Manual renewal (20 Oct 2026): a paid plan that is ending, has ended or whose payment failed can be
-              paid for again here (the plan itself isn't in the list below). Renewing early adds a full
-              period after the current end date. Only while the plan is still on sale in admin. */}
-          {paymentsConfigured &&
-          !isFreePlan(current.plan) &&
-          (plans ?? []).some((p) => p.id === current.plan.id) &&
-          (current.displayState === "expiring" || current.status === "expired" || current.status === "past_due") ? (
-            <Button
-              label={`Renew ${current.plan.name}`}
-              onPress={() =>
-                navigation.navigate("Checkout", { purpose: "subscription", referenceId: current.plan.id, code: couponCode.trim() || undefined })
-              }
-              style={{ marginTop: spacing.md }}
-            />
-          ) : null}
-          {/* Gap §57 — only offer Cancel for a still-actionable, not-already-cancelAtPeriodEnd subscription. A terminal (expired/revoked) or already-scheduled-to-lapse row has nothing left to cancel, and neither has the free Basic plan. */}
-          {!isFreePlan(current.plan) &&
+    <ScreenContainer title={t("subscription.title")} subtitle="Plans and billing">
+      {current || freePlan ? (
+        <CurrentPlanCard
+          current={current ?? null}
+          freePlan={freePlan ?? null}
+          // The scheduled price lives on the plan as sold (the subscription carries the price paid).
+          upcoming={current ? formatUpcomingFor((plans ?? []).find((p) => p.id === current.plan.id)) : null}
+          canRenew={
+            !!current &&
+            paymentsConfigured &&
+            !isFreePlan(current.plan) &&
+            (plans ?? []).some((p) => p.id === current.plan.id) &&
+            (current.displayState === "expiring" || current.status === "expired" || current.status === "past_due")
+          }
+          canCancel={
+            !!current &&
+            !isFreePlan(current.plan) &&
             (current.status === "active" || current.status === "trialing" || current.status === "past_due") &&
-            !current.cancelAtPeriodEnd && (
-              <Button
-                label={t("subscription.cancel")}
-                variant="secondary"
-                // Figma payments/07 (24 Oct 2026): a screen that says what changes and asks why.
-                onPress={() => navigation.navigate("CancelSubscription")}
-                style={{ marginTop: spacing.md }}
-              />
-            )}
-        </Card>
-      ) : freePlan ? (
-        // 20 Oct 2026: no subscription row means the member is on the free plan.
-        <Card>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: radius.md,
-                backgroundColor: TIER_TINT[freePlan.tier].soft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Icon name={TIER_ICON[freePlan.tier]} size={22} color={TIER_TINT[freePlan.tier].color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{freePlan.name}</Text>
-              <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                {formatPrice(freePlan.priceCents, freePlan.billingCycle)}
-              </Text>
-            </View>
-          </View>
-        </Card>
+            !current.cancelAtPeriodEnd
+          }
+          onRenew={() =>
+            current &&
+            navigation.navigate("Checkout", { purpose: "subscription", referenceId: current.plan.id, code: couponCode.trim() || undefined })
+          }
+          // Figma payments/07 (24 Oct 2026): a screen that says what changes and asks why.
+          onCancel={() => navigation.navigate("CancelSubscription")}
+          cancelLabel={t("subscription.cancel")}
+        />
       ) : (
         <Card style={{ alignItems: "center", gap: spacing.xs, paddingVertical: spacing.lg }}>
           <Icon name="trophy" size={28} color={colors.accent} />
@@ -388,101 +342,58 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         </Card>
       )}
 
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
-        {/* Only billing periods that have a paid plan on sale (3-month and yearly prices may not be set yet). */}
-        <Chip label={t("subscription.monthly")} selected={billingCycle === "monthly"} onPress={() => setBillingCycle("monthly")} />
-        {(plans ?? []).some((p) => p.priceCents > 0 && p.billingCycle === "quarterly") ? (
-          <Chip label={t("subscription.quarterly")} selected={billingCycle === "quarterly"} onPress={() => setBillingCycle("quarterly")} />
-        ) : null}
-        {(plans ?? []).some((p) => p.priceCents > 0 && p.billingCycle === "annual") ? (
-          <Chip label={t("subscription.annual")} selected={billingCycle === "annual"} onPress={() => setBillingCycle("annual")} />
-        ) : null}
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.lg }}>Plans</Text>
+      {periods.length > 1 ? (
+        <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+          {/* Only billing periods that have a paid plan on sale (3-month and yearly prices may not be set yet). */}
+          {periods.map((c) => (
+            <Chip
+              key={c}
+              label={c === "monthly" ? t("subscription.monthly") : c === "quarterly" ? t("subscription.quarterly") : t("subscription.annual")}
+              selected={billingCycle === c}
+              onPress={() => setBillingCycle(c)}
+            />
+          ))}
+        </View>
+      ) : null}
+      {/* Paid plans are still shown with their prices, but without a dead button: one plain line says why. */}
+      {!paymentsConfigured ? (
+        <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.sm }}>{t("checkout.paymentsUnavailable")}</Text>
+      ) : null}
+      <View style={{ gap: spacing.md, marginTop: spacing.md }}>
+        {tierCards
+          .map((plan, i) => {
+            const isFree = isFreePlan(plan);
+            const isCurrent = isFree ? !current || (liveCurrent && isFreePlan(current.plan)) : liveCurrent && current?.planId === plan.id;
+            const lower = i > 0 ? tierCards[i - 1] : null;
+            let cta: { label: string; disabled: boolean } | null;
+            if (isCurrent) cta = { label: "Your current plan", disabled: true };
+            else if (isFree) cta = paidPlanRunning ? { label: `Yours when ${current?.plan.name ?? "your plan"} ends`, disabled: true } : { label: `Switch to ${plan.name}`, disabled: false };
+            else if (!paymentsConfigured) cta = null;
+            else cta = { label: paidPlanRunning ? "Switch to this plan" : `Get ${plan.name}`, disabled: false };
+            return { plan, isCurrent, cta, lower, highlight: !isFree && i === tierCards.length - 1 };
+          })
+          // The member's own plan is already summed up above, so the other plans come first.
+          .sort((a, b) => Number(a.isCurrent) - Number(b.isCurrent))
+          .map(({ plan, isCurrent, cta, lower, highlight }) => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              savingsPercent={annualSavingsPercent(plan, plans ?? [])}
+              highlight={highlight}
+              isCurrent={isCurrent}
+              includes={lower ? lower.name : null}
+              features={featuresFor(plan.tier, lower ? lower.tier : null)}
+              cta={cta}
+              loading={pendingPlanId === plan.id}
+              onPress={() => onSubscribe(plan)}
+            />
+          ))}
       </View>
 
-      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-        <Text style={{ color: colors.textSecondary }}>{current ? "Change plan" : "Choose a plan"}</Text>
-        {/* Paid plans are still listed with their prices, but without a
-            dead button: one plain line says why they can't be bought yet. */}
-        {!paymentsConfigured ? <Text style={{ color: colors.warningText, ...typography.meta }}>{t("checkout.paymentsUnavailable")}</Text> : null}
-        {(plans ?? [])
-          .filter((plan) => plan.id !== current?.planId)
-          // The free plan is not offered while it is already the member's plan (no subscription row),
-          // nor while a paid plan is running: cancelling keeps what was paid for, then it ends (20 Oct 2026).
-          .filter((plan) => !isFreePlan(plan) || (!!current && !paidPlanRunning))
-          // Basic (free) has no annual variant — a billing-cycle choice is
-          // meaningless for a $0 plan, so it's always shown regardless of
-          // which chip is selected above.
-          .filter((plan) => plan.priceCents === 0 || plan.billingCycle === billingCycle)
-          .map((plan) => {
-            const savings = annualSavingsPercent(plan, plans ?? []);
-            const tint = TIER_TINT[plan.tier];
-            return (
-              <Card
-                key={plan.id}
-                style={plan.tier === "prime" ? { borderColor: colors.accent } : undefined}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: radius.md,
-                      backgroundColor: tint.soft,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Icon name={TIER_ICON[plan.tier]} size={20} color={tint.color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{plan.name}</Text>
-                      {hasLaunchOffer(plan) ? <Pill label={t("subscription.launchOffer")} tone="accent" /> : null}
-                      {savings != null ? <Pill label={t("subscription.save", { percent: savings })} tone="success" /> : null}
-                    </View>
-                    <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: 2 }}>
-                      {formatPrice(plan.priceCents, plan.billingCycle)}
-                    </Text>
-                    {formatUpcoming(plan) ? (
-                      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>{formatUpcoming(plan)}</Text>
-                    ) : null}
-                  </View>
-                  {!paymentsConfigured && plan.priceCents > 0 ? null : (
-                    <Button
-                      label={current ? t("subscription.switch") : t("subscription.choose")}
-                      onPress={() => onSubscribe(plan)}
-                      loading={pendingPlanId === plan.id}
-                      style={{ paddingHorizontal: spacing.md, height: 44 }}
-                    />
-                  )}
-                </View>
-              </Card>
-            );
-          })}
-      </View>
+      <HowItWorks paidName={tierCards.find((p) => !isFreePlan(p))?.name ?? "a paid plan"} freeName={freePlan?.name ?? "the free plan"} />
 
-      <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("subscription.haveCoupon")}</Text>
-        <TextInput
-          value={couponCode}
-          onChangeText={(v) => setCouponCode(v.toUpperCase())}
-          placeholder={t("subscription.enterCode")}
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="characters"
-          style={{
-            color: colors.textPrimary,
-            backgroundColor: colors.background,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: colors.border,
-            paddingHorizontal: spacing.sm,
-            paddingVertical: spacing.sm,
-          }}
-        />
-        <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-          {t("subscription.couponNote")}
-        </Text>
-      </Card>
+      <CouponField value={couponCode} onChange={setCouponCode} />
 
       <FeatureComparison plans={plans ?? []} />
 
@@ -492,8 +403,269 @@ export function SubscriptionScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("SubscriptionHistory")}
         style={{ marginTop: spacing.lg }}
       />
-
     </ScreenContainer>
+  );
+}
+
+const formatUpcomingFor = (plan: SubscriptionPlan | undefined) => (plan ? formatUpcoming(plan) : null);
+
+const longDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+/** "₹299" and "/ month" for the big price line. */
+function priceParts(plan: SubscriptionPlan): { amount: string; per: string } {
+  if (plan.priceCents === 0) return { amount: "Free", per: "" };
+  const per = plan.billingCycle === "annual" ? "/ year" : plan.billingCycle === "quarterly" ? "/ 3 months" : "/ month";
+  return { amount: formatRupees(plan.priceCents), per };
+}
+
+/** "₹100 a month" for a 3-month or yearly plan; null for monthly. */
+function perMonth(plan: SubscriptionPlan): string | null {
+  const months = plan.billingCycle === "annual" ? 12 : plan.billingCycle === "quarterly" ? 3 : 0;
+  if (!months || plan.priceCents === 0) return null;
+  return `${formatRupees(Math.round(plan.priceCents / months / 100) * 100)} a month`;
+}
+
+function FactRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: spacing.md,
+        paddingVertical: 10,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{label}</Text>
+      <Text style={{ flex: 1, textAlign: "right", color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{value}</Text>
+    </View>
+  );
+}
+
+/**
+ * The member's own plan at the top: what they pay, until when, and what
+ * happens next. No autopay in this build (20 Oct 2026), so a paid plan says
+ * plainly that nothing is charged automatically.
+ */
+function CurrentPlanCard({
+  current,
+  freePlan,
+  upcoming,
+  canRenew,
+  canCancel,
+  onRenew,
+  onCancel,
+  cancelLabel,
+}: {
+  current: SubscriptionDetail | null;
+  freePlan: SubscriptionPlan | null;
+  upcoming: string | null;
+  canRenew: boolean;
+  canCancel: boolean;
+  onRenew: () => void;
+  onCancel: () => void;
+  cancelLabel: string;
+}) {
+  const { colors: theme } = useTheme();
+  const plan = current?.plan ?? freePlan;
+  if (!plan) return null;
+  const free = isFreePlan(plan);
+  const entitlement = current ? entitlementDisplay(current) : { label: "Active", tone: "success" as const, icon: "check" as IconName, note: null };
+  const ended = current?.status === "expired" || current?.status === "revoked";
+  const facts: Array<{ label: string; value: string }> = [];
+  if (free) {
+    facts.push({ label: "Price", value: "Free" });
+    facts.push({ label: "Ends", value: "Never" });
+  } else if (current) {
+    facts.push({ label: "You pay", value: formatPrice(current.priceCents ?? current.plan.priceCents, current.plan.billingCycle) });
+    if (current.renewsAt && !ended) {
+      facts.push({ label: current.cancelAtPeriodEnd ? "Ends on" : "Paid until", value: longDate(current.renewsAt) });
+    }
+    if (!ended && !current.cancelAtPeriodEnd) facts.push({ label: "Auto-renew", value: "Off, you renew it yourself" });
+    if (upcoming && !ended) facts.push({ label: "Next renewal price", value: upcoming });
+  }
+  const tint = TIER_TINT[plan.tier];
+  return (
+    <Card style={{ gap: spacing.sm, borderColor: free ? colors.border : theme.accent }}>
+      <Text style={{ color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1 }}>YOUR PLAN</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: tint.soft, alignItems: "center", justifyContent: "center" }}>
+          <Icon name={TIER_ICON[plan.tier]} size={20} color={tint.color} />
+        </View>
+        <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h1, fontSize: 24 }}>{plan.name}</Text>
+        <Pill label={entitlement.label} tone={entitlement.tone} icon={entitlement.icon} />
+      </View>
+      <View>
+        {facts.map((f, i) => (
+          <FactRow key={f.label} label={f.label} value={f.value} last={i === facts.length - 1} />
+        ))}
+      </View>
+      {entitlement.note ? <Text style={{ color: colors.textSecondary, ...typography.meta, lineHeight: 18 }}>{entitlement.note}</Text> : null}
+      {canRenew ? <Button label={`Renew ${plan.name}`} onPress={onRenew} /> : null}
+      {canCancel ? (
+        <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8} style={{ alignSelf: "center", paddingVertical: 4 }}>
+          <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{cancelLabel}</Text>
+        </Pressable>
+      ) : null}
+    </Card>
+  );
+}
+
+/** What a tier adds: everything in the tier below it, plus its own extras (COMPARISON_FEATURES). */
+function featuresFor(tier: PlanTier, lowerTier: PlanTier | null): string[] {
+  return COMPARISON_FEATURES.filter((f) => f[tier] && (!lowerTier || !f[lowerTier])).map((f) => f.key);
+}
+
+function PlanCard({
+  plan,
+  savingsPercent,
+  highlight,
+  isCurrent,
+  includes,
+  features,
+  cta,
+  loading,
+  onPress,
+}: {
+  plan: SubscriptionPlan;
+  savingsPercent: number | null;
+  highlight: boolean;
+  isCurrent: boolean;
+  includes: string | null;
+  features: string[];
+  cta: { label: string; disabled: boolean } | null;
+  loading: boolean;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const { colors: theme } = useTheme();
+  const { amount, per } = priceParts(plan);
+  const monthly = perMonth(plan);
+  const upcoming = hasLaunchOffer(plan) ? formatUpcoming(plan) : null;
+  const tint = TIER_TINT[plan.tier];
+  return (
+    <Card style={{ gap: spacing.sm, borderWidth: highlight ? 2 : 1, borderColor: highlight ? theme.accent : colors.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+        <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: tint.soft, alignItems: "center", justifyContent: "center" }}>
+          <Icon name={TIER_ICON[plan.tier]} size={18} color={tint.color} />
+        </View>
+        <Text style={{ flex: 1, color: colors.textPrimary, ...typography.h2 }}>{plan.name}</Text>
+        {isCurrent ? <Pill label="Current" tone="success" icon="check" /> : highlight ? <Pill label="Most features" tone="accent" /> : null}
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 30, lineHeight: 34 }}>{amount}</Text>
+        {per ? <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 4 }}>{per}</Text> : null}
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, alignItems: "center" }}>
+        <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+          {plan.priceCents === 0 ? "Never ends · no card needed" : ["incl. GST", monthly].filter(Boolean).join(" · ")}
+        </Text>
+        {savingsPercent != null ? <Pill label={t("subscription.save", { percent: savingsPercent })} tone="success" /> : null}
+      </View>
+      {upcoming ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+          <Pill label={t("subscription.launchOffer")} tone="accent" />
+          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>then {upcoming}</Text>
+        </View>
+      ) : null}
+
+      <View style={{ gap: 8, paddingTop: spacing.xs }}>
+        {includes ? (
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Icon name="check-check" size={16} color={theme.accentText} />
+            <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>Everything in {includes}</Text>
+          </View>
+        ) : null}
+        {features.map((k) => (
+          <View key={k} style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Icon name="check" size={16} color={colors.successText} strokeWidth={3} />
+            <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}>{t(`subscription.features.${k}`)}</Text>
+          </View>
+        ))}
+      </View>
+
+      {cta ? (
+        <Button
+          label={cta.label}
+          variant={cta.disabled || !highlight ? "secondary" : "primary"}
+          onPress={onPress}
+          disabled={cta.disabled}
+          loading={loading}
+          style={{ marginTop: spacing.xs }}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * How it works, in plain words and only what the app really does: pay per
+ * period (UPI, card or netbanking; no autopay), renewing early adds a full
+ * period after the current end date, cancelling keeps what was paid for,
+ * the free plan never ends, and coaching and programmes are paid separately.
+ */
+function HowItWorks({ paidName, freeName }: { paidName: string; freeName: string }) {
+  const { colors: theme } = useTheme();
+  const rows: Array<{ icon: IconName; title: string; body: string }> = [
+    { icon: "smartphone", title: "Pay for one period at a time", body: "Pay by UPI, card or netbanking. Nothing is charged automatically." },
+    { icon: "refresh-cw", title: "Renew when you like", body: "Renewing early adds a full period after your current end date, so you never lose days." },
+    { icon: "circle-x", title: "Cancel any time", body: `You keep ${paidName} until the end of what you paid for, then you're on ${freeName}.` },
+    { icon: "shield-check", title: `${freeName} is free forever`, body: "No card needed, and it never ends." },
+    { icon: "users", title: "Coaching and programmes are separate", body: "Coach sessions and programmes are paid for on their own, on any plan." },
+  ];
+  return (
+    <Card style={{ marginTop: spacing.lg, gap: spacing.md }}>
+      <Text style={{ color: colors.textPrimary, ...typography.h2 }}>How it works</Text>
+      {rows.map((r) => (
+        <View key={r.title} style={{ flexDirection: "row", gap: spacing.md }}>
+          <View style={{ width: 32, height: 32, borderRadius: radius.md, backgroundColor: theme.accentSoft, alignItems: "center", justifyContent: "center" }}>
+            <Icon name={r.icon} size={16} color={theme.accentText} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{r.title}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>{r.body}</Text>
+          </View>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/** "Have a coupon?" folded away until tapped; the code is carried to Checkout. */
+function CouponField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
+  const { colors: theme } = useTheme();
+  const [open, setOpen] = useState(value.length > 0);
+  if (!open) {
+    return (
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" hitSlop={8} style={{ marginTop: spacing.md, alignSelf: "flex-start" }}>
+        <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>{t("subscription.haveCoupon")}</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <Card style={{ marginTop: spacing.md }}>
+      <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>{t("subscription.haveCoupon")}</Text>
+      <TextInput
+        value={value}
+        onChangeText={(v) => onChange(v.toUpperCase())}
+        placeholder={t("subscription.enterCode")}
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="characters"
+        style={{
+          color: colors.textPrimary,
+          backgroundColor: colors.background,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.sm,
+        }}
+      />
+      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>{t("subscription.couponNote")}</Text>
+    </Card>
   );
 }
 
