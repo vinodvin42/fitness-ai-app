@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCoachAvailability, fetchCoachProfile, createBooking } from "../../api/coaching";
+import { fetchPaymentStatus, retryPaymentActivation } from "../../api/payments";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
@@ -64,7 +65,9 @@ function serviceLabel(serviceType: string | null) {
  */
 export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { professionalId } = route.params;
+  // 24 Oct 2026 (Figma coach/12): `rebookPaymentId` picks a new time for a paid session that couldn't be
+  // booked. The service is the one already paid for, and confirming books it with that same payment.
+  const { professionalId, rebookPaymentId } = route.params;
   const queryClient = useQueryClient();
 
   const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
@@ -80,6 +83,16 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     queryKey: ["coaching", "professional", professionalId],
     queryFn: () => fetchCoachProfile(professionalId),
   });
+
+  const rebook = useQuery({
+    queryKey: ["payment", rebookPaymentId],
+    queryFn: () => fetchPaymentStatus(rebookPaymentId as string),
+    enabled: !!rebookPaymentId,
+  });
+  const rebookOfferingId = rebook.data?.referenceId ?? null;
+  useEffect(() => {
+    if (rebookOfferingId) setSelectedOfferingId(rebookOfferingId);
+  }, [rebookOfferingId]);
 
   const { data: availability, isLoading: availabilityLoading } = useQuery({
     queryKey: ["coaching", "availability", professionalId, selectedDateKey],
@@ -122,6 +135,20 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   const onConfirm = async () => {
     if (!selectedOffering || !selectedTimeIso) return;
+    if (rebookPaymentId) {
+      setIsBookingFree(true);
+      try {
+        const result = await retryPaymentActivation(rebookPaymentId, selectedTimeIso);
+        await invalidateAfterBooking();
+        if (result.booking) navigation.navigate("BookingConfirmation", { booking: result.booking });
+        else navigation.goBack();
+      } catch (err) {
+        Alert.alert("Couldn't book that time", extractErrorMessage(err, "Pick another time and try again. You won't be charged again."));
+      } finally {
+        setIsBookingFree(false);
+      }
+      return;
+    }
     // Every seeded offering is priced today, but the schema allows a $0
     // one — same free-vs-paid branch ProgramDetailScreen.tsx uses, and
     // matching what the server itself enforces (createBooking() only 402s
@@ -177,7 +204,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         {t("coaching.booking.chooseService")}
       </Text>
       <View style={{ gap: spacing.xs }}>
-        {profile.offerings.map((o) => (
+        {profile.offerings.filter((o) => !rebookPaymentId || o.id === rebookOfferingId).map((o) => (
           <SelectCard
             key={o.id}
             title={`${o.label ?? serviceLabel(o.serviceType)} · ${o.durationMinutes}min`}
@@ -232,7 +259,13 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
+      {rebookPaymentId ? (
+        <Text style={{ color: colors.successText, ...typography.meta, marginTop: spacing.md }}>
+          Already paid. Pick a new time; you won't be charged again.
+        </Text>
+      ) : null}
+
+      {!rebookPaymentId && selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
         <TextInput
           value={couponCode}
           onChangeText={(v) => setCouponCode(v.toUpperCase())}
@@ -254,11 +287,11 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
       {/* A paid session can't be bought while online payment is off: say so
           plainly instead of showing a button that does nothing. */}
-      {selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
+      {!rebookPaymentId && selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
         <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.lg }}>{t("checkout.paymentsUnavailable")}</Text>
       ) : (
         <Button
-          label="Confirm booking"
+          label={rebookPaymentId ? "Book this time" : "Confirm booking"}
           onPress={onConfirm}
           loading={isBookingFree || isPurchasing}
           disabled={!selectedOffering || !selectedTimeIso}

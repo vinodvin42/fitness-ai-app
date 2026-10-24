@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import type { RateSessionInput } from "./coachSummaries.schema";
 
 /**
  * Human Coach 04-09 — session summary. The summary is the coach's own
@@ -61,6 +62,74 @@ export async function getBookingSummary(userId: string, bookingId: string) {
     ...toBooking(row),
     summaryText: row.summaryText,
     summaryPublishedAt: row.summaryPublishedAt ? row.summaryPublishedAt.toISOString() : null,
+  };
+}
+
+const ratingView = (r: { stars: number; tags: string[]; comment: string | null; updatedAt: Date }) => ({
+  stars: r.stars,
+  tags: r.tags,
+  comment: r.comment,
+  updatedAt: r.updatedAt.toISOString(),
+});
+
+/** The member's own rating of one of their sessions, or null (Figma coach/11). */
+export async function getMySessionRating(userId: string, bookingId: string) {
+  const booking = await prisma.booking.findFirst({ where: { id: bookingId, userId }, select: { id: true } });
+  if (!booking) throw new ApiHttpError(404, "booking_not_found", "Booking not found");
+  const rating = await prisma.sessionRating.findUnique({ where: { bookingId } });
+  return { bookingId, rating: rating ? ratingView(rating) : null };
+}
+
+/**
+ * Rate a session (24 Oct 2026, private to the coach). Only the member's own,
+ * confirmed session, once it has started; a new answer replaces the old one.
+ */
+export async function rateSession(userId: string, bookingId: string, input: RateSessionInput) {
+  const booking = await prisma.booking.findFirst({ where: { id: bookingId, userId } });
+  if (!booking) throw new ApiHttpError(404, "booking_not_found", "Booking not found");
+  if (booking.status !== "confirmed") {
+    throw new ApiHttpError(409, "booking_not_ratable", "Only a session that took place can be rated");
+  }
+  if (booking.scheduledAt.getTime() > Date.now()) {
+    throw new ApiHttpError(409, "session_not_started", "You can rate a session once it has started");
+  }
+  const data = { stars: input.stars, tags: [...new Set(input.tags)], comment: input.comment ? input.comment : null };
+  const rating = await prisma.sessionRating.upsert({
+    where: { bookingId },
+    create: { bookingId, userId, professionalId: booking.professionalId, ...data },
+    update: data,
+  });
+  await recordAudit({
+    actorId: userId,
+    action: "booking.rated",
+    entityType: "Booking",
+    entityId: bookingId,
+    metadata: { stars: input.stars },
+  });
+  return { bookingId, rating: ratingView(rating) };
+}
+
+/** The coach's feedback, newest first, with the average; optionally one client's. */
+export async function listMyRatings(professionalId: string, clientId?: string) {
+  const rows = await prisma.sessionRating.findMany({
+    where: { professionalId, ...(clientId ? { userId: clientId } : {}) },
+    include: {
+      user: { select: { fullName: true } },
+      booking: { select: { scheduledAt: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+  const average = rows.length ? Math.round((rows.reduce((s, r) => s + r.stars, 0) / rows.length) * 10) / 10 : null;
+  return {
+    count: rows.length,
+    average,
+    items: rows.map((r) => ({
+      bookingId: r.bookingId,
+      clientFullName: r.user.fullName,
+      scheduledAt: r.booking.scheduledAt.toISOString(),
+      ...ratingView(r),
+    })),
   };
 }
 

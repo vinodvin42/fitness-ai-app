@@ -21,6 +21,7 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
+import { RATING_TAG_LABEL, fetchMyRatings } from "../../api/sessionRatings";
 import { flagClientSafety } from "../../api/professionalClients";
 import {
   completeRelationship,
@@ -153,6 +154,7 @@ export function ClientProfileScreen() {
           for somewhere to record a worry should meet the escalation
           route first. */}
       <SafetyFlagCard userId={userId} fullName={fullName} />
+      <FeedbackSection userId={userId} />
       <NotesSection userId={userId} />
     </ScreenContainer>
   );
@@ -720,6 +722,35 @@ function NotesSection({ userId }: { userId: string }) {
  * rather than a broken-looking empty state. See
  * apps/api's professionalClients.service.ts's getClientSummary doc comment.
  */
+/**
+ * Session feedback (24 Oct 2026): this client's private ratings of their
+ * sessions with you (stars, what went well, comment). Only you see them.
+ */
+function FeedbackSection({ userId }: { userId: string }) {
+  const { data } = useQuery({ queryKey: ["coach-client-ratings", userId], queryFn: () => fetchMyRatings(userId) });
+  if (!data || data.count === 0) return null;
+  return (
+    <Card>
+      <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>Session feedback</Text>
+      <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
+        {data.average} of 5 across {data.count} session{data.count === 1 ? "" : "s"} · only you see this
+      </Text>
+      {data.items.map((r) => (
+        <View key={r.bookingId} style={{ paddingVertical: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>
+            {"★".repeat(r.stars)}
+            {"☆".repeat(5 - r.stars)} · {new Date(r.scheduledAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+          </Text>
+          {r.tags.length > 0 ? (
+            <Text style={{ color: colors.textSecondary, ...typography.meta }}>{r.tags.map((t) => RATING_TAG_LABEL[t] ?? t).join(" · ")}</Text>
+          ) : null}
+          {r.comment ? <Text style={{ color: colors.textSecondary, marginTop: 2 }}>"{r.comment}"</Text> : null}
+        </View>
+      ))}
+    </Card>
+  );
+}
+
 function ClientSummarySection({ summary }: { summary: CoachClientSummary }) {
   const { t } = useTranslation();
   if (!summary.consentGranted) {

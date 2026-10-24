@@ -245,7 +245,8 @@ export const en = {
       offeredNote: "Nothing to do yet. You'll be able to continue once the coach accepts.",
       declinedNote: "You can ask for another coach.",
       expiredNote: "It wasn't completed in time. You can ask again.",
-      activationFailedNote: "Something went wrong starting your coaching after payment. Contact support and we'll sort it out.",
+      activationFailedNote:
+        "Your payment went through, but the session couldn't be booked. Try again, or pick another time; you won't be charged again. Or contact support and we'll sort it out.",
       changingNote: "Your change of coach is being arranged.",
       completedNote: "This coaching has finished.",
       stuckStatus: "Taking longer than usual",
@@ -255,6 +256,9 @@ export const en = {
       askAgain: "Ask for a coach",
       contactSupport: "Contact support",
       continueToPayment: "Continue to payment",
+      tryAgain: "Try again",
+      pickAnotherTime: "Pick another time",
+      booked: "You're booked.",
     },
     change: {
       title: "Change coach",

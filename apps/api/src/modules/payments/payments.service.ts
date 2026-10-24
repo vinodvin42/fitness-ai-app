@@ -456,9 +456,11 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         // distinctly for manual follow-up (refund or reschedule — no
         // automated refund flow exists yet, see gap doc's Refunds item) and
         // re-throw: the client needs to know the booking didn't happen even
-        // though the charge did, not see a false success. Deliberately NOT
-        // marked activationFailedAt/retryable (see this function's own top
-        // comment) — a lost slot needs a human, not a blind re-run.
+        // though the charge did, not see a false success. Since 24 Oct 2026
+        // (the owner left the call to us) it is also marked activationFailedAt,
+        // like a subscription's failure: the member can try the same time again
+        // or pick another time with this same payment (retryActivation), and
+        // can still contact support for a refund.
         await recordAudit({
           actorId: payment.userId,
           action: "booking.payment_captured_but_unfulfilled",
@@ -470,8 +472,7 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         // the user's status feed shows "Coaching didn't start" with this
         // payment's id instead of an open-ended `activating` (or, when the
         // slot check failed before activation began, `awaiting_payment` for a
-        // payment that was in fact captured). Still not retryable — that is a
-        // separate, unapproved policy change. Best-effort: the booking
+        // payment that was in fact captured). Best-effort: the booking
         // failure above stays the error the caller sees.
         try {
           await prisma.relationship.updateMany({
@@ -486,6 +487,12 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
         } catch {
           // The audit row above already records the unfulfilled booking for follow-up.
         }
+        await prisma.payment
+          .update({
+            where: { id: payment.id },
+            data: { activationFailedAt: new Date(), activationFailureReason: err instanceof ApiHttpError ? err.code : "unknown_error" },
+          })
+          .catch(() => undefined);
         throw err;
       }
     } else {
@@ -755,50 +762,24 @@ export async function getPaymentForUser(userId: string, paymentId: string) {
  * only way `status` can be "paid" at all), so this only re-runs the DB-side
  * entitlement grant — it can never cause a second charge. Refuses to run
  * for a payment that was never paid, or one with nothing to retry (already
- * active, or a booking — see activatePayment()'s own comment on why
- * booking is excluded from this retry path).
+ * active).
  *
- * **Fixed R2 Wave 7 (22 Sep 2026), found while building this wave's own
- * capstone integration test:** the `payment.purpose === "booking"` check
- * below used to sit AFTER the `!payment.activationFailedAt` check. Since
- * activatePayment()'s own booking branch deliberately NEVER sets
- * `activationFailedAt` (see that function's top comment and
- * schema.prisma's `Payment.activationFailedAt` doc comment — "Scoped to
- * subscription/program_purchase only"), a stuck booking payment's
- * `activationFailedAt` is always null, so the old ordering meant the
- * `!payment.activationFailedAt` guard fired FIRST for every single real
- * booking-purpose call — the dedicated `booking_retry_unsupported` branch
- * right below it, with its own specific "contact support with your
- * payment ID" message, could never actually run; it was real, reachable-
- * looking code that was in fact permanently dead. The user-visible bug:
- * tapping Retry on a stuck-but-genuinely-paid booking returned the
- * generic, misleading `activation_not_failed` ("This payment doesn't have
- * a failed activation to retry") — which reads as "everything's fine"
- * for a booking that very much did fail to activate — instead of the
- * honest, specific, already-written refusal this endpoint was clearly
- * built to give. Reordering the two checks (purpose gate before the
- * activationFailedAt gate) is the minimal fix: it makes the existing,
- * already-correct `booking_retry_unsupported` branch reachable for the
- * one real case it exists for, with no change to the
- * subscription/program_purchase behavior every other test in this suite
- * (paymentsActivationFailureRecovery.test.ts) already covers — those
- * still fail with `activation_not_failed` exactly as before whenever
- * `activationFailedAt` is null, since `purpose !== "booking"` for them.
+ * 24 Oct 2026 (Figma coach/12 "We couldn't connect you to …", the owner left
+ * the call to us): a booking whose payment was captured but whose session
+ * couldn't be booked is retryable too. Without `scheduledAt` it tries the same
+ * time again; with it, it books that new (future) time with the same payment,
+ * at the price already paid. The claim on `activationFailedAt` in
+ * activatePayment() lets only one attempt run at a time, so one payment can
+ * never make two bookings; the new time is saved on the payment only once
+ * the booking exists. The old `booking_retry_unsupported` refusal is gone.
  */
-export async function retryActivation(userId: string, paymentId: string) {
+export async function retryActivation(userId: string, paymentId: string, input: { scheduledAt?: string } = {}) {
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment || payment.userId !== userId) {
     throw new ApiHttpError(404, "payment_not_found", "Payment not found");
   }
   if (payment.status !== "paid") {
     throw new ApiHttpError(409, "payment_not_captured", "This payment was never captured — nothing to retry");
-  }
-  if (payment.purpose === "booking") {
-    throw new ApiHttpError(
-      409,
-      "booking_retry_unsupported",
-      "A captured booking payment can't be auto-retried — contact support with your payment ID",
-    );
   }
   if (!payment.activationFailedAt) {
     throw new ApiHttpError(409, "activation_not_failed", "This payment doesn't have a failed activation to retry");
@@ -816,6 +797,26 @@ export async function retryActivation(userId: string, paymentId: string) {
     { ruleId: "BR-COM-011", metadata: { purpose: payment.purpose } },
   );
 
-  const { booking } = await activatePayment(payment);
+  if (payment.purpose !== "booking") {
+    if (input.scheduledAt) throw new ApiHttpError(400, "scheduled_at_not_applicable", "Only a coaching session has a time to change");
+    const { booking } = await activatePayment(payment);
+    return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
+  }
+
+  const when = input.scheduledAt ? new Date(input.scheduledAt) : payment.scheduledAt;
+  if (!when || Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+    throw new ApiHttpError(409, "booking_time_passed", "That time has passed. Pick another time — you won't be charged again.");
+  }
+  const { booking } = await activatePayment({ ...payment, scheduledAt: when });
+  if (booking && payment.scheduledAt?.getTime() !== when.getTime()) {
+    await prisma.payment.update({ where: { id: payment.id }, data: { scheduledAt: when } });
+    await recordAudit({
+      actorId: userId,
+      action: "booking.rebooked_with_same_payment",
+      entityType: "Payment",
+      entityId: payment.id,
+      metadata: { previousScheduledAt: payment.scheduledAt, scheduledAt: when, bookingId: booking.id },
+    });
+  }
   return { verified: true, purpose: payment.purpose, referenceId: payment.referenceId, booking };
 }

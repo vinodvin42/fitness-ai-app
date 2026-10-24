@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Linking, Platform, Pressable, Share, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import * as Location from "expo-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import { useWorkoutSettings } from "../../api/workoutSettings";
 import { miToKm, useMeasureUnits } from "../../lib/measureUnits";
 import { formatDateTime, formatDuration, formatKm, formatPace, formatRate, formatSpeed, kindLabel } from "../../lib/activityFormat";
 import { TrackAccumulator, encodeRouteWithinLimit, paceSecPerKm, routeToSvgPath, speedKmh, type GpsFix } from "../../lib/gpsTrack";
+import { locationShareMessage } from "../../lib/locationShare";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 
@@ -131,6 +132,22 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
   };
   // Never leave the GPS running after leaving the screen.
   useEffect(() => stopWatching, []);
+
+  // Figma train/21 Safety (24 Oct 2026): a one-off map link of where you are now, sent through the
+  // phone's share sheet to whoever you pick. It isn't live tracking, and the message says so.
+  const shareLocation = async () => {
+    try {
+      const route = accRef.current.getRoute();
+      const last = route[route.length - 1];
+      const here = last
+        ? { lat: last[0], lon: last[1] }
+        : await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((p) => ({ lat: p.coords.latitude, lon: p.coords.longitude }));
+      const time = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      await Share.share({ message: locationShareMessage(label, here.lat, here.lon, time) });
+    } catch {
+      toast.show("Couldn't get your location yet. Try again in a moment.", "error");
+    }
+  };
 
   const begin = () => {
     startedAtRef.current = new Date();
@@ -610,6 +627,16 @@ export function ActivityTrackerScreen({ navigation, route }: Props) {
             <Pressable onPress={discard} disabled={locked} accessibilityRole="button" accessibilityLabel="Discard this session" hitSlop={8}>
               <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>Discard session</Text>
             </Pressable>
+          ) : null}
+          {(phase === "paused" || phase === "running") && mode === "gps" && !isWeb ? (
+            <View style={{ alignItems: "center", gap: 2 }}>
+              <Pressable onPress={() => void shareLocation()} accessibilityRole="button" accessibilityLabel="Share my location" hitSlop={8}>
+                <Text style={{ color: colors.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>Share my location</Text>
+              </Pressable>
+              <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center" }}>
+                Sends a map link of where you are now. It doesn't update as you move.
+              </Text>
+            </View>
           ) : null}
         </>
       )}

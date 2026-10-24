@@ -15,6 +15,11 @@ import { findUserByReferralCode } from "../../lib/referralCode";
  * `User.referralCreditMonths` (a real integer balance) and each grant is a
  * `ReferralReward` row, so the mobile screen shows a real earned-rewards
  * history, not just a running number.
+ *
+ * **24 Oct 2026: the credit is now spent** (the owner left the call to us;
+ * the app promises "1 month of credit"). See `applyReferralCredit`: each
+ * credit month moves the member's paid plan end date one month later, so
+ * the next payment comes a month later. On the free plan it waits.
  */
 
 /**
@@ -103,4 +108,51 @@ export async function grantReferralRewardIfEligible(refereeUserId: string) {
     entityId: reward.id,
     metadata: { referrerId: rel.referrerId, creditMonths: 1 },
   });
+
+  await applyReferralCredit(rel.referrerId);
+}
+
+/**
+ * Spend the member's referral credit on their paid plan (24 Oct 2026): every
+ * credit month moves the plan's end date (`renewsAt`) one calendar month
+ * later, so the next payment is due a month later. Nothing is charged or
+ * refunded. On the free plan (no end date), or a paid plan already past its
+ * end, the credit waits; subscribe() calls this again after each paid
+ * activation. The balance is taken with a guarded decrement, so two calls at
+ * once can't spend the same month twice. Returns the months spent.
+ */
+export async function applyReferralCredit(userId: string): Promise<number> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { referralCreditMonths: true } });
+  const months = user?.referralCreditMonths ?? 0;
+  if (months <= 0) return 0;
+
+  const sub = await prisma.subscription.findFirst({
+    where: { userId, status: { in: ["active", "trialing", "past_due"] } },
+    include: { plan: { select: { priceCents: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const paid = !!sub && (sub.plan.priceCents > 0 || (sub.priceCents ?? 0) > 0);
+  if (!sub || !paid || !sub.renewsAt || sub.renewsAt.getTime() <= Date.now()) return 0;
+
+  const renewsAt = new Date(sub.renewsAt.getTime());
+  renewsAt.setMonth(renewsAt.getMonth() + months);
+  const spent = await prisma.$transaction(async (tx) => {
+    const taken = await tx.user.updateMany({
+      where: { id: userId, referralCreditMonths: { gte: months } },
+      data: { referralCreditMonths: { decrement: months } },
+    });
+    if (taken.count === 0) return 0;
+    await tx.subscription.update({ where: { id: sub.id }, data: { renewsAt } });
+    return months;
+  });
+  if (spent > 0) {
+    await recordAudit({
+      actorId: userId,
+      action: "referral_credit.applied",
+      entityType: "Subscription",
+      entityId: sub.id,
+      metadata: { months: spent, previousRenewsAt: sub.renewsAt, renewsAt },
+    });
+  }
+  return spent;
 }

@@ -199,9 +199,11 @@ interface IconProps {
   size?: number;
   color?: string;
   strokeWidth?: number;
+  /** Fill colour, e.g. a selected rating star (24 Oct 2026). */
+  fill?: string;
 }
 
-export function Icon({ name, size = 20, color = colors.textPrimary, strokeWidth = 2 }: IconProps) {
+export function Icon({ name, size = 20, color = colors.textPrimary, strokeWidth = 2, fill }: IconProps) {
   const Glyph = ICONS[name];
-  return <Glyph size={size} color={color} strokeWidth={strokeWidth} />;
+  return <Glyph size={size} color={color} strokeWidth={strokeWidth} {...(fill ? { fill } : {})} />;
 }

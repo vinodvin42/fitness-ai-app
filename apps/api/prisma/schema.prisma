@@ -420,6 +420,7 @@ model User {
   // Coach Discovery & Booking, added 25 Aug 2026 — see the Booking/
   // RelationshipChangeRequest models' own doc comments below.
   bookings                    Booking[]
+  sessionRatings              SessionRating[]
   changeRequests              RelationshipChangeRequest[]
   // Sensitive Data Access Requests, added 25 Aug 2026 — see that model's
   // own doc comment below. This user is the SUBJECT of each request, never
@@ -2471,10 +2472,9 @@ model Payment {
   // activation`) succeeds. `status` alone was never sufficient — "paid"
   // has always meant "Razorpay captured the money," not "the user has the
   // thing they paid for," and conflating the two is exactly the bug this
-  // closes. Scoped to subscription/program_purchase only — booking keeps
-  // its own pre-existing, deliberately-not-auto-retryable failure path
-  // (a lost time slot needs a human refund/reschedule, see
-  // activatePayment()'s own comment).
+  // closes. Since 24 Oct 2026 a booking that couldn't be made is marked
+  // too, and retryActivation() can try the same time again or book another
+  // time with the same payment (see activatePayment()'s own comment).
   activatedAt             DateTime?
   activationFailedAt      DateTime?
   activationFailureReason String?
@@ -2883,6 +2883,7 @@ model Professional {
   // ProfessionalServiceOffering/Booking models' own doc comments below.
   serviceOfferings ProfessionalServiceOffering[]
   bookings         Booking[]
+  sessionRatings   SessionRating[]
   // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
   // model's own doc comment below.
   coachMessages    CoachMessage[]
@@ -3128,12 +3129,38 @@ model Booking {
   // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
   summaryText        String?                     @db.Text
   summaryPublishedAt DateTime?
+  // The member's private rating of this session (24 Oct 2026, Figma coach/11).
+  rating             SessionRating?
   createdAt          DateTime                    @default(now())
 
   @@index([userId])
   @@index([professionalId])
   @@index([professionalId, scheduledAt])
   @@map("bookings")
+}
+
+// "How was your session?" (Figma coach/11, 24 Oct 2026; the owner left the
+// call to us). Private feedback: the member rates a session that has started,
+// 1-5 stars, with optional tags and comment; only that coach sees it (and the
+// member themself). Never public, never shown in coach browsing or ranking:
+// R1 decision #4 ("no ratings" in the marketplace) still holds for anything
+// other members can see. One per booking; a new answer replaces the old one.
+model SessionRating {
+  id             String       @id @default(uuid())
+  bookingId      String       @unique
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  stars          Int
+  tags           String[]     @default([])
+  comment        String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([professionalId, createdAt])
+  @@map("session_ratings")
 }
 
 enum ChangeReasonCategory {

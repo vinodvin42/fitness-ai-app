@@ -10,6 +10,7 @@ import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { BodyText, SummaryCard } from "../../components/GuidanceParts";
+import { SessionRatingCard } from "../../components/SessionRatingCard";
 import { fetchBookingSummary } from "../../api/coachSessions";
 import { formatDay, formatSessionPrice } from "../../lib/sessionFormat";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -100,6 +101,9 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
               <BodyText>Your coach hasn't added notes for this session yet. Check back after the session.</BodyText>
             )}
           </SummaryCard>
+
+          {/* Figma coach/11 (24 Oct 2026): rate a session once it has taken place; private to the coach. */}
+          {state.label === "COMPLETED" ? <SessionRatingCard bookingId={bookingId} coachName={data.professionalFullName} /> : null}
 
           <Pressable
             onPress={() => navigation.navigate("BookingServiceSelection", { professionalId: data.professionalId })}

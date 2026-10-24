@@ -2,7 +2,7 @@ import { prisma } from "../../db/prisma";
 import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { grantReferralRewardIfEligible } from "../referrals/referrals.service";
+import { applyReferralCredit, grantReferralRewardIfEligible } from "../referrals/referrals.service";
 import { applyDuePlanPriceChanges, upcomingPrices } from "../../lib/planPricing";
 import { CancelSubscriptionInput, SubscribeInput } from "./subscriptions.schema";
 
@@ -346,6 +346,10 @@ export async function subscribe(
       entityId: live.id,
       metadata: { planId: plan.id, previousRenewsAt: live.renewsAt, renewsAt: renewed.renewsAt },
     });
+    // Referral credit waiting on this member is spent on the renewed period (24 Oct 2026).
+    if (await applyReferralCredit(userId).catch(() => 0)) {
+      return (await prisma.subscription.findUniqueOrThrow({ where: { id: live.id }, include: { plan: true } })) as typeof renewed;
+    }
     return renewed;
   }
 
@@ -383,6 +387,10 @@ export async function subscribe(
       await grantReferralRewardIfEligible(userId);
     } catch {
       // Non-fatal — the subscription stands; the reward can be reconciled later.
+    }
+    // This member's own referral credit, waiting while they were on Basic (24 Oct 2026).
+    if (await applyReferralCredit(userId).catch(() => 0)) {
+      return (await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id }, include: { plan: true } })) as typeof subscription;
     }
   }
 

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { createOrderSchema, verifyPaymentSchema } from "./payments.schema";
+import { createOrderSchema, retryActivationSchema, verifyPaymentSchema } from "./payments.schema";
 import * as paymentsService from "./payments.service";
 import { writeRateLimit } from "../../middleware/rateLimit";
 import { paymentProvider, providerStatus } from "../../providers";
@@ -70,7 +70,8 @@ paymentsRouter.post(
   writeRateLimit,
   async (req: AuthedRequest, res, next) => {
     try {
-      res.json(await paymentsService.retryActivation(req.userId!, req.params.id));
+      const input = retryActivationSchema.parse(req.body ?? {});
+      res.json(await paymentsService.retryActivation(req.userId!, req.params.id, input));
     } catch (err) {
       next(err);
     }

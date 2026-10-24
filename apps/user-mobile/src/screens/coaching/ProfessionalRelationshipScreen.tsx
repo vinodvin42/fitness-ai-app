@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RelationshipStatus, RelationshipStatusItem } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -12,6 +12,9 @@ import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchRelationshipStatus } from "../../api/coaching";
+import { retryPaymentActivation } from "../../api/payments";
+import { useToast } from "../../components/Toast";
+import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
@@ -111,6 +114,10 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
     queryKey: ["coaching", "relationships", "status"],
     queryFn: fetchRelationshipStatus,
   });
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  // The payment whose "Try again" is running (Figma coach/12, 24 Oct 2026).
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -133,6 +140,25 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
     COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", undefined) : navigation.navigate("RequestGuidance");
 
   const inFlight = data.relationships.filter((r) => r.status !== "active" && !PAST.has(r.status));
+
+  // Figma coach/12 (24 Oct 2026): the payment went through but the session couldn't be booked.
+  // Try the same time again with the same payment; the API never charges again.
+  const retry = async (paymentId: string) => {
+    setRetrying(paymentId);
+    try {
+      const result = await retryPaymentActivation(paymentId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["coaching", "relationships", "status"] }),
+        queryClient.invalidateQueries({ queryKey: ["coaching", "team"] }),
+      ]);
+      toast.show(t("coaching.relationship.booked"), "success");
+      if (result.booking) navigation.navigate("BookingConfirmation", { booking: result.booking });
+    } catch (err) {
+      toast.show(extractErrorMessage(err, "Couldn't book that time. Pick another time."), "error");
+    } finally {
+      setRetrying(null);
+    }
+  };
   const past = data.relationships.filter((r) => PAST.has(r.status));
   const active = data.relationships.filter((r) => r.status === "active");
 
@@ -165,6 +191,13 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                   onContactSupport={
                     r.status === "activation_failed" || r.stuck
                       ? () => navigation.navigate("SupportTicketForm", { category: "billing" })
+                      : undefined
+                  }
+                  onRetry={r.status === "activation_failed" && r.paymentId && !r.stuck ? () => void retry(r.paymentId as string) : undefined}
+                  retrying={!!r.paymentId && retrying === r.paymentId}
+                  onPickTime={
+                    r.status === "activation_failed" && r.paymentId && !r.stuck
+                      ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId, rebookPaymentId: r.paymentId as string })
                       : undefined
                   }
                 />
@@ -233,11 +266,17 @@ function RelationshipStatusCard({
   onContinuePayment,
   onAskAgain,
   onContactSupport,
+  onRetry,
+  retrying,
+  onPickTime,
 }: {
   item: RelationshipStatusItem;
   onContinuePayment?: () => void;
   onAskAgain?: () => void;
   onContactSupport?: () => void;
+  onRetry?: () => void;
+  retrying?: boolean;
+  onPickTime?: () => void;
 }) {
   const { t } = useTranslation();
   // A stuck `activating` row reads like a failure (the API flags it after 15 minutes).
@@ -281,8 +320,19 @@ function RelationshipStatusCard({
       {onContinuePayment ? (
         <Button label={t("coaching.relationship.continueToPayment")} onPress={onContinuePayment} style={{ marginTop: spacing.md }} />
       ) : null}
+      {onRetry ? (
+        <Button label={t("coaching.relationship.tryAgain")} onPress={onRetry} loading={retrying} disabled={retrying} style={{ marginTop: spacing.md }} />
+      ) : null}
+      {onPickTime ? (
+        <Button label={t("coaching.relationship.pickAnotherTime")} variant="secondary" onPress={onPickTime} disabled={retrying} style={{ marginTop: spacing.sm }} />
+      ) : null}
       {onContactSupport ? (
-        <Button label={t("coaching.relationship.contactSupport")} onPress={onContactSupport} style={{ marginTop: spacing.md }} />
+        <Button
+          label={t("coaching.relationship.contactSupport")}
+          variant={onRetry ? "secondary" : "primary"}
+          onPress={onContactSupport}
+          style={{ marginTop: onRetry ? spacing.sm : spacing.md }}
+        />
       ) : null}
       {onAskAgain ? (
         <Button label={t("coaching.relationship.askAgain")} variant="secondary" onPress={onAskAgain} style={{ marginTop: spacing.md }} />

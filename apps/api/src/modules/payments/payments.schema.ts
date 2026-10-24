@@ -35,3 +35,9 @@ export const verifyPaymentSchema = z.object({
   razorpaySignature: z.string().min(1),
 });
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+
+// POST /payments/:id/retry-activation (24 Oct 2026): a coaching session that
+// couldn't be booked can be retried at the same time (no body) or a new one.
+export const retryActivationSchema = z.object({
+  scheduledAt: z.string().datetime({ message: "scheduledAt must be an ISO 8601 date-time" }).optional(),
+});

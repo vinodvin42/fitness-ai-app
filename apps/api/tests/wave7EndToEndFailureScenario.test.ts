@@ -29,8 +29,10 @@ import { ApiHttpError } from "../src/middleware/errorHandler";
  *      direct Postgres read, not the response body.
  *   4. The user gets the existing, real recoverable surface (GET
  *      /payments/:id, POST /payments/:id/retry-activation) — real and
- *      callable for this exact Payment, even though (as this suite proves
- *      rather than assumes) booking correctly refuses the auto-retry path.
+ *      callable for this exact Payment. Since 24 Oct 2026 a booking is
+ *      retryable: the same (still taken) time fails again and stays
+ *      retryable; picking another time is covered by
+ *      bookingRetryAfterFailedActivation.test.ts.
  *   5. The professional's real dashboard (professionalDashboard.service.ts's
  *      detectAndQueueStuckRelationships, Wave 3) detects this exact
  *      Relationship as stuck.
@@ -293,12 +295,10 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
     const paymentAfter = await prisma.payment.findUnique({ where: { id: paymentId } });
     expect(paymentAfter?.status).toBe("paid");
     expect(paymentAfter?.activatedAt).toBeNull();
-    // The deliberate, documented booking exclusion (schema.prisma's own
-    // Payment.activationFailedAt comment: "Scoped to subscription/
-    // program_purchase only") — confirmed here as real behavior, not
-    // assumed: no activationFailedAt/reason ever gets set for a booking.
-    expect(paymentAfter?.activationFailedAt).toBeNull();
-    expect(paymentAfter?.activationFailureReason).toBeNull();
+    // Since 24 Oct 2026 a booking that couldn't be made is marked like a
+    // subscription's failed activation, so the member can retry it.
+    expect(paymentAfter?.activationFailedAt).not.toBeNull();
+    expect(paymentAfter?.activationFailureReason).toBe("slot_unavailable");
 
     // The real, distinct audit-only signal activatePayment()'s booking
     // branch records for this exact case.
@@ -352,22 +352,22 @@ describe("Wave 7 capstone: offer accept -> booking payment captured but entitlem
     expect(getRes.status).toBe(200);
     expect(getRes.body.status).toBe("paid");
     expect(getRes.body.activatedAt).toBeNull();
-    expect(getRes.body.activationFailedAt).toBeNull();
+    expect(getRes.body.activationFailedAt).not.toBeNull();
 
-    // Real, callable, and — per activatePayment()'s own documented
-    // reasoning ("a lost time slot needs a human refund/reschedule, no
-    // automated refund flow exists yet") — a real, honest, correctly-coded
-    // refusal rather than either a silent no-op or an unhandled crash.
+    // Retrying the same time (still taken by the blocker) fails the same
+    // honest way and leaves the payment retryable, with no booking made.
     const retryRes = await request(app)
       .post(`/payments/${paymentId}/retry-activation`)
       .set("Authorization", `Bearer ${accessToken}`);
     expect(retryRes.status).toBe(409);
-    expect(retryRes.body.error.code).toBe("booking_retry_unsupported");
+    expect(retryRes.body.error.code).toBe("slot_unavailable");
 
-    // The refusal doesn't mutate anything — still exactly the same stuck state.
     const paymentAfter = await prisma.payment.findUnique({ where: { id: paymentId } });
     expect(paymentAfter?.status).toBe("paid");
-    expect(paymentAfter?.activationFailedAt).toBeNull();
+    expect(paymentAfter?.activatedAt).toBeNull();
+    expect(paymentAfter?.activationFailedAt).not.toBeNull();
+    const bookings = await prisma.booking.findMany({ where: { professionalId } });
+    expect(bookings.map((b) => b.id)).toEqual([blockerBookingId]);
   });
 
   it("Step 5: the professional's real dashboard detects this exact Relationship as stuck once it's genuinely past the threshold, and queues a real relationship_activation_failed AdminActionItem", async () => {

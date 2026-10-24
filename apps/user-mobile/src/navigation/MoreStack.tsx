@@ -193,7 +193,8 @@ export type MoreStackParamList = {
   ProfessionalRelationship: undefined;
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
-  BookingServiceSelection: { professionalId: string };
+  // rebookPaymentId (24 Oct 2026): pick a new time for a paid session that couldn't be booked.
+  BookingServiceSelection: { professionalId: string; rebookPaymentId?: string };
   BookingConfirmation: { booking: BookingConfirmation };
   MyProfessionalTeam: undefined;
   ChangeProfessional: { relationshipId: string; professionalFullName: string; serviceType: ProfessionalServiceType };

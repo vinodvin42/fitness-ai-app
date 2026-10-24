@@ -38,8 +38,11 @@ export function fetchPaymentStatus(paymentId: string) {
   return apiClient.get<PaymentStatusDetail>(`/payments/${paymentId}`).then((r) => r.data);
 }
 
-export function retryPaymentActivation(paymentId: string) {
-  return apiClient.post<RetryActivationResult>(`/payments/${paymentId}/retry-activation`).then((r) => r.data);
+/** Re-runs a failed activation; for a coaching session, `scheduledAt` books another time with the same payment (24 Oct 2026). */
+export function retryPaymentActivation(paymentId: string, scheduledAt?: string) {
+  return apiClient
+    .post<RetryActivationResult>(`/payments/${paymentId}/retry-activation`, scheduledAt ? { scheduledAt } : {})
+    .then((r) => r.data);
 }
 
 /** Pre-checkout coupon preview (POST /coupons/validate) - the server computes the discount; the order itself recomputes it again. */

@@ -19,7 +19,7 @@ type Props = NativeStackScreenProps<MoreStackParamList, "Referral">;
 const STEPS = [
   { title: "Share your code", body: "Send your code or copy it above." },
   { title: "Friend signs up", body: "They enter your code on the Sign Up screen when they join." },
-  { title: "Reward added", body: "You get one month of credit after your friend subscribes to a paid plan." },
+  { title: "Reward added", body: "After your friend subscribes to a paid plan, your paid plan runs one month longer before your next payment." },
 ];
 
 /**
@@ -30,6 +30,9 @@ const STEPS = [
  * backend only rewards the referrer — see referrals.service.ts), and a
  * per-app Instagram share (Instagram has no text-share URL, so it opens the
  * system share sheet like "More").
+ * 24 Oct 2026: the credit is spent automatically (referrals.service.ts
+ * applyReferralCredit): a paid plan runs a month longer per credit month; on
+ * Basic it waits, so "Months waiting" is the unspent balance.
  */
 export function ReferralScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary });
@@ -97,7 +100,7 @@ export function ReferralScreen({ navigation }: Props) {
                     <Text style={styles.rewardLabel}>You get</Text>
                   </View>
                   <Text style={styles.rewardValue}>1 month of credit</Text>
-                  <Text style={styles.rewardNote}>After their first paid plan</Text>
+                  <Text style={styles.rewardNote}>Added to your paid plan</Text>
                 </View>
                 <View style={styles.rewardCard}>
                   <View style={styles.rewardHead}>
@@ -163,7 +166,7 @@ export function ReferralScreen({ navigation }: Props) {
               <View style={styles.row}>
                 <Stat value={data.referredSignups} label="Signed up" />
                 <Stat value={data.rewardsEarned} label="Started a paid plan" tint={colors.accent} />
-                <Stat value={data.creditMonths} label="Months credit" />
+                <Stat value={data.creditMonths} label="Months waiting" />
               </View>
             </ScrollView>
 
@@ -178,7 +181,8 @@ export function ReferralScreen({ navigation }: Props) {
         <Text style={styles.sub}>
           • Your friend enters your invite code when they create their account.{"\n"}
           • When that friend first subscribes to a paid plan, you earn one month of subscription credit.{"\n"}
-          • Credit is added to your balance and applied toward your membership; it has no cash value.{"\n"}
+          • Each month of credit moves your paid plan's end date one month later, so your next payment comes a month later.{"\n"}
+          • On Basic, the credit waits and is added when you start a paid plan. It has no cash value.{"\n"}
           • Invite codes never share your data.{"\n"}
           • Rewards can change or end; the terms shown here are the ones currently in effect.
         </Text>
