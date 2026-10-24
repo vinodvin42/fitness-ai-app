@@ -568,7 +568,7 @@ window.FYNROX_I18N.en = {
   "pricing.prime": "Prime",
   "pricing.everythingInBasic": "Everything in Basic",
   "pricing.free": "Free",
-  "pricing.from499Jan2027": "₹499/month from January 2027",
+  "pricing.fromJan2027": "₹399/month from 1 January 2027",
   "pricing.getStartedFree": "Get started free",
   "pricing.getTheApp": "Get the app",
   "pricing.inclGst": "Including GST",
@@ -581,7 +581,7 @@ window.FYNROX_I18N.en = {
   "pricing.pricing": "PRICING",
   "pricing.simpleRealNumbers": "Simple, real numbers",
   "pricing.startFreeUpgradeWhenever": "Start free, upgrade whenever you're ready.",
-  "pricing.theseAreTheReal": "Prices are in INR (₹), include GST and are billed through Razorpay. Prime is at a launch price of ₹299/month until the end of December 2026, then ₹499/month.",
+  "pricing.theseAreTheReal": "Prices are in INR (₹), include GST and are billed through Razorpay. Prime is at a launch price of ₹299/month until the end of December 2026, then ₹399/month.",
   "pricing.twoPlansOneApp": "Two plans. One app.",
 
   /* privacy */
