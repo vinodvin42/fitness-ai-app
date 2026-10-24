@@ -2832,3 +2832,14 @@ body:has(.cookie-bar) .site-foot {
   border-color: var(--mint);
   color: var(--mint);
 }
+
+/* Programme titles link to their own pages. */
+.program__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.program__title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
