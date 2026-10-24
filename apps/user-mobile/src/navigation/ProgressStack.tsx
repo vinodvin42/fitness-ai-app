@@ -12,6 +12,7 @@ import { BodyCompositionScreen } from "../screens/progress/BodyCompositionScreen
 import { ProgressReviewScreen } from "../screens/progress/ProgressReviewScreen";
 import { WhyThisChangedScreen } from "../screens/progress/WhyThisChangedScreen";
 import { ProgressInsightsScreen } from "../screens/progress/ProgressInsightsScreen";
+import { DecisionHistoryScreen } from "../screens/progress/DecisionHistoryScreen";
 
 // R1 Developer 1 work package, U1 (14 Sep 2026) — the primary nav BR-USR-001
 // requires is Today | Train | Fuel | Progress | More, with Recovery
@@ -58,6 +59,8 @@ export type ProgressStackParamList = {
   WhyThisChanged: { recommendation?: Recommendation } | undefined;
   // Figma Progress 07 - rule-based insight cards.
   ProgressInsights: undefined;
+  // Figma Progress 12 - daily-review decisions saved on this phone.
+  DecisionHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -76,6 +79,7 @@ export function ProgressStack() {
       <Stack.Screen name="ProgressReview" component={ProgressReviewScreen} />
       <Stack.Screen name="WhyThisChanged" component={WhyThisChangedScreen} />
       <Stack.Screen name="ProgressInsights" component={ProgressInsightsScreen} />
+      <Stack.Screen name="DecisionHistory" component={DecisionHistoryScreen} />
     </Stack.Navigator>
   );
 }

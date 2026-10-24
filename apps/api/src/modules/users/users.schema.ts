@@ -123,6 +123,8 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 // excludes the onboarding-only fields (goals/trainingLevel/dietType/
 // allergens/medicalConditions/injuries) — those aren't part of what Edit
 // Profile's design asks for, and stay wizard-only for this pass.
+// (24 Oct 2026: trainingLevel/dietType/allergens are now editable here; health
+// answers have their own endpoint, healthAnswersSchema below.)
 export const editOnboardingProfileSchema = z
   .object({
     gender: z.string().optional(),
@@ -136,10 +138,29 @@ export const editOnboardingProfileSchema = z
     equipmentContext: z.enum(EQUIPMENT_CONTEXTS).optional(),
     // Profile > My Goals: the onboarding goal chips, editable after setup.
     goals: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
+    // 24 Oct 2026: food preferences (setup checklist "Food preferences") and
+    // the training level (set from the first workout's "How did that feel?",
+    // Figma train/after-first-workout) are editable after setup too.
+    trainingLevel: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+    dietType: z.string().trim().min(1).max(60).nullable().optional(),
+    allergens: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });
 
 export type EditOnboardingProfileInput = z.infer<typeof editOnboardingProfileSchema>;
+
+// "Make your plan safer" (Figma today/safer-plan-sheet) and Profile › Health &
+// safety (24 Oct 2026): health answers after setup. Same consent rule as
+// onboarding 08: conditions and injuries are kept only when healthDataConsent
+// is true; without it they are discarded, not stored. See
+// users.service.ts#updateHealthAnswers.
+export const healthAnswersSchema = z.object({
+  medicalConditions: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  injuries: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  healthDataConsent: z.boolean(),
+});
+
+export type HealthAnswersInput = z.infer<typeof healthAnswersSchema>;
 
 // §L "Security" (docs/mobile/03-screen-inventory.md) — real password
 // change, reusing the same bcrypt lib as signup/login. Changing the

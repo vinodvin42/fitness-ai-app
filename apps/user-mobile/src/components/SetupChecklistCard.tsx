@@ -11,7 +11,7 @@ import { useTheme } from "../theme/ThemeProvider";
 
 const HIDDEN_KEY = "today.setupChecklist.hidden";
 
-export type SetupStep = "goal" | "body" | "notifications" | "workout" | "gym";
+export type SetupStep = "goal" | "body" | "safety" | "food" | "notifications" | "workout" | "gym";
 
 export interface SetupItem {
   key: SetupStep;
@@ -36,6 +36,9 @@ export function setupItems(input: {
     { key: "goal", label: "Goal set", done: (profile?.goals.length ?? 0) > 0 },
     { key: "body", label: "Height & weight added", done: profile?.heightCm != null && profile?.weightKg != null },
   ];
+  // Figma today/safer-plan-sheet: only for members who skipped the health questions at setup.
+  if (profile?.healthDataSkippedAt) items.push({ key: "safety", label: "Plan made safer", done: false });
+  items.push({ key: "food", label: "Food preferences set", done: !!profile?.dietType });
   if (notifications !== null) items.push({ key: "notifications", label: "Reminders switched on", done: notifications });
   items.push({ key: "workout", label: "First workout done", done: (history ?? []).some((h) => h.status === "completed") });
   // Gym partners are hidden for now (lib/partnerPrograms.ts).
@@ -49,8 +52,8 @@ export function setupItems(input: {
  *
  * Differs from Figma, on purpose:
  * - "Phone verified": sign-in is by email (phone/OTP is an open owner decision).
- * - "Make your plan safer" and "Food preferences": both are answered in the first-run setup, and
- *   there is no screen to change them afterwards yet.
+ * "Make your plan safer" shows only for members who skipped the health questions at setup, and
+ * "Food preferences" until a diet type is set (24 Oct 2026; both open their screens in More).
  */
 export function SetupChecklistCard({
   profile,
@@ -150,6 +153,8 @@ export function SetupChecklistCard({
 const OPEN_LABEL: Record<SetupStep, string> = {
   goal: "Set your goal",
   body: "Add height & weight",
+  safety: "Make your plan safer · 1 min",
+  food: "Food preferences",
   notifications: "Switch on reminders",
   workout: "Do your first workout",
   gym: "Link your gym with its code",

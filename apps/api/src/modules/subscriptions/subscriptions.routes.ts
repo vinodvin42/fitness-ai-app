@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
-import { subscribeSchema } from "./subscriptions.schema";
+import { cancelSubscriptionSchema, subscribeSchema } from "./subscriptions.schema";
 import * as subscriptionsService from "./subscriptions.service";
 
 export const subscriptionsRouter = Router();
@@ -45,7 +45,8 @@ subscriptionsRouter.post("/subscriptions", requireAuth, async (req: AuthedReques
 
 subscriptionsRouter.post("/subscriptions/cancel", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await subscriptionsService.cancelSubscription(req.userId!));
+    const input = cancelSubscriptionSchema.parse(req.body ?? {});
+    res.json(await subscriptionsService.cancelSubscription(req.userId!, input));
   } catch (err) {
     next(err);
   }

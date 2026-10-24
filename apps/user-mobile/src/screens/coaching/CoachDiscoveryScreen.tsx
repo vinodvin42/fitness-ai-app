@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
@@ -57,6 +57,8 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>(route.params?.serviceType ?? "all");
   const [sort, setSort] = useState<"experience" | "price">("experience");
+  // Owner, 24 Oct 2026: browse male or female coaches (as "Ask for a coach" already allows).
+  const [gender, setGender] = useState<"any" | "male" | "female">("any");
 
   // Found via a live Playwright walkthrough, not just typecheck/lint: when
   // Change Professional's "Find New [Service] Coach" navigates back here
@@ -74,12 +76,13 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   }, [route.params?.serviceType]);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["coaching", "professionals", serviceFilter, sort, search],
+    queryKey: ["coaching", "professionals", serviceFilter, sort, search, gender],
     queryFn: () =>
       discoverCoaches({
         serviceType: serviceFilter === "all" ? undefined : serviceFilter,
         search: search.trim() || undefined,
         sort,
+        gender: gender === "any" ? undefined : gender,
       }),
   });
 
@@ -95,10 +98,34 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
         ))}
       </View>
 
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
+        <Chip label="Any coach" selected={gender === "any"} onPress={() => setGender("any")} />
+        <Chip label="Male coach" selected={gender === "male"} onPress={() => setGender("male")} />
+        <Chip label="Female coach" selected={gender === "female"} onPress={() => setGender("female")} />
+      </View>
+
       <View style={{ flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm }}>
         <Chip label={t("coaching.discovery.mostExperienced")} selected={sort === "experience"} onPress={() => setSort("experience")} />
         <Chip label={t("coaching.discovery.lowestPrice")} selected={sort === "price"} onPress={() => setSort("price")} />
       </View>
+
+      <Pressable
+        onPress={() => navigation.navigate("RequestGuidance")}
+        accessibilityRole="button"
+        accessibilityLabel="Not sure who to pick? Ask us to match you with a coach"
+        style={{
+          marginTop: spacing.md,
+          padding: spacing.md,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surfaceRaised,
+          gap: 2,
+        }}
+      >
+        <Text style={{ color: colors.textPrimary, ...typography.label }}>Not sure who to pick?</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.meta }}>Ask us to match you. You can choose a male or female coach.</Text>
+      </Pressable>
 
       <Button
         label={t("coaching.discovery.findTeam")}
@@ -147,6 +174,7 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
                     ))}
                   </View>
                   <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
+                    {coach.gender ? `${coach.gender === "female" ? "Female" : "Male"} · ` : ""}
                     {coach.level ? `${coach.level.name} · ` : ""}
                     {coach.yearsExperience != null ? `${coach.yearsExperience} yrs` : "Experience n/a"}
                     {" · "}

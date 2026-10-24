@@ -16,6 +16,19 @@ export function unsaveRecipe(recipeId: string) {
   return apiClient.delete<{ recipeId: string; saved: false }>(`/saved-recipes/${recipeId}`).then((r) => r.data);
 }
 
+/** Figma fuel/17 "How was it?" (24 Oct 2026): 1 Not for me, 2 Okay, 3 Good, 4 Loved it; private to the member. */
+export function fetchRecipeRating(recipeId: string) {
+  return apiClient.get<{ recipeId: string; rating: number | null }>(`/recipes/${recipeId}/rating`).then((r) => r.data.rating);
+}
+
+export function setRecipeRating(recipeId: string, rating: number | null) {
+  return (
+    rating == null
+      ? apiClient.delete<{ recipeId: string; rating: null }>(`/recipes/${recipeId}/rating`)
+      : apiClient.put<{ recipeId: string; rating: number }>(`/recipes/${recipeId}/rating`, { rating })
+  ).then((r) => r.data.rating);
+}
+
 /** The user's saved recipes plus a toggle used by the heart buttons on Recipes / Recipe Detail. */
 export function useSavedRecipes() {
   const queryClient = useQueryClient();

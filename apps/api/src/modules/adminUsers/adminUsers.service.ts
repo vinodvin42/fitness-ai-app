@@ -244,6 +244,8 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
     cancelAtPeriodEnd: boolean;
     revokedAt: Date | null;
     revokedReason: string | null;
+    cancelReason: string | null;
+    cancelComment: string | null;
     createdAt: Date;
     plan: { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
   }>;

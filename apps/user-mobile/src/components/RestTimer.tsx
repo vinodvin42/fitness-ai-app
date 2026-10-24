@@ -19,6 +19,12 @@ interface RestTimerProps {
   layout?: "ring" | "compact";
   /** Start counting down as soon as this mounts (default true). When false the ring idles at the default length until a preset is tapped. */
   autoStart?: boolean;
+  /**
+   * When the running rest ends (epoch ms), or null once it stops: `finished`
+   * is true when it ran out by itself, false when skipped or closed (24 Oct
+   * 2026: keeps the workout notification and its "Rest over" alert in step).
+   */
+  onRestChange?: (endsAt: number | null, finished: boolean) => void;
 }
 
 const PRESETS = [60, 90, 120];
@@ -35,7 +41,7 @@ function formatTime(totalSeconds: number): string {
  * exercise card) and Set & Rest Tracker (ring with presets). Purely
  * client-side: no rest duration is sent to the API or persisted — see gap §24.
  */
-export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layout = "ring", autoStart = true }: RestTimerProps) {
+export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layout = "ring", autoStart = true, onRestChange }: RestTimerProps) {
   const { t } = useTranslation();
   const { colors: theme } = useTheme();
   const { data: settings } = useWorkoutSettings();
@@ -46,6 +52,9 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The latest callback, so the mount-only effects below always call the current one.
+  const restChange = useRef(onRestChange);
+  restChange.current = onRestChange;
 
   const clearTimer = () => {
     if (intervalRef.current) {
@@ -61,6 +70,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
         if (prev <= 1) {
           clearTimer();
           setIsRunning(false);
+          restChange.current?.(null, true);
           return 0;
         }
         return prev - 1;
@@ -73,16 +83,22 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
     setRemainingSeconds(seconds);
     setIsRunning(true);
     tick();
+    restChange.current?.(Date.now() + seconds * 1000, false);
   };
 
   // Mount-only effect (no react-hooks/exhaustive-deps rule is configured in
   // this project): including `start` would re-fire on every tick.
   useEffect(() => {
     if (autoStart) start(defaultSeconds);
-    return () => clearTimer();
+    return () => {
+      clearTimer();
+      restChange.current?.(null, false);
+    };
   }, []);
 
   const addTime = (seconds: number) => {
+    const next = Math.max(0, remainingSeconds + seconds);
+    restChange.current?.(next > 0 ? Date.now() + next * 1000 : null, false);
     setRemainingSeconds((prev) => Math.max(0, prev + seconds));
     setTotalSeconds((prev) => Math.max(1, prev + seconds));
     if (!isRunning && seconds > 0) {
@@ -117,6 +133,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
               emphasis
               onPress={() => {
                 clearTimer();
+                if (!isComplete) restChange.current?.(null, false);
                 onDismiss?.();
               }}
             />

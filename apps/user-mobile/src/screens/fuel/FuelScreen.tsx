@@ -10,6 +10,8 @@ import { ProgressRing } from "../../components/ProgressRing";
 import { ErrorState } from "../../components/ErrorState";
 import { NutritionCoachCard } from "../../components/NutritionCoachCard";
 import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nutrition";
+import { fetchCurrentMealPlan } from "../../api/mealPlans";
+import { plannedMealsToday } from "../../lib/mealPlanDay";
 import { fetchNotifications } from "../../api/notifications";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatTimeOfDay } from "../../lib/format";
@@ -58,6 +60,9 @@ export function FuelScreen({ navigation }: Props) {
     queryKey: ["notifications", "badge"],
     queryFn: () => fetchNotifications({ filter: "unread", limit: 1 }),
   });
+  // Figma fuel/01: an empty slot shows what today's meal plan has for it.
+  const { data: mealPlan } = useQuery({ queryKey: ["mealPlan", "current"], queryFn: fetchCurrentMealPlan, staleTime: 5 * 60_000 });
+  const planned = plannedMealsToday(mealPlan);
   const [isLoggingWater, setIsLoggingWater] = useState(false);
   // Same units as Today (litres or oz, from the member's settings). Called before any early return:
   // it is a hook, so it must run on every render.
@@ -194,12 +199,15 @@ export function FuelScreen({ navigation }: Props) {
             const latest = logs.length > 0 ? logs[logs.length - 1] : null;
             const open = () => !isLoading && navigation.navigate("LogMeal", { mealType: type });
             if (!latest) {
+              const plan = planned[type] ?? [];
+              const planKcal = plan.reduce((s, p) => s + p.calories, 0);
+              const planText = plan.length > 0 ? `Planned · ~${planKcal} kcal · ${plan.map((p) => p.recipeName).join(", ")}` : null;
               return (
                 <Pressable
                   key={type}
                   onPress={open}
                   accessibilityRole="button"
-                  accessibilityLabel={`${label}, not logged yet. Tap to add`}
+                  accessibilityLabel={`${label}, not logged yet${planText ? `. ${planText}` : ""}. Tap to add`}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -214,7 +222,9 @@ export function FuelScreen({ navigation }: Props) {
                   <IconTile icon="plus" tint={colors.textSecondary} bg={colors.surfaceHigh} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{label}</Text>
-                    <Text style={{ color: colors.textMuted, ...typography.meta }}>Not logged yet</Text>
+                    <Text style={{ color: colors.textMuted, ...typography.meta }} numberOfLines={2}>
+                      {planText ?? "Not logged yet"}
+                    </Text>
                   </View>
                   <Text style={{ color: colors.textSecondary, ...typography.label }}>Tap to add</Text>
                 </Pressable>

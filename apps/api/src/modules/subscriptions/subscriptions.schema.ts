@@ -12,3 +12,13 @@ export const subscribeSchema = z.object({
 });
 
 export type SubscribeInput = z.infer<typeof subscribeSchema>;
+
+// Cancel screen (Figma payments/07, 24 Oct 2026): "Why are you leaving?" and
+// an optional comment. Both optional, so older apps that post no body still work.
+export const CANCEL_REASONS = ["too_expensive", "not_using", "no_value", "technical", "break", "other"] as const;
+export const cancelSubscriptionSchema = z.object({
+  reason: z.enum(CANCEL_REASONS).optional(),
+  comment: z.string().trim().max(500).optional(),
+});
+
+export type CancelSubscriptionInput = z.infer<typeof cancelSubscriptionSchema>;

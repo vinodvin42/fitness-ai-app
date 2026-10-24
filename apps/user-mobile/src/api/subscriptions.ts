@@ -20,6 +20,9 @@ export function subscribe(input: SubscribeInput) {
   return apiClient.post<SubscriptionDetail>("/subscriptions", input).then((r) => r.data);
 }
 
-export function cancelSubscription() {
-  return apiClient.post<SubscriptionDetail>("/subscriptions/cancel").then((r) => r.data);
+/** Figma payments/07 "Why are you leaving?" (24 Oct 2026); same values as the API's CANCEL_REASONS. */
+export type CancelReason = "too_expensive" | "not_using" | "no_value" | "technical" | "break" | "other";
+
+export function cancelSubscription(input: { reason?: CancelReason; comment?: string } = {}) {
+  return apiClient.post<SubscriptionDetail>("/subscriptions/cancel", input).then((r) => r.data);
 }

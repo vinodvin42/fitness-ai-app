@@ -151,6 +151,12 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
               {REASONS.map((r) => chip(r.label, reason === r.value, () => setReason(r.value)))}
             </View>
+            {route.params.painArea && reason === "joint_pain" ? (
+              <Text style={{ color: colors.warningText, ...typography.meta }}>
+                Pain in your {route.params.painArea}: options that are easier on your joints are listed first. If it still hurts, stop and skip
+                this exercise.
+              </Text>
+            ) : null}
           </View>
 
           <View style={{ gap: spacing.sm }}>

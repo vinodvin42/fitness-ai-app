@@ -8,6 +8,7 @@ import {
   disableTwoFactorSchema,
   editOnboardingProfileSchema,
   enableTwoFactorSchema,
+  healthAnswersSchema,
   onboardingProfileSchema,
   profilePhotoSchema,
   updateConsentSchema,
@@ -67,6 +68,17 @@ usersRouter.patch("/me/onboarding", requireAuth, async (req: AuthedRequest, res,
     const input = editOnboardingProfileSchema.parse(req.body);
     const profile = await usersService.editOnboardingProfile(req.userId!, input);
     res.json({ onboardingProfile: profile });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Health answers after setup (24 Oct 2026): see usersService.updateHealthAnswers.
+usersRouter.put("/me/onboarding/health", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = healthAnswersSchema.parse(req.body);
+    const { safetyOutcome, ...profile } = await usersService.updateHealthAnswers(req.userId!, input);
+    res.json({ onboardingProfile: profile, safetyOutcome });
   } catch (err) {
     next(err);
   }

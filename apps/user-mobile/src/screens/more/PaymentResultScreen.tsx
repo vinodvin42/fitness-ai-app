@@ -39,7 +39,8 @@ type Props = NativeStackScreenProps<MoreStackParamList, "PaymentResult">;
  */
 export function PaymentResultScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
-  const { status, message, paymentId } = route.params;
+  const { status, message, paymentId, internalPaymentId, amountCents } = route.params;
+  const [startedAt] = useState(() => new Date());
   const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
   const [resolvedActivated, setResolvedActivated] = useState(false);
@@ -70,6 +71,25 @@ export function PaymentResultScreen({ route, navigation }: Props) {
 
   const activatedViaPoll = !!polledStatus?.activatedAt;
 
+  // Figma payments/11 (24 Oct 2026): a payment Razorpay took but we couldn't
+  // confirm (often UPI still settling) — check our record every few seconds
+  // until it is paid and active, or failed.
+  const { data: pendingStatus } = useQuery({
+    queryKey: ["payments", "status", internalPaymentId],
+    queryFn: () => fetchPaymentStatus(internalPaymentId!),
+    enabled: status === "unconfirmed" && !!internalPaymentId,
+    refetchInterval: (query) => {
+      const s = query.state.data;
+      return s && ((s.status === "paid" && s.activatedAt) || s.status === "failed") ? false : 5000;
+    },
+    refetchIntervalInBackground: false,
+  });
+  const confirmedLater = status === "unconfirmed" && pendingStatus?.status === "paid" && !!pendingStatus.activatedAt;
+  const failedLater = status === "unconfirmed" && pendingStatus?.status === "failed";
+  useEffect(() => {
+    if (confirmedLater) refresh();
+  }, [confirmedLater]);
+
   // The webhook redelivery (or another retry) resolved it in the background
   // while this screen was open — make sure Subscription/History reflect
   // that the moment the user leaves this screen, without needing a tap.
@@ -99,9 +119,9 @@ export function PaymentResultScreen({ route, navigation }: Props) {
   };
 
   const activated = resolvedActivated || activatedViaPoll;
-  const success = status === "success" || (status === "activation_failed" && activated);
+  const success = status === "success" || (status === "activation_failed" && activated) || confirmedLater;
   const pendingActivation = status === "activation_failed" && !activated;
-  const unconfirmed = status === "unconfirmed";
+  const unconfirmed = status === "unconfirmed" && !confirmedLater && !failedLater;
 
   return (
     <ScreenContainer
@@ -168,6 +188,17 @@ export function PaymentResultScreen({ route, navigation }: Props) {
           </Text>
         ) : null}
       </Card>
+
+      {unconfirmed && amountCents != null ? (
+        <Card style={{ marginTop: spacing.md, gap: 4 }}>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>Amount</Text>
+          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>₹{(amountCents / 100).toLocaleString("en-IN")}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta }}>
+            Started {startedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            {internalPaymentId ? " · checking every few seconds" : ""}
+          </Text>
+        </Card>
+      ) : null}
 
       {pendingActivation ? (
         <Button label={t("payment.retryActivation")} onPress={onRetry} loading={isRetrying} style={{ marginTop: spacing.lg }} />

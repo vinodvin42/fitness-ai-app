@@ -8,6 +8,7 @@ import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { RecoverShell } from "../recover/parts";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SuggestionsSettings">;
 
@@ -31,7 +32,7 @@ export function SuggestionsSettingsScreen({ navigation }: Props) {
   return (
     <RecoverShell centered title="Suggestions" onBack={() => navigation.goBack()}>
       <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14, lineHeight: 20 }}>
-        At most 1–2 ideas a day, only after hard sessions or a low recovery score.
+        At most 1–2 ideas a day: after hard sessions, a low recovery score, or several hard weeks if Workout settings › Suggest lighter weeks is on.
       </Text>
       <Text style={{ color: colors.textMuted, ...typography.label, marginTop: spacing.sm }}>Choose one · default: Ask me</Text>
       <View accessibilityRole="radiogroup" style={{ borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
@@ -60,9 +61,30 @@ export function SuggestionsSettingsScreen({ navigation }: Props) {
           );
         })}
       </View>
+      <Pressable
+        onPress={() => navigation.navigate("ProgressSection", { screen: "DecisionHistory" })}
+        accessibilityRole="button"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: spacing.md,
+          minHeight: 52,
+          marginTop: spacing.sm,
+          borderRadius: radius.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 15 }}>Decision history</Text>
+        <Icon name="chevron-right" size={18} color={colors.textMuted} />
+      </Pressable>
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.lg }}>
         Nothing changes unless you say yes. This choice is saved on this phone.
       </Text>
+      <View style={{ alignItems: "center" }}>
+        <LearnMoreLink topic="daily_review" label="How suggestions work" />
+      </View>
     </RecoverShell>
   );
 }

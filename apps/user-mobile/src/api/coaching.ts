@@ -20,6 +20,7 @@ export function discoverCoaches(params: {
   serviceType?: ProfessionalServiceType | "combined";
   search?: string;
   sort?: "price" | "experience";
+  gender?: "male" | "female";
 }) {
   return apiClient.get<CoachDiscoveryResponse>("/coaching/professionals", { params }).then((r) => r.data);
 }

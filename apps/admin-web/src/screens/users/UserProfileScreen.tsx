@@ -98,6 +98,15 @@ function Row({ label, value }: { label: string; value: string | number }) {
  * an otherwise-`active` row that's scheduled to lapse rather than renew.
  */
 const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"]);
+// The app cancel screen's "Why are you leaving?" choices (24 Oct 2026; CANCEL_REASONS in the API).
+const CANCEL_REASON_LABEL: Record<string, string> = {
+  too_expensive: "Too expensive",
+  not_using: "Not using it enough",
+  no_value: "Not seeing value",
+  technical: "Technical issues",
+  break: "Taking a break",
+  other: "Other",
+};
 
 export function UserProfileScreen() {
   const { t } = useTranslation();
@@ -491,6 +500,13 @@ export function UserProfileScreen() {
                           </div>
                           {s.status === "revoked" && s.revokedReason && (
                             <div className="mt-1 text-[11px] text-text-dim">Reason: {s.revokedReason}</div>
+                          )}
+                          {/* 24 Oct 2026: why the member cancelled (app cancel screen, optional). */}
+                          {s.cancelAtPeriodEnd && (s.cancelReason || s.cancelComment) && (
+                            <div className="mt-1 text-[11px] text-text-dim">
+                              Leaving: {s.cancelReason ? (CANCEL_REASON_LABEL[s.cancelReason] ?? s.cancelReason) : "no reason picked"}
+                              {s.cancelComment ? ` · “${s.cancelComment}”` : ""}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-text-secondary">{s.plan.billingCycle}</td>

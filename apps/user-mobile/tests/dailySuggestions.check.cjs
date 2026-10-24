@@ -93,14 +93,55 @@ t("S1 modes: off -> none; weekly -> Sundays only", () => {
     ["lighter_day"],
   );
 });
-t("U1 helpers: ISO weeks, average RPE skips warm-ups and blanks, pruning keeps 14 days", () => {
+t("U1 helpers: ISO weeks, average RPE skips warm-ups and blanks, pruning keeps 90 days", () => {
   assert.strictEqual(d.isoWeekKey("2026-10-19"), "2026-W43");
   assert.strictEqual(d.isoWeekKey("2026-10-18"), "2026-W42");
   assert.strictEqual(d.isoWeekKey("2027-01-01"), "2026-W53");
   assert.strictEqual(d.averageRpe([{ rpe: 8 }, { rpe: 9 }, { rpe: null }, { rpe: 3, isWarmup: true }]), 8.5);
   assert.strictEqual(d.averageRpe([{ rpe: null }]), null);
-  const kept = d.pruneDecisions([{ date: "2026-10-01" }, { date: "2026-10-10" }], WED).map((x) => x.date);
-  assert.deepStrictEqual(kept, ["2026-10-10"]);
+  const kept = d.pruneDecisions([{ date: "2026-07-20" }, { date: "2026-07-30" }], WED).map((x) => x.date);
+  assert.deepStrictEqual(kept, ["2026-07-30"]);
+});
+
+// Lighter week: completed sessions at 18:00 on the given local day, with their "How did it feel?".
+const at = (y, m, day, feel) => ({ completedAt: new Date(y, m - 1, day, 18, 0, 0).toISOString(), feel });
+// The four full weeks before Wed 21 Oct: 21-27 Sep, 28 Sep-4 Oct, 5-11 Oct, 12-18 Oct.
+const HARD4 = [
+  at(2026, 9, 22, "hard"), at(2026, 9, 24, "about_right"),
+  at(2026, 9, 29, "about_right"), at(2026, 10, 1, "hard"),
+  at(2026, 10, 6, "hard"), at(2026, 10, 8, null),
+  at(2026, 10, 13, "easy"), at(2026, 10, 16, "hard"),
+];
+const lw = (over = {}, sessions = HARD4, enabled = true) => base({ lastCompleted: null, lightWeek: { enabled, sessions }, ...over });
+t("L1 four weeks in a row with 2+ workouts and one rated Hard -> lighter week from the coming Monday, plan unchanged", () => {
+  const out = d.computeDailySuggestions(lw());
+  assert.deepStrictEqual(out.map((s) => [s.kind, s.key, s.title]), [["light_week", "light_week:2026-10-26", "Lighter week from Mon 26 Oct"]]);
+  assert.strictEqual(out[0].details.find((x) => x.label === "Week").value, "Mon 26 Oct – Sun 1 Nov");
+  assert.strictEqual(out[0].details.find((x) => x.label === "Your plan").value, "Unchanged");
+});
+t("L2 not when switched off, a week has 1 workout, or a week has no Hard", () => {
+  assert.deepStrictEqual(kinds(lw({}, HARD4, false)), []);
+  assert.deepStrictEqual(kinds(lw({}, HARD4.filter((_, i) => i !== 1))), [], "week 21-27 Sep has only one workout");
+  assert.deepStrictEqual(kinds(lw({}, HARD4.map((s, i) => (i === 7 ? { ...s, feel: "about_right" } : s)))), [], "12-18 Oct has no Hard");
+});
+t("L3 not again within 28 days of a light-week decision (used or skipped)", () => {
+  const dec = (date, outcome) => [{ key: "light_week:x", kind: "light_week", date, outcome }];
+  assert.deepStrictEqual(kinds(lw({ decisions: dec("2026-10-01", "skipped") })), []);
+  assert.deepStrictEqual(kinds(lw({ decisions: dec("2026-09-20", "used") })), ["light_week"]);
+});
+t("L4 on a Monday it starts today, counting the four weeks before it", () => {
+  const MON = new Date(2026, 9, 26, 8, 0, 0);
+  const sessions = [...HARD4.slice(2), at(2026, 10, 20, "hard"), at(2026, 10, 22, "easy")];
+  const [s] = d.computeDailySuggestions(lw({ now: MON, trainingDays: [] }, sessions));
+  assert.strictEqual(s && s.key, "light_week:2026-10-26");
+});
+t("L5 the lighter week is active Mon-Sun after Use it, not after Skip", () => {
+  const used = [{ key: "light_week:2026-10-26", kind: "light_week", date: "2026-10-24", outcome: "used" }];
+  assert.ok(d.activeLightWeek(used, new Date(2026, 9, 28, 12)));
+  assert.ok(d.activeLightWeek(used, new Date(2026, 10, 1, 21)));
+  assert.strictEqual(d.activeLightWeek(used, new Date(2026, 10, 2, 7)), null);
+  assert.strictEqual(d.activeLightWeek(used, new Date(2026, 9, 25, 12)), null);
+  assert.strictEqual(d.activeLightWeek([{ ...used[0], outcome: "skipped" }], new Date(2026, 9, 28, 12)), null);
 });
 
 console.log(results.join("\n"));

@@ -68,7 +68,8 @@ export const r1Flags = {
    * The underlying code and its tests are retained, not deleted, so
    * flipping this back on restores the previous behaviour intact.
    */
-  PROFESSIONAL_MARKETPLACE_ENABLED: envFlag("FYNROX_PROFESSIONAL_MARKETPLACE_ENABLED", false),
+  // Owner, 24 Oct 2026: coach browsing on ("Browse + request"); admin matching stays.
+  PROFESSIONAL_MARKETPLACE_ENABLED: envFlag("FYNROX_PROFESSIONAL_MARKETPLACE_ENABLED", true),
   /**
    * Gym partners and creators/influencers (owner, 20 Oct 2026: "as of now
    * hide all gym, influencer modules, we later introduce them"). Off: the

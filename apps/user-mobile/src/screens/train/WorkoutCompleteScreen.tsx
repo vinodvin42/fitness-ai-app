@@ -10,7 +10,9 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchSessionSummary, setSessionFeel } from "../../api/workoutSessions";
+import { fetchSessionSummary, fetchWorkoutHistory, setSessionFeel } from "../../api/workoutSessions";
+import { editOnboardingProfile, fetchOnboardingProfile } from "../../api/users";
+import { TRAINING_LEVEL_LABEL, levelAfterFirstWorkout } from "../../lib/trainingLevel";
 import { useToast } from "../../components/Toast";
 import { extractErrorMessage } from "../../lib/apiError";
 
@@ -53,6 +55,11 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [feel, setFeel] = useState<SessionFeel | null>(null);
+  // Figma train/after-first-workout (24 Oct 2026): the first workout's feel sets the training level.
+  const history = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
+  const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile });
+  const completed = (history.data ?? []).filter((h) => h.status === "completed");
+  const isFirstWorkout = completed.length === 1 && completed[0].id === sessionId;
   useEffect(() => {
     if (data?.feel !== undefined) setFeel(data.feel ?? null);
   }, [data?.feel]);
@@ -64,6 +71,14 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
       await setSessionFeel(sessionId, value);
       queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary"] });
       queryClient.invalidateQueries({ queryKey: ["workoutHistory"] });
+      if (isFirstWorkout && value && profile.data) {
+        const level = levelAfterFirstWorkout(profile.data.trainingLevel, value);
+        if (level !== profile.data.trainingLevel) {
+          await editOnboardingProfile({ trainingLevel: level });
+          queryClient.invalidateQueries({ queryKey: ["onboardingProfile"] });
+        }
+        toast.show(`Training level: ${TRAINING_LEVEL_LABEL[level]}. Your next plan uses it.`, "success");
+      }
     } catch (err) {
       setFeel(before);
       toast.show(extractErrorMessage(err, "Couldn't save that."), "error");
@@ -216,7 +231,11 @@ export function WorkoutCompleteScreen({ route, navigation }: Props) {
                     </Pressable>
                   ))}
                 </View>
-                <Text style={{ color: colors.textMuted, ...typography.meta }}>Saved with this workout. It doesn't change your plan.</Text>
+                <Text style={{ color: colors.textMuted, ...typography.meta }}>
+                  {isFirstWorkout
+                    ? "Your first workout: we'll set your training level from this. Your current plan stays as it is."
+                    : "Saved with this workout. It doesn't change your plan."}
+                </Text>
               </Card>
             </>
           )}

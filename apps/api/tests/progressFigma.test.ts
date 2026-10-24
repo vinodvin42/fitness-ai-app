@@ -92,6 +92,7 @@ describe("progressMetrics (pure rules)", () => {
     expect(lifts[0]).toMatchObject({ firstKg: 60, previousKg: 80, currentKg: 85 });
     const trend = strengthTrend(lifts, now);
     expect(trend).toMatchObject({ exerciseName: "Bench Press", fromKg: 60, toKg: 85, improvements: 3 });
+    expect(trend?.lastAt).toEqual(lifts[0].improvements[2].at); // Today info card (24 Oct 2026)
     expect(nextLoadTarget(100)).toBe(105);
   });
 

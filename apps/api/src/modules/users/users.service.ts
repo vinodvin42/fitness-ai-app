@@ -25,6 +25,7 @@ import {
   DisableTwoFactorInput,
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
+  HealthAnswersInput,
   OnboardingProfileInput,
   ProfilePhotoInput,
   UpdateConsentInput,
@@ -224,11 +225,10 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   // SafetyEscalation's own schema.prisma doc comment for the full design.
   // Deliberately gated on `isNewCompletion`: this PUT is an upsert (a
   // resubmission of the wizard would hit it again with the same answers),
-  // and `editOnboardingProfile` below — the OTHER real write path onto
-  // this same model — never touches medicalConditions/injuries at all (see
-  // editOnboardingProfileSchema's own comment), so it's structurally
-  // incapable of reaching this branch. A real escalation only fires once,
-  // at the one real moment this data is first reported.
+  // and `editOnboardingProfile` below never touches medicalConditions/
+  // injuries. Health answers given after setup go through
+  // `updateHealthAnswers`, which escalates only conditions that are newly
+  // reported there (24 Oct 2026), so each report escalates once.
   // D14 — "Which health conditions trigger Safety Pause vs a warning";
   // build-to default "Heart condition -> Pause; others -> warning +
   // consent". Until R1 this branch escalated on ANY declared condition
@@ -244,96 +244,8 @@ export async function upsertOnboardingProfile(userId: string, input: OnboardingP
   const shouldWarn =
     isNewCompletion && safetyOutcome === "warning" && medicalConditions.length + injuries.length > 0;
 
-  if (shouldEscalate) {
-    const escalation = await prisma.safetyEscalation.create({
-      data: {
-        userId,
-        // Encrypted here too — a safety escalation holds exactly the
-        // same declared conditions as the profile it came from.
-        medicalConditions: [],
-        injuries: [],
-        medicalConditionsEnc: encryptStringList(medicalConditions),
-        injuriesEnc: encryptStringList(injuries),
-      },
-    });
-
-    // Admin Action Required queue (R2 Wave 1, 20 Sep 2026) — `high`
-    // severity: this is real, user-reported medical/injury data a human
-    // admin should see promptly, not just wait for someone to open the
-    // siloed Safety Escalations screen. A failure here must never fail
-    // onboarding completion — see lib/adminActionQueue.ts's top comment.
-    await createActionItem({
-      type: "safety_escalation",
-      entityType: "SafetyEscalation",
-      entityId: escalation.id,
-      severity: "high",
-      metadata: {
-        userId,
-        medicalConditionsCount: medicalConditions.length,
-        injuriesCount: injuries.length,
-      },
-    });
-
-    await trackEvent(
-      userId,
-      "safety.escalated",
-      { safetyEscalationId: escalation.id, onboardingProfileId: profile.userId },
-      {
-        ruleId: "BR-SAF-004",
-        metadata: {
-          medicalConditionsCount: medicalConditions.length,
-          injuriesCount: injuries.length,
-          outcome: "pause",
-        },
-      },
-    );
-  } else if (shouldWarn) {
-    // The warning tier. A real SafetyEscalation row is still written —
-    // this IS reported health data and the safety team should be able
-    // to see it — but at `low` severity and without the Pause, so the
-    // user continues onboarding with a warning and a consent step
-    // rather than being stopped. Recording it as an escalation the
-    // console can filter is the honest middle ground between "full
-    // stop" and "no trace at all".
-    const escalation = await prisma.safetyEscalation.create({
-      data: {
-        userId,
-        // Encrypted here too — a safety escalation holds exactly the
-        // same declared conditions as the profile it came from.
-        medicalConditions: [],
-        injuries: [],
-        medicalConditionsEnc: encryptStringList(medicalConditions),
-        injuriesEnc: encryptStringList(injuries),
-      },
-    });
-
-    await createActionItem({
-      type: "safety_escalation",
-      entityType: "SafetyEscalation",
-      entityId: escalation.id,
-      severity: "low",
-      metadata: {
-        userId,
-        medicalConditionsCount: medicalConditions.length,
-        injuriesCount: injuries.length,
-        outcome: "warning",
-      },
-    });
-
-    await trackEvent(
-      userId,
-      "safety.escalated",
-      { safetyEscalationId: escalation.id, onboardingProfileId: profile.userId },
-      {
-        ruleId: "BR-SAF-004",
-        metadata: {
-          medicalConditionsCount: medicalConditions.length,
-          injuriesCount: injuries.length,
-          outcome: "warning",
-        },
-      },
-    );
-  }
+  if (shouldEscalate) await recordSafetyEscalation(userId, medicalConditions, injuries, "pause");
+  else if (shouldWarn) await recordSafetyEscalation(userId, medicalConditions, injuries, "warning");
 
   // D14's outcome travels with the response so the client knows whether
   // to show the Safety Pause screen or a warning + consent step. Derived
@@ -372,6 +284,8 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
 
   const { dateOfBirth: dobInput, ...fields } = input;
   const dateOfBirth = dobInput ? parseDateOnly(dobInput) : null;
+  // Same rule as onboarding: "None" is an answer, not an allergen.
+  if (fields.allergens) fields.allergens = fields.allergens.filter((a) => a.trim().toLowerCase() !== "none");
   const profile = await prisma.onboardingProfile.update({
     where: { userId },
     data: { ...fields, ...(dateOfBirth ? { dateOfBirth, age: ageFromDateOfBirth(dateOfBirth) } : {}) },
@@ -386,6 +300,106 @@ export async function editOnboardingProfile(userId: string, input: EditOnboardin
   });
 
   return withDecryptedHealth(profile);
+}
+
+/**
+ * BR-SAF-004 escalation for reported health answers, shared by the onboarding
+ * wizard and health answers given after setup. D14: "pause" is a high-severity
+ * SafetyEscalation in the admin Action Required queue, "warning" a low one.
+ * The escalation holds the same encrypted lists as the profile. A queue or
+ * analytics failure never fails the caller (see lib/adminActionQueue.ts).
+ */
+async function recordSafetyEscalation(
+  userId: string,
+  medicalConditions: string[],
+  injuries: string[],
+  outcome: "pause" | "warning",
+) {
+  const escalation = await prisma.safetyEscalation.create({
+    data: {
+      userId,
+      medicalConditions: [],
+      injuries: [],
+      medicalConditionsEnc: encryptStringList(medicalConditions),
+      injuriesEnc: encryptStringList(injuries),
+    },
+  });
+
+  await createActionItem({
+    type: "safety_escalation",
+    entityType: "SafetyEscalation",
+    entityId: escalation.id,
+    severity: outcome === "pause" ? "high" : "low",
+    metadata: {
+      userId,
+      medicalConditionsCount: medicalConditions.length,
+      injuriesCount: injuries.length,
+      ...(outcome === "warning" ? { outcome: "warning" } : {}),
+    },
+  });
+
+  await trackEvent(
+    userId,
+    "safety.escalated",
+    { safetyEscalationId: escalation.id, onboardingProfileId: userId },
+    {
+      ruleId: "BR-SAF-004",
+      metadata: { medicalConditionsCount: medicalConditions.length, injuriesCount: injuries.length, outcome },
+    },
+  );
+}
+
+/**
+ * Health answers after setup (24 Oct 2026): Figma today/safer-plan-sheet
+ * ("Make your plan safer", for members who skipped health data at setup)
+ * and Profile › Health & safety. Same rules as onboarding 08:
+ * - kept only with the health-data consent; without it the lists are
+ *   discarded (stored empty) and the skipped state stays as it was;
+ * - "None" (nothing to report) is a full answer and needs no consent;
+ * - stored encrypted; "None" / "Prefer not to say" are answers, not conditions;
+ * - consenting records the health_data_processing consent and clears
+ *   "skipped".
+ * Only conditions and injuries that are NEW compared with what was stored go
+ * through D14, so re-saving the same answers never escalates twice.
+ */
+export async function updateHealthAnswers(userId: string, input: HealthAnswersInput) {
+  const before = await getOnboardingProfile(userId); // 404s before setup; lists decrypted
+  const keep = input.healthDataConsent;
+  const reported = input.medicalConditions.filter((c) => !["none", "prefer not to say"].includes(c.trim().toLowerCase()));
+  // "None" (or nothing ticked) is a full answer that needs no consent.
+  const nothingToReport = reported.length === 0 && input.injuries.length === 0;
+  const medicalConditions = keep ? reported : [];
+  const injuries = keep ? input.injuries : [];
+
+  const profile = await prisma.onboardingProfile.update({
+    where: { userId },
+    data: {
+      medicalConditions: [],
+      injuries: [],
+      medicalConditionsEnc: encryptStringList(medicalConditions),
+      injuriesEnc: encryptStringList(injuries),
+      ...(keep || nothingToReport ? { healthDataSkippedAt: null } : {}),
+    },
+  });
+  if (keep && !nothingToReport) await updateConsent(userId, { type: "health_data_processing", granted: true });
+
+  await recordAudit({
+    actorId: userId,
+    action: "user.health_answers_updated",
+    entityType: "OnboardingProfile",
+    entityId: userId,
+    metadata: { medicalConditionsCount: medicalConditions.length, injuriesCount: injuries.length, consent: keep },
+  });
+
+  const known = (list: string[]) => new Set(list.map((x) => x.trim().toLowerCase()));
+  const hadConditions = known(before.medicalConditions);
+  const newConditions = medicalConditions.filter((c) => !hadConditions.has(c.trim().toLowerCase()));
+  const safetyOutcome = classifySafetyOutcome(newConditions);
+  if (safetyOutcome === "pause" || safetyOutcome === "warning") {
+    await recordSafetyEscalation(userId, medicalConditions, injuries, safetyOutcome);
+  }
+
+  return { ...withDecryptedHealth(profile), safetyOutcome };
 }
 
 /**

@@ -58,7 +58,14 @@ export function CheckoutScreen({ route, navigation }: Props) {
         queryClient.invalidateQueries({ queryKey: ["subscriptions"] }),
         queryClient.invalidateQueries({ queryKey: ["purchaseHistory"] }),
       ]),
-    onVerifyFailed: (paymentId, message) => navigation.replace("PaymentResult", { status: "unconfirmed", message, paymentId }),
+    onVerifyFailed: (paymentId, message, paid) =>
+      navigation.replace("PaymentResult", {
+        status: "unconfirmed",
+        message,
+        paymentId,
+        internalPaymentId: paid?.paymentId,
+        amountCents: paid?.amountCents,
+      }),
     onSuccess: () => navigation.replace("PaymentResult", { status: "success" }),
     onError: (message) => navigation.replace("PaymentResult", { status: "failed", message }),
     onActivationFailed: (paymentId, message) =>

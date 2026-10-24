@@ -12,7 +12,9 @@ import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchReadiness } from "../../api/recovery";
 import { startWorkoutSession } from "../../api/workoutSessions";
-import { useWorkoutSettings } from "../../api/workoutSettings";
+import { fetchExerciseRests, useWorkoutSettings } from "../../api/workoutSettings";
+import { fetchWorkoutHistory } from "../../api/workoutSessions";
+import { lastLoadFor } from "../../lib/lastLoad";
 import { formatMmSs } from "../../lib/format";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -57,6 +59,11 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
   const { data: workoutSettings } = useWorkoutSettings();
+  // Figma train/04: each exercise's own rest (else the default) and what you lifted last time.
+  const { data: exerciseRests } = useQuery({ queryKey: ["exerciseRest"], queryFn: fetchExerciseRests, staleTime: 5 * 60_000 });
+  const { data: history } = useQuery({ queryKey: ["workoutHistory"], queryFn: fetchWorkoutHistory });
+  const restFor = (exerciseId: string) =>
+    exerciseRests?.find((r) => r.exerciseId === exerciseId)?.restSeconds ?? workoutSettings?.restTimerSeconds ?? 60;
   const { data: workout, isLoading, isError, refetch } = useQuery({
     queryKey: ["workout", workoutId],
     queryFn: () => fetchWorkoutDetail(workoutId),
@@ -209,6 +216,13 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
                         <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
                           {we.targetSets} {we.targetSets === 1 ? "set" : "sets"} × {we.targetReps} reps · {we.exercise.muscleGroup}
                         </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                          Rest {formatMmSs(restFor(we.exercise.id))}
+                          {(() => {
+                            const last = lastLoadFor(history ?? [], we.exercise.id);
+                            return last ? ` · Last ${last}` : "";
+                          })()}
+                        </Text>
                       </View>
                     </Pressable>
                     <Pressable
@@ -233,10 +247,9 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
         );
       })}
 
-      {/* Reconciliation W1: the rest the workout will use (the default; an exercise can have its own). */}
+      {/* Reconciliation W1: the default rest; each exercise above shows its own. */}
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
-        Rest {formatMmSs(workoutSettings?.restTimerSeconds ?? 60)} between sets. You can change it for any exercise during the
-        workout.
+        Default rest {formatMmSs(workoutSettings?.restTimerSeconds ?? 60)}. You can change it for any exercise during the workout.
       </Text>
 
       {workout.program.purchased ? (

@@ -130,6 +130,8 @@ export interface InsightCard {
   body: string;
   /** Short footer, e.g. "Based on recent trends". */
   footnote?: string;
+  /** The strength card's numbers, for the app's Today info card (24 Oct 2026). */
+  strength?: { exerciseName: string; fromKg: number; toKg: number; improvements: number; weeks: number; lastAt: string };
 }
 
 /**
@@ -220,6 +222,14 @@ export async function getInsights(userId: string, now: Date = new Date()) {
       kind: "strength",
       tone: "positive",
       title: "Strength Progress",
+      strength: {
+        exerciseName: trend.exerciseName,
+        fromKg: trend.fromKg,
+        toKg: trend.toKg,
+        improvements: trend.improvements,
+        weeks: trend.weeks,
+        lastAt: trend.lastAt.toISOString(),
+      },
       body: `${trend.exerciseName} trending upward. Your heaviest set moved from ${trend.fromKg} kg to ${trend.toKg} kg across ${trend.improvements} personal records over ${trend.weeks} week${trend.weeks === 1 ? "" : "s"}. Keep up the consistency.`,
     });
   }

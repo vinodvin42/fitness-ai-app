@@ -9,17 +9,15 @@ import { CheckboxField, OptionRow } from "../../components/WizardParts";
 import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { BRAND_NAME } from "../../lib/brand";
+import { EXCLUSIVE_CONDITIONS, INJURIES, MEDICAL_CONDITIONS, isHeartCondition } from "../../lib/healthFoodOptions";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 import { onboardingStep } from "../../navigation/onboardingSteps";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Safety">;
 
-const MEDICAL_CONDITIONS = ["None", "Diabetes", "Hypertension", "Heart Condition", "Asthma", "Thyroid", "PCOS/PCOD", "Prefer not to say"];
-// "None" and "Prefer not to say" are answers, not conditions, and exclude every real condition.
-const EXCLUSIVE = ["None", "Prefer not to say"];
-const INJURIES = ["Head", "Shoulders", "Core/Back", "Knees", "Wrists", "Ankles"];
-
-const isHeart = (c: string) => c.toLowerCase() === "heart condition";
+// The same choices are offered after setup (Profile › Health & safety): lib/healthFoodOptions.ts.
+const EXCLUSIVE = EXCLUSIVE_CONDITIONS;
+const isHeart = isHeartCondition;
 
 /**
  * Figma "01 Onboarding / 08 Safety & Preferences" (docs/mobile/03-screen-

@@ -368,6 +368,7 @@ model User {
   updatedAt              DateTime    @updatedAt
 
   savedRecipes                SavedRecipe[]
+  recipeRatings               RecipeRating[]
   partnerLink                 UserPartnerLink?
   onboardingProfile           OnboardingProfile?
   subscriptions               Subscription[]
@@ -1052,6 +1053,7 @@ model Recipe {
   // comment.
   mealPlanItems MealPlanItem[]
   savedBy       SavedRecipe[]
+  ratings       RecipeRating[]
 
   @@index([createdByAdminId])
   @@map("recipes")
@@ -1059,6 +1061,25 @@ model Recipe {
 
 // Profile & Settings 01 "Saved Recipes" (Oct 2026) — a user's bookmarked
 // recipes. One row per (user, recipe); idempotent to save twice.
+// "How was it?" after cooking a recipe (Figma fuel/17, 24 Oct 2026): the
+// member's own verdict, one per member and recipe (a new answer replaces the
+// old one). 1 Not for me, 2 Okay, 3 Good, 4 Loved it. Private: never shown to
+// other members.
+model RecipeRating {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  rating    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+  @@map("recipe_ratings")
+}
+
 model SavedRecipe {
   id        String   @id @default(uuid())
   userId    String
@@ -1404,6 +1425,9 @@ model FoodEstimate {
   proteinG      Int?
   carbsG        Int?
   fatG          Int?
+  /// Itemised estimate (24 Oct 2026, Figma fuel/11-12): [{ name, amount, unit, grams, calories, proteinG,
+  /// carbsG, fatG, alt? }] in Indian household portions where natural. Null for older or single-item estimates.
+  items         Json?
   // Only set when status is insufficient_context — a real, user-facing
   // reason (never a raw stack trace), same convention as Plan.failureReason.
   failureReason String?
@@ -2343,6 +2367,13 @@ model Subscription {
   // DB) and is what the admin console's audit trail entry echoes.
   revokedAt     DateTime?
   revokedReason String?
+
+  // Why the member cancelled (Figma payments/07, 24 Oct 2026): optional,
+  // picked on the app's cancel screen (CANCEL_REASONS in subscriptions.schema.ts)
+  // with an optional comment. Feedback only: it never changes access.
+  cancelReason      String?
+  cancelComment     String?
+  cancelRequestedAt DateTime?
 
   // The price this subscriber paid for the current period (paise), locked
   // at payment time. A later plan price change never alters it; the next

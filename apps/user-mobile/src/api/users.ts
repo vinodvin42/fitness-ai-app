@@ -5,6 +5,7 @@ import type {
   EditOnboardingProfileInput,
   EnableTwoFactorInput,
   EnableTwoFactorResponse,
+  HealthAnswersInput,
   OnboardingProfile,
   OnboardingProfileInput,
   ProfilePhoto,
@@ -52,6 +53,13 @@ export function editOnboardingProfile(input: EditOnboardingProfileInput) {
   return apiClient
     .patch<{ onboardingProfile: OnboardingProfile }>("/users/me/onboarding", input)
     .then((r) => r.data.onboardingProfile);
+}
+
+/** Health answers after setup (24 Oct 2026). `safetyOutcome` is "pause" when a newly reported condition needs a doctor's check first. */
+export function updateHealthAnswers(input: HealthAnswersInput) {
+  return apiClient
+    .put<{ onboardingProfile: OnboardingProfile; safetyOutcome: "pause" | "warning" | "none" }>("/users/me/onboarding/health", input)
+    .then((r) => r.data);
 }
 
 // §L "Security" (docs/mobile/03-screen-inventory.md) — see SecurityScreen.tsx.

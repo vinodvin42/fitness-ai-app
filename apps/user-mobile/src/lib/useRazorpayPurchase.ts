@@ -50,7 +50,7 @@ interface Options {
    * this must never be shown as "payment failed, not charged". Receives
    * Razorpay's payment ID for support.
    */
-  onVerifyFailed?: (razorpayPaymentId: string, message: string) => void;
+  onVerifyFailed?: (razorpayPaymentId: string, message: string, order?: { paymentId?: string; amountCents: number }) => void;
 }
 
 /**
@@ -91,6 +91,7 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
 
   const onCheckoutSuccess = useCallback(
     async (result: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) => {
+      const paidOrder = order;
       setOrder(null);
       setIsVerifying(true);
       try {
@@ -107,7 +108,11 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
           const paymentId = extractErrorDetails(err)?.paymentId as string | undefined;
           onActivationFailed(paymentId, extractErrorMessage(err, "Your payment went through, but activation failed. Please retry."));
         } else if (onVerifyFailed) {
-          onVerifyFailed(result.razorpayPaymentId, extractErrorMessage(err, "We couldn't confirm your payment."));
+          onVerifyFailed(
+            result.razorpayPaymentId,
+            extractErrorMessage(err, "We couldn't confirm your payment."),
+            paidOrder ? { paymentId: paidOrder.paymentId, amountCents: paidOrder.amountCents } : undefined,
+          );
         } else {
           reportError(
             "Payment couldn't be verified",
@@ -118,7 +123,7 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
         setIsVerifying(false);
       }
     },
-    [onVerified, onSuccess, onActivationFailed, reportError],
+    [order, onVerified, onSuccess, onActivationFailed, onVerifyFailed, reportError],
   );
 
   const onCheckoutDismiss = useCallback(() => setOrder(null), []);

@@ -291,12 +291,6 @@ export const en = {
     delete: "Delete Reminder",
   },
 
-  settings: {
-    preferences: "Preferences",
-    unitSystem: "Unit System",
-    accentColor: "Accent Color",
-  },
-
   purchaseHistory: {
     title: "Purchase History",
     emptyTitle: "No subscription history yet",

@@ -27,10 +27,11 @@ import type { NotificationPreferences, Reminder } from "@fitness-ai-app/types";
 // foreground — otherwise iOS silently drops foregrounded notifications by
 // default, which would make a reminder look like it never fired if the
 // app happened to be open at the scheduled time.
+// The ongoing workout notification (lib/workoutNotification.ts) stays silent.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
+  handleNotification: async (n) => ({
     shouldShowAlert: true,
-    shouldPlaySound: true,
+    shouldPlaySound: n.request.content.data?.kind !== "workout-live",
     shouldSetBadge: false,
   }),
 });

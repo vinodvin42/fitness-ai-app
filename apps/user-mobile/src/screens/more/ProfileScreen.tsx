@@ -97,6 +97,13 @@ export function ProfileScreen({ navigation }: Props) {
       value: goalCount != null ? `${goalCount} goal${goalCount === 1 ? "" : "s"}` : undefined,
       onPress: () => navigation.navigate("MyGoals"),
     },
+    { title: "Health & safety", icon: "heart-pulse", onPress: () => navigation.navigate("HealthSafety") },
+    {
+      title: "Food preferences",
+      icon: "utensils",
+      value: onboarding.data?.dietType ?? undefined,
+      onPress: () => navigation.navigate("FoodPreferences"),
+    },
     {
       title: "My Programs",
       icon: "dumbbell",

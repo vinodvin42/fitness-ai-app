@@ -1,5 +1,5 @@
-import React from "react";
-import { Text, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -13,8 +13,14 @@ import { Icon, IconName } from "../../components/Icon";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchProgressInsights } from "../../api/progress";
 import { BRAND_NAME } from "../../lib/brand";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { useToast } from "../../components/Toast";
+import { recordSuggestionDecision } from "../../lib/dailyReviewStore";
+import { localDate, type DailySuggestion, type SuggestionOutcome } from "../../lib/dailySuggestions";
+import { useDailyReview } from "../../lib/useDailyReview";
+import { useTheme } from "../../theme/ThemeProvider";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { ProgressStackParamList } from "../../navigation/ProgressStack";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
 
 type Props = NativeStackScreenProps<ProgressStackParamList, "ProgressInsights">;
 
@@ -75,6 +81,63 @@ function PlainCard({ card }: { card: InsightCard }) {
 }
 
 /**
+ * Figma progress/07 "Light week · in today's review": the same suggestion the
+ * daily review offers (lib/dailySuggestions.ts lightWeekOffer), answerable
+ * here too. Use it / Skip are saved exactly like the review's buttons.
+ */
+function LightWeekCard({ s }: { s: DailySuggestion }) {
+  const { colors: theme } = useTheme();
+  const toast = useToast();
+  const [whyOpen, setWhyOpen] = useState(false);
+  const decide = (outcome: SuggestionOutcome) => {
+    recordSuggestionDecision({ key: s.key, kind: s.kind, date: localDate(new Date()), outcome, title: s.title, why: s.why, at: new Date().toISOString() });
+    toast.show(outcome === "used" ? "Lighter week saved. Today will remind you." : "Kept your plan. Saved in Decision history.", "success");
+  };
+  const pill = (label: string, onPress: () => void, primary = false) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={{
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: primary ? theme.accent : colors.border,
+        backgroundColor: primary ? theme.accent : colors.surface,
+      }}
+    >
+      <Text style={{ color: primary ? theme.textOnAccent : colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{label}</Text>
+    </Pressable>
+  );
+  return (
+    <Card style={{ gap: spacing.sm }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+        <View style={{ width: 30, height: 30, borderRadius: radius.sm, backgroundColor: `${colors.accent}22`, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="battery-medium" size={16} color={colors.accent} />
+        </View>
+        <Text style={{ color: theme.accentText, ...typography.h3, flex: 1 }}>✦ Light week · in today's review</Text>
+      </View>
+      <Text style={{ color: colors.textSecondary, ...typography.meta, fontSize: 13, lineHeight: 19 }}>
+        {s.why} {s.title}? Only if you say yes.
+      </Text>
+      {whyOpen
+        ? s.details.map((d) => (
+            <View key={d.label} style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{d.label}</Text>
+              <Text style={{ flex: 1, textAlign: "right", color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{d.value}</Text>
+            </View>
+          ))
+        : null}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        {pill("Use it", () => decide("used"), true)}
+        {pill("Skip", () => decide("skipped"))}
+        {pill(whyOpen ? "Hide" : "Why?", () => setWhyOpen((o) => !o))}
+      </View>
+    </Card>
+  );
+}
+
+/**
  * Insights (Figma Progress 07). Every card comes from a documented rule over
  * the user's own logs (see apps/api progressAnalytics.service.ts getInsights:
  * goal progress, weight-loss plateau, strength trend, sleep change, recovery
@@ -83,6 +146,8 @@ function PlainCard({ card }: { card: InsightCard }) {
  */
 export function ProgressInsightsScreen({ navigation }: Props) {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["progress", "insights"], queryFn: fetchProgressInsights });
+  const { colors: theme } = useTheme();
+  const lightWeek = useDailyReview().suggestions.find((s) => s.kind === "light_week");
 
   return (
     <ScreenContainer title={`${BRAND_NAME} Insights`} subtitle="Your Fitness Summary">
@@ -101,7 +166,12 @@ export function ProgressInsightsScreen({ navigation }: Props) {
           ) : (
             data.cards.map((c) => (c.kind === "goal" ? <GoalCard key={c.id} card={c} /> : <PlainCard key={c.id} card={c} />))
           )}
+          {lightWeek ? <LightWeekCard s={lightWeek} /> : null}
+          <Pressable onPress={() => navigation.navigate("DecisionHistory")} accessibilityRole="link" hitSlop={8}>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>Decision history ›</Text>
+          </Pressable>
           <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18, marginTop: spacing.sm }}>{data.disclaimer}</Text>
+          <LearnMoreLink topic="insights" />
         </>
       )}
     </ScreenContainer>

@@ -70,6 +70,8 @@ export type TrainStackParamList = {
     sessionId?: string;
     sessionExerciseId?: string;
     reason?: SwapReason;
+    /** From the in-workout safety sheet: where it hurts ("knee"). */
+    painArea?: string;
   };
   // Wave B (Oct 2026): Train 12-16, 18 + set edit/delete.
   TrainingAnalytics: undefined;

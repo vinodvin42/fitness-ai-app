@@ -220,6 +220,10 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
         onPress={findCoach}
         style={{ marginTop: spacing.lg }}
       />
+      {/* Owner, 24 Oct 2026: "Browse + request" — browsing is on, and asking to be matched stays. */}
+      {COACH_BROWSING_ENABLED ? (
+        <Button label="Ask us to match you" variant="secondary" onPress={() => navigation.navigate("RequestGuidance")} style={{ marginTop: spacing.sm }} />
+      ) : null}
     </ScreenContainer>
   );
 }

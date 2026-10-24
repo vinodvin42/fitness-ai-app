@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -30,8 +30,9 @@ type Props = CompositeScreenProps<
  * when the screen opens so deciding one doesn't reshuffle the rest. "Go
  * lighter" changes nothing in the plan — Use it offers the gentle routine on
  * the last screen; a program switch is accepted or declined on the server,
- * exactly as Progress › Review does. There is no Decision history screen, so
- * Figma's "Open Decision history" isn't offered.
+ * exactly as Progress › Review does. "Lighter week" changes nothing either:
+ * Use it marks the week, and Today shows it while it runs. Every choice is
+ * saved with its reason in Progress › Decision history (on this phone).
  */
 export function DailyReviewScreen({ navigation }: Props) {
   const { colors: theme } = useTheme();
@@ -63,7 +64,7 @@ export function DailyReviewScreen({ navigation }: Props) {
         queryClient.invalidateQueries({ queryKey: ["recommendations", "current"] });
         queryClient.invalidateQueries({ queryKey: ["plans", "current"] });
       }
-      recordSuggestionDecision({ key: s.key, kind: s.kind, date: localDate(new Date()), outcome });
+      recordSuggestionDecision({ key: s.key, kind: s.kind, date: localDate(new Date()), outcome, title: s.title, why: s.why, at: new Date().toISOString() });
       setOutcomes((o) => ({ ...o, [s.key]: outcome }));
       setIndex((i) => i + 1);
     } catch (err) {
@@ -110,6 +111,13 @@ export function DailyReviewScreen({ navigation }: Props) {
         <Text style={{ color: colors.textMuted, ...typography.meta }}>
           Next review only if something meaningful comes up. Skipped ideas don't come back this week.
         </Text>
+        <Pressable
+          onPress={() => navigation.navigate("More", { screen: "ProgressSection", params: { screen: "DecisionHistory" }, initial: false })}
+          accessibilityRole="link"
+          hitSlop={8}
+        >
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>Saved in Progress › Decision history ›</Text>
+        </Pressable>
         {lighterUsed ? (
           <Button
             label="Start gentle mobility"
@@ -141,7 +149,9 @@ export function DailyReviewScreen({ navigation }: Props) {
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
         {s.kind === "switch_program"
           ? "Use it switches your plan to this program. Skip keeps your current plan."
-          : "Nothing in your plan changes. A skipped idea won't come back this week."}
+          : s.kind === "light_week"
+            ? "Nothing in your plan changes. Use it marks the week as lighter, and Today reminds you while it runs."
+            : "Nothing in your plan changes. A skipped idea won't come back this week."}
       </Text>
       <Button label="Use it" onPress={() => decide(s, "used")} loading={busy === "used"} disabled={busy !== null} />
       <Button label="Skip" variant="secondary" onPress={() => decide(s, "skipped")} loading={busy === "skipped"} disabled={busy !== null} />

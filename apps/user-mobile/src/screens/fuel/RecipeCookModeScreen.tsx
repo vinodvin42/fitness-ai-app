@@ -10,7 +10,7 @@ import { RecipeVideo } from "../../components/RecipeVideo";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { fetchRecipeDetail } from "../../api/programs";
 import { fetchTodayMealLogs, logMeal } from "../../api/nutrition";
-import { useSavedRecipes } from "../../api/savedRecipes";
+import { fetchRecipeRating, setRecipeRating, useSavedRecipes } from "../../api/savedRecipes";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatMmSs } from "../../lib/format";
 import { DAILY_TARGETS } from "../../lib/nutritionTargets";
@@ -19,16 +19,24 @@ import { clipLengthLabel, hasVideo, stepClip } from "../../lib/recipeVideo";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { FuelStackParamList } from "../../navigation/FuelStack";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
 
 type Props = NativeStackScreenProps<FuelStackParamList, "RecipeCookMode">;
+
+const RATINGS: Array<{ value: number; label: string }> = [
+  { value: 1, label: "Not for me" },
+  { value: 2, label: "Okay" },
+  { value: 3, label: "Good" },
+  { value: 4, label: "Loved it" },
+];
 
 /**
  * Cooking mode (Figma Fuel 16 step guide + Fuel 17 finish): one recipe step
  * per screen with Previous / Next step, a timer when the step names a time,
  * and the ingredients the step mentions. The last step leads to a "Ready to
  * eat" finish with the recipe's macros, how much of today's protein target it
- * covers, Log this meal and Save recipe. The Figma "How was it?" rating has
- * nowhere to be stored, so it isn't shown.
+ * covers, "How was it?" (Not for me / Okay / Good / Loved it, saved privately
+ * per recipe since 24 Oct 2026; tap again to clear), Log this meal and Save recipe.
  *
  * Recipe video (Oct 2026): when the recipe has a video with a marker for this
  * step, "Watch this step" plays just that part, muted and looping (hands are
@@ -47,6 +55,7 @@ export function RecipeCookModeScreen({ route, navigation }: Props) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const rating = useQuery({ queryKey: ["recipeRating", recipeId], queryFn: () => fetchRecipeRating(recipeId) });
 
   const steps = recipe?.instructions ?? [];
   const finished = steps.length > 0 && index >= steps.length;
@@ -86,6 +95,17 @@ export function RecipeCookModeScreen({ route, navigation }: Props) {
 
   const column = { width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center", paddingHorizontal: layout.screenPadding } as const;
   const proteinLeft = Math.max(0, Math.round(DAILY_TARGETS.proteinG - (mealLogs ?? []).reduce((s, m) => s + m.proteinG, 0)));
+
+  const rate = async (value: number | null) => {
+    const before = rating.data ?? null;
+    queryClient.setQueryData(["recipeRating", recipeId], value);
+    try {
+      await setRecipeRating(recipeId, value);
+    } catch (err) {
+      queryClient.setQueryData(["recipeRating", recipeId], before);
+      Alert.alert("Couldn't save your rating", extractErrorMessage(err, "Check your connection and try again."));
+    }
+  };
 
   const onLog = async () => {
     setIsLogging(true);
@@ -165,8 +185,38 @@ export function RecipeCookModeScreen({ route, navigation }: Props) {
                   <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.accent, width: `${Math.min(100, (covers / proteinLeft) * 100)}%` }} />
                 </View>
               ) : null}
+              <LearnMoreLink topic="daily_targets" label="About this target" />
             </View>
           ) : null}
+          <View style={{ gap: spacing.sm }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 15 }}>How was it?</Text>
+            <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {RATINGS.map((r) => {
+                const selected = rating.data === r.value;
+                return (
+                  <Pressable
+                    key={r.value}
+                    onPress={() => void rate(selected ? null : r.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    style={{
+                      flexGrow: 1,
+                      alignItems: "center",
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: radius.pill,
+                      borderWidth: 1,
+                      borderColor: selected ? theme.accent : colors.border,
+                      backgroundColor: selected ? theme.accent : colors.surface,
+                    }}
+                  >
+                    <Text style={{ color: selected ? theme.textOnAccent : colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 13 }}>{r.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>Only you see this.</Text>
+          </View>
         </ScrollView>
         <View style={{ ...column, gap: spacing.sm, paddingVertical: spacing.sm }}>
           <Button label={isLogging ? "Logging…" : "Log this meal"} onPress={onLog} loading={isLogging} />

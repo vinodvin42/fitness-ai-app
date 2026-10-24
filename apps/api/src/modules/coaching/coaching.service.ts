@@ -173,6 +173,7 @@ function toDiscoveryItem(p: ProfessionalListRow, fees: Map<string, number>, gstP
     startingPriceCents: startingPriceCents(p.serviceOfferings, fees),
     gstPercent,
     level: p.coachLevel ? { name: p.coachLevel.name, rank: p.coachLevel.rank } : null,
+    gender: (p as { gender?: "male" | "female" | null }).gender ?? null,
   };
 }
 
@@ -183,6 +184,8 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
     status: "active",
     credentials: { some: { status: "verified" } },
   };
+
+  if (query.gender) where.gender = query.gender;
 
   if (query.search) {
     where.OR = [

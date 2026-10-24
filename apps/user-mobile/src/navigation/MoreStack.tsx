@@ -6,10 +6,10 @@ import { MoreScreen } from "../screens/more/MoreScreen";
 import { ProfileScreen } from "../screens/more/ProfileScreen";
 import { EditProfileScreen } from "../screens/more/EditProfileScreen";
 import { CountrySelectionScreen } from "../screens/more/CountrySelectionScreen";
-import { PreferencesScreen } from "../screens/more/PreferencesScreen";
 import { ProgressStack } from "./ProgressStack";
 import type { ProgressStackParamList } from "./ProgressStack";
 import { SubscriptionScreen } from "../screens/more/SubscriptionScreen";
+import { CancelSubscriptionScreen } from "../screens/more/CancelSubscriptionScreen";
 import { SubscriptionHistoryScreen } from "../screens/more/SubscriptionHistoryScreen";
 import { PaymentResultScreen } from "../screens/more/PaymentResultScreen";
 import { TimelineOverviewScreen } from "../screens/timeline/TimelineOverviewScreen";
@@ -63,6 +63,8 @@ import { PartnerCodeProblemsScreen } from "../screens/more/PartnerCodeProblemsSc
 import { MyGymScreen } from "../screens/more/MyGymScreen";
 import { SavedRecipesScreen } from "../screens/more/SavedRecipesScreen";
 import { MyGoalsScreen } from "../screens/more/MyGoalsScreen";
+import { HealthSafetyScreen } from "../screens/more/HealthSafetyScreen";
+import { FoodPreferencesScreen } from "../screens/more/FoodPreferencesScreen";
 
 // docs/mobile/03-screen-inventory.md §N: More Menu -> Profile -> View/Edit
 // Profile, and Preferences. **R1 Developer 1 U1 (14 Sep 2026):** §F's
@@ -123,13 +125,14 @@ export type MoreStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   CountrySelection: undefined;
-  Preferences: undefined;
   // R1 Developer 1 U1 (14 Sep 2026) — relocated from the former RecoverStack;
   // see this file's top comment.
   // Progress is no longer a tab (Figma bar has Recover instead); its stack nests here.
   ProgressSection: NavigatorScreenParams<ProgressStackParamList> | undefined;
   // Profile & Settings (Figma section 11): `billingCycle` pre-selects the Monthly/Annual toggle (My plan -> Change billing period).
   Subscription: { billingCycle?: "monthly" | "quarterly" | "annual" } | undefined;
+  // Figma payments/07: what changes, and why the member is leaving (24 Oct 2026).
+  CancelSubscription: undefined;
   MyPlan: undefined;
   MeasurementUnits: undefined;
   Appearance: undefined;
@@ -148,7 +151,14 @@ export type MoreStackParamList = {
   // Retry action instead of collapsing into "failed" (a lie in that case).
   // See PaymentResultScreen.tsx and payments.service.ts's activatePayment.
   // "unconfirmed" (20 Oct 2026): Razorpay took a payment our server could not confirm yet; paymentId is Razorpay's.
-  PaymentResult: { status: "success" | "failed" | "activation_failed" | "unconfirmed"; message?: string; paymentId?: string };
+  // internalPaymentId / amountCents (24 Oct 2026, Figma payments/11): our record to check, and what was paid.
+  PaymentResult: {
+    status: "success" | "failed" | "activation_failed" | "unconfirmed";
+    message?: string;
+    paymentId?: string;
+    internalPaymentId?: string;
+    amountCents?: number;
+  };
   TimelineOverview: undefined;
   TimelineMonth: { year?: number; month?: number };
   TimelineEvent: { event: TimelineEvent };
@@ -172,6 +182,9 @@ export type MoreStackParamList = {
   // §4 Privacy/Consent settings (R1 Developer 1, 18 Sep 2026) — see
   // PrivacySettingsScreen.tsx's own doc comment.
   PrivacySettings: undefined;
+  // 24 Oct 2026: health answers and food preferences after setup (setup checklist, Profile).
+  HealthSafety: undefined;
+  FoodPreferences: undefined;
   ConsentWithdrawn: { type: ConsentType };
   Support: undefined;
   SupportTicketForm: { category?: SupportTicketCategory } | undefined;
@@ -205,10 +218,10 @@ export function MoreStack() {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
-      <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="ProgressSection" component={ProgressStack} />
       <Stack.Screen name="ProgressTab" component={ProgressStack} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="CancelSubscription" component={CancelSubscriptionScreen} />
       <Stack.Screen name="MyPlan" component={MyPlanScreen} />
       <Stack.Screen name="MeasurementUnits" component={MeasurementUnitsScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
@@ -218,6 +231,8 @@ export function MoreStack() {
       <Stack.Screen name="MyGym" component={MyGymScreen} />
       <Stack.Screen name="SavedRecipes" component={SavedRecipesScreen} />
       <Stack.Screen name="MyGoals" component={MyGoalsScreen} />
+      <Stack.Screen name="HealthSafety" component={HealthSafetyScreen} />
+      <Stack.Screen name="FoodPreferences" component={FoodPreferencesScreen} />
       <Stack.Screen name="SubscriptionHistory" component={SubscriptionHistoryScreen} />
       <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
       <Stack.Screen name="TimelineOverview" component={TimelineOverviewScreen} />

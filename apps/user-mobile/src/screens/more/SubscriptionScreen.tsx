@@ -11,7 +11,7 @@ import { Chip } from "../../components/Chip";
 import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchCurrentSubscription, fetchPlans, cancelSubscription, subscribe } from "../../api/subscriptions";
+import { fetchCurrentSubscription, fetchPlans, subscribe } from "../../api/subscriptions";
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
 import { comparisonColumns, hasLaunchOffer, isFreePlan, type PlanTier } from "../../lib/planLineup";
@@ -200,7 +200,6 @@ export function SubscriptionScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
-  const [isCanceling, setIsCanceling] = useState(false);
   const [billingCycle, setBillingCycle] = useState<SubscriptionPlan["billingCycle"]>(route.params?.billingCycle ?? "monthly");
   const [couponCode, setCouponCode] = useState("");
 
@@ -258,38 +257,6 @@ export function SubscriptionScreen({ navigation, route }: Props) {
     } finally {
       setPendingPlanId(null);
     }
-  };
-
-  // Gap §57 (18 Sep 2026) — real cancel-at-period-end confirmation copy,
-  // replacing the old immediate-loss framing (which never actually
-  // matched what `cancelSubscription()` did server-side even before this
-  // pass — see that function's own doc comment for the full policy).
-  const onCancel = () => {
-    const renewsAtLabel = current?.renewsAt ? new Date(current.renewsAt).toLocaleDateString() : null;
-    Alert.alert(
-      "Cancel subscription?",
-      renewsAtLabel
-        ? `Your plan will remain active until ${renewsAtLabel}, then it won't renew. You won't be charged again.`
-        : "Your plan will remain active through the end of your current billing period, then it won't renew. You won't be charged again.",
-      [
-        { text: "Keep plan", style: "cancel" },
-        {
-          text: "Cancel plan",
-          style: "destructive",
-          onPress: async () => {
-            setIsCanceling(true);
-            try {
-              await cancelSubscription();
-              await refresh();
-            } catch (err) {
-              Alert.alert("Couldn't cancel subscription", extractErrorMessage(err, "Check your connection and try again."));
-            } finally {
-              setIsCanceling(false);
-            }
-          },
-        },
-      ],
-    );
   };
 
   // 20 Oct 2026: the free plan, as named in admin, and whether a paid plan is running.
@@ -383,8 +350,8 @@ export function SubscriptionScreen({ navigation, route }: Props) {
               <Button
                 label={t("subscription.cancel")}
                 variant="secondary"
-                onPress={onCancel}
-                loading={isCanceling}
+                // Figma payments/07 (24 Oct 2026): a screen that says what changes and asks why.
+                onPress={() => navigation.navigate("CancelSubscription")}
                 style={{ marginTop: spacing.md }}
               />
             )}

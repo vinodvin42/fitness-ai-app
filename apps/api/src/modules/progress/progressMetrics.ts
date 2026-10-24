@@ -276,6 +276,8 @@ export interface StrengthTrend {
   toKg: number;
   improvements: number;
   weeks: number;
+  /** When the latest of those records was set. */
+  lastAt: Date;
 }
 
 /**
@@ -294,7 +296,7 @@ export function strengthTrend(lifts: LiftProgress[], now: Date = new Date()): St
     const gain = percentChange(from, to) ?? 0;
     const weeks = Math.max(1, Math.round((recent[recent.length - 1].at.getTime() - recent[0].at.getTime()) / (7 * DAY_MS)));
     if (!best || gain > best.gain) {
-      best = { gain, trend: { exerciseName: l.exerciseName, fromKg: from, toKg: to, improvements: recent.length, weeks } };
+      best = { gain, trend: { exerciseName: l.exerciseName, fromKg: from, toKg: to, improvements: recent.length, weeks, lastAt: recent[recent.length - 1].at } };
     }
   }
   return best?.trend ?? null;

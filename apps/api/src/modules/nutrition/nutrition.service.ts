@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
@@ -172,7 +173,79 @@ function buildFoodEstimatePrompt(mealType: string, description: string, hasImage
     "PROTEIN_G: <integer grams — only if STATUS is OK>",
     "CARBS_G: <integer grams — only if STATUS is OK>",
     "FAT_G: <integer grams — only if STATUS is OK>",
+    // 24 Oct 2026 (Figma fuel/11-12): one line per food, in Indian household portions where natural.
+    "Then, only if STATUS is OK, list each distinct food on its own line. Use Indian household portions where natural: 1 katori ≈ 150 g (dal, sabzi, curd), 1 roti (6 inch) ≈ 40 g, 1 cup cooked rice ≈ 150 g, 1 glass = 250 ml, 1 tbsp = 15 ml; otherwise piece, slice or g.",
+    "ITEM: <food name> | <amount, e.g. 1, 1.5 or 2> | <unit: katori, roti, cup, bowl, glass, tbsp, tsp, piece, slice, g or ml> | <total grams> | <kcal> | <protein g> | <carbs g> | <fat g>",
+    "If you can't tell which of two foods an item is (for example curd or raita), add straight after that ITEM line:",
+    "ALT: <short question, e.g. Curd or raita?> | <the other food's name> | <kcal> | <protein g> | <carbs g> | <fat g>",
+    "The ITEM lines should add up to the totals above.",
   ].join("\n\n");
+}
+
+/** One food in an itemised estimate (stored in FoodEstimate.items). */
+export interface FoodEstimateItemRow {
+  name: string;
+  amount: number;
+  unit: string;
+  grams: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  /** The AI couldn't tell between this food and `alt.name` (same portion). */
+  alt?: { question: string; name: string; calories: number; proteinG: number; carbsG: number; fatG: number };
+}
+
+const ITEM_UNITS: Record<string, string> = {
+  katori: "katori", katoris: "katori", roti: "roti", rotis: "roti", chapati: "roti", chapatis: "roti",
+  cup: "cup", cups: "cup", bowl: "bowl", bowls: "bowl", glass: "glass", glasses: "glass",
+  tbsp: "tbsp", tablespoon: "tbsp", tablespoons: "tbsp", tsp: "tsp", teaspoon: "tsp", teaspoons: "tsp",
+  piece: "piece", pieces: "piece", slice: "slice", slices: "slice", g: "g", gram: "g", grams: "g", ml: "ml",
+};
+
+const num = (s: string | undefined, max: number): number | null => {
+  const n = Number((s ?? "").replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
+};
+
+/** ITEM/ALT lines of an estimate reply (see buildFoodEstimatePrompt). Malformed lines are skipped. */
+export function parseFoodEstimateItems(raw: string): FoodEstimateItemRow[] {
+  const items: FoodEstimateItemRow[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    const item = line.match(/^\s*ITEM:\s*(.+)$/i);
+    if (item) {
+      const [name, amount, unit, grams, kcal, protein, carbs, fat] = item[1].split("|").map((s) => s.trim());
+      const u = ITEM_UNITS[(unit ?? "").toLowerCase()];
+      const values = [num(amount, 50), num(grams, 5000), num(kcal, 5000), num(protein, 500), num(carbs, 1000), num(fat, 500)];
+      if (!name || name.length > 80 || !u || values.some((v) => v == null) || !(values[0]! > 0) || !(values[1]! > 0)) continue;
+      items.push({
+        name,
+        amount: values[0]!,
+        unit: u,
+        grams: Math.round(values[1]!),
+        calories: Math.round(values[2]!),
+        proteinG: Math.round(values[3]!),
+        carbsG: Math.round(values[4]!),
+        fatG: Math.round(values[5]!),
+      });
+      continue;
+    }
+    const alt = line.match(/^\s*ALT:\s*(.+)$/i);
+    if (alt && items.length > 0) {
+      const [question, name, kcal, protein, carbs, fat] = alt[1].split("|").map((s) => s.trim());
+      const values = [num(kcal, 5000), num(protein, 500), num(carbs, 1000), num(fat, 500)];
+      if (!question || !name || name.length > 80 || values.some((v) => v == null)) continue;
+      items[items.length - 1].alt = {
+        question: question.slice(0, 80),
+        name,
+        calories: Math.round(values[0]!),
+        proteinG: Math.round(values[1]!),
+        carbsG: Math.round(values[2]!),
+        fatG: Math.round(values[3]!),
+      };
+    }
+  }
+  return items.slice(0, 12);
 }
 
 interface ParsedFoodEstimate {
@@ -264,6 +337,9 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
   }
 
   const parsed = parseFoodEstimate(raw);
+  // Itemised (24 Oct 2026): when the reply lists foods, the totals are their sum so the review adds up.
+  const items = parsed && parsed.ok ? parseFoodEstimateItems(raw) : [];
+  const sum = (k: "calories" | "proteinG" | "carbsG" | "fatG") => items.reduce((s, i) => s + i[k], 0);
   const estimate = await prisma.foodEstimate.create({
     data:
       parsed && parsed.ok
@@ -273,10 +349,11 @@ export async function createFoodEstimate(userId: string, input: CreateFoodEstima
             description,
             status: "estimated",
             name: parsed.name,
-            calories: parsed.calories,
-            proteinG: parsed.proteinG,
-            carbsG: parsed.carbsG,
-            fatG: parsed.fatG,
+            calories: items.length ? Math.min(sum("calories"), 10000) : parsed.calories,
+            proteinG: items.length ? Math.min(sum("proteinG"), 1000) : parsed.proteinG,
+            carbsG: items.length ? Math.min(sum("carbsG"), 1000) : parsed.carbsG,
+            fatG: items.length ? Math.min(sum("fatG"), 1000) : parsed.fatG,
+            ...(items.length ? { items: items as unknown as Prisma.InputJsonValue } : {}),
           }
         : {
             userId,

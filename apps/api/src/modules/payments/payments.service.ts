@@ -299,6 +299,8 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
   }
 
   return {
+    // Our Payment id, so the app can check this payment if Razorpay's callback can't be confirmed (UPI pending).
+    paymentId: payment.id,
     orderId: order.id,
     amountCents,
     currency: env.RAZORPAY_CURRENCY,

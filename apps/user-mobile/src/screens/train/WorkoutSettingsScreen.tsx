@@ -47,9 +47,10 @@ type ToggleKey = "autoStartRest" | "audioCoaching" | "autoDeloadWeek";
  * Preferences / Workout Settings (Figma Train 16), bound to
  * /users/me/workout-settings. Training days and equipment start from, and are
  * written back to, the onboarding profile. Rest-timer length, weight unit,
- * training days and equipment are used across the app; the audio-coaching and
- * auto-deload switches are stored on the account but nothing acts on them yet,
- * which the footnote says plainly.
+ * training days and equipment are used across the app. "Rest timer auto-start"
+ * decides whether the rest timer starts by itself after a logged set (24 Oct
+ * 2026); audio coaching turns spoken cues on or off; "Suggest lighter weeks"
+ * lets the daily review offer a lighter week after hard weeks (24 Oct 2026).
  */
 export function WorkoutSettingsScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
@@ -77,6 +78,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
   const toggles: Array<{ key: ToggleKey; label: string; help: string }> = [
     { key: "autoStartRest", label: "Rest timer auto-start", help: "Start rest period instantly" },
     { key: "audioCoaching", label: "Audio coaching", help: "Voice instructions for exercises" },
+    { key: "autoDeloadWeek", label: "Suggest lighter weeks", help: "Today's review asks you first. Your plan never changes on its own." },
   ];
 
   const cardStyle = { gap: spacing.sm, paddingVertical: spacing.md - 2 } as const;

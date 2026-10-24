@@ -31,7 +31,7 @@ export function useDailyReview(): { ready: boolean; suggestions: DailySuggestion
   const next = useQuery({ queryKey: ["plans", "current", "nextWorkout"], queryFn: fetchNextWorkout, enabled });
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness, enabled });
   const recommendation = useQuery({ queryKey: ["recommendations", "current"], queryFn: fetchCurrentRecommendation, enabled, retry: false });
-  const { data: settings } = useWorkoutSettings();
+  const { data: settings, isLoading: settingsLoading } = useWorkoutSettings();
 
   const lastCompleted = useMemo(
     () =>
@@ -53,7 +53,7 @@ export function useDailyReview(): { ready: boolean; suggestions: DailySuggestion
   const loaded =
     store.ready &&
     (store.mode === "off" ||
-      (!history.isLoading && !next.isLoading && !readiness.isLoading && !recommendation.isLoading && (!recent || !lastSession.isLoading)));
+      (!history.isLoading && !next.isLoading && !readiness.isLoading && !recommendation.isLoading && !settingsLoading && (!recent || !lastSession.isLoading)));
 
   const suggestions = loaded
     ? computeDailySuggestions({
@@ -76,6 +76,12 @@ export function useDailyReview(): { ready: boolean; suggestions: DailySuggestion
         readiness: readiness.data ? { band: readiness.data.band, score: readiness.data.score } : null,
         recommendation: recommendation.data ?? null,
         lighterRoutineLabel: routineLabel,
+        lightWeek: {
+          enabled: settings?.autoDeloadWeek ?? false,
+          sessions: (history.data ?? [])
+            .filter((h) => h.status === "completed" && h.completedAt)
+            .map((h) => ({ completedAt: h.completedAt as string, feel: h.feel ?? null })),
+        },
       })
     : [];
 

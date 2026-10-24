@@ -4,7 +4,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { grantReferralRewardIfEligible } from "../referrals/referrals.service";
 import { applyDuePlanPriceChanges, upcomingPrices } from "../../lib/planPricing";
-import { SubscribeInput } from "./subscriptions.schema";
+import { CancelSubscriptionInput, SubscribeInput } from "./subscriptions.schema";
 
 /**
  * Subscription & Payments (docs/mobile/03-screen-inventory.md §M). Phase 3
@@ -407,7 +407,7 @@ export async function subscribe(
  * rather than silently no-op'ing, so a client can't mistake a repeat tap
  * for a fresh confirmation of a policy it already agreed to.
  */
-export async function cancelSubscription(userId: string) {
+export async function cancelSubscription(userId: string, input: CancelSubscriptionInput = {}) {
   const existing = await getCurrentSubscription(userId);
   if (!existing) {
     throw new ApiHttpError(404, "no_active_subscription", "No active subscription to cancel");
@@ -425,7 +425,12 @@ export async function cancelSubscription(userId: string) {
 
   const updated = await prisma.subscription.update({
     where: { id: existing.id },
-    data: { cancelAtPeriodEnd: true },
+    data: {
+      cancelAtPeriodEnd: true,
+      cancelReason: input.reason ?? null,
+      cancelComment: input.comment ? input.comment : null,
+      cancelRequestedAt: new Date(),
+    },
     include: { plan: true },
   });
 
@@ -434,7 +439,7 @@ export async function cancelSubscription(userId: string) {
     action: "subscription.cancel_at_period_end",
     entityType: "Subscription",
     entityId: updated.id,
-    metadata: { planId: updated.planId, renewsAt: updated.renewsAt },
+    metadata: { planId: updated.planId, renewsAt: updated.renewsAt, reason: input.reason ?? null },
   });
 
   return updated;

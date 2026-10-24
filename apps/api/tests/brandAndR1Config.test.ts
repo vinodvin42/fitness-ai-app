@@ -97,8 +97,8 @@ describe("Referral code shape (QA Q12)", () => {
 
 describe("R1 build-to defaults (handoff §12)", () => {
   it("defaults every locked §2 decision to the spec's answer, not the legacy behaviour", () => {
-    // Decision #4: controlled assignment only, no open marketplace.
-    expect(r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED).toBe(false);
+    // Decision #4 was controlled assignment only; owner, 24 Oct 2026: browsing on as well ("Browse + request").
+    expect(r1Flags.PROFESSIONAL_MARKETPLACE_ENABLED).toBe(true);
     // Decision #13: no streaks, badges or achievements in R1.
     expect(r1Flags.GAMIFICATION_ENABLED).toBe(false);
     // One paid tier: Fynrox Premium.

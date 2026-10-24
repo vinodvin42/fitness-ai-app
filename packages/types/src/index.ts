@@ -354,6 +354,18 @@ export interface EditOnboardingProfileInput {
   equipmentContext?: EquipmentContext;
   /** Profile > My Goals: the onboarding goal chips. */
   goals?: string[];
+  /** 24 Oct 2026: set from the first workout's "How did that feel?". */
+  trainingLevel?: "beginner" | "intermediate" | "advanced";
+  /** 24 Oct 2026: Food preferences after setup; null clears it. */
+  dietType?: string | null;
+  allergens?: string[];
+}
+
+/** PUT /users/me/onboarding/health (24 Oct 2026): health answers after setup; kept only with consent. */
+export interface HealthAnswersInput {
+  medicalConditions: string[];
+  injuries: string[];
+  healthDataConsent: boolean;
 }
 
 // ---- Programs / Exercises / Recipes ---------------------------------------
@@ -959,6 +971,21 @@ export interface LogMealInput {
 
 export type FoodEstimateStatus = "estimated" | "insufficient_context" | "confirmed" | "edited";
 
+/** One food in an itemised AI estimate, in an Indian household portion where natural (katori, roti, cup…). */
+export interface FoodEstimateItem {
+  name: string;
+  amount: number;
+  /** katori, roti, cup, bowl, glass, tbsp, tsp, piece, slice, g or ml. */
+  unit: string;
+  grams: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  /** The AI couldn't tell between this food and `alt.name` (same portion). */
+  alt?: { question: string; name: string; calories: number; proteinG: number; carbsG: number; fatG: number };
+}
+
 export interface FoodEstimate {
   id: string;
   userId: string;
@@ -974,6 +1001,8 @@ export interface FoodEstimate {
   fatG: number | null;
   /** Set only when status is `insufficient_context` — a real, user-facing reason, never a raw error. */
   failureReason: string | null;
+  /** Itemised estimate (24 Oct 2026, Figma fuel/11-12); null/absent for single-item estimates. */
+  items?: FoodEstimateItem[] | null;
   /** Set once this estimate is confirmed/edited into a real MealLog. */
   mealLogId: string | null;
   createdAt: string;
@@ -1219,6 +1248,12 @@ export interface InsightCard {
   title: string;
   body: string;
   footnote?: string;
+  /**
+   * The strength card's numbers (24 Oct 2026), so Today can show a short
+   * "you progressed" info card (Figma today/02-info-updates) without parsing
+   * the sentence. `lastAt` is when the latest of those records was set.
+   */
+  strength?: { exerciseName: string; fromKg: number; toKg: number; improvements: number; weeks: number; lastAt: string };
 }
 
 /** GET /progress/insights - rule-based, real data only; cards that cannot be computed are omitted. */
@@ -1391,6 +1426,9 @@ export interface Subscription {
   /** Gap §57 — only ever set by the admin force-revoke action. */
   revokedAt: string | null;
   revokedReason: string | null;
+  /** Why the member cancelled, from the app's cancel screen (24 Oct 2026); both optional. */
+  cancelReason?: string | null;
+  cancelComment?: string | null;
   /** What this subscriber paid for the current period (paise), locked until renewal (D8). */
   priceCents?: number | null;
   /**
@@ -1457,6 +1495,8 @@ export interface CreateRazorpayOrderInput {
 
 /** What POST /payments/razorpay/orders returns — everything RazorpayCheckoutModal.tsx needs to open a real Razorpay Checkout. */
 export interface RazorpayOrder {
+  /** Our Payment id (24 Oct 2026), to check on a payment Razorpay took but we couldn't confirm. Absent from older APIs. */
+  paymentId?: string;
   orderId: string;
   amountCents: number;
   currency: string;
@@ -2097,6 +2137,8 @@ export interface CoachDiscoveryItem {
   gstPercent: number;
   /** The coach's FynroX level, or null if not placed yet. */
   level: CoachLevelSummary | null;
+  /** Coach gender (24 Oct 2026); null = not stated. */
+  gender?: CoachGender | null;
 }
 
 /** A coach's FynroX level as users see it (Package 4). */

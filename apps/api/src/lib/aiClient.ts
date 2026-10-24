@@ -158,6 +158,22 @@ export async function generateCompletion(prompt: string, options?: { image?: Com
   }
   if (env.AI_PROVIDER === "mock") {
     // Canned reply for local UI work without a provider key. Not AI; never enabled in production (see above).
+    if (prompt.includes("STATUS: <either OK or INSUFFICIENT_CONTEXT>")) {
+      // A sample itemised food estimate (Figma fuel/12), so the review screen can be checked locally.
+      return [
+        "STATUS: OK",
+        "NAME: Roti, dal and paneer",
+        "CALORIES: 730",
+        "PROTEIN_G: 36",
+        "CARBS_G: 73",
+        "FAT_G: 34",
+        "ITEM: Roti (wheat) | 2 | roti | 80 | 240 | 8 | 40 | 6",
+        "ITEM: Dal tadka | 1 | katori | 150 | 150 | 7 | 20 | 5",
+        "ITEM: Paneer bhurji | 1 | katori | 120 | 250 | 16 | 6 | 18",
+        "ITEM: Curd | 1 | katori | 150 | 90 | 5 | 7 | 5",
+        "ALT: Curd or raita? | Raita | 75 | 4 | 6 | 4",
+      ].join("\n");
+    }
     return "This is a mock reply from the local development stub. Set a real AI provider to get actual coaching.";
   }
   if (env.AI_PROVIDER === "anthropic") return generateWithAnthropic(prompt, options?.image);

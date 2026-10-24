@@ -8,19 +8,11 @@ import { useOnboardingWizard } from "../../context/OnboardingWizardContext";
 import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 import { onboardingStep } from "../../navigation/onboardingSteps";
+import { ALLERGENS, DIET_TYPES } from "../../lib/healthFoodOptions";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "FoodDiet">;
 
-// Figma "01 Onboarding / 07". dietType is a free string server-side.
-const DIET_TYPES = [
-  { value: "Vegetarian", subtitle: "No meat, fish or eggs (milk is fine)" },
-  { value: "Vegan", subtitle: "No meat, fish, eggs or milk" },
-  { value: "Non-Vegetarian", subtitle: "Eats meat, fish and eggs" },
-  { value: "Eggetarian", subtitle: "Vegetarian + eggs" },
-  { value: "Pescatarian", subtitle: "Vegetarian + fish and seafood" },
-  { value: "Jain", subtitle: "No meat, eggs or root vegetables" },
-];
-const ALLERGENS = ["Dairy", "Nuts", "Gluten", "Soy", "Eggs", "Shellfish", "Wheat", "Sesame", "None"];
+// Figma "01 Onboarding / 07". The same choices are offered after setup (Profile › Food preferences).
 
 /** docs/mobile/03-screen-inventory.md §A "Setup: Food/Diet" — restyled to Figma onboarding 07. */
 export function FoodDietScreen({ navigation }: Props) {

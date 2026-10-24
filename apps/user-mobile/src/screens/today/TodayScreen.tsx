@@ -25,7 +25,7 @@ import { fetchNextWorkout } from "../../api/plans";
 import { fetchOnboardingProfile } from "../../api/users";
 import { fetchReadiness } from "../../api/recovery";
 import { fetchNotifications } from "../../api/notifications";
-import { fetchMeasurements } from "../../api/progress";
+import { fetchMeasurements, fetchProgressInsights } from "../../api/progress";
 import { fetchWorkoutDetail } from "../../api/programs";
 import { fetchDueMedications, fetchMedications, localDateString } from "../../api/medications";
 import { useWorkoutSettings } from "../../api/workoutSettings";
@@ -43,6 +43,8 @@ import { fmtGymRange, gymDayShort } from "../../lib/gymFormat";
 import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
 import { openNotificationDeepLink } from "../../lib/deepLink";
 import { useDailyReview } from "../../lib/useDailyReview";
+import { useDailyReviewStore } from "../../lib/dailyReviewStore";
+import { activeLightWeek, shortDay } from "../../lib/dailySuggestions";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { TodayLoadingView, TodayOfflineView } from "./TodayStates";
@@ -55,6 +57,9 @@ type Props = CompositeScreenProps<
 >;
 
 const BRIEF_DISMISSED_KEY = "today.brief.dismissedOn";
+// The strength record the member tapped "Got it" on (exercise:kg), so its info card stays away.
+const PROGRESS_SEEN_KEY = "today.progress.seen";
+const PROGRESS_INFO_MAX_AGE_MS = 7 * 86_400_000;
 const COACH_NOTE_MAX_AGE_MS = 7 * 86_400_000;
 
 function isToday(isoDate: string): boolean {
@@ -194,6 +199,24 @@ export function TodayScreen({ navigation }: Props) {
   // Figma 02b: one daily review card, only when a trigger fires (lib/dailySuggestions.ts).
   // It replaces the always-on optional mobility row (owner decision, 18 Oct 2026).
   const dailyReview = useDailyReview();
+  // Info updates (Figma 02b today/02-info-updates, 24 Oct 2026): a lighter week the member said yes to,
+  // and a new strength record from the Insights rule. Professional plan changes (C12) aren't in this build.
+  const lightWeek = activeLightWeek(useDailyReviewStore().decisions, new Date());
+  const { data: insights } = useQuery({ queryKey: ["progress", "insights"], queryFn: fetchProgressInsights, staleTime: 5 * 60_000 });
+  const [progressSeen, setProgressSeen] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    AsyncStorage.getItem(PROGRESS_SEEN_KEY)
+      .then((v) => setProgressSeen(v))
+      .catch(() => setProgressSeen(null));
+  }, []);
+  const strength = insights?.cards.find((c) => c.kind === "strength")?.strength;
+  const progressKey = strength ? `${strength.exerciseName}:${strength.toKg}` : null;
+  const showProgress =
+    !!strength && progressSeen !== undefined && progressSeen !== progressKey && Date.now() - new Date(strength.lastAt).getTime() <= PROGRESS_INFO_MAX_AGE_MS;
+  const dismissProgress = () => {
+    setProgressSeen(progressKey);
+    if (progressKey) AsyncStorage.setItem(PROGRESS_SEEN_KEY, progressKey).catch(() => undefined);
+  };
   const coachNote = useMemo(
     () =>
       (recentInbox?.items ?? []).find(
@@ -441,6 +464,8 @@ export function TodayScreen({ navigation }: Props) {
             if (step === "workout") navigation.navigate("Train", { screen: "TrainDashboard" });
             else if (step === "goal") navigation.navigate("More", { screen: "MyGoals", initial: false });
             else if (step === "body") navigation.navigate("More", { screen: "EditProfile", initial: false });
+            else if (step === "safety") navigation.navigate("More", { screen: "HealthSafety", initial: false });
+            else if (step === "food") navigation.navigate("More", { screen: "FoodPreferences", initial: false });
             else if (step === "notifications") navigation.navigate("More", { screen: "NotificationPermission", initial: false });
             else navigation.navigate("More", { screen: "MyGym", initial: false });
           }}
@@ -457,6 +482,42 @@ export function TodayScreen({ navigation }: Props) {
               {dailyReview.suggestions.map((s) => s.title).join(" · ")}. Nothing changes unless you say yes.
             </Text>
             <PrimaryAction label="Review (1 min)" onPress={() => navigation.navigate("DailyReview")} />
+          </View>
+        ) : null}
+
+        {/* Info updates (Figma 02b today/02-info-updates) */}
+        {lightWeek ? (
+          <View style={cardStyle}>
+            <Eyebrow color={colors.textSecondary}>LIGHTER WEEK · INFO</Eyebrow>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>This is your lighter week</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              {shortDay(lightWeek.start)} – {shortDay(lightWeek.end)}: use lighter weights or fewer sets, and stop well short of failure. Your
+              plan is unchanged.
+            </Text>
+          </View>
+        ) : null}
+        {showProgress && strength ? (
+          <View style={cardStyle}>
+            <Eyebrow color={colors.successText}>PROGRESS · INFO</Eyebrow>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, fontSize: 16 }}>
+              {strength.exerciseName}: {units.wt(strength.fromKg)} → {units.wt(strength.toKg)} {units.wtUnit}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              Your heaviest set went up across {strength.improvements} personal records in {strength.weeks} week{strength.weeks === 1 ? "" : "s"}. No
+              action needed.
+            </Text>
+            <View style={{ flexDirection: "row", gap: spacing.md }}>
+              <Pressable onPress={dismissProgress} accessibilityRole="button" accessibilityLabel="Got it, hide this update" hitSlop={8}>
+                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Got it</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => navigation.navigate("More", { screen: "ProgressSection", params: { screen: "ProgressInsights" }, initial: false })}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <Text style={{ color: theme.accentText, ...typography.label, fontSize: 13 }}>Insights ›</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 

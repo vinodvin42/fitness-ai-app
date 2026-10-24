@@ -21,6 +21,8 @@ export const discoverProfessionalsQuerySchema = z.object({
   // available" ranking across many professionals at once. Price and
   // Experience are the two real, server-computable sorts that remain.
   sort: z.enum(["price", "experience"]).optional().default("experience"),
+  // Coach gender (24 Oct 2026): browse male or female coaches only.
+  gender: z.enum(["male", "female"]).optional(),
 });
 export type DiscoverProfessionalsQuery = z.infer<typeof discoverProfessionalsQuerySchema>;
 

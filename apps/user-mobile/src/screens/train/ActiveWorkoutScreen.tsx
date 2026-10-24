@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ExerciseSetLog, WorkoutSession } from "@fitness-ai-app/types";
@@ -15,6 +15,9 @@ import { PlateCalculatorSheet } from "../../components/PlateCalculatorSheet";
 import { SetEditSheet } from "../../components/SetEditSheet";
 import { AddExerciseSheet } from "../../components/AddExerciseSheet";
 import { InWorkoutSafetySheet } from "../../components/InWorkoutSafetySheet";
+import { GuidedCues } from "../../components/GuidedCues";
+import { cancelRestOver, clearWorkoutNotification, scheduleRestOver, showWorkoutNotification } from "../../lib/workoutNotification";
+import { WorkoutSheetList } from "../../components/WorkoutSheetList";
 import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { clearExerciseRest, setExerciseRest, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchExercises, fetchWorkoutDetail } from "../../api/programs";
@@ -51,6 +54,8 @@ import {
   type SetValues,
 } from "../../lib/fastLogging";
 import { formatMmSs } from "../../lib/format";
+import { useDailyReviewStore } from "../../lib/dailyReviewStore";
+import { activeLightWeek } from "../../lib/dailySuggestions";
 import { useTheme } from "../../theme/ThemeProvider";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
@@ -182,8 +187,9 @@ function formatElapsed(totalSeconds: number): string {
  * RPE) and tapping a logged row opens the existing edit/delete sheet. The ⋯
  * menu holds warm-up generation (logged with isWarmup), replace exercise,
  * the Set & Rest Tracker, the rest timer and, for barbells, the plate
- * calculator. Still one exercise at a time (Figma shows every exercise on one
- * sheet).
+ * calculator. Below it (24 Oct 2026, Figma log/01) every other exercise of the
+ * workout shows its own set table, and "Log this now" makes it the active one,
+ * so exercises can be logged in any order (components/WorkoutSheetList.tsx).
  *
  * Batch 3b (18 Oct 2026): the exercise list is the session's own list from
  * the API (lib/sessionExerciseList.ts; the Set/Rest Tracker builds it the same
@@ -197,6 +203,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const queryClient = useQueryClient();
   const { colors: theme } = useTheme();
   const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
+  // A lighter week the member said yes to in the daily review (24 Oct 2026): a reminder only.
+  const lightWeek = activeLightWeek(useDailyReviewStore().decisions, new Date());
   const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
   const [whyOpen, setWhyOpen] = useState(false);
   // Also warms the cache so the rest timer starts at the user's configured length.
@@ -238,6 +246,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [safetyOpen, setSafetyOpen] = useState(false);
   // Whether the safety sheet paused the workout (so closing it resumes only a pause it made).
   const pausedBySafety = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [editingSet, setEditingSet] = useState<ExerciseSetLog | null>(null);
   // Batch 3b: the next set's type, and the sheets for add / superset / rest.
   const [setType, setSetType] = useState<SetType>("normal");
@@ -251,6 +260,10 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  // Opened from the menu (always starts) vs after a set (starts only if "Rest timer auto-start" is on).
+  const [restManual, setRestManual] = useState(false);
+  // When the running rest ends (epoch ms), for the workout notification.
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [wasResumed, setWasResumed] = useState(false);
 
@@ -361,6 +374,21 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   );
   const isLastExercise = exerciseIndex === orderedExercises.length - 1;
 
+  // Owner, 24 Oct 2026 ("Watch: via phone notifications"): the workout on the lock screen and the
+  // watch, and a "Rest over" alert when a rest ends (lib/workoutNotification.ts).
+  const notifyWorking = loggedSets.filter((s) => !s.isWarmup && !s.isDropSet && !s.isFailure);
+  const notifyLast = notifyWorking[notifyWorking.length - 1];
+  const notifyTarget = currentExercise?.targetSets ?? 0;
+  const notifySetLine = notifyWorking.length >= notifyTarget ? "All sets done" : `Set ${notifyWorking.length + 1} of ${notifyTarget}`;
+  const notifyNextLine =
+    notifyLast?.weightKg != null ? `Next: ${formatWeight(notifyLast.weightKg)} kg × ${notifyLast.reps}` : `Next: ${currentExercise?.targetReps ?? ""} reps`;
+  const notifyExercise = currentExercise?.exercise.name;
+  useEffect(() => {
+    if (!hasHydrated || !workout || !notifyExercise) return;
+    void showWorkoutNotification({ workoutName: workout.name, exerciseName: notifyExercise, setLine: notifySetLine, nextLine: notifyNextLine, restEndsAt });
+  }, [hasHydrated, workout?.name, notifyExercise, notifySetLine, notifyNextLine, restEndsAt]);
+  useEffect(() => () => void clearWorkoutNotification(), []);
+
   // Per-exercise screen state starts fresh on each exercise (logged sets live in the session data).
   const currentExerciseId = currentExercise?.exercise.id;
   useEffect(() => {
@@ -454,6 +482,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         for (const l of session.setLogs) if (!l.isWarmup) counts.set(l.exerciseId, (counts.get(l.exerciseId) ?? 0) + 1);
         counts.set(currentExercise.exercise.id, workingLogged.length + 1);
         const next = afterWorkingSet(orderedExercises, exerciseIndex, (id) => counts.get(id) ?? 0);
+        setRestManual(false);
         setShowRestTimer(next.rest);
         if (next.nextIndex !== exerciseIndex) {
           setExerciseIndex(next.nextIndex);
@@ -501,6 +530,22 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
   };
 
+  // Figma log/01 (24 Oct 2026): "Log this now" on any exercise. Saved on the server first, like advance().
+  const jumpTo = async (index: number) => {
+    if (index === exerciseIndex) return;
+    setIsAdvancing(true);
+    try {
+      await updateSessionProgress(sessionId, index);
+      setShowRestTimer(false);
+      setExerciseIndex(index);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    } catch (err) {
+      Alert.alert("Couldn't switch exercise", extractErrorMessage(err, "Check your connection and try again."));
+    } finally {
+      setIsAdvancing(false);
+    }
+  };
+
   const onAbandon = () => {
     Alert.alert(
       "Discard this workout?",
@@ -540,7 +585,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (pausedBySafety.current) setPaused(false);
     pausedBySafety.current = false;
   };
-  const swapFor = (reason: "joint_pain" | "equipment_busy") => {
+  const swapFor = (reason: "joint_pain" | "equipment_busy", painArea?: string) => {
     closeSafety();
     if (!currentExercise) return;
     navigation.navigate("ExerciseSwap", {
@@ -549,6 +594,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       exerciseId: currentExercise.exercise.id,
       ...(sessionExerciseId ? { sessionId, sessionExerciseId } : {}),
       reason,
+      ...(painArea ? { painArea } : {}),
     });
   };
   const skipFromSafety = () => {
@@ -709,14 +755,19 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       icon: "clock",
       value: `${restSeconds} s`,
       // Batch 3b: with a session list the choice is saved for this exercise; otherwise it just starts the timer.
-      onPress: () => (sessionExerciseId ? setRestOpen(true) : setShowRestTimer(true)),
+      onPress: () => {
+        if (sessionExerciseId) setRestOpen(true);
+        else {
+          setRestManual(true);
+          setShowRestTimer(true);
+        }
+      },
     },
     ...(isBarbell(equipment) ? [{ key: "plates", label: "Plate calculator", icon: "sliders" as const, onPress: () => setPlatesOpen(true) }] : []),
     ...(sessionExerciseId && loggedSets.length === 0 && orderedExercises.length > 1
       ? [{ key: "remove", label: "Remove from this workout", icon: "trash" as const, onPress: onRemoveExercise }]
       : []),
   ];
-  const upNext = orderedExercises.slice(exerciseIndex + 1);
   const score = readiness.data?.score ?? null;
   const context = profile.data?.equipmentContext ?? null;
   const modeTitle = context === "full_gym" ? "Gym Mode" : context ? "Home Mode" : null;
@@ -779,6 +830,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.md }}
       >
@@ -803,6 +855,27 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             (Optional — set logging remains available)
           </Text>
         </View>
+
+        {lightWeek ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.sm,
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: spacing.md,
+            }}
+          >
+            <Icon name="battery-medium" size={15} color={colors.textMuted} />
+            <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold }}>Lighter week.</Text> Use lighter weights or fewer sets, and
+              stop well short of failure. Your plan is unchanged.
+            </Text>
+          </View>
+        ) : null}
 
         {score != null ? (
           <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
@@ -880,6 +953,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
               {equipment ? ` · ${equipment}` : ""} · {currentExercise?.targetSets} × {currentExercise?.targetReps}
             </Text>
           </Pressable>
+          {currentExercise ? (
+            <GuidedCues
+              exercise={currentExercise.exercise}
+              onTutorial={() => navigation.navigate("ExerciseDetail", { exerciseId: currentExercise.exercise.id })}
+            />
+          ) : null}
 
           {warmupsAddedFrom != null && pendingWarmups.length > 0 ? (
             <View
@@ -1060,44 +1139,31 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
         {showRestTimer ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
-            <RestTimer key={`${exerciseIndex}-${loggedSets.length}`} layout="compact" defaultSeconds={restSeconds} onDismiss={() => setShowRestTimer(false)} />
+            <RestTimer
+              key={`${exerciseIndex}-${loggedSets.length}`}
+              layout="compact"
+              defaultSeconds={restSeconds}
+              autoStart={restManual || (workoutSettings?.autoStartRest ?? true)}
+              onDismiss={() => setShowRestTimer(false)}
+              onRestChange={(endsAt, finished) => {
+                setRestEndsAt(endsAt);
+                if (endsAt && currentExercise) void scheduleRestOver(endsAt, currentExercise.exercise.name, notifyNextLine);
+                else if (!endsAt && !finished) void cancelRestOver();
+              }}
+            />
           </View>
         ) : null}
 
-        {upNext.length > 0 ? (
-          <>
-            <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>Up Next</Text>
-            {upNext.map((ex) => (
-              <View
-                key={ex.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: spacing.md,
-                  backgroundColor: colors.surface,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  padding: spacing.sm + 2,
-                }}
-              >
-                {ex.exercise.mediaUrl ? (
-                  <Image source={{ uri: ex.exercise.mediaUrl }} style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceRaised }} resizeMode="cover" />
-                ) : (
-                  <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}>
-                    <Icon name="dumbbell" size={18} color={theme.textOnAccent} />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{ex.exercise.name}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
-                    {ex.targetSets} Sets · {ex.targetReps} Reps
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </>
-        ) : null}
+        {/* Figma log/01 (24 Oct 2026): every other exercise of this workout, each with its own set table. */}
+        <WorkoutSheetList
+          exercises={orderedExercises}
+          activeIndex={exerciseIndex}
+          setLogs={session?.setLogs ?? []}
+          previousLogs={previousSession?.setLogs ?? []}
+          defaultRest={defaultRest}
+          disabled={isAdvancing || isSubmittingSet || !hasHydrated}
+          onJump={(i) => void jumpTo(i)}
+        />
 
         {/* Batch 3b: "+ Add exercise" (Figma 03b log/01) — only with a session list to add to. */}
         {session?.exercises && session.exercises.length > 0 && session.exercises[0].id ? (
@@ -1232,7 +1298,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         visible={safetyOpen}
         canSwap={!!currentExercise && loggedSets.length === 0}
         isLastExercise={isLastExercise}
-        onPainSwap={() => swapFor("joint_pain")}
+        onPainSwap={(area) => swapFor("joint_pain", area)}
         onEquipmentSwap={() => swapFor("equipment_busy")}
         onSkip={skipFromSafety}
         onResume={closeSafety}

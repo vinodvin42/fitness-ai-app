@@ -18,6 +18,11 @@ export function useWorkoutSettings() {
 }
 
 /** Batch 3b (18 Oct 2026): rest time for one exercise, used in every session (10–600 s). */
+/** The member's own rest per exercise (GET /users/me/exercise-rest); others use the default. */
+export function fetchExerciseRests() {
+  return apiClient.get<{ items: ExerciseRestPreference[] }>("/users/me/exercise-rest").then((r) => r.data.items);
+}
+
 export function setExerciseRest(exerciseId: string, restSeconds: number) {
   return apiClient.put<ExerciseRestPreference>(`/users/me/exercise-rest/${exerciseId}`, { restSeconds }).then((r) => r.data);
 }
