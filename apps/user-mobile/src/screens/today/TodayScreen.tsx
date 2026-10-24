@@ -45,6 +45,7 @@ import { openNotificationDeepLink } from "../../lib/deepLink";
 import { useDailyReview } from "../../lib/useDailyReview";
 import { useDailyReviewStore } from "../../lib/dailyReviewStore";
 import { activeLightWeek, shortDay } from "../../lib/dailySuggestions";
+import { useOfflineSets } from "../../lib/offlineSets";
 import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { TodayLoadingView, TodayOfflineView } from "./TodayStates";
@@ -114,6 +115,8 @@ export function TodayScreen({ navigation }: Props) {
   const net = useNetInfo();
   useRecoverProfilePhoto();
   const isOffline = net.isConnected === false;
+  // Sets logged without a connection and not yet synced (Figma 08, lib/offlineSets.ts).
+  const offlineSets = useOfflineSets();
   const [retrying, setRetrying] = useState(false);
 
   const {
@@ -376,6 +379,13 @@ export function TodayScreen({ navigation }: Props) {
 
   // ---- Figma 08: offline ------------------------------------------------
   if (isOffline) {
+    // Today's workout in progress can be resumed offline when both it and its session are saved on this phone.
+    const resumable =
+      inProgressToday &&
+      queryClient.getQueryData(["workoutSession", inProgressToday.id]) &&
+      queryClient.getQueryData(["workout", inProgressToday.workoutId])
+        ? inProgressToday
+        : null;
     return (
       <TodayOfflineView
         greeting={greeting()}
@@ -389,6 +399,21 @@ export function TodayScreen({ navigation }: Props) {
         onStart={() => {
           if (nextWorkout?.workout) workoutPath(nextWorkout.workout.id)();
         }}
+        waitingSets={offlineSets.waiting}
+        resume={
+          resumable
+            ? {
+                workoutName: resumable.workoutName,
+                setsLogged: resumable.totalSets,
+                onPress: () =>
+                  navigation.navigate("Train", {
+                    screen: "ActiveWorkout",
+                    params: { workoutId: resumable.workoutId, sessionId: resumable.id },
+                    initial: false,
+                  }),
+              }
+            : null
+        }
       />
     );
   }

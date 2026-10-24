@@ -17,6 +17,7 @@ import "./src/i18n";
 import { AuthProvider } from "./src/context/AuthContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { OfflineBanner } from "./src/components/OfflineBanner";
+import { OfflineSetSync } from "./src/components/OfflineSetSync";
 import { ToastProvider } from "./src/components/Toast";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { queryClient, persistOptions } from "./src/lib/queryClient";
@@ -85,6 +86,8 @@ export default function App() {
               <ThemedStatusBar />
               <RootNavigator />
               <OfflineBanner />
+              {/* Sends sets logged without a connection once it is back (lib/offlineSets.ts). */}
+              <OfflineSetSync />
             </ToastProvider>
           </ThemeProvider>
         </AuthProvider>

@@ -18,6 +18,9 @@ import { InWorkoutSafetySheet } from "../../components/InWorkoutSafetySheet";
 import { GuidedCues } from "../../components/GuidedCues";
 import { cancelRestOver, clearWorkoutNotification, scheduleRestOver, showWorkoutNotification } from "../../lib/workoutNotification";
 import { WorkoutSheetList } from "../../components/WorkoutSheetList";
+import { OfflineSyncNotice } from "../../components/OfflineSyncNotice";
+import { flushOfflineSets, isOnline, saveProgress, saveSet, useOfflineSets, useQueuedSession, waitingFor } from "../../lib/offlineSets";
+import { isPendingRow } from "../../lib/offlineSetQueue";
 import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { clearExerciseRest, setExerciseRest, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchExercises, fetchWorkoutDetail } from "../../api/programs";
@@ -30,10 +33,8 @@ import {
   fetchWorkoutHistory,
   fetchWorkoutSession,
   addSessionExercise,
-  logWorkoutSet,
   removeSessionExercise,
   updateSessionExercise,
-  updateSessionProgress,
 } from "../../api/workoutSessions";
 import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -89,6 +90,8 @@ interface LoggedSet {
   isWarmup: boolean;
   isDropSet: boolean;
   isFailure: boolean;
+  /** Saved on this phone, waiting to sync (lib/offlineSets.ts). */
+  pending: boolean;
 }
 
 /** A working set's type (warm-ups come from the generator). Batch 3b: drop and failure are separate. */
@@ -197,6 +200,14 @@ function formatElapsed(totalSeconds: number): string {
  * A2, rest after the last — lib/supersets.ts), "Remove from this workout"
  * (before any set) and a per-exercise rest choice change it. The next set can
  * be Normal, Drop set or To failure (quick-edit sheet; labels D / F).
+ *
+ * Offline set logging (24 Oct 2026, Figma today/08): without a connection a
+ * set, an edit, a delete or the move to another exercise is saved on this
+ * phone and sent when the connection is back (lib/offlineSets.ts). The session
+ * read here is the cached one with those waiting changes laid over it, so
+ * numbering, the set table and the sheet list include them; waiting sets show
+ * a cloud mark and the notice under the header counts them. Finishing waits
+ * until they have synced. Starting a new workout still needs a connection.
  */
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
@@ -214,10 +225,13 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     queryFn: () => fetchWorkoutDetail(workoutId),
   });
 
-  const { data: session } = useQuery({
+  const { data: serverSession, fetchStatus: sessionFetchStatus } = useQuery({
     queryKey: ["workoutSession", sessionId],
     queryFn: () => fetchWorkoutSession(sessionId),
   });
+  // What this phone is still waiting to send for this workout, laid over the cached session (see the top comment).
+  const offline = useOfflineSets(sessionId);
+  const session = useQueuedSession(serverSession, offline);
 
   // Batch 3b (18 Oct 2026): the session's own list from the API (swaps, added exercises, supersets);
   // sessions without one fall back to the template + this device's client-side swaps (Train 09).
@@ -266,12 +280,20 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [wasResumed, setWasResumed] = useState(false);
+  // The session saved on this phone (persisted cache) can be out of date, so resuming waits for the server's copy
+  // while it is being fetched: at most a few seconds, and not at all offline, where the saved copy is all there is.
+  const [stopWaitingForServer, setStopWaitingForServer] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setStopWaitingForServer(true), 3000);
+    return () => clearTimeout(id);
+  }, []);
+  const sessionSettled = sessionFetchStatus !== "fetching" || stopWaitingForServer;
 
   // U3 — real connectivity/app-kill recovery, see this screen's own top
   // comment. Runs exactly once, as soon as both the workout (for exercise
   // order) and the session (for currentExerciseIndex/setLogs) are loaded.
   useEffect(() => {
-    if (hasHydrated || orderedExercises.length === 0 || !session) return;
+    if (hasHydrated || orderedExercises.length === 0 || !session || !sessionSettled) return;
     const resumeIndex = Math.min(session.currentExerciseIndex, orderedExercises.length - 1);
     const resumeExercise = orderedExercises[resumeIndex];
     const resumedSetCount = resumeExercise ? setLogsFor(session.setLogs, resumeExercise.exercise.id).length : 0;
@@ -287,7 +309,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (resumedForReal) {
       trackClientEvent("workout.sync_recovered", { workoutSessionId: session.id }, { resumeIndex, resumedSetCount });
     }
-  }, [hasHydrated, orderedExercises, session]);
+  }, [hasHydrated, orderedExercises, session, sessionSettled]);
 
   // A real stopwatch, not a re-derived "now minus startedAt" clock — pausing
   // stops the interval below, so paused time is genuinely excluded from the
@@ -328,7 +350,11 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         e.preventDefault();
         Alert.alert(
           "Leave workout?",
-          "Your logged sets stay saved and the workout stays open. Anything you haven't logged yet and the rest timer will be cleared, and time away counts toward the workout's duration.",
+          `${
+            waitingFor(sessionId) > 0
+              ? "Sets waiting to sync stay on this phone and sync when you're back online. The workout stays open."
+              : "Your logged sets stay saved and the workout stays open."
+          } Anything you haven't logged yet and the rest timer will be cleared, and time away counts toward the workout's duration.`,
           [
             { text: "Stay", style: "cancel" },
             { text: "Discard workout", style: "destructive", onPress: () => abandonRef.current() },
@@ -368,6 +394,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             isWarmup: l.isWarmup,
             isDropSet: l.isDropSet,
             isFailure: !!l.isFailure,
+            pending: isPendingRow(l),
           }))
         : [],
     [currentExercise, session],
@@ -408,7 +435,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     enabled: hasLoggedSets,
   });
 
-  if (isError) {
+  // Only without a cached copy: offline, a failed background refetch must not hide a workout that is already here.
+  if (isError && !workout) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", paddingHorizontal: spacing.lg }}>
         <ErrorState onRetry={() => refetch()} />
@@ -457,7 +485,8 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (!(reps > 0)) return;
     setIsSubmittingSet(true);
     try {
-      const created = await logWorkoutSet(sessionId, {
+      // To the server, or onto this phone's queue without a connection (then it shows as waiting to sync).
+      const { row: created, queued } = await saveSet(sessionId, {
         exerciseId: currentExercise.exercise.id,
         setNumber: nextSetNumber(loggedSets),
         reps,
@@ -467,10 +496,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         isDropSet: !warmup && setType === "drop" ? true : undefined,
         isFailure: !warmup && setType === "failure" ? true : undefined,
       });
-      // Into the shared session data right away (both screens number from it), then refetched for the server's copy.
-      queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
-      queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
-      queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary", "live"] });
+      if (!queued) {
+        // Into the shared session data right away (both screens number from it), then refetched for the server's copy.
+        queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
+        queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
+        queryClient.invalidateQueries({ queryKey: ["workoutSessions", sessionId, "summary", "live"] });
+      }
       if (warmup) {
         setPendingWarmups((ws) => ws.filter((_, i) => i !== warmupIndex));
       } else {
@@ -486,7 +517,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         setShowRestTimer(next.rest);
         if (next.nextIndex !== exerciseIndex) {
           setExerciseIndex(next.nextIndex);
-          updateSessionProgress(sessionId, next.nextIndex).catch(() => undefined);
+          saveProgress(sessionId, next.nextIndex).catch(() => undefined);
         }
       }
     } catch (err) {
@@ -503,6 +534,24 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const advance = async () => {
     if (isLastExercise) {
+      // Sets waiting on this phone reach the server before the workout is closed (its summary and PRs need them).
+      const waiting = waitingFor(sessionId);
+      if (waiting > 0) {
+        if (!isOnline()) {
+          Alert.alert(
+            "Finish when you're back online",
+            `${setsPhrase(waiting)} saved on this phone and will sync when you're back online. Then you can finish. Until then you can keep logging, or leave and come back to this workout.`,
+          );
+          return;
+        }
+        setIsFinishing(true);
+        const left = await flushOfflineSets(sessionId);
+        if (left > 0) {
+          setIsFinishing(false);
+          Alert.alert("Not synced yet", `${setsPhrase(left)} still waiting on this phone. Check your connection and tap Finish again.`);
+          return;
+        }
+      }
       setIsFinishing(true);
       try {
         await completeWorkoutSession(sessionId);
@@ -518,10 +567,11 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     const nextIndex = exerciseIndex + 1;
     setIsAdvancing(true);
     try {
-      // Persisted server-side BEFORE the local state changes, so a
-      // connectivity drop right here never leaves the client "ahead" of
-      // what the server can recover on the next load.
-      await updateSessionProgress(sessionId, nextIndex);
+      // Saved BEFORE the local state changes, so a connectivity drop right
+      // here never leaves the client "ahead" of what can be recovered on the
+      // next load: on the server, or without a connection in this phone's
+      // queue, which the next load also reads (lib/offlineSets.ts).
+      await saveProgress(sessionId, nextIndex);
       setExerciseIndex(nextIndex);
     } catch (err) {
       Alert.alert("Couldn't move to the next exercise", extractErrorMessage(err, "Check your connection and try again."));
@@ -530,12 +580,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
   };
 
-  // Figma log/01 (24 Oct 2026): "Log this now" on any exercise. Saved on the server first, like advance().
+  // Figma log/01 (24 Oct 2026): "Log this now" on any exercise. Saved first, like advance().
   const jumpTo = async (index: number) => {
     if (index === exerciseIndex) return;
     setIsAdvancing(true);
     try {
-      await updateSessionProgress(sessionId, index);
+      await saveProgress(sessionId, index);
       setShowRestTimer(false);
       setExerciseIndex(index);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -558,6 +608,14 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           onPress: async () => {
             setIsAbandoning(true);
             try {
+              // "Sets you've already logged stay saved": the ones waiting on this phone are sent first.
+              if (waitingFor(sessionId) > 0 && (await flushOfflineSets(sessionId)) > 0) {
+                Alert.alert(
+                  "Your sets haven't synced yet",
+                  `${setsPhrase(waitingFor(sessionId))} saved only on this phone. Discard the workout once you're back online, so they stay saved.`,
+                );
+                return;
+              }
               await abandonWorkoutSession(sessionId);
               clearSwaps(workoutId);
               await queryClient.invalidateQueries({ queryKey: ["workoutHistory"] });
@@ -630,7 +688,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       const clamped = Math.min(newIndex === -1 ? exerciseIndex : newIndex, Math.max(0, (exercises?.length ?? 1) - 1));
       if (clamped !== exerciseIndex) {
         setExerciseIndex(clamped);
-        updateSessionProgress(sessionId, clamped).catch(() => undefined);
+        saveProgress(sessionId, clamped).catch(() => undefined);
       }
     } catch (err) {
       Alert.alert(failure, extractErrorMessage(err, "Check your connection and try again."));
@@ -827,6 +885,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             Resumed from where you left off — nothing was lost.
           </Text>
         ) : null}
+        <OfflineSyncNotice sessionId={sessionId} style={{ marginTop: spacing.sm }} />
       </View>
 
       <ScrollView
@@ -1021,8 +1080,10 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                   key={s.id}
                   onPress={() => setEditingSet(session?.setLogs.find((l) => l.id === s.id) ?? null)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${label === "W" ? "Warm-up" : label === "D" ? "Drop set" : `Set ${label}`}, ${formatSetValues(s)}, logged${isPr ? ", personal best" : ""}. Edit`}
-                  style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: colors.successSoft, paddingVertical: 4 }]}
+                  accessibilityLabel={`${label === "W" ? "Warm-up" : label === "D" ? "Drop set" : `Set ${label}`}, ${formatSetValues(s)}, ${
+                    s.pending ? "saved on this phone, waiting to sync" : "logged"
+                  }${isPr ? ", personal best" : ""}. Edit`}
+                  style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: s.pending ? colors.warningSoft : colors.successSoft, paddingVertical: 4 }]}
                 >
                   <Text style={[tableStyles.label, tableStyles.setCol, label === "W" ? { color: colors.warningText } : label === "D" ? { color: colors.aiText } : null]}>
                     {label}
@@ -1033,7 +1094,9 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                   <Text style={[tableStyles.value, tableStyles.numCol]}>{s.weightKg != null ? formatWeight(s.weightKg) : "—"}</Text>
                   <Text style={[tableStyles.value, tableStyles.numCol]}>{s.reps}</Text>
                   <View style={[tableStyles.checkCol, { alignItems: "center" }]}>
-                    {isPr ? (
+                    {s.pending ? (
+                      <Icon name="cloud-off" size={17} color={colors.warningText} />
+                    ) : isPr ? (
                       <Icon name="trophy" size={18} color={colors.warning} />
                     ) : (
                       <Icon name="check" size={18} color={colors.successText} strokeWidth={3} />
@@ -1320,6 +1383,7 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       <SetEditSheet
         sessionId={sessionId}
         set={editingSet}
+        offline
         title={editingSet?.isWarmup ? "Edit warm-up set" : "Edit set"}
         onClose={() => {
           setEditingSet(null);
@@ -1328,6 +1392,11 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       />
     </SafeAreaView>
   );
+}
+
+/** "1 set is" / "3 sets are", for the waiting-to-sync messages. */
+function setsPhrase(n: number): string {
+  return n === 1 ? "1 set is" : `${n} sets are`;
 }
 
 function rpeLabel(n: number): string {

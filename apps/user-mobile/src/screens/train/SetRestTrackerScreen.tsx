@@ -11,7 +11,10 @@ import { RestTimer } from "../../components/RestTimer";
 import { SetEditSheet } from "../../components/SetEditSheet";
 import { displayToKg, kgToDisplay, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchWorkoutDetail } from "../../api/programs";
-import { fetchWorkoutSession, logWorkoutSet } from "../../api/workoutSessions";
+import { fetchWorkoutSession } from "../../api/workoutSessions";
+import { OfflineSyncNotice } from "../../components/OfflineSyncNotice";
+import { saveSet, useOfflineSets, useQueuedSession } from "../../lib/offlineSets";
+import { isPendingRow } from "../../lib/offlineSetQueue";
 import { extractErrorMessage } from "../../lib/apiError";
 import { useSwaps } from "../../lib/exerciseSwaps";
 import { buildSessionExerciseList } from "../../lib/sessionExerciseList";
@@ -62,7 +65,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
   });
 
   const {
-    data: session,
+    data: serverSession,
     isLoading: isSessionLoading,
     isError: isSessionError,
     refetch: refetchSession,
@@ -70,6 +73,9 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
     queryKey: ["workoutSession", sessionId],
     queryFn: () => fetchWorkoutSession(sessionId),
   });
+  // Offline set logging (24 Oct 2026): sets waiting on this phone count here too, like Active Workout (lib/offlineSets.ts).
+  const offline = useOfflineSets(sessionId);
+  const session = useQueuedSession(serverSession, offline);
 
   const swaps = useSwaps(workoutId);
   // Batch 3b: the same list Active Workout uses (it passes exerciseIndex into it).
@@ -101,7 +107,8 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
     setWeight((w) => (w === "" && lastLogged.weightKg != null ? String(kgToDisplay(lastLogged.weightKg, weightUnit)) : w));
   }, [lastLogged?.id, weightUnit]);
 
-  if (isWorkoutError || isSessionError) {
+  // Only without a cached copy: offline, a failed background refetch must not hide what is already here.
+  if ((isWorkoutError && !workout) || (isSessionError && !session)) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", paddingHorizontal: spacing.lg }}>
         <ErrorState onRetry={() => { refetchWorkout(); refetchSession(); }} />
@@ -121,7 +128,8 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
     if (!reps) return;
     setIsSubmitting(true);
     try {
-      const created = await logWorkoutSet(sessionId, {
+      // To the server, or onto this phone's queue without a connection.
+      const { row: created, queued } = await saveSet(sessionId, {
         exerciseId: currentExercise.exercise.id,
         setNumber: nextSetNumber(exerciseSetLogs), // highest recorded + 1, shared with Active Workout (lib/setNumbering.ts)
         reps: parseInt(reps, 10),
@@ -132,9 +140,11 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
         isFailure,
         note: note.trim() || undefined,
       });
-      // Into the shared session data right away, so the next number is right even if the refetch below fails.
-      queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
-      await queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
+      if (!queued) {
+        // Into the shared session data right away, so the next number is right even if the refetch below fails.
+        queryClient.setQueryData<WorkoutSession>(["workoutSession", sessionId], (s) => withSetLog(s, created));
+        await queryClient.invalidateQueries({ queryKey: ["workoutSession", sessionId] });
+      }
       setRpe(undefined);
       setIsWarmup(false);
       setIsDropSet(false);
@@ -184,6 +194,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
             </Text>
           </View>
         </View>
+        <OfflineSyncNotice sessionId={sessionId} />
 
         <View style={{ flexDirection: "row", gap: spacing.md }}>
           {[
@@ -327,10 +338,11 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
                   <Pressable
                     onPress={() => setEditingSet(s)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Edit set ${s.setNumber}`}
+                    accessibilityLabel={`Edit set ${s.setNumber}${isPendingRow(s) ? ", saved on this phone, waiting to sync" : ""}`}
                     hitSlop={8}
-                    style={{ flex: 0.6 }}
+                    style={{ flex: 0.6, flexDirection: "row", alignItems: "center", gap: 4 }}
                   >
+                    {isPendingRow(s) ? <Icon name="cloud-off" size={13} color={colors.warningText} /> : null}
                     <Text style={{ color: theme.accentText, fontSize: 13 }}>Edit</Text>
                   </Pressable>
                 </View>
@@ -353,7 +365,7 @@ export function SetRestTrackerScreen({ route, navigation }: Props) {
 
         <Button label="Log Set & Start Rest" onPress={onLogSet} loading={isSubmitting} disabled={!reps} />
       </ScrollView>
-      <SetEditSheet sessionId={sessionId} set={editingSet} onClose={() => setEditingSet(null)} />
+      <SetEditSheet sessionId={sessionId} set={editingSet} offline onClose={() => setEditingSet(null)} />
     </SafeAreaView>
   );
 }

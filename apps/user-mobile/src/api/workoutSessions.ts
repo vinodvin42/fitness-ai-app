@@ -27,14 +27,19 @@ export function fetchWorkoutSession(sessionId: string) {
   return apiClient.get<WorkoutSession>(`/workout-sessions/${sessionId}`).then((r) => r.data);
 }
 
-export function logWorkoutSet(sessionId: string, input: LogSetInput) {
-  return apiClient.post(`/workout-sessions/${sessionId}/sets`, input).then((r) => r.data);
+/** Offline set logging (24 Oct 2026): a time limit, after which lib/offlineSets.ts keeps the change on the phone. */
+export interface RequestOptions {
+  timeout?: number;
+}
+
+export function logWorkoutSet(sessionId: string, input: LogSetInput, options?: RequestOptions) {
+  return apiClient.post(`/workout-sessions/${sessionId}/sets`, input, options).then((r) => r.data);
 }
 
 /** U3 (15 Sep 2026) — persists which exercise the user is on, so a resumed session (Today's "Resume session") lands back where they left off instead of restarting at exercise 1. */
-export function updateSessionProgress(sessionId: string, currentExerciseIndex: number) {
+export function updateSessionProgress(sessionId: string, currentExerciseIndex: number, options?: RequestOptions) {
   return apiClient
-    .patch<WorkoutSession>(`/workout-sessions/${sessionId}/progress`, { currentExerciseIndex })
+    .patch<WorkoutSession>(`/workout-sessions/${sessionId}/progress`, { currentExerciseIndex }, options)
     .then((r) => r.data);
 }
 
@@ -53,12 +58,12 @@ export function fetchSessionSummary(sessionId: string) {
 }
 
 /** Wave B - edit one logged set (send only what changed; null clears weight/rpe/note). */
-export function updateWorkoutSet(sessionId: string, setId: string, input: UpdateSetInput) {
-  return apiClient.patch<ExerciseSetLog>(`/workout-sessions/${sessionId}/sets/${setId}`, input).then((r) => r.data);
+export function updateWorkoutSet(sessionId: string, setId: string, input: UpdateSetInput, options?: RequestOptions) {
+  return apiClient.patch<ExerciseSetLog>(`/workout-sessions/${sessionId}/sets/${setId}`, input, options).then((r) => r.data);
 }
 
-export function deleteWorkoutSet(sessionId: string, setId: string) {
-  return apiClient.delete<DeleteResult>(`/workout-sessions/${sessionId}/sets/${setId}`).then((r) => r.data);
+export function deleteWorkoutSet(sessionId: string, setId: string, options?: RequestOptions) {
+  return apiClient.delete<DeleteResult>(`/workout-sessions/${sessionId}/sets/${setId}`, options).then((r) => r.data);
 }
 
 // ---- Batch 3b (18 Oct 2026): the session's own exercise list and "How did it feel?" ----

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { AppState } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
 import type { DeleteAccountInput, LoginInput, SignupInput, UpdateProfileInput, User } from "@fitness-ai-app/types";
 import { clearPersistedCache } from "../lib/queryClient";
 import { clearDraftsForSignOutWithin, initDrafts, setActiveDraftUser } from "../lib/ownedDrafts";
@@ -8,6 +9,7 @@ import { clearTokens, getStoredTokens, storeTokens } from "../api/client";
 import { fetchMe, loginRequest, logoutRequest, signupRequest, verifyTwoFactorLoginRequest } from "../api/auth";
 import { deleteAccount as deleteAccountRequest, updateProfile as updateProfileRequest } from "../api/users";
 import { applyLanguagePreference } from "../i18n";
+import { clearCachedMe, isAuthRejection, loadCachedMe, saveCachedMe } from "../lib/cachedMe";
 import {
   type BiometricLockIdleTimeoutMinutes,
   getBiometricLockEnabled,
@@ -94,6 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // Opened without a connection, from the saved copy of the member (24 Oct 2026): checked again once online.
+  const [startedOffline, setStartedOffline] = useState(false);
 
   const [isBiometricHardwareChecked, setIsBiometricHardwareChecked] = useState(false);
   const [isBiometricHardwareReadyState, setIsBiometricHardwareReadyState] = useState(false);
@@ -142,13 +146,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const me = await fetchMe();
         setUser(me.user);
         setOnboardingCompleted(me.onboardingCompleted);
-      } catch {
-        await clearTokens();
+        await saveCachedMe({ user: me.user, onboardingCompleted: me.onboardingCompleted });
+      } catch (err) {
+        if (isAuthRejection(err)) {
+          await clearTokens();
+          await clearCachedMe();
+        } else {
+          // 24 Oct 2026: no connection (or no proper answer) is not a sign-out. Open with the saved
+          // copy of the member so a workout can be logged offline; check again once back online.
+          const cached = await loadCachedMe();
+          if (cached) {
+            setUser(cached.user);
+            setOnboardingCompleted(cached.onboardingCompleted);
+            setStartedOffline(true);
+          }
+        }
       } finally {
         setIsLoading(false);
       }
     })();
   }, []);
+
+  // After an offline start: once a connection is back, load the member for real (or sign out if refused).
+  useEffect(() => {
+    if (!startedOffline) return;
+    let busy = false;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (busy || !state.isConnected || state.isInternetReachable === false) return;
+      busy = true;
+      fetchMe()
+        .then(async (me) => {
+          setUser(me.user);
+          setOnboardingCompleted(me.onboardingCompleted);
+          await saveCachedMe({ user: me.user, onboardingCompleted: me.onboardingCompleted });
+          setStartedOffline(false);
+        })
+        .catch(async (err) => {
+          if (isAuthRejection(err)) {
+            await clearTokens();
+            await clearCachedMe();
+            await clearPersistedCache().catch(() => undefined);
+            setUser(null);
+            setOnboardingCompleted(false);
+            setStartedOffline(false);
+          }
+        })
+        .finally(() => {
+          busy = false;
+        });
+    });
+    return unsubscribe;
+  }, [startedOffline, setUser]);
 
   // Register this device for push once a fully-onboarded user is signed in.
   // Never throws and never blocks anything — see lib/pushRegistration.ts.
@@ -210,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storeTokens(result.tokens.accessToken, result.tokens.refreshToken);
     setUser(result.user);
     setOnboardingCompleted(result.onboardingCompleted);
+    await saveCachedMe({ user: result.user, onboardingCompleted: result.onboardingCompleted });
     return { twoFactorRequired: false as const };
   };
 
@@ -221,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storeTokens(tokens.accessToken, tokens.refreshToken);
     setUser(loggedInUser);
     setOnboardingCompleted(completed);
+    await saveCachedMe({ user: loggedInUser, onboardingCompleted: completed });
   };
 
   const signup = async (input: SignupInput) => {
@@ -228,6 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storeTokens(tokens.accessToken, tokens.refreshToken);
     setUser(newUser);
     setOnboardingCompleted(completed); // always false for a brand-new account
+    await saveCachedMe({ user: newUser, onboardingCompleted: completed });
   };
 
   const logout = async () => {
@@ -246,6 +297,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
     await clearTokens();
+    await clearCachedMe();
     await clearPersistedCache().catch(() => undefined);
     setUser(null);
     setOnboardingCompleted(false);
@@ -256,16 +308,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (input: UpdateProfileInput) => {
     const updated = await updateProfileRequest(input);
     setUser(updated);
+    await saveCachedMe({ user: updated, onboardingCompleted });
   };
 
   const refreshUser = async () => {
     const me = await fetchMe();
     setUser(me.user);
     setOnboardingCompleted(me.onboardingCompleted);
+    await saveCachedMe({ user: me.user, onboardingCompleted: me.onboardingCompleted });
   };
 
   const signOutLocally = async () => {
     await clearTokens();
+    await clearCachedMe();
     await clearPersistedCache().catch(() => undefined);
     setUser(null);
     setOnboardingCompleted(false);

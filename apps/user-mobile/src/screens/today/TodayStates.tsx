@@ -132,13 +132,29 @@ interface OfflineProps {
   onStart: () => void;
   onRetry: () => void;
   retrying: boolean;
+  /** Sets saved on this phone that haven't synced yet (lib/offlineSets.ts). */
+  waitingSets: number;
+  /** Today's workout already in progress, when it is saved on this phone so it can be resumed offline. */
+  resume: { workoutName: string; setsLogged: number; onPress: () => void } | null;
 }
 
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, detail, savedAt, onStart, onRetry, retrying }: OfflineProps) {
+export function TodayOfflineView({
+  greeting,
+  firstName,
+  lastSyncedAt,
+  workout,
+  detail,
+  savedAt,
+  onStart,
+  onRetry,
+  retrying,
+  waitingSets,
+  resume,
+}: OfflineProps) {
   const { colors: theme } = useTheme();
   const meta = workout
     ? [`${workout.durationMinutes} min`, capitalise(workout.intensity), detail ? `${detail.exercises.length} exercises` : null]
@@ -176,7 +192,28 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
         </Pressable>
       </View>
 
-      {workout ? (
+      {resume ? (
+        <View style={cardBase}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Icon name="download" size={14} color={theme.accent} />
+            <Text style={{ color: theme.accentText, fontSize: 13, letterSpacing: 0.8, fontFamily: fonts.bodySemi }}>CONTINUE WORKOUT</Text>
+          </View>
+          <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }}>{resume.workoutName}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+            {resume.setsLogged} set{resume.setsLogged === 1 ? "" : "s"} synced
+            {waitingSets > 0 ? ` · ${waitingSets} saved on this phone` : ""}
+          </Text>
+          <Pressable
+            onPress={resume.onPress}
+            accessibilityRole="button"
+            accessibilityLabel="Resume workout"
+            style={{ height: 48, borderRadius: radius.md, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 4 }}
+          >
+            <Icon name="play" size={16} color={theme.textOnAccent} />
+            <Text style={{ color: theme.textOnAccent, ...typography.h3 }}>Resume workout</Text>
+          </Pressable>
+        </View>
+      ) : workout ? (
         <View style={cardBase}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="download" size={14} color={theme.accent} />
@@ -213,11 +250,21 @@ export function TodayOfflineView({ greeting, firstName, lastSyncedAt, workout, d
         </Text>
       </View>
 
+      {/* Offline set logging (24 Oct 2026): sets are kept on this phone and sent later (lib/offlineSets.ts). */}
       <View style={cardBase}>
-        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Logging needs a connection</Text>
+        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Logging works offline</Text>
         <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-          Sets are saved to your account as you log them, so recording this workout needs a connection. Your plan and exercise list stay available here.
+          In a workout you've already started, sets you log are saved on this phone and sync when you're back online. Starting a new
+          workout needs a connection.
         </Text>
+        {waitingSets > 0 ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Icon name="cloud-off" size={14} color={colors.warningText} />
+            <Text style={{ flex: 1, color: colors.warningText, fontSize: 13 }}>
+              {waitingSets === 1 ? "1 set" : `${waitingSets} sets`} saved on this phone · syncs when you're back online
+            </Text>
+          </View>
+        ) : null}
       </View>
     </Shell>
   );

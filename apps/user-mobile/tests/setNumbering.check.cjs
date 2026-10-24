@@ -104,8 +104,9 @@ const walk = (sf, fn) => { (function v(n) { fn(n); ts.forEachChild(n, v); })(sf)
 function facts(rel) {
   const sf = parse(rel); const f = { setNumberValues: [], setQueryDataWithSetLog: 0, useStateLoggedSets: false, listKeys: [], guards: [], disabled: [] };
   walk(sf, (n) => {
+    // saveSet (lib/offlineSets.ts, 24 Oct 2026) posts the set, or queues it with the same number without a connection.
     if (ts.isPropertyAssignment(n) && n.name.getText(sf) === "setNumber" && ts.isObjectLiteralExpression(n.parent)
-      && ts.isCallExpression(n.parent.parent) && ts.isIdentifier(n.parent.parent.expression) && n.parent.parent.expression.text === "logWorkoutSet") f.setNumberValues.push(n.initializer.getText(sf));
+      && ts.isCallExpression(n.parent.parent) && ts.isIdentifier(n.parent.parent.expression) && ["logWorkoutSet", "saveSet"].includes(n.parent.parent.expression.text)) f.setNumberValues.push(n.initializer.getText(sf));
     if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "setQueryData" && n.arguments[1] && /withSetLog\(/.test(n.arguments[1].getText(sf))) f.setQueryDataWithSetLog++;
     if (ts.isVariableDeclaration(n) && n.name.getText(sf).includes("loggedSets") && n.initializer && /useState/.test(n.initializer.getText(sf))) f.useStateLoggedSets = true;
     if (ts.isJsxAttribute(n) && n.name.getText(sf) === "key" && n.initializer && /^\{s\./.test(n.initializer.getText(sf))) f.listKeys.push(n.initializer.getText(sf));

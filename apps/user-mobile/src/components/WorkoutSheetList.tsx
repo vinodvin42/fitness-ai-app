@@ -9,7 +9,11 @@ import type { SessionExerciseView } from "../lib/sessionExerciseList";
 import { colors, fonts, radius, spacing } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
-type Log = Pick<ExerciseSetLog, "id" | "exerciseId" | "setNumber" | "reps" | "weightKg" | "isWarmup" | "isDropSet"> & { isFailure?: boolean | null };
+type Log = Pick<ExerciseSetLog, "id" | "exerciseId" | "setNumber" | "reps" | "weightKg" | "isWarmup" | "isDropSet"> & {
+  isFailure?: boolean | null;
+  /** Saved on this phone, waiting to sync (lib/offlineSets.ts). */
+  pending?: boolean;
+};
 
 /**
  * Figma log/01 "every exercise on one sheet" (24 Oct 2026): below the active
@@ -74,7 +78,13 @@ export function WorkoutSheetList({
                 <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14 }}>
                   {l.weightKg != null ? `${formatWeight(l.weightKg)} kg × ${l.reps}` : `${l.reps} reps`}
                 </Text>
-                <Icon name="check" size={16} color={colors.successText} strokeWidth={3} />
+                {l.pending ? (
+                  <View accessible accessibilityLabel="Waiting to sync">
+                    <Icon name="cloud-off" size={15} color={colors.warningText} />
+                  </View>
+                ) : (
+                  <Icon name="check" size={16} color={colors.successText} strokeWidth={3} />
+                )}
               </View>
             ))}
             {Array.from({ length: planned }, (_, i) => {

@@ -9,6 +9,7 @@ import { useToast } from "./Toast";
 import { deleteWorkoutSet, updateWorkoutSet } from "../api/workoutSessions";
 import { displayToKg, kgToDisplay, useWorkoutSettings } from "../api/workoutSettings";
 import { extractErrorMessage } from "../lib/apiError";
+import { editSet, removeSet } from "../lib/offlineSets";
 import { spacing } from "../theme/tokens";
 
 interface SetEditSheetProps {
@@ -16,11 +17,17 @@ interface SetEditSheetProps {
   /** The set being edited; null closes the sheet. */
   set: ExerciseSetLog | null;
   title?: string;
+  /**
+   * Offline set logging (24 Oct 2026): the screens that show waiting sets (Active Workout, Set/Rest Tracker) pass
+   * this. A waiting set is then changed or removed on this phone, and a synced set is edited through the queue
+   * when there is no connection (lib/offlineSets.ts).
+   */
+  offline?: boolean;
   onClose: () => void;
 }
 
 /** Edit weight/reps of a logged set, or delete it (PATCH/DELETE /workout-sessions/:id/sets/:setId). */
-export function SetEditSheet({ sessionId, set, title = "Edit set", onClose }: SetEditSheetProps) {
+export function SetEditSheet({ sessionId, set, title = "Edit set", offline = false, onClose }: SetEditSheetProps) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { data: settings } = useWorkoutSettings();
@@ -44,21 +51,30 @@ export function SetEditSheet({ sessionId, set, title = "Edit set", onClose }: Se
     queryClient.invalidateQueries({ queryKey: ["trainingAnalytics"] });
   };
 
+  // With `offline` the change may be kept on this phone, so the mutation must not wait for a connection ("always").
   const save = useMutation({
-    mutationFn: (input: UpdateSetInput) => updateWorkoutSet(sessionId, (set as ExerciseSetLog).id, input),
-    onSuccess: () => {
+    networkMode: offline ? "always" : "online",
+    mutationFn: (input: UpdateSetInput) =>
+      offline
+        ? editSet(sessionId, (set as ExerciseSetLog).id, input)
+        : updateWorkoutSet(sessionId, (set as ExerciseSetLog).id, input).then(() => "saved" as const),
+    onSuccess: (result) => {
       refresh();
-      toast.show("Set updated", "success");
+      toast.show(result === "queued" ? "Saved on this phone · syncs when you're back online" : "Set updated", "success");
       onClose();
     },
     onError: (err) => toast.show(extractErrorMessage(err, "Couldn't update that set."), "error"),
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteWorkoutSet(sessionId, (set as ExerciseSetLog).id),
-    onSuccess: () => {
+    networkMode: offline ? "always" : "online",
+    mutationFn: () =>
+      offline
+        ? removeSet(sessionId, (set as ExerciseSetLog).id)
+        : deleteWorkoutSet(sessionId, (set as ExerciseSetLog).id).then(() => "saved" as const),
+    onSuccess: (result) => {
       refresh();
-      toast.show("Set deleted", "success");
+      toast.show(result === "queued" ? "Deleted on this phone · syncs when you're back online" : "Set deleted", "success");
       onClose();
     },
     onError: (err) => toast.show(extractErrorMessage(err, "Couldn't delete that set."), "error"),

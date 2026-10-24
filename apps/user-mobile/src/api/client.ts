@@ -61,8 +61,10 @@ async function refreshAccessToken(): Promise<string | null> {
     const { data } = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken });
     await storeTokens(data.tokens.accessToken, data.tokens.refreshToken);
     return data.tokens.accessToken as string;
-  } catch {
-    await clearTokens();
+  } catch (err) {
+    // Only a refused refresh signs out; a lost connection keeps the tokens for the next try (24 Oct 2026).
+    const status = (err as { response?: { status?: number } } | null)?.response?.status;
+    if (status === 400 || status === 401 || status === 403) await clearTokens();
     return null;
   }
 }

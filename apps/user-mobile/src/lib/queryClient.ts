@@ -24,6 +24,9 @@ const PERSISTED_ROOTS = new Set([
   "programs",
   "program",
   "workout",
+  // Offline set logging (24 Oct 2026): a started workout's session, so it can be resumed offline after a restart.
+  // Sets waiting to sync are not in it; they are kept separately (lib/offlineSets.ts).
+  "workoutSession",
   "exercises",
   "recipes",
   "reminders",
