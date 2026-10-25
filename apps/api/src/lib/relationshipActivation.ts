@@ -23,3 +23,11 @@ export const FINISHED_RELATIONSHIP_STATUSES = ["declined", "expired", "completed
  * before a coach accepts, so an expired request costs the member nothing.
  */
 export const REQUEST_REPLY_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * How long the member has to pay once the coach accepts (Figma coach/09; 25 Oct 2026). After that an
+ * `accepted` request becomes `expired` (endReason "not_paid"), lazily like the reply window, and
+ * nothing is charged. A request already in `awaiting_payment` (a checkout was started) is left alone,
+ * so a payment in flight is never cut off. Legacy rows without `acceptedAt` never lapse.
+ */
+export const PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000;

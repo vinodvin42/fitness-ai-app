@@ -2255,7 +2255,9 @@ export interface RelationshipStatusItem {
   requestedAt?: string | null;
   /** `requested` only: when the coach's reply window closes; after that the request expires. */
   replyBy?: string | null;
-  /** When the coach accepted. */
+  /** `accepted` only (25 Oct 2026): when the member's 48 hours to pay end; after that the request expires, nothing charged. */
+  payBy?: string | null;
+  /** When the coach accepted. An `expired` row that still has it lapsed because nobody paid. */
   acceptedAt?: string | null;
   /** The service (offering) the member asked about, for pre-filling the booking. */
   offeringId?: string | null;
@@ -6297,7 +6299,19 @@ export interface BookingSummary extends CoachBookingListItem {
   summaryText: string | null;
   summaryPublishedAt: string | null;
 }
-/** POST /professionals/me/bookings/:id/summary (returns BookingSummary) */
+/** POST /coaching/bookings/:id/reschedule (25 Oct 2026): move a session up to 24 hours before it starts. */
+export interface RescheduleBookingInput {
+  scheduledAt: string;
+}
+export interface RescheduledBooking {
+  id: string;
+  professionalId: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: BookingStatus;
+}
+
+/** POST /professionals/me/bookings/:id/summary (returns BookingSummary); GET on the same path reads it back for the coach (25 Oct 2026). */
 export interface PublishBookingSummaryInput {
   summaryText: string;
 }

@@ -9,6 +9,7 @@ import {
   createGuidanceRequestSchema,
   declineRelationshipSchema,
   discoverProfessionalsQuerySchema,
+  rescheduleBookingSchema,
 } from "./coaching.schema";
 import * as coachingService from "./coaching.service";
 import { endRelationshipActionSchema, handoverRelationshipSchema } from "../relationshipLifecycle/relationshipLifecycle.schema";
@@ -225,6 +226,16 @@ coachingRouter.post("/coaching/bookings", requireAuth, writeRateLimit, async (re
   try {
     const input = createBookingSchema.parse(req.body);
     res.status(201).json(await coachingService.createBooking(req.userId!, input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Figma coach/15 (25 Oct 2026): the member moves a confirmed session to another free slot, up to 24 hours before it.
+coachingRouter.post("/coaching/bookings/:id/reschedule", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = rescheduleBookingSchema.parse(req.body);
+    res.json(await coachingService.rescheduleBooking(req.userId!, req.params.id, input));
   } catch (err) {
     next(err);
   }

@@ -273,15 +273,17 @@ export function requirePermission(module: AdminModule, action: AdminAction, opts
       );
     }
 
-    if (!WRITE_ACTIONS.has(action)) {
-      next();
-      return;
-    }
-
     (async () => {
+      // Reads check the account too (25 Oct 2026): a disabled admin, or one whose role changed, is cut off
+      // on their next request instead of reading until the token expires.
       const role = await currentRole(req.adminUserId);
       if (!role || role !== tokenRole) {
         throw new ApiHttpError(401, "session_outdated", "Your admin role or status changed. Sign in again.");
+      }
+
+      if (!WRITE_ACTIONS.has(action)) {
+        next();
+        return;
       }
 
       if (isApprovalReplay(req)) {

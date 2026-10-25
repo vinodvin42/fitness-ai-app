@@ -118,8 +118,11 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   // not just a relabeling — the old 1499 ($14.99) was never actually
   // Pro's designed price, just an unrelated placeholder guess.
   //
-  // Oct 2026 (decision D13): the plans are Basic ₹0, Grow ₹299/month and
-  // Prime ₹599/month. The ids "pro"/"elite" are kept so existing databases
+  // Oct 2026 (decision D13): the plans were Basic ₹0, Grow ₹299/month and
+  // Prime ₹599/month. 21 Oct 2026 (owner): only Basic and Prime; Prime is
+  // ₹299 incl. GST, then ₹399 from 1 Jan 2027, and Grow is switched off
+  // (migration 20261021170000_plans_basic_prime_399 did this to existing
+  // databases; a fresh one gets the same here). The ids "pro"/"elite" are kept so existing databases
   // and payment history stay linked; only tier/name/price changed (see
   // migration 20261015120000_plans_grow_prime_price_schedule). Yearly and
   // 3-month prices are not decided yet, so those plans are created switched
@@ -131,9 +134,9 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
   const plans = await Promise.all(
     [
       { id: "basic", tier: "basic" as const, name: "Basic", priceCents: 0, billingCycle: "monthly" as const, isActive: true },
-      { id: "pro", tier: "grow" as const, name: "Grow", priceCents: 29900, billingCycle: "monthly" as const, isActive: true },
+      { id: "pro", tier: "grow" as const, name: "Grow", priceCents: 29900, billingCycle: "monthly" as const, isActive: false },
       { id: "pro-annual", tier: "grow" as const, name: "Grow", priceCents: 0, billingCycle: "annual" as const, isActive: false },
-      { id: "elite", tier: "prime" as const, name: "Prime", priceCents: 59900, billingCycle: "monthly" as const, isActive: true },
+      { id: "elite", tier: "prime" as const, name: "Prime", priceCents: 29900, billingCycle: "monthly" as const, isActive: true },
       { id: "elite-annual", tier: "prime" as const, name: "Prime", priceCents: 0, billingCycle: "annual" as const, isActive: false },
     ].map(({ id, priceCents, isActive, ...plan }) =>
       prisma.subscriptionPlan.upsert({
@@ -144,17 +147,17 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     ),
   );
 
-  // D8: Grow becomes ₹349 for purchases and renewals from 1 Dec 2026 (India
-  // time); anyone already paid keeps ₹299 until their next renewal.
+  // Prime ₹399 incl. GST from 1 Jan 2027, India time (owner, 21 Oct 2026). Same id as the migration's
+  // row, so a database that already has it is left alone. (Grow's old ₹349 change is gone with Grow.)
   await prisma.planPriceChange.upsert({
-    where: { id: "seed-grow-349-2026-12-01" },
+    where: { id: "owner-2026-10-21-prime-399-2027-01-01" },
     create: {
-      id: "seed-grow-349-2026-12-01",
-      planId: "pro",
-      priceCents: 34900,
+      id: "owner-2026-10-21-prime-399-2027-01-01",
+      planId: "elite",
+      priceCents: 39900,
       previousCents: 29900,
-      effectiveFrom: new Date("2026-12-01T00:00:00+05:30"),
-      reason: "Grow ₹299 → ₹349 from 1 Dec 2026 (decision D8)",
+      effectiveFrom: new Date("2027-01-01T00:00:00+05:30"),
+      reason: "Prime ₹399 incl. GST from 1 Jan 2027 (owner, 21 Oct 2026)",
     },
     update: {},
   });

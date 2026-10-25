@@ -7,6 +7,7 @@ import {
   FINISHED_RELATIONSHIP_STATUSES,
   FINISHED_RELATIONSHIP_WINDOW_MS,
   REQUEST_REPLY_WINDOW_MS,
+  PAYMENT_WINDOW_MS,
   STUCK_ACTIVATING_THRESHOLD_MS,
 } from "../../lib/relationshipActivation";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -320,6 +321,59 @@ export async function hasBookingConflict(
   return overlaps(scheduledAt, scheduledEnd, existingBookings as BookingOverlapRow[]);
 }
 
+/** How close to the start a member can still move a session (Figma coach/15; 25 Oct 2026). */
+export const RESCHEDULE_CUTOFF_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The member moves one of their confirmed sessions to another free slot on the coach's grid (Figma
+ * coach/15; 25 Oct 2026). Allowed until RESCHEDULE_CUTOFF_MS before the current start; the new start
+ * must be a whole-hour slot on the same 9:00-18:00 grid getAvailability() offers, in the future, and
+ * free of the coach's other confirmed bookings (this one doesn't block itself). The fee and payment are
+ * unchanged. Cancelling or refunding a session isn't here: that's a money policy the owner sets.
+ */
+export async function rescheduleBooking(userId: string, bookingId: string, input: { scheduledAt: string }, now: Date = new Date()) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, userId: true, professionalId: true, scheduledAt: true, durationMinutes: true, status: true },
+  });
+  // 404 for someone else's booking too: never confirm another member's booking exists.
+  if (!booking || booking.userId !== userId) throw new ApiHttpError(404, "booking_not_found", "Session not found");
+  if (booking.status !== "confirmed") throw new ApiHttpError(409, "booking_not_confirmed", "Only a booked session can be moved");
+  if (booking.scheduledAt.getTime() - now.getTime() < RESCHEDULE_CUTOFF_MS) {
+    throw new ApiHttpError(409, "reschedule_too_late", "Sessions can be moved up to 24 hours before they start");
+  }
+
+  const next = new Date(input.scheduledAt);
+  const onGrid =
+    next.getUTCMinutes() === 0 && next.getUTCSeconds() === 0 && next.getUTCMilliseconds() === 0 && next.getUTCHours() >= SLOT_START_HOUR && next.getUTCHours() < SLOT_END_HOUR;
+  if (!onGrid) throw new ApiHttpError(400, "invalid_slot", "Pick one of the times offered for this coach");
+  if (next.getTime() <= now.getTime()) throw new ApiHttpError(400, "invalid_slot", "Pick a time in the future");
+  if (next.getTime() === booking.scheduledAt.getTime()) throw new ApiHttpError(400, "same_slot", "That's already the session's time");
+
+  const end = new Date(next.getTime() + booking.durationMinutes * 60 * 1000);
+  const others = await prisma.booking.findMany({
+    where: { professionalId: booking.professionalId, status: "confirmed", id: { not: booking.id } },
+    select: { scheduledAt: true, durationMinutes: true },
+  });
+  if (overlaps(next, end, others as BookingOverlapRow[])) {
+    throw new ApiHttpError(409, "slot_unavailable", "That time has just been taken. Pick another one");
+  }
+
+  const updated = await prisma.booking.update({
+    where: { id: booking.id },
+    data: { scheduledAt: next },
+    select: { id: true, professionalId: true, scheduledAt: true, durationMinutes: true, status: true },
+  });
+  await recordAudit({
+    actorId: userId,
+    action: "booking.rescheduled",
+    entityType: "Booking",
+    entityId: booking.id,
+    metadata: { from: booking.scheduledAt.toISOString(), to: next.toISOString() },
+  });
+  return updated;
+}
+
 export async function getAvailability(professionalId: string, query: AvailabilityQuery) {
   const professional = await prisma.professional.findUnique({
     where: { id: professionalId },
@@ -512,7 +566,29 @@ export async function expireOverdueRequests(extra: { id?: string; userId?: strin
     },
     data: { status: "expired", endedAt: now, endReason: "no_reply" },
   });
+  return result.count + (await expireUnpaidAcceptances(extra, now));
+}
+
+/**
+ * Ends every `accepted` relationship (matching `extra`) whose member didn't start paying within
+ * PAYMENT_WINDOW_MS of the coach accepting: `expired`, endReason "not_paid". Same lazy, atomic,
+ * status-filtered shape as the reply window above. `acceptedAt` stays set, which is how the app tells
+ * a lapsed payment from an unanswered request. Returns how many rows it ended.
+ */
+export async function expireUnpaidAcceptances(
+  extra: { id?: string; userId?: string; professionalId?: string; serviceType?: { in: Array<"fitness" | "nutrition"> } },
+  now: Date = new Date(),
+): Promise<number> {
+  const result = await prisma.relationship.updateMany({
+    where: { ...extra, status: "accepted", acceptedAt: { lt: new Date(now.getTime() - PAYMENT_WINDOW_MS) } },
+    data: { status: "expired", endedAt: now, endReason: "not_paid" },
+  });
   return result.count;
+}
+
+/** When the member's time to pay ends, for an accepted request (null for a legacy row without acceptedAt). */
+function payBy(row: { acceptedAt?: Date | null }): Date | null {
+  return row.acceptedAt ? new Date(row.acceptedAt.getTime() + PAYMENT_WINDOW_MS) : null;
 }
 
 /** When the coach's reply window closes for a request made at `requestedAt` (or `createdAt` for a legacy row). */
@@ -1002,6 +1078,7 @@ export async function listRelationshipStatus(userId: string, now: Date = new Dat
       // What the member asked for and when (25 Oct 2026, Figma coach/05, 07): all null for a request made before this existed.
       requestedAt: r.requestedAt ?? r.createdAt,
       replyBy: r.status === "requested" ? replyBy(r) : null,
+      payBy: r.status === "accepted" ? payBy(r) : null,
       acceptedAt: r.acceptedAt,
       offeringId: r.requestedOfferingId,
       serviceName: r.requestedOfferingId ? (labels.get(r.requestedOfferingId) ?? null) : null,

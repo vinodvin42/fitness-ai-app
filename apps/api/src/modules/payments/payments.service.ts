@@ -10,7 +10,7 @@ import { env } from "../../config/env";
 import { paymentProvider } from "../../providers";
 import { subscribe } from "../subscriptions/subscriptions.service";
 import { purchaseProgram } from "../programPurchases/programPurchases.service";
-import { claimRelationship, createBooking, hasBookingConflict } from "../coaching/coaching.service";
+import { claimRelationship, createBooking, expireUnpaidAcceptances, hasBookingConflict } from "../coaching/coaching.service";
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
 import { createActionItem } from "../../lib/adminActionQueue";
@@ -193,6 +193,16 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     const serviceTypes: Array<"fitness" | "nutrition"> = booking.serviceType
       ? [booking.serviceType]
       : ["fitness", "nutrition"];
+    // The 48-hour payment window (25 Oct 2026): paying after it has closed is refused with its own
+    // answer, before anything is claimed, rather than quietly turning into a fresh request.
+    const lapsed = await expireUnpaidAcceptances({ userId, professionalId: booking.professionalId, serviceType: { in: serviceTypes } });
+    if (lapsed > 0) {
+      throw new ApiHttpError(
+        409,
+        "payment_window_ended",
+        "The time to pay for this request has passed, so nothing was charged. Send a new request to book.",
+      );
+    }
     const relationships = await Promise.all(
       serviceTypes.map((st) => claimRelationship(userId, booking.professionalId, st)),
     );

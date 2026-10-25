@@ -44,6 +44,12 @@ export const createBookingSchema = z.object({
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
+/** POST /coaching/bookings/:id/reschedule (25 Oct 2026): the new start, one of the coach's free slots. */
+export const rescheduleBookingSchema = z.object({
+  scheduledAt: z.string().datetime({ message: "scheduledAt must be an ISO 8601 date-time" }),
+});
+export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;
+
 // Matches the design's "reason-for-change radio list" — schedule
 // conflicts / different specialization / other personal preferences.
 export const createChangeRequestSchema = z.object({
