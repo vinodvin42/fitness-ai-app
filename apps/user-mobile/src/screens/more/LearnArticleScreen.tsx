@@ -3,7 +3,6 @@ import { ActivityIndicator, Image, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
 import { Icon } from "../../components/Icon";
 import { fetchLearnArticle } from "../../api/learn";
@@ -63,8 +62,7 @@ export function LearnArticleScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScreenContainer title={data?.title ?? "Article"} eyebrow={data ? TOPIC_LABEL[data.topic] : undefined}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={data?.title ?? "Article"} eyebrow={data ? TOPIC_LABEL[data.topic] : undefined} onBack={() => navigation.goBack()}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError || !data ? (

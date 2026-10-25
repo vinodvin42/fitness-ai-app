@@ -6,7 +6,6 @@ import type { Exercise, RoutineExerciseInput } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { BottomSheet } from "../../components/BottomSheet";
 import { SearchBar } from "../../components/SearchBar";
 import { Stepper } from "../../components/Stepper";
@@ -171,8 +170,7 @@ export function RoutineEditorScreen({ navigation, route }: Props) {
 
   if (routineId && existing.isError) {
     return (
-      <ScreenContainer title={title}>
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title={title} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => existing.refetch()} />
       </ScreenContainer>
     );
@@ -188,8 +186,7 @@ export function RoutineEditorScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScreenContainer title={title}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={title} onBack={() => navigation.goBack()}>
       <TextField label="Name" value={name} onChangeText={setName} maxLength={100} placeholder="e.g. Push day" error={nameError} />
       <TextField
         label="Notes (optional)"

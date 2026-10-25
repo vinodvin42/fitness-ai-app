@@ -5,7 +5,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ExerciseSetLog } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
-import { BackButton } from "../../components/BackButton";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
@@ -47,8 +46,7 @@ export function SessionSetsScreen({ navigation, route }: Props) {
   }, [sessionQuery.data, workoutQuery.data]);
 
   return (
-    <ScreenContainer title="Review Sets" subtitle={workoutName}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Review Sets" subtitle={workoutName} onBack={() => navigation.goBack()}>
       <Text style={{ color: colors.textMuted, ...typography.meta }}>Tap a set to fix a typo or remove it.</Text>
       {sessionQuery.isError ? (
         <ErrorState onRetry={() => sessionQuery.refetch()} />

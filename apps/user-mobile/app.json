@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fynrox",
     "slug": "23primefit-user-mobile",
-    "version": "0.8.6",
+    "version": "0.8.7",
     "orientation": "portrait",
     "scheme": "fynrox",
     "userInterfaceStyle": "automatic",
@@ -34,7 +34,9 @@
         "android.permission.health.READ_HEART_RATE_VARIABILITY",
         "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_OXYGEN_SATURATION",
-        "android.permission.health.READ_WEIGHT"
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.READ_VO2_MAX"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ArticleTopic, LearnArticleSummary } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Chip } from "../../components/Chip";
 import { ErrorState } from "../../components/ErrorState";
 import { Icon, IconName } from "../../components/Icon";
@@ -81,8 +80,7 @@ export function LearnScreen({ navigation, route }: Props) {
   const topics = all.data?.topics ?? [];
 
   return (
-    <ScreenContainer title="Learn" subtitle="Short reads, checked by experts">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Learn" subtitle="Short reads, checked by experts" onBack={() => navigation.goBack()}>
       {topics.length > 1 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
           <Chip label="All" selected={topic === undefined} onPress={() => setTopic(undefined)} />

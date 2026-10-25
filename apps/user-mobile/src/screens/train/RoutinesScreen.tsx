@@ -7,7 +7,6 @@ import type { Routine } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { Pill } from "../../components/Pill";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
@@ -58,8 +57,7 @@ export function RoutinesScreen({ navigation }: Props) {
     ]);
 
   return (
-    <ScreenContainer title="My Routines" subtitle="Your saved exercise lists">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="My Routines" subtitle="Your saved exercise lists" onBack={() => navigation.goBack()}>
       <Button label="New routine" onPress={() => navigation.navigate("RoutineEditor", {})} />
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
         Save your favourite exercises, then tap Start to run a live session from a routine.

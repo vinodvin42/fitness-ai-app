@@ -13,6 +13,11 @@ import { ProgressReviewScreen } from "../screens/progress/ProgressReviewScreen";
 import { WhyThisChangedScreen } from "../screens/progress/WhyThisChangedScreen";
 import { ProgressInsightsScreen } from "../screens/progress/ProgressInsightsScreen";
 import { DecisionHistoryScreen } from "../screens/progress/DecisionHistoryScreen";
+import { HealthspanScreen } from "../screens/progress/HealthspanScreen";
+import { LogWeightScreen } from "../screens/progress/LogWeightScreen";
+import { HealthspanAnswersScreen } from "../screens/progress/HealthspanAnswersScreen";
+import { HealthReadingsScreen } from "../screens/progress/HealthReadingsScreen";
+import { HealthTrendsScreen } from "../screens/progress/HealthTrendsScreen";
 
 // R1 Developer 1 work package, U1 (14 Sep 2026) — the primary nav BR-USR-001
 // requires is Today | Train | Fuel | Progress | More, with Recovery
@@ -45,6 +50,8 @@ import { DecisionHistoryScreen } from "../screens/progress/DecisionHistoryScreen
 export type ProgressStackParamList = {
   Progress: undefined;
   LogMeasurement: undefined;
+  // Weight only (25 Oct 2026): Progress "Log weight" opened the full measurements form.
+  LogWeight: undefined;
   MeasurementHistory: undefined;
   // Figma 06b measure-05: two logged dates side by side.
   MeasurementCompare: { fromId?: string; toId?: string } | undefined;
@@ -61,6 +68,11 @@ export type ProgressStackParamList = {
   ProgressInsights: undefined;
   // Figma Progress 12 - daily-review decisions saved on this phone.
   DecisionHistory: undefined;
+  // Healthspan (25 Oct 2026): fitness age, heart age, BP / VO2max readings, long-term trends.
+  Healthspan: undefined;
+  HealthspanAnswers: undefined;
+  HealthReadings: { kind?: "blood_pressure" | "vo2max" } | undefined;
+  HealthTrends: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -71,6 +83,7 @@ export function ProgressStack() {
       <Stack.Screen name="Progress" component={ProgressOverviewScreen} />
       <Stack.Screen name="BodyComposition" component={BodyCompositionScreen} />
       <Stack.Screen name="LogMeasurement" component={LogMeasurementScreen} />
+      <Stack.Screen name="LogWeight" component={LogWeightScreen} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} />
       <Stack.Screen name="MeasurementCompare" component={MeasurementCompareScreen} />
       <Stack.Screen name="StreakTracker" component={StreakTrackerScreen} />
@@ -80,6 +93,10 @@ export function ProgressStack() {
       <Stack.Screen name="WhyThisChanged" component={WhyThisChangedScreen} />
       <Stack.Screen name="ProgressInsights" component={ProgressInsightsScreen} />
       <Stack.Screen name="DecisionHistory" component={DecisionHistoryScreen} />
+      <Stack.Screen name="Healthspan" component={HealthspanScreen} />
+      <Stack.Screen name="HealthspanAnswers" component={HealthspanAnswersScreen} />
+      <Stack.Screen name="HealthReadings" component={HealthReadingsScreen} />
+      <Stack.Screen name="HealthTrends" component={HealthTrendsScreen} />
     </Stack.Navigator>
   );
 }

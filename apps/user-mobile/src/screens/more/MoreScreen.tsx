@@ -9,7 +9,8 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { MyAvatar } from "../../components/MyAvatar";
 import { Icon, IconName } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
-import { fetchPlans } from "../../api/subscriptions";
+import { fetchReferralSummary } from "../../api/referrals";
+import { Card } from "../../components/Card";
 import { fetchLearnArticles } from "../../api/learn";
 import { BRAND_NAME } from "../../lib/brand";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -30,32 +31,27 @@ interface MoreRow {
  * More Menu - Figma Today 05. Top block (banner + the design's seven rows) is
  * the frame; the app's other real destinations (Medicine, Reminders list,
  * Referral, Subscription, Settings, Support) are kept in a second group below
- * it rather than removed. The banner names the app's REAL subscription plans
- * (GET /subscriptions/plans), not hardcoded tier names.
+ * it rather than removed.
+ *
+ * 25 Oct 2026 (owner): the first card is Refer & Invite (it was "Compare
+ * Basic & Prime"; plans stay one tap away under Subscription). Its line is
+ * the real referral rule (referrals.service.ts): 1 month of credit when a
+ * friend you invite starts a paid plan, or the credit already waiting.
  */
 export function MoreScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans, staleTime: 5 * 60_000 });
+  const referral = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary, staleTime: 60_000 });
   const tabs = () => navigation.getParent<NavigationProp<MainTabsParamList>>();
   // Learn (05.04, Oct 2026) appears only once at least one article is published.
   const learn = useQuery({ queryKey: ["learn", "articles", "all"], queryFn: () => fetchLearnArticles(), staleTime: 5 * 60_000 });
   const hasLearn = (learn.data?.articles.length ?? 0) > 0;
 
-  // The plans on sale in the admin portal, cheapest first: "Compare Basic & Prime".
-  const planNames = Array.from(
-    new Set(
-      (plans.data ?? [])
-        .sort((a, b) => a.priceCents - b.priceCents)
-        .map((p) => p.name),
-    ),
-  );
-  const primeName = (plans.data ?? []).find((p) => p.tier === "prime")?.name;
-  const bannerNote = primeName
-    ? `${primeName} adds coach requests and priority support.`
-    : "See what each plan includes.";
-  const bannerTitle =
-    planNames.length === 2 ? `Compare ${planNames[0]} & ${planNames[1]}` : planNames.length > 2 ? "Compare plans" : "Explore plans";
+  const creditMonths = referral.data?.creditMonths ?? 0;
+  const referralNote =
+    creditMonths > 0
+      ? `${creditMonths} month${creditMonths === 1 ? "" : "s"} of credit waiting. Invite more friends.`
+      : "Get 1 month of credit when a friend you invite starts a paid plan.";
 
   const primary: MoreRow[] = [
     { label: "My Schedule", icon: "calendar", tint: colors.accent, badge: "Today", onPress: () => tabs()?.navigate("Today", { screen: "Schedule", initial: false }) },
@@ -74,11 +70,9 @@ export function MoreScreen({ navigation }: Props) {
 
   const secondary: MoreRow[] = [
     { label: t("more.rows.reminders.label"), icon: "clock", tint: colors.cyan, onPress: () => navigation.navigate("Reminders") },
-    { label: "Medicine", icon: "pill", tint: colors.pink, onPress: () => navigation.navigate("MedicationList") },
     { label: t("more.rows.subscription.label"), icon: "zap", tint: colors.warning, onPress: () => navigation.navigate("Subscription") },
     // Origin (Fynrox R1, U-M22): receipts and refund status.
     { label: t("more.rows.purchases.label"), icon: "calendar", tint: colors.cyan, onPress: () => navigation.navigate("Purchases") },
-    { label: t("more.rows.referral.label"), icon: "sparkles", tint: colors.pink, onPress: () => navigation.navigate("Referral") },
     { label: t("more.rows.settings.label"), icon: "settings", tint: colors.textSecondary, onPress: () => navigation.navigate("SettingsHub") },
     ...(hasLearn ? [{ label: "Learn", icon: "file-text" as const, tint: colors.success, onPress: () => navigation.navigate("Learn") }] : []),
     { label: "Support", icon: "info", tint: colors.cyan, onPress: () => navigation.navigate("Support") },
@@ -95,28 +89,20 @@ export function MoreScreen({ navigation }: Props) {
       }
     >
       <Pressable
-        onPress={() => navigation.navigate("Subscription")}
+        onPress={() => navigation.navigate("Referral")}
         accessibilityRole="button"
-        accessibilityLabel={`${bannerTitle}. ${bannerNote}`}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.md,
-          padding: 14,
-          borderRadius: radius.card,
-          backgroundColor: colors.aiSurface,
-          borderWidth: 1,
-          borderColor: colors.aiBorder,
-        }}
+        accessibilityLabel={`${t("more.rows.referral.label")}. ${referralNote}`}
       >
-        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.aiAccent, alignItems: "center", justifyContent: "center" }}>
-          <Icon name="sparkles" size={20} color="#FFFFFF" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{bannerTitle}</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{bannerNote}</Text>
-        </View>
-        <Icon name="chevron-right" size={18} color={colors.textPrimary} />
+        <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+          <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.warningSoft, alignItems: "center", justifyContent: "center" }}>
+            <Icon name="gift" size={22} color={colors.warning} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("more.rows.referral.label")}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 2 }}>{referralNote}</Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.textSecondary} />
+        </Card>
       </Pressable>
 
       <RowGroup rows={primary} />

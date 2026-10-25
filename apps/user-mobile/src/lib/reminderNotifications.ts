@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import type { NotificationPreferences, Reminder } from "@fitness-ai-app/types";
+import { planSchedule } from "./reminderSchedule";
 
 /**
  * Local, on-device notification scheduling for Reminders
@@ -70,14 +71,27 @@ export async function syncScheduledNotifications(reminders: Reminder[]) {
 
   for (const reminder of reminders) {
     if (!reminder.isEnabled) continue;
+    const content = { title: CATEGORY_TITLE[reminder.category], body: reminder.label, sound: reminder.playSound };
+
+    // Start / end dates (25 Oct 2026): one dated alarm per occurrence when the reminder starts later
+    // or ends soon, since a weekly repeat can't stop on a date (lib/reminderSchedule.ts).
+    const plan = planSchedule({
+      daysOfWeek: reminder.daysOfWeek,
+      times: [{ hour: reminder.hour, minute: reminder.minute }],
+      startDate: reminder.startDate,
+      endDate: reminder.endDate,
+    });
+    if (plan.kind === "none") continue;
+    if (plan.kind === "dated") {
+      for (const at of plan.at) {
+        await Notifications.scheduleNotificationAsync({ content, trigger: { date: at } });
+      }
+      continue;
+    }
 
     for (const jsDay of reminder.daysOfWeek) {
       await Notifications.scheduleNotificationAsync({
-        content: {
-          title: CATEGORY_TITLE[reminder.category],
-          body: reminder.label,
-          sound: reminder.playSound,
-        },
+        content,
         trigger: {
           weekday: jsDay + 1,
           hour: reminder.hour,

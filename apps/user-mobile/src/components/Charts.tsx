@@ -20,6 +20,8 @@ interface BaseChartProps {
   height?: number;
   color?: string;
   accessibilityLabel: string;
+  /** LineChart: false scales the y-axis to the data (with a little room) instead of starting at 0, for trends. */
+  fromZero?: boolean;
 }
 
 const PAD = { top: 12, right: 12, bottom: 22, left: 12 };
@@ -28,14 +30,20 @@ function summarize(data: ChartPoint[]): string {
   return data.map((d) => `${d.label} ${d.value}`).join(", ");
 }
 
-function range(data: ChartPoint[]) {
+function range(data: ChartPoint[], fromZero = true) {
   const values = data.map((d) => d.value);
+  if (!fromZero) {
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    const pad = Math.max((hi - lo) * 0.2, Math.abs(hi) * 0.05, 1);
+    return { min: lo - pad, max: hi + pad };
+  }
   return { min: Math.min(0, ...values), max: Math.max(1, ...values) };
 }
 
-export function LineChart({ data, width = 320, height = 160, color = colors.accent, accessibilityLabel }: BaseChartProps) {
+export function LineChart({ data, width = 320, height = 160, color = colors.accent, accessibilityLabel, fromZero = true }: BaseChartProps) {
   if (data.length === 0) return null;
-  const { min, max } = range(data);
+  const { min, max } = range(data, fromZero);
   const w = width - PAD.left - PAD.right;
   const h = height - PAD.top - PAD.bottom;
   const x = (i: number) => PAD.left + (data.length === 1 ? w / 2 : (i / (data.length - 1)) * w);

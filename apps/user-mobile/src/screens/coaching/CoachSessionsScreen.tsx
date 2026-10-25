@@ -5,7 +5,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
-import { BackButton } from "../../components/BackButton";
 import { Pill } from "../../components/Pill";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
@@ -31,8 +30,7 @@ export function CoachSessionsScreen({ navigation }: Props) {
   const sorted = [...(data ?? [])].sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
 
   return (
-    <ScreenContainer title="My Sessions" subtitle="Booked coach sessions and their summaries">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="My Sessions" subtitle="Booked coach sessions and their summaries" onBack={() => navigation.goBack()}>
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading ? (

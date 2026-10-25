@@ -3,7 +3,6 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchHelpArticle } from "../../api/help";
@@ -20,8 +19,7 @@ export function HelpArticleScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScreenContainer title={data?.title ?? "Help article"} eyebrow={data?.categoryLabel}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={data?.title ?? "Help article"} eyebrow={data?.categoryLabel} onBack={() => navigation.goBack()}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError || !data ? (

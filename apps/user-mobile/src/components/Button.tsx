@@ -8,6 +8,8 @@ interface ButtonProps {
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
+  /** "compact" (48 dp) for buttons inside cards; "regular" (52 dp) for a screen's main action. */
+  size?: "regular" | "compact";
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
@@ -29,6 +31,7 @@ export function Button({
   label,
   onPress,
   variant = "primary",
+  size = "regular",
   loading,
   disabled,
   style,
@@ -51,6 +54,7 @@ export function Button({
       android_ripple={{ color: isPrimary ? "rgba(255,255,255,0.18)" : colors.ripple }}
       style={({ pressed }: { pressed: boolean }) => [
         styles.base,
+        size === "compact" && styles.compact,
         isPrimary ? [styles.primary, { backgroundColor: theme.accent }] : styles.secondary,
         // Disabled = flat grey, label still readable (textMuted, >= 4.5:1). Loading keeps full colour: it is busy, not unavailable.
         disabled && (isPrimary ? styles.mutedDisabled : styles.secondaryDisabled),
@@ -65,6 +69,7 @@ export function Button({
         <Text
           style={[
             styles.label,
+            size === "compact" && styles.labelCompact,
             isPrimary ? [styles.labelPrimary, { color: disabled ? colors.textMuted : theme.textOnAccent }] : [styles.labelSecondary, disabled && { color: colors.textMuted }],
           ]}
         >{label}</Text>
@@ -82,6 +87,13 @@ const styles = themed(() => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     flexDirection: "row",
     gap: spacing.sm,
+  },
+  compact: {
+    height: 48,
+    paddingHorizontal: spacing.md,
+  },
+  labelCompact: {
+    fontSize: 15,
   },
   pressed: {
     opacity: 0.88,

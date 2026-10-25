@@ -18,6 +18,10 @@ import { fetchDevices, pairDevice, syncDevice } from "../api/devices";
  *
  * Android only: iOS and web get "unsupported" and never call the native
  * module. The day mapping is pure and checked by tests/healthConnect.check.cjs.
+ *
+ * Sleep detail (owner, 25 Oct 2026): each night also sends its bed and wake
+ * times, time in bed and, when the watch or app recorded stages, minutes
+ * awake / light / deep / REM. Hours slept are then time in bed minus awake.
  */
 
 /** The record types Fynrox reads, in the order the permission sheet lists them. */
@@ -29,6 +33,9 @@ export const HEALTH_CONNECT_RECORDS = [
   "SleepSession",
   "OxygenSaturation",
   "Weight",
+  // Healthspan (25 Oct 2026): heart age and fitness age.
+  "BloodPressure",
+  "Vo2Max",
 ] as const;
 export type HealthConnectRecord = (typeof HEALTH_CONNECT_RECORDS)[number];
 
@@ -40,6 +47,8 @@ export const HEALTH_CONNECT_RECORD_LABEL: Record<HealthConnectRecord, string> = 
   SleepSession: "Sleep",
   OxygenSaturation: "Blood oxygen",
   Weight: "Weight",
+  BloodPressure: "Blood pressure",
+  Vo2Max: "VO2 max",
 };
 
 export const HEALTH_CONNECT_DEVICE = { provider: "health_connect", name: "Health Connect", kind: "other" } as const;
@@ -103,9 +112,11 @@ export interface HealthConnectRaw {
   activeCalories?: Record<string, number>;
   restingHr?: Array<{ time: string; bpm: number }>;
   hrv?: Array<{ time: string; ms: number }>;
-  sleep?: Array<{ startTime: string; endTime: string }>;
+  sleep?: SleepSessionRaw[];
   spo2?: Array<{ time: string; percent: number }>;
   weight?: Array<{ time: string; kg: number }>;
+  bloodPressure?: Array<{ time: string; systolic: number; diastolic: number }>;
+  vo2max?: Array<{ time: string; value: number }>;
 }
 
 function meanByDay<T extends { time: string }>(rows: T[] | undefined, value: (r: T) => number): Map<string, number> {
@@ -122,28 +133,97 @@ function meanByDay<T extends { time: string }>(rows: T[] | undefined, value: (r:
   return new Map([...sums].map(([day, s]) => [day, s.total / s.count]));
 }
 
+/** Health Connect SleepSessionRecord stage codes (SleepStageType; 7 is "awake in bed" on newer Android). */
+export const SLEEP_STAGE = { UNKNOWN: 0, AWAKE: 1, SLEEPING: 2, OUT_OF_BED: 3, LIGHT: 4, DEEP: 5, REM: 6, AWAKE_IN_BED: 7 } as const;
+const AWAKE_STAGES = new Set<number>([SLEEP_STAGE.AWAKE, SLEEP_STAGE.OUT_OF_BED, SLEEP_STAGE.AWAKE_IN_BED]);
+
+export interface SleepSessionRaw {
+  startTime: string;
+  endTime: string;
+  stages?: Array<{ startTime: string; endTime: string; stage: number }>;
+}
+
+export interface SleepNight {
+  /** Bedtime and wake time of the night's longest stretch (ISO). */
+  start: string;
+  end: string;
+  /** All sleep sessions that ended on this day, overlaps merged. */
+  inBedMin: number;
+  /** Time in bed minus awake stages (or time in bed when no stages were recorded). */
+  asleepHours: number;
+  /** Only when the source recorded stages. */
+  awakeMin?: number;
+  lightMin?: number;
+  deepMin?: number;
+  remMin?: number;
+}
+
 /**
- * Hours slept per day. A night counts on the day you woke up (its end time).
+ * One night per day. A night counts on the day you woke up (its end time).
  * Overlapping sessions (the same night written by a watch app and a phone app)
- * are merged first, so a night is never counted twice.
+ * are merged first, so a night is never counted twice; stages come from the
+ * one session in the overlap that recorded the most staged time, for the same
+ * reason. A nap adds to the day's time in bed but not to its bed/wake times.
  */
-export function sleepHoursByWakeDay(sessions: Array<{ startTime: string; endTime: string }> | undefined): Map<string, number> {
-  const spans = (sessions ?? [])
-    .map((s) => ({ start: Date.parse(s.startTime), end: Date.parse(s.endTime) }))
+export function sleepNightsByWakeDay(sessions: SleepSessionRaw[] | undefined): Map<string, SleepNight> {
+  const parsed = (sessions ?? [])
+    .map((s) => {
+      const start = Date.parse(s.startTime);
+      const end = Date.parse(s.endTime);
+      const stages = (s.stages ?? [])
+        .map((st) => ({ start: Math.max(start, Date.parse(st.startTime)), end: Math.min(end, Date.parse(st.endTime)), stage: st.stage }))
+        .filter((st) => Number.isFinite(st.start) && Number.isFinite(st.end) && st.end > st.start);
+      return { start, end, stages };
+    })
     .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start)
     .sort((a, b) => a.start - b.start);
-  const merged: Array<{ start: number; end: number }> = [];
-  for (const s of spans) {
-    const last = merged[merged.length - 1];
-    if (last && s.start <= last.end) last.end = Math.max(last.end, s.end);
-    else merged.push({ ...s });
+  const groups: Array<{ start: number; end: number; members: typeof parsed }> = [];
+  for (const s of parsed) {
+    const last = groups[groups.length - 1];
+    if (last && s.start <= last.end) {
+      last.end = Math.max(last.end, s.end);
+      last.members.push(s);
+    } else groups.push({ start: s.start, end: s.end, members: [s] });
   }
-  const hours = new Map<string, number>();
-  for (const s of merged) {
-    const day = localDay(new Date(s.end));
-    hours.set(day, (hours.get(day) ?? 0) + (s.end - s.start) / 3_600_000);
+  const minutes = (a: number, b: number) => (b - a) / 60_000;
+  const days = new Map<string, { inBed: number; awake: number; light: number; deep: number; rem: number; staged: boolean; main: { start: number; end: number } }>();
+  for (const g of groups) {
+    const day = localDay(new Date(g.end));
+    const best = g.members
+      .map((m) => ({ m, staged: m.stages.reduce((sum, st) => sum + (st.end - st.start), 0) }))
+      .sort((a, b) => b.staged - a.staged)[0];
+    const cur = days.get(day) ?? { inBed: 0, awake: 0, light: 0, deep: 0, rem: 0, staged: false, main: { start: g.start, end: g.end } };
+    cur.inBed += minutes(g.start, g.end);
+    if (best && best.staged > 0) {
+      cur.staged = true;
+      for (const st of best.m.stages) {
+        const min = minutes(st.start, st.end);
+        if (AWAKE_STAGES.has(st.stage)) cur.awake += min;
+        else if (st.stage === SLEEP_STAGE.LIGHT) cur.light += min;
+        else if (st.stage === SLEEP_STAGE.DEEP) cur.deep += min;
+        else if (st.stage === SLEEP_STAGE.REM) cur.rem += min;
+      }
+    }
+    if (g.end - g.start > cur.main.end - cur.main.start) cur.main = { start: g.start, end: g.end };
+    days.set(day, cur);
   }
-  return hours;
+  return new Map(
+    [...days].map(([day, n]) => [
+      day,
+      {
+        start: new Date(n.main.start).toISOString(),
+        end: new Date(n.main.end).toISOString(),
+        inBedMin: n.inBed,
+        asleepHours: Math.max(0, n.inBed - n.awake) / 60,
+        ...(n.staged ? { awakeMin: n.awake, lightMin: n.light, deepMin: n.deep, remMin: n.rem } : {}),
+      },
+    ]),
+  );
+}
+
+/** Hours slept per day (see sleepNightsByWakeDay). */
+export function sleepHoursByWakeDay(sessions: SleepSessionRaw[] | undefined): Map<string, number> {
+  return new Map([...sleepNightsByWakeDay(sessions)].map(([day, n]) => [day, n.asleepHours]));
 }
 
 /** The latest reading of each day. */
@@ -181,20 +261,48 @@ export function buildSyncSamples(days: string[], raw: HealthConnectRaw): DeviceS
   const restingHr = meanByDay(raw.restingHr, (r) => r.bpm);
   const hrv = meanByDay(raw.hrv, (r) => r.ms);
   const spo2 = meanByDay(raw.spo2, (r) => r.percent);
-  const sleep = sleepHoursByWakeDay(raw.sleep);
+  const nights = sleepNightsByWakeDay(raw.sleep);
   const weight = latestByDay(raw.weight, (r) => r.kg);
+  // The day's latest blood-pressure reading, as one pair (never mixing two readings).
+  const bpByDay = new Map<string, { at: number; systolic: number; diastolic: number }>();
+  for (const r of raw.bloodPressure ?? []) {
+    const at = Date.parse(r.time);
+    if (!Number.isFinite(at)) continue;
+    const day = localDay(r.time);
+    const cur = bpByDay.get(day);
+    if (!cur || at > cur.at) bpByDay.set(day, { at, systolic: r.systolic, diastolic: r.diastolic });
+  }
+  const vo2 = latestByDay(raw.vo2max, (r) => r.value);
   const samples: DeviceSyncSample[] = [];
   for (const date of [...new Set(days)].sort()) {
+    // A night longer than a day is a bad record: none of it is sent.
+    const found = nights.get(date);
+    const night = found && found.inBedMin <= 1440 ? found : undefined;
     const fields: Omit<DeviceSyncSample, "date"> = {
       steps: intIn(raw.steps?.[date], 0, 200_000),
       activeCalories: intIn(raw.activeCalories?.[date], 0, 20_000),
       restingHr: intIn(restingHr.get(date), 20, 220),
       hrvMs: intIn(hrv.get(date), 0, 400),
-      sleepHours: decimalIn(sleep.get(date), 0, 24, 2),
+      sleepHours: decimalIn(night?.asleepHours, 0, 24, 2),
+      sleepStart: night?.start,
+      sleepEnd: night?.end,
+      sleepInBedMin: intIn(night?.inBedMin, 0, 1440),
+      sleepAwakeMin: intIn(night?.awakeMin, 0, 1440),
+      sleepLightMin: intIn(night?.lightMin, 0, 1440),
+      sleepDeepMin: intIn(night?.deepMin, 0, 1440),
+      sleepRemMin: intIn(night?.remMin, 0, 1440),
       spo2: intIn(spo2.get(date), 50, 100),
       // The API stores weight only from devices paired as a scale; it's sent so that can change without an app update.
       weightKg: decimalIn(weight.get(date), 0.1, 500, 1),
     };
+    const bp = bpByDay.get(date);
+    const systolic = intIn(bp?.systolic, 70, 260);
+    const diastolic = intIn(bp?.diastolic, 40, 160);
+    if (systolic != null && diastolic != null && systolic > diastolic) {
+      fields.systolicBp = systolic;
+      fields.diastolicBp = diastolic;
+    }
+    fields.vo2max = decimalIn(vo2.get(date), 10, 90, 1);
     const kept = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
     if (Object.keys(kept).length > 0) samples.push({ date, ...kept });
   }
@@ -324,13 +432,27 @@ export async function readHealthConnectDays(days: DayWindow[], granted: HealthCo
   if (allowed.has("SleepSession")) {
     // A night that ends on the first day started the evening before.
     const sleepWindow = { start: new Date(Date.parse(all.start) - 18 * 3_600_000).toISOString(), end: all.end };
-    raw.sleep = (await readAll(hc, "SleepSession", sleepWindow)).map((r) => ({ startTime: r.startTime, endTime: r.endTime }));
+    raw.sleep = (await readAll(hc, "SleepSession", sleepWindow)).map((r) => ({
+      startTime: r.startTime,
+      endTime: r.endTime,
+      stages: (r.stages ?? []).map((st) => ({ startTime: st.startTime, endTime: st.endTime, stage: st.stage })),
+    }));
   }
   if (allowed.has("OxygenSaturation")) {
     raw.spo2 = (await readAll(hc, "OxygenSaturation", all)).map((r) => ({ time: r.time, percent: r.percentage }));
   }
   if (allowed.has("Weight")) {
     raw.weight = (await readAll(hc, "Weight", all)).map((r) => ({ time: r.time, kg: r.weight.inKilograms }));
+  }
+  if (allowed.has("BloodPressure")) {
+    raw.bloodPressure = (await readAll(hc, "BloodPressure", all)).map((r) => ({
+      time: r.time,
+      systolic: r.systolic.inMillimetersOfMercury,
+      diastolic: r.diastolic.inMillimetersOfMercury,
+    }));
+  }
+  if (allowed.has("Vo2Max")) {
+    raw.vo2max = (await readAll(hc, "Vo2Max", all)).map((r) => ({ time: r.time, value: r.vo2MillilitersPerMinuteKilogram }));
   }
   return raw;
 }

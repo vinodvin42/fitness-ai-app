@@ -8,6 +8,8 @@ import { Card } from "../../components/Card";
 import { Icon, IconName } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
 import { ErrorState } from "../../components/ErrorState";
+import { HeaderIconButton } from "../../components/HeaderIconButton";
+import { SectionHeader } from "../../components/SectionHeader";
 import { NutritionCoachCard } from "../../components/NutritionCoachCard";
 import { fetchTodayMealLogs, fetchTodayWaterLogs, logWater } from "../../api/nutrition";
 import { fetchCurrentMealPlan } from "../../api/mealPlans";
@@ -89,7 +91,9 @@ export function FuelScreen({ navigation }: Props) {
     return grouped;
   }, [mealLogs]);
 
-  const dateLabel = `Today, ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+  // Figma fuel/01: "Sat, 24 Oct" under the "Nutrition" title.
+  const now = new Date();
+  const dateLabel = `${now.toLocaleDateString("en-GB", { weekday: "short" })}, ${now.getDate()} ${now.toLocaleDateString("en-GB", { month: "short" })}`;
 
   const openNotifications = () => {
     // Notifications live in the Today stack; jump across tabs.
@@ -100,35 +104,17 @@ export function FuelScreen({ navigation }: Props) {
   };
 
   const bell = (
-    <Pressable
+    <HeaderIconButton
+      icon="bell"
+      label={inbox && inbox.unreadCount > 0 ? `Notifications, ${inbox.unreadCount} unread` : "Notifications"}
+      badge={!!inbox && inbox.unreadCount > 0}
       onPress={openNotifications}
-      accessibilityRole="button"
-      accessibilityLabel={inbox && inbox.unreadCount > 0 ? `Notifications, ${inbox.unreadCount} unread` : "Notifications"}
-      hitSlop={8}
-      style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-    >
-      <Icon name="bell" size={22} color={colors.textPrimary} />
-      {inbox && inbox.unreadCount > 0 ? (
-        <View
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 9,
-            width: 9,
-            height: 9,
-            borderRadius: 5,
-            backgroundColor: colors.danger,
-            borderWidth: 1.5,
-            borderColor: colors.background,
-          }}
-        />
-      ) : null}
-    </Pressable>
+    />
   );
 
   if (isError) {
     return (
-      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -153,7 +139,7 @@ export function FuelScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenContainer title="Food" subtitle={dateLabel} right={bell}>
+      <ScreenContainer title="Nutrition" subtitle={dateLabel} right={bell}>
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: spacing.xs }}>
           <Text style={{ color: colors.textSecondary, ...typography.label }}>Daily total</Text>
           <Text style={{ color: theme.accentText, ...typography.label }}>
@@ -191,7 +177,7 @@ export function FuelScreen({ navigation }: Props) {
         <NutritionCoachCard
           onOpen={() => navigation.getParent()?.navigate("More", { screen: "ProfessionalRelationship", initial: false })}
         />
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginTop: spacing.sm }}>Meal Timeline</Text>
+        <SectionHeader title="Meal Timeline" />
         <View style={{ gap: spacing.sm }}>
           {TIMELINE.map(({ type, label }) => {
             const logs = byMealType[type];
@@ -200,8 +186,25 @@ export function FuelScreen({ navigation }: Props) {
             const open = () => !isLoading && navigation.navigate("LogMeal", { mealType: type });
             if (!latest) {
               const plan = planned[type] ?? [];
-              const planKcal = plan.reduce((s, p) => s + p.calories, 0);
+              const planKcal = Math.round(plan.reduce((s, p) => s + p.calories, 0));
               const planText = plan.length > 0 ? `Planned · ~${planKcal} kcal · ${plan.map((p) => p.recipeName).join(", ")}` : null;
+              // Figma fuel/01: a planned slot is a normal card with its planned kcal; only an empty slot is dashed.
+              if (plan.length > 0) {
+                return (
+                  <Pressable key={type} onPress={open} accessibilityRole="button" accessibilityLabel={`${label}, not logged yet. ${planText}. Tap to log`}>
+                    <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, borderRadius: radius.md }}>
+                      <IconTile icon="utensils" tint={theme.accent} bg={theme.accentSoft} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{label}</Text>
+                        <Text style={{ color: colors.textMuted, ...typography.meta }} numberOfLines={1}>
+                          Planned · {plan.map((p) => p.recipeName).join(", ")}
+                        </Text>
+                      </View>
+                      <Text style={{ color: theme.accentText, ...typography.label }}>~{planKcal} kcal</Text>
+                    </Card>
+                  </Pressable>
+                );
+              }
               return (
                 <Pressable
                   key={type}
@@ -367,8 +370,8 @@ function MacroBar({ label, value, target, color }: { label: string; value: numbe
           {value}/{target}g
         </Text>
       </View>
-      <View style={{ height: 4, borderRadius: radius.pill, backgroundColor: colors.surfaceHigh, overflow: "hidden" }}>
-        <View style={{ height: "100%", width: `${pct}%`, backgroundColor: color }} />
+      <View style={{ height: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceHigh, overflow: "hidden" }}>
+        <View style={{ height: "100%", width: `${pct}%`, borderRadius: radius.pill, backgroundColor: color }} />
       </View>
     </View>
   );

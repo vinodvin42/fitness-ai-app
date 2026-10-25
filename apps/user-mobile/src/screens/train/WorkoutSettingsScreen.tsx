@@ -6,7 +6,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { TrainingDayKey, UpdateWorkoutSettingsInput, WorkoutEquipment, WorkoutSettings } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
-import { BackButton } from "../../components/BackButton";
 import { Icon } from "../../components/Icon";
 import { ValueSlider } from "../../components/ValueSlider";
 import { Skeleton } from "../../components/Skeleton";
@@ -84,8 +83,7 @@ export function WorkoutSettingsScreen({ navigation }: Props) {
   const cardStyle = { gap: spacing.sm, paddingVertical: spacing.md - 2 } as const;
 
   return (
-    <ScreenContainer title="Preferences" subtitle="How your sessions behave">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Preferences" subtitle="How your sessions behave" onBack={() => navigation.goBack()}>
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading || !data ? (

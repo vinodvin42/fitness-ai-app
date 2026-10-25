@@ -5,7 +5,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { Pill } from "../../components/Pill";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
@@ -47,8 +46,7 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
     ]);
 
   return (
-    <ScreenContainer title={data ? kindLabel(data.kind) : "Activity"} subtitle={data ? formatDateTime(data.startedAt) : undefined}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={data ? kindLabel(data.kind) : "Activity"} subtitle={data ? formatDateTime(data.startedAt) : undefined} onBack={() => navigation.goBack()}>
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading || !data ? (

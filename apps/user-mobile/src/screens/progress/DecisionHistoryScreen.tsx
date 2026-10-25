@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
@@ -73,8 +72,7 @@ export function DecisionHistoryScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Decision history">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Decision history" onBack={() => navigation.goBack()}>
       <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 14, lineHeight: 20 }}>
         Every suggestion from your daily review, what you chose, and why it was suggested.
       </Text>

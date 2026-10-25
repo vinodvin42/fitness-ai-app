@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { InsightCard } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -150,8 +149,7 @@ export function ProgressInsightsScreen({ navigation }: Props) {
   const lightWeek = useDailyReview().suggestions.find((s) => s.kind === "light_week");
 
   return (
-    <ScreenContainer title={`${BRAND_NAME} Insights`} subtitle="Your Fitness Summary">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={`${BRAND_NAME} Insights`} subtitle="Your Fitness Summary" onBack={() => navigation.goBack()}>
       {isLoading ? (
         <SkeletonCard lines={4} />
       ) : isError || !data ? (

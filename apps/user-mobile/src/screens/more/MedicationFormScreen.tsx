@@ -4,16 +4,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { CreateMedicationInput, MedicationMealTiming, MedicationRepeatMode } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
-import { DateWheel, TimeWheel } from "../../components/WheelPicker";
+import { TimeWheel } from "../../components/WheelPicker";
+import { ReminderDateRange } from "../../components/ReminderDateRange";
 import { useToast } from "../../components/Toast";
 import { useTheme } from "../../theme/ThemeProvider";
 import { createMedication, deleteMedication, localDateString, updateMedication } from "../../api/medications";
 import { requestNotificationPermissions } from "../../lib/reminderNotifications";
 import { extractErrorMessage } from "../../lib/apiError";
-import { formatDayMonthYear, splitMedicationNotes } from "../../lib/medicationReminder";
+import { splitMedicationNotes } from "../../lib/medicationReminder";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -142,8 +142,10 @@ export function MedicationFormScreen({ navigation, route }: Props) {
   const [days, setDays] = useState<number[]>(existing?.daysOfWeek ?? [1, 2, 3, 4, 5]);
   const [meal, setMeal] = useState<MedicationMealTiming | null>(legacy.mealTiming);
   const [note, setNote] = useState(legacy.note);
-  const [startDate, setStartDate] = useState(existing?.startDate?.slice(0, 10) ?? "");
-  const [showDate, setShowDate] = useState(false);
+  const [startDate, setStartDate] = useState(existing?.startDate?.slice(0, 10) ?? localDateString());
+  // End date for Daily / Selected days (owner, 25 Oct 2026); a "Once" medicine's end is its start day.
+  const [endDate, setEndDate] = useState<string | null>(existing && existing.repeatMode !== "once" ? existing.endDate?.slice(0, 10) ?? null : null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [pushEnabled, setPushEnabled] = useState(existing?.pushEnabled ?? true);
   const [soundEnabled, setSoundEnabled] = useState(existing?.soundEnabled ?? true);
   const [vibrationEnabled, setVibrationEnabled] = useState(existing?.vibrationEnabled ?? false);
@@ -152,7 +154,8 @@ export function MedicationFormScreen({ navigation, route }: Props) {
 
   const safeIdx = Math.min(timeIdx, times.length - 1);
   const toggleDay = (d: number) => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
-  const canSave = name.trim().length > 0 && times.length > 0 && (repeat !== "selected" || days.length > 0);
+  const canSave =
+    name.trim().length > 0 && times.length > 0 && (repeat !== "selected" || days.length > 0) && (repeat === "once" || !dateError);
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["medications"] });
@@ -167,7 +170,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
         scheduleTimes: [...new Set(times)].sort(),
         daysOfWeek: repeat === "selected" ? days : ALL_DAYS,
         startDate: startDate || localDateString(),
-        endDate: repeat === "once" ? startDate || localDateString() : repeat === "selected" || repeat === "daily" ? existing?.endDate?.slice(0, 10) ?? null : null,
+        endDate: repeat === "once" ? startDate || localDateString() : endDate,
         notes: note.trim() || null,
         isActive,
         repeatMode: repeat,
@@ -177,8 +180,6 @@ export function MedicationFormScreen({ navigation, route }: Props) {
         vibrationEnabled,
         detailedPreview,
       };
-      // A reminder switched away from "once" must not keep the single-day endDate.
-      if (existing && existing.repeatMode === "once" && repeat !== "once") input.endDate = null;
       if (existing) return updateMedication(existing.id, input);
       return createMedication(input);
     },
@@ -203,8 +204,7 @@ export function MedicationFormScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScreenContainer title={existing ? "Edit Reminder" : "Add Reminder"}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={existing ? "Edit Reminder" : "Add Reminder"} onBack={() => navigation.goBack()}>
       <Text style={{ color: colors.textSecondary, ...typography.meta }}>
         Reminder only. Follow your prescription exactly. Lock-screen alerts stay private.
       </Text>
@@ -279,7 +279,15 @@ export function MedicationFormScreen({ navigation, route }: Props) {
         <SectionLabel>Repeat</SectionLabel>
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           {REPEAT_OPTIONS.map((o) => (
-            <Pill key={o.value} label={o.label} selected={repeat === o.value} onPress={() => setRepeat(o.value)} />
+            <Pill
+              key={o.value}
+              label={o.label}
+              selected={repeat === o.value}
+              onPress={() => {
+                setRepeat(o.value);
+                setDateError(null);
+              }}
+            />
           ))}
         </View>
         {repeat === "selected" ? (
@@ -315,6 +323,22 @@ export function MedicationFormScreen({ navigation, route }: Props) {
         ) : null}
       </View>
 
+      <View>
+        <SectionLabel>{repeat === "once" ? "Date" : "Dates"}</SectionLabel>
+        <ReminderDateRange
+          key={repeat === "once" ? "once" : "range"}
+          startOnly={repeat === "once"}
+          startLabel={repeat === "once" ? "On" : "Starts"}
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(next) => {
+            setStartDate(next.startDate);
+            if (repeat !== "once") setEndDate(next.endDate);
+            setDateError(next.error);
+          }}
+        />
+      </View>
+
       <Panel title="Medicine details">
         <TextField
           label="Dose / Instructions"
@@ -336,27 +360,6 @@ export function MedicationFormScreen({ navigation, route }: Props) {
       <TextField label="Note" value={note} onChangeText={setNote} placeholder="Add a note (optional)" maxLength={400} />
 
       <Panel title="Advanced">
-        <View>
-          <SectionLabel>Start Date</SectionLabel>
-          <Pressable
-            onPress={() => {
-              if (!startDate) setStartDate(localDateString());
-              setShowDate((v) => !v);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Start date"
-            style={{ minHeight: 48, justifyContent: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md }}
-          >
-            <Text style={{ color: startDate ? colors.textPrimary : colors.textMuted, ...typography.body }}>
-              {startDate ? formatDayMonthYear(new Date(`${startDate}T12:00:00`)) : "Select start date"}
-            </Text>
-          </Pressable>
-          {showDate && startDate ? (
-            <View style={{ marginTop: spacing.sm }}>
-              <DateWheel value={startDate} onChange={setStartDate} />
-            </View>
-          ) : null}
-        </View>
         <View>
           <ToggleRow title="Push Notification" subtitle="Alert screens on arrival time" value={pushEnabled} onValueChange={setPushEnabled} />
           <ToggleRow title="Sound Alert" subtitle="Default digital notification bell" value={soundEnabled} onValueChange={setSoundEnabled} />

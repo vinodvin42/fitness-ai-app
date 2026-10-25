@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-nativ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
@@ -57,8 +56,7 @@ export function CancelSubscriptionScreen({ navigation }: Props) {
   const sub = current.data;
   if (current.isError || !sub || isFreePlan(sub.plan) || sub.cancelAtPeriodEnd) {
     return (
-      <ScreenContainer title="Cancel subscription">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Cancel subscription" onBack={() => navigation.goBack()}>
         {current.isError ? (
           <ErrorState message="Couldn't load your plan." onRetry={() => current.refetch()} />
         ) : (
@@ -91,8 +89,7 @@ export function CancelSubscriptionScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Cancel subscription">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Cancel subscription" onBack={() => navigation.goBack()}>
       <Card style={{ gap: spacing.sm }}>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>What changes if you cancel</Text>
         <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>

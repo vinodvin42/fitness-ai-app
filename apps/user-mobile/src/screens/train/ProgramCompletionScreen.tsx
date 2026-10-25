@@ -6,7 +6,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
 import { Icon, type IconName } from "../../components/Icon";
 import { fetchProgramProgress } from "../../api/programPurchases";
@@ -66,16 +65,14 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Program Complete">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Program Complete" onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
   if (isLoading || !progress) {
     return (
-      <ScreenContainer title="Program Complete">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Program Complete" onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -83,8 +80,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
 
   if (progress.status !== "completed") {
     return (
-      <ScreenContainer title="Program Complete">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Program Complete" onBack={() => navigation.goBack()}>
         <Card>
           <Text style={{ color: colors.textPrimary, ...typography.body }}>
             {progress.program.name} isn't finished yet — {progress.completedWorkouts} of {progress.totalWorkouts} workouts complete.
@@ -109,8 +105,7 @@ export function ProgramCompletionScreen({ route, navigation }: Props) {
       : parent?.navigate("More", { screen: "RequestGuidance", initial: false });
 
   return (
-    <ScreenContainer title="Program Complete">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Program Complete" onBack={() => navigation.goBack()}>
       <View style={{ alignItems: "center", gap: 6, paddingVertical: spacing.sm }}>
         <Text style={{ color: colors.textPrimary, ...typography.h1 }}>Program completed</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta }}>

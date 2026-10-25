@@ -9,7 +9,6 @@ import type { Exercise } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { BottomSheet } from "../../components/BottomSheet";
 import { SearchBar } from "../../components/SearchBar";
 import { Pill } from "../../components/Pill";
@@ -152,8 +151,7 @@ export function FormAnalysisScreen({ navigation }: Props) {
     <ScreenContainer
       title="Set up your form review"
       right={<BrandMark size={34} />}
-    >
-      <BackButton onPress={() => navigation.goBack()} />
+    onBack={() => navigation.goBack()}>
       <View style={{ alignSelf: "flex-start", backgroundColor: colors.accentSoft, borderRadius: radius.xs, paddingHorizontal: 8, paddingVertical: 3 }}>
         <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Train / Form analysis setup</Text>
       </View>

@@ -20,6 +20,7 @@ import { FOCUSED_TASK_ROUTES, TAB_ICONS, TAB_LABEL_KEYS } from "./tabConfig";
 import { TAB_BAR_CONTENT_HEIGHT, tabBarBottomPadding } from "./tabBarMetrics";
 import { colors, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
+import { useLocalReminderRefresh } from "../lib/useLocalReminderRefresh";
 
 // The persistent 5-tab bottom bar — docs/mobile/02-information-architecture.md §2.
 //
@@ -62,6 +63,8 @@ const Tab = createBottomTabNavigator<MainTabsParamList>();
 export function MainTabs() {
   const { t } = useTranslation();
   const { colors: theme } = useTheme();
+  // Dated reminder alarms are planned a couple of weeks ahead, so re-plan on open (25 Oct 2026).
+  useLocalReminderRefresh();
   // The bar grows by the bottom safe area (home indicator, gesture bar); without one it stays 70 / 10 as before.
   const tabBarBottom = tabBarBottomPadding(useSafeAreaInsets().bottom, Platform.OS);
   return (

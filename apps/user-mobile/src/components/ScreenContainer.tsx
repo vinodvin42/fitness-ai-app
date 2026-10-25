@@ -3,6 +3,7 @@ import { RefreshControlProps, ScrollView, StyleSheet, Text, View } from "react-n
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Edge } from "react-native-safe-area-context";
 import { colors, layout, spacing, typography, themed } from "../theme/tokens";
+import { HeaderIconButton } from "./HeaderIconButton";
 
 interface ScreenContainerProps {
   /** Omit when the screen draws its own header (Body Measurements, Figma 06b). */
@@ -19,14 +20,29 @@ interface ScreenContainerProps {
   refreshControl?: React.ReactElement<RefreshControlProps>;
   /** Safe-area edges to pad. Screens shown without the tab bar (focused tasks) add "bottom". */
   edges?: Edge[];
+  /** Round back button left of the title (stack screens). The same look as every other header. */
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 /** Shared per-screen header + safe-area shell — every tab screen uses this. */
-export function ScreenContainer({ title, subtitle, eyebrow, right, children, scroll = true, refreshControl, edges = ["top"] }: ScreenContainerProps) {
+export function ScreenContainer({
+  title,
+  subtitle,
+  eyebrow,
+  right,
+  children,
+  scroll = true,
+  refreshControl,
+  edges = ["top"],
+  onBack,
+  backLabel = "Back",
+}: ScreenContainerProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={edges}>
-      {title || subtitle || eyebrow || right ? (
+      {title || subtitle || eyebrow || right || onBack ? (
         <View style={styles.header}>
+          {onBack ? <HeaderIconButton icon="chevron-left" label={backLabel} onPress={onBack} /> : null}
           <View style={{ flex: 1 }}>
             {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
             {title ? <Text style={styles.title}>{title}</Text> : null}
@@ -62,7 +78,7 @@ const styles = themed(() => StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: 12,
     width: "100%",
     maxWidth: layout.maxContentWidth,
     alignSelf: "center",

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { TimelineCategory } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Chip } from "../../components/Chip";
 import { Button } from "../../components/Button";
@@ -72,8 +71,7 @@ export function TimelineOverviewScreen({ navigation }: Props) {
   const activeTime = s ? (s.activeMonths >= 1 ? `${s.activeMonths} ${s.activeMonths === 1 ? "Month" : "Months"}` : `${s.activeDays} ${s.activeDays === 1 ? "Day" : "Days"}`) : "-";
 
   return (
-    <ScreenContainer title="Your Life Timeline" subtitle="Complete health & fitness legacy">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Your Life Timeline" subtitle="Complete health & fitness legacy" onBack={() => navigation.goBack()}>
 
       {events.isError ? (
         <ErrorState onRetry={() => events.refetch()} />

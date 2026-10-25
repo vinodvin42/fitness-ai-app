@@ -1,4 +1,11 @@
-import type { RecoverySummary, ReadinessResponse, RecoveryResponse, RecoveryLogItem, UpsertRecoveryInput } from "@fitness-ai-app/types";
+import type {
+  RecoverySummary,
+  ReadinessResponse,
+  RecoveryResponse,
+  RecoveryLogItem,
+  RecoveryTrendsResponse,
+  UpsertRecoveryInput,
+} from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
 /**
@@ -22,4 +29,9 @@ export function fetchReadiness() {
 /** Real activity / stress / rule-based insight / latest device for the Recovery dashboard. */
 export function fetchRecoverySummary() {
   return apiClient.get<RecoverySummary>("/recovery/summary").then((r) => r.data);
+}
+
+/** Logged days (7 to 90) with sleep detail and each day's recovery score, oldest first (Sleep and Recovery trends). */
+export function fetchRecoveryTrends(days: number) {
+  return apiClient.get<RecoveryTrendsResponse>("/recovery/trends", { params: { days } }).then((r) => r.data);
 }

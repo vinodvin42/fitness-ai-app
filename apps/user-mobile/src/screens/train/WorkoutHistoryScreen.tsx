@@ -159,8 +159,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Workout History">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Workout History" onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => sessionsQuery.refetch()} />
       </ScreenContainer>
     );
@@ -170,8 +169,7 @@ export function WorkoutHistoryScreen({ navigation }: Props) {
   if (!isLoading && items.length === 0) {
     const starter = (programsQuery.data ?? []).find((p) => p.priceCents === 0 && p.level === "beginner") ?? (programsQuery.data ?? []).find((p) => p.priceCents === 0);
     return (
-      <ScreenContainer title="Workout History" subtitle="Your completed sessions, all in one place">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Workout History" subtitle="Your completed sessions, all in one place" onBack={() => navigation.goBack()}>
         <View style={{ alignItems: "center", gap: spacing.md, paddingVertical: spacing.lg, paddingHorizontal: spacing.sm }}>
           <View
             style={{ width: 84, height: 84, borderRadius: radius.lg, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}

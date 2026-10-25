@@ -4,7 +4,8 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { ProgressRing } from "./ProgressRing";
 import { useWorkoutSettings } from "../api/workoutSettings";
 import { useTheme } from "../theme/ThemeProvider";
-import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
+import { colors, elevation, fonts, radius, spacing, typography } from "../theme/tokens";
+import { formatMmSs } from "../lib/format";
 
 interface RestTimerProps {
   /** Called when the user taps Skip / Continue. */
@@ -15,8 +16,12 @@ interface RestTimerProps {
    * `ring` (Figma Train 08): a big mm:ss ring with 60s/90s/120s/Custom presets.
    * `compact` (Figma Train 07): a small seconds ring with "Resting..." text and
    * -15s / +15s / Skip controls.
+   * `pill` (Figma log/02, 25 Oct 2026): one rounded bar, "Rest · auto 1:30
+   * −15s +15s Skip", for the bottom of the workout screen.
    */
-  layout?: "ring" | "compact";
+  layout?: "ring" | "compact" | "pill";
+  /** The pill's label, e.g. "Rest · auto" when it started by itself. */
+  caption?: string;
   /** Start counting down as soon as this mounts (default true). When false the ring idles at the default length until a preset is tapped. */
   autoStart?: boolean;
   /**
@@ -41,7 +46,7 @@ function formatTime(totalSeconds: number): string {
  * exercise card) and Set & Rest Tracker (ring with presets). Purely
  * client-side: no rest duration is sent to the API or persisted — see gap §24.
  */
-export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layout = "ring", autoStart = true, onRestChange }: RestTimerProps) {
+export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layout = "ring", autoStart = true, onRestChange, caption = "Rest" }: RestTimerProps) {
   const { t } = useTranslation();
   const { colors: theme } = useTheme();
   const { data: settings } = useWorkoutSettings();
@@ -98,7 +103,7 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
 
   const addTime = (seconds: number) => {
     const next = Math.max(0, remainingSeconds + seconds);
-    restChange.current?.(next > 0 ? Date.now() + next * 1000 : null, false);
+    if (isRunning || seconds > 0) restChange.current?.(next > 0 ? Date.now() + next * 1000 : null, false);
     setRemainingSeconds((prev) => Math.max(0, prev + seconds));
     setTotalSeconds((prev) => Math.max(1, prev + seconds));
     if (!isRunning && seconds > 0) {
@@ -110,6 +115,56 @@ export function RestTimer({ onDismiss, defaultSeconds: defaultSecondsProp, layou
   const isComplete = !isRunning && remainingSeconds === 0;
   const progress = totalSeconds === 0 ? 1 : remainingSeconds / totalSeconds;
   const ringColor = isComplete ? colors.success : layout === "compact" ? colors.aiAccent : theme.accent;
+
+  if (layout === "pill") {
+    const idle = !isRunning && !isComplete;
+    return (
+      <View
+        style={{
+          alignSelf: "center",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingLeft: 18,
+          paddingRight: 10,
+          paddingVertical: 10,
+          borderRadius: radius.pill,
+          borderWidth: 1,
+          borderColor: isComplete ? colors.success : theme.accent,
+          backgroundColor: colors.surfaceRaised,
+          ...elevation.card,
+        }}
+      >
+        <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{isComplete ? "Rest done" : caption}</Text>
+        <Text
+          accessibilityLabel={isComplete ? "Rest done" : `${remainingSeconds} seconds of rest left`}
+          style={{ color: isComplete ? colors.successText : colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 18, fontVariant: ["tabular-nums"], minWidth: 40 }}
+        >
+          {formatMmSs(remainingSeconds)}
+        </Text>
+        {isComplete ? null : (
+          <>
+            <PillButton label="−15s" accessibilityLabel="15 seconds less rest" onPress={() => addTime(-15)} />
+            <PillButton label="+15s" accessibilityLabel="15 seconds more rest" onPress={() => addTime(15)} />
+          </>
+        )}
+        <PillButton
+          label={isComplete ? "Continue" : idle ? "Start" : "Skip"}
+          accessibilityLabel={isComplete ? "Continue" : idle ? "Start rest" : "Skip rest"}
+          primary
+          onPress={() => {
+            if (idle) {
+              start(remainingSeconds > 0 ? remainingSeconds : defaultSeconds);
+              return;
+            }
+            clearTimer();
+            if (!isComplete) restChange.current?.(null, false);
+            onDismiss?.();
+          }}
+        />
+      </View>
+    );
+  }
 
   if (layout === "compact") {
     return (
@@ -239,6 +294,27 @@ function presetStyle(active: boolean, accent: string) {
     borderColor: active ? accent : colors.border,
     backgroundColor: active ? "rgba(37,99,235,0.12)" : colors.surfaceRaised,
   } as const;
+}
+
+function PillButton({ label, accessibilityLabel, onPress, primary }: { label: string; accessibilityLabel: string; onPress: () => void; primary?: boolean }) {
+  const { colors: theme } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        paddingHorizontal: primary ? 14 : 10,
+        paddingVertical: 6,
+        borderRadius: radius.pill,
+        backgroundColor: primary ? theme.accent : colors.surfaceHigh,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Text style={{ color: primary ? theme.textOnAccent : colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>{label}</Text>
+    </Pressable>
+  );
 }
 
 function MiniButton({ label, onPress, emphasis }: { label: string; onPress: () => void; emphasis?: boolean }) {

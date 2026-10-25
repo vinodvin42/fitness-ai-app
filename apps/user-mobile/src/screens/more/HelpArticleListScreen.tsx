@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, Text } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
@@ -23,8 +22,7 @@ export function HelpArticleListScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScreenContainer title={title}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={title} onBack={() => navigation.goBack()}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError ? (

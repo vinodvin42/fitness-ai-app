@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { Medication, MedicationDoseStatus, MedicationDueDose } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { BrandMark } from "../../components/BrandMark";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
@@ -137,16 +136,14 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
 
   if (dueQuery.isLoading || medsQuery.isLoading) {
     return (
-      <ScreenContainer title="Medicine" right={<BrandMark size={44} withName />}>
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Medicine" right={<BrandMark size={44} withName />} onBack={() => navigation.goBack()}>
         <SkeletonCard lines={4} />
       </ScreenContainer>
     );
   }
   if (dueQuery.isError || medsQuery.isError || !dose || !med) {
     return (
-      <ScreenContainer title="Medicine" right={<BrandMark size={44} withName />}>
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Medicine" right={<BrandMark size={44} withName />} onBack={() => navigation.goBack()}>
         <ErrorState
           message={dueQuery.isError || medsQuery.isError ? "Couldn't load this reminder." : "This reminder occurrence is no longer scheduled."}
           onRetry={() => {
@@ -206,8 +203,7 @@ export function MedicineOccurrenceScreen({ navigation, route }: Props) {
   })();
 
   return (
-    <ScreenContainer eyebrow={copy.eyebrow} title={copy.title} subtitle={subtitleFor(phase, firstName)} right={<BrandMark size={44} withName />}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer eyebrow={copy.eyebrow} title={copy.title} subtitle={subtitleFor(phase, firstName)} right={<BrandMark size={44} withName />} onBack={() => navigation.goBack()}>
 
       <View
         accessibilityLiveRegion="polite"

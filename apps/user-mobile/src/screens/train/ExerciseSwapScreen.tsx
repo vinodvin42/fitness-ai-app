@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { Exercise, WorkoutSession } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
@@ -100,8 +99,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise" onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -129,8 +127,7 @@ export function ExerciseSwapScreen({ route, navigation }: Props) {
   );
 
   return (
-    <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer edges={["top", "bottom"]} title="Swap Exercise" onBack={() => navigation.goBack()}>
       {isLoading || !exercise ? (
         <ActivityIndicator color={theme.accent} />
       ) : (

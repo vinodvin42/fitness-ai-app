@@ -15,7 +15,7 @@ const out = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.C
 const stub = (name) => (name === "react-native" ? { Platform: { OS: "web" }, Linking: {} } : {});
 const m = { exports: {} };
 new Function("module", "exports", "require", out)(m, m.exports, stub);
-const { lastDays, localDay, buildSyncSamples, sleepHoursByWakeDay, statusFromSdk, findHealthConnectDevice, HEALTH_CONNECT_RECORDS } = m.exports;
+const { lastDays, localDay, buildSyncSamples, sleepHoursByWakeDay, sleepNightsByWakeDay, SLEEP_STAGE, statusFromSdk, findHealthConnectDevice, HEALTH_CONNECT_RECORDS } = m.exports;
 
 const results = [];
 let failures = 0;
@@ -97,7 +97,61 @@ t("H8 sleep hours keep two decimals; readings on days outside the window are ign
     sleep: [{ startTime: at(23, 23, 10), endTime: at(24, 6, 0) }],
     restingHr: [{ time: at(20, 7), bpm: 70 }],
   });
-  assert.deepStrictEqual(samples, [{ date: D(24), sleepHours: 6.83 }]);
+  assert.deepStrictEqual(samples, [
+    { date: D(24), sleepHours: 6.83, sleepStart: at(23, 23, 10), sleepEnd: at(24, 6, 0), sleepInBedMin: 410 },
+  ]);
+});
+
+t("H12 stages: awake time comes off hours slept; light, deep and REM are summed", () => {
+  const st = (h1, m1, h2, m2, stage, d1 = 24, d2 = 24) => ({ startTime: at(d1, h1, m1), endTime: at(d2, h2, m2), stage });
+  const night = sleepNightsByWakeDay([
+    {
+      startTime: at(23, 23),
+      endTime: at(24, 7),
+      stages: [
+        st(23, 0, 23, 20, SLEEP_STAGE.AWAKE, 23, 23),
+        st(23, 20, 1, 0, SLEEP_STAGE.LIGHT, 23, 24),
+        st(1, 0, 2, 30, SLEEP_STAGE.DEEP),
+        st(2, 30, 4, 0, SLEEP_STAGE.REM),
+        st(4, 0, 4, 10, SLEEP_STAGE.AWAKE_IN_BED),
+        st(4, 10, 6, 40, SLEEP_STAGE.LIGHT),
+        st(6, 40, 7, 0, SLEEP_STAGE.OUT_OF_BED),
+      ],
+    },
+  ]).get(D(24));
+  assert.deepStrictEqual(
+    { inBed: night.inBedMin, awake: night.awakeMin, light: night.lightMin, deep: night.deepMin, rem: night.remMin, hours: night.asleepHours },
+    { inBed: 480, awake: 50, light: 250, deep: 90, rem: 90, hours: 430 / 60 },
+  );
+  assert.strictEqual(night.start, at(23, 23));
+  assert.strictEqual(night.end, at(24, 7));
+});
+
+t("H13 the same night from two apps: stages from the one that recorded more, never added twice", () => {
+  const night = sleepNightsByWakeDay([
+    { startTime: at(23, 23), endTime: at(24, 6), stages: [{ startTime: at(24, 1), endTime: at(24, 2), stage: SLEEP_STAGE.DEEP }] },
+    {
+      startTime: at(23, 23, 30),
+      endTime: at(24, 6, 30),
+      stages: [
+        { startTime: at(24, 0), endTime: at(24, 3), stage: SLEEP_STAGE.LIGHT },
+        { startTime: at(24, 3), endTime: at(24, 4), stage: SLEEP_STAGE.DEEP },
+      ],
+    },
+  ]).get(D(24));
+  assert.strictEqual(night.inBedMin, 450);
+  assert.strictEqual(night.deepMin, 60);
+  assert.strictEqual(night.lightMin, 180);
+});
+
+t("H14 no stages: hours slept are the time in bed and no stage fields are sent; a nap keeps the night's bed/wake times", () => {
+  const [s] = buildSyncSamples([D(24)], {
+    sleep: [
+      { startTime: at(23, 22, 30), endTime: at(24, 6, 30) },
+      { startTime: at(24, 14), endTime: at(24, 14, 30) },
+    ],
+  });
+  assert.deepStrictEqual(s, { date: D(24), sleepHours: 8.5, sleepStart: at(23, 22, 30), sleepEnd: at(24, 6, 30), sleepInBedMin: 510 });
 });
 
 t("H9 SDK status codes and the device we pair", () => {
@@ -109,7 +163,7 @@ t("H9 SDK status codes and the device we pair", () => {
     { id: "b", provider: "health_connect", name: "Health Connect" },
   ];
   assert.strictEqual(findHealthConnectDevice(devices).id, "b", "a hand-added watch on Health Connect is not the sync device");
-  assert.strictEqual(HEALTH_CONNECT_RECORDS.length, 7);
+  assert.strictEqual(HEALTH_CONNECT_RECORDS.length, 9);
 });
 
 t("H10 localDay uses the phone's calendar day", () => {
@@ -129,6 +183,19 @@ t("H11 background sync runs at most every 3 hours (lib/useHealthConnect.ts)", ()
   assert.strictEqual(autoSyncDue(nowMs - 2 * 3_600_000, nowMs), false);
   assert.strictEqual(autoSyncDue(nowMs - 3 * 3_600_000, nowMs), true);
   assert.strictEqual(autoSyncDue(nowMs + 60_000, nowMs), true, "a clock moved backwards doesn't block syncing");
+});
+
+t("H15 blood pressure: the day's latest reading as one pair; VO2max the day's latest; impossible pairs dropped", () => {
+  const [a, b] = buildSyncSamples([D(23), D(24)], {
+    bloodPressure: [
+      { time: at(23, 8), systolic: 131.4, diastolic: 84.2 },
+      { time: at(23, 21), systolic: 126, diastolic: 80 },
+      { time: at(24, 8), systolic: 70, diastolic: 95 },
+    ],
+    vo2max: [{ time: at(24, 7), value: 44.26 }, { time: at(24, 19), value: 45.04 }],
+  });
+  assert.deepStrictEqual(a, { date: D(23), systolicBp: 126, diastolicBp: 80 });
+  assert.deepStrictEqual(b, { date: D(24), vo2max: 45 });
 });
 
 console.log(results.join("\n"));

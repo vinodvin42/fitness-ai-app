@@ -8,18 +8,56 @@ import { kgToLb, lbToKg } from "../lib/measureUnits";
 import { colors, fonts, radius, spacing, typography } from "../theme/tokens";
 import { useTheme } from "../theme/ThemeProvider";
 
-/** Conventional plate colours (competition colour coding), kept the same in both themes. */
+/** Conventional plate colours (competition colour coding, Figma log/05), kept the same in both themes. */
 const PLATE_COLOUR: Record<number, { bg: string; fg: string }> = {
-  25: { bg: "#d64545", fg: "#ffffff" },
-  45: { bg: "#d64545", fg: "#ffffff" },
-  20: { bg: "#2f6fe0", fg: "#ffffff" },
-  35: { bg: "#2f6fe0", fg: "#ffffff" },
-  15: { bg: "#e3b51b", fg: "#1a1a1a" },
-  10: { bg: "#2e9e5b", fg: "#ffffff" },
-  5: { bg: "#f2f2f2", fg: "#1a1a1a" },
-  2.5: { bg: "#4a4f55", fg: "#ffffff" },
-  1.25: { bg: "#a7adb3", fg: "#1a1a1a" },
+  25: { bg: "#dc2626", fg: "#ffffff" },
+  45: { bg: "#dc2626", fg: "#ffffff" },
+  20: { bg: "#2563eb", fg: "#ffffff" },
+  35: { bg: "#2563eb", fg: "#ffffff" },
+  15: { bg: "#eab308", fg: "#000000" },
+  10: { bg: "#16a34a", fg: "#ffffff" },
+  5: { bg: "#e4e4e7", fg: "#000000" },
+  2.5: { bg: "#52525b", fg: "#ffffff" },
+  1.25: { bg: "#a1a1aa", fg: "#000000" },
 };
+const STEEL = "#a1a1aa";
+
+/** Plate height in the drawing: heavier plates are taller, as on a real bar. */
+function plateHeight(p: number, unit: PlateUnit): number {
+  const kg = unit === "kg" ? p : p / 2.2046;
+  if (kg >= 20) return 104;
+  if (kg >= 15) return 100;
+  if (kg >= 10) return 84;
+  if (kg >= 5) return 64;
+  if (kg >= 2) return 48;
+  return 40;
+}
+
+/** Figma log/05: the bar with each side's plates, heaviest next to the collar. */
+function PlateGraphic({ perSide, unit }: { perSide: number[]; unit: PlateUnit }) {
+  const narrow = perSide.length > 5;
+  const plate = (p: number, i: number) => {
+    const c = PLATE_COLOUR[p] ?? { bg: colors.surfaceHigh, fg: colors.textPrimary };
+    const label = formatWeight(p);
+    const width = (p >= (unit === "kg" ? 10 : 25) ? 22 : 18) * (narrow ? 0.65 : 1);
+    return (
+      <View key={i} style={{ width, height: plateHeight(p, unit), borderRadius: 4, backgroundColor: c.bg, alignItems: "center", justifyContent: "center" }}>
+        {label.length <= 3 && !narrow ? <Text style={{ color: c.fg, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.2 }}>{label}</Text> : null}
+      </View>
+    );
+  };
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 }}>
+      <View style={{ width: 20, height: 10, borderRadius: 2, backgroundColor: STEEL }} />
+      {[...perSide].reverse().map(plate)}
+      <View style={{ width: 6, height: 22, borderRadius: 2, backgroundColor: STEEL }} />
+      <View style={{ flex: 1, minWidth: 24, maxWidth: 110, height: 8, borderRadius: 2, backgroundColor: STEEL }} />
+      <View style={{ width: 6, height: 22, borderRadius: 2, backgroundColor: STEEL }} />
+      {perSide.map(plate)}
+      <View style={{ width: 20, height: 10, borderRadius: 2, backgroundColor: STEEL }} />
+    </View>
+  );
+}
 
 /**
  * Figma log/05: which plates to put on each side of the bar. The app has no
@@ -79,7 +117,7 @@ export function PlateCalculatorSheet({
             placeholderTextColor={colors.textMuted}
             accessibilityLabel={`Target weight in ${unit}`}
             style={{
-              minWidth: 72,
+              width: 88,
               height: 40,
               borderRadius: radius.md,
               borderWidth: 1,
@@ -94,15 +132,22 @@ export function PlateCalculatorSheet({
           />
           <Text style={{ color: colors.textSecondary, fontSize: 15 }}>{unit}</Text>
         </View>
-        <SegmentedControl
-          options={[
-            { value: "kg", label: "kg" },
-            { value: "lb", label: "lb" },
-          ]}
-          value={unit}
-          onChange={(v) => switchUnit(v as PlateUnit)}
-        />
+        <View style={{ width: 112 }}>
+          <SegmentedControl
+            options={[
+              { value: "kg", label: "kg" },
+              { value: "lb", label: "lb" },
+            ]}
+            value={unit}
+            onChange={(v) => switchUnit(v as PlateUnit)}
+          />
+        </View>
       </View>
+      {load ? (
+        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: -6 }}>
+          Bar {formatWeight(bar)} {unit} · {formatWeight((load.loaded - bar) / 2)} {unit} each side
+        </Text>
+      ) : null}
 
       <Text style={{ color: colors.textMuted, ...typography.meta }}>Bar</Text>
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -130,34 +175,42 @@ export function PlateCalculatorSheet({
       </View>
 
       <View
+        accessible={!!load}
         accessibilityLabel={load ? `Each side: ${load.perSide.map(formatWeight).join(" plus ") || "no plates"}` : undefined}
         style={{
           minHeight: 64,
-          borderRadius: radius.md,
+          borderRadius: 14,
           backgroundColor: colors.surfaceRaised,
-          padding: spacing.md,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.md,
           justifyContent: "center",
         }}
       >
         {!(targetNum > 0) ? (
-          <Text style={{ color: colors.textMuted, fontSize: 13 }}>Enter the total weight, bar included.</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 13, paddingHorizontal: spacing.sm }}>Enter the total weight, bar included.</Text>
         ) : !load ? (
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, paddingHorizontal: spacing.sm }}>
             That's less than the {bar} {unit} bar.
           </Text>
         ) : (
-          <View style={{ gap: 6 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 15 }}>
-              Each side: <Text style={{ fontFamily: fonts.bodyBold, fontSize: 18 }}>{load.perSide.length ? load.perSide.map(formatWeight).join(" + ") : "no plates"}</Text>
-            </Text>
-            {!load.exact ? (
-              <Text style={{ color: colors.warningText, fontSize: 13 }}>
-                Closest with these plates: {formatWeight(load.loaded)} {unit}.
-              </Text>
-            ) : null}
-          </View>
+          <PlateGraphic perSide={load.perSide} unit={unit} />
         )}
       </View>
+      {load ? (
+        <View style={{ gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+            <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 14 }}>Each side:</Text>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 18 }}>
+              {load.perSide.length ? load.perSide.map(formatWeight).join(" + ") : "no plates"}
+            </Text>
+          </View>
+          {!load.exact ? (
+            <Text style={{ color: colors.warningText, fontSize: 13 }}>
+              Closest with these plates: {formatWeight(load.loaded)} {unit}.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
         {PLATES[unit].map((p) => {
@@ -170,9 +223,10 @@ export function PlateCalculatorSheet({
               accessibilityRole="button"
               accessibilityLabel={`${p} ${unit} plate, ${isOff ? "left out" : "available"}`}
               accessibilityState={{ selected: !isOff }}
-              style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: c.bg, opacity: isOff ? 0.3 : 1 }}
+              hitSlop={6}
+              style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: c.bg, opacity: isOff ? 0.3 : 1 }}
             >
-              <Text style={{ color: c.fg, fontFamily: fonts.bodyBold, fontSize: 13, textDecorationLine: isOff ? "line-through" : "none" }}>
+              <Text style={{ color: c.fg, fontFamily: fonts.bodySemi, fontSize: 11, letterSpacing: 0.2, textDecorationLine: isOff ? "line-through" : "none" }}>
                 {formatWeight(p)}
               </Text>
             </Pressable>

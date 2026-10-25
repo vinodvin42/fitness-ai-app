@@ -4,7 +4,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { SearchBar } from "../../components/SearchBar";
 import { ListRow } from "../../components/ListRow";
 import { EmptyState } from "../../components/EmptyState";
@@ -127,8 +126,7 @@ export function SearchScreen({ navigation }: Props) {
   ];
 
   return (
-    <ScreenContainer title="">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="" onBack={() => navigation.goBack()}>
       <SearchBar
         pill
         value={query}

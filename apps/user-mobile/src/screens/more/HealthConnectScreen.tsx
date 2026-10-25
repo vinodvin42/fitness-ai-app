@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { HealthConnection, HealthProvider } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Pill } from "../../components/Pill";
@@ -172,8 +171,7 @@ export function HealthConnectScreen({ navigation }: Props) {
     ]);
 
   return (
-    <ScreenContainer title="Health Connect" subtitle="Choose what Fynrox may read">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Health Connect" subtitle="Choose what Fynrox may read" onBack={() => navigation.goBack()}>
       <InfoCard
         tone="accent"
         title={Platform.OS === "android" ? "Bring in your watch's data" : "This saves your permission"}

@@ -12,6 +12,8 @@ import { YogaProgramScreen } from "../screens/recover/YogaProgramScreen";
 import { RoutineDetailScreen } from "../screens/recover/RoutineDetailScreen";
 import { GuidedSessionScreen } from "../screens/recover/GuidedSessionScreen";
 import { GuidedBreathingScreen } from "../screens/recover/GuidedBreathingScreen";
+import { SleepScreen } from "../screens/recover/SleepScreen";
+import { RecoveryTrendsScreen } from "../screens/recover/RecoveryTrendsScreen";
 import type { ConnectedDeviceKind, HealthProvider } from "@fitness-ai-app/types";
 
 // Recover is a primary tab again, matching the Figma bottom bar
@@ -33,6 +35,9 @@ export type RecoverStackParamList = {
   RoutineDetail: { routineId: string };
   GuidedSession: { routineId: string };
   GuidedBreathing: { patternId?: string; autoStart?: boolean } | undefined;
+  // Sleep detail and recovery trends (owner, 25 Oct 2026).
+  Sleep: undefined;
+  RecoveryTrends: undefined;
 };
 
 const Stack = createNativeStackNavigator<RecoverStackParamList>();
@@ -52,6 +57,8 @@ export function RecoverStack() {
       <Stack.Screen name="RoutineDetail" component={RoutineDetailScreen} />
       <Stack.Screen name="GuidedSession" component={GuidedSessionScreen} />
       <Stack.Screen name="GuidedBreathing" component={GuidedBreathingScreen} />
+      <Stack.Screen name="Sleep" component={SleepScreen} />
+      <Stack.Screen name="RecoveryTrends" component={RecoveryTrendsScreen} />
     </Stack.Navigator>
   );
 }

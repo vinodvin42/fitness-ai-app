@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { BottomSheet } from "../../components/BottomSheet";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
@@ -77,8 +76,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Exercise">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Exercise" onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
@@ -86,8 +84,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
 
   if (isLoading || !exercise) {
     return (
-      <ScreenContainer title="Exercise">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Exercise" onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -97,8 +94,7 @@ export function ExerciseDetailScreen({ route, navigation }: Props) {
   const alternative = exercise.alternatives[0];
 
   return (
-    <ScreenContainer title="Exercise Detail">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Exercise Detail" onBack={() => navigation.goBack()}>
 
       {hasExerciseVideo(exercise) ? (
         <View style={{ gap: spacing.xs }}>

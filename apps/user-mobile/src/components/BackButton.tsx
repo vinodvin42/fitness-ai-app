@@ -1,20 +1,16 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
-import { Icon } from "./Icon";
-import { colors, spacing, typography } from "../theme/tokens";
+import { View } from "react-native";
+import { HeaderIconButton } from "./HeaderIconButton";
 
-/** Inline "‹ Back" link for stack screens that sit under a tab's root. */
+/**
+ * Back button for stack screens. Prefer ScreenContainer's `onBack`, which puts
+ * it beside the title; where a screen still places it in its content, it has
+ * the same round look (design consistency pass, 25 Oct 2026).
+ */
 export function BackButton({ onPress, label = "Back" }: { onPress: () => void; label?: string }) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start" }}
-      hitSlop={8}
-    >
-      <Icon name="arrow-left" size={18} color={colors.textSecondary} />
-      <Text style={{ color: colors.textSecondary, ...typography.label }}>{label}</Text>
-    </Pressable>
+    <View style={{ alignSelf: "flex-start" }}>
+      <HeaderIconButton icon="chevron-left" label={label} onPress={onPress} />
+    </View>
   );
 }

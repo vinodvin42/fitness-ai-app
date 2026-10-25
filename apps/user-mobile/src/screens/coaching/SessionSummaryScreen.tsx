@@ -5,7 +5,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
@@ -49,8 +48,7 @@ export function SessionSummaryScreen({ navigation, route }: Props) {
           : { label: "COMPLETED", fg: colors.success, bg: colors.successSoft, title: "Session Complete" };
 
   return (
-    <ScreenContainer title={state?.title ?? "Session"}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={state?.title ?? "Session"} onBack={() => navigation.goBack()}>
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading || !data || !state ? (

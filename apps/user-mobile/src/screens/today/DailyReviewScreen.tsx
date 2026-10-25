@@ -5,7 +5,6 @@ import type { CompositeScreenProps } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { useToast } from "../../components/Toast";
@@ -77,8 +76,7 @@ export function DailyReviewScreen({ navigation }: Props) {
   // Nothing (left) to review: e.g. opened after everything was decided.
   if (items.length === 0) {
     return (
-      <ScreenContainer title="Daily review">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Daily review" onBack={() => navigation.goBack()}>
         <Text style={{ color: colors.textSecondary, ...typography.body }}>Nothing to review today. Your plan stays as it is.</Text>
         <Button label="Back to Today" onPress={() => navigation.goBack()} />
       </ScreenContainer>
@@ -90,8 +88,7 @@ export function DailyReviewScreen({ navigation }: Props) {
     const skipped = items.filter((s) => outcomes[s.key] === "skipped");
     const lighterUsed = used.some((s) => s.kind === "lighter_day");
     return (
-      <ScreenContainer title="Daily review">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Daily review" onBack={() => navigation.goBack()}>
         <Pill text={`Done · ${items.length} of ${items.length} reviewed`} color={colors.successText} bg={colors.successSoft} />
         <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h1, fontSize: 24 }}>
           ✓ All set for today
@@ -131,8 +128,7 @@ export function DailyReviewScreen({ navigation }: Props) {
 
   const s = items[index];
   return (
-    <ScreenContainer title="Daily review">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Daily review" onBack={() => navigation.goBack()}>
       <Pill text={`Step ${index + 1} of ${items.length} · about 1 min`} color={colors.successText} bg={colors.successSoft} />
       <Text accessibilityRole="header" style={{ color: colors.textPrimary, ...typography.h1, fontSize: 24 }}>
         ✦ {s.title}

@@ -5,7 +5,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { Exercise } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Chip } from "../../components/Chip";
-import { BackButton } from "../../components/BackButton";
 import { Icon } from "../../components/Icon";
 import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
@@ -73,8 +72,7 @@ export function ExerciseLibraryScreen({ navigation }: Props) {
   const DIFFICULTY_COLOR = { beginner: colors.success, intermediate: theme.accent, advanced: colors.orange } as const;
 
   return (
-    <ScreenContainer title="Exercise Library" scroll={false}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Exercise Library" scroll={false} onBack={() => navigation.goBack()}>
       <View style={{ marginTop: spacing.sm }}>
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search exercises..." />
       </View>

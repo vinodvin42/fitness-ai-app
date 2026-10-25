@@ -1,6 +1,7 @@
 import { HARD_EFFORT_RPE, HISTORY_DAYS, LIGHT_WEEK_COOLDOWN_DAYS, LIGHT_WEEK_HARD_WEEKS, LIGHT_WEEK_MIN_SESSIONS, MAX_PER_DAY } from "./dailySuggestions";
 import { PORTION_GUIDE } from "./indianPortions";
 import { DAILY_TARGETS } from "./nutritionTargets";
+import { WARMUP_SCHEME } from "./fastLogging";
 
 /**
  * Figma pattern/learn-more-sheet (24 Oct 2026): one sheet shape (a title, a
@@ -9,7 +10,7 @@ import { DAILY_TARGETS } from "./nutritionTargets";
  * the same constants the code uses, so the explanation can't drift from the
  * behaviour.
  */
-export type LearnMoreTopic = "food_estimates" | "daily_targets" | "daily_review" | "insights";
+export type LearnMoreTopic = "food_estimates" | "daily_targets" | "daily_review" | "insights" | "warmups" | "supersets";
 
 export interface LearnMoreContent {
   title: string;
@@ -68,5 +69,27 @@ export const LEARN_MORE: Record<LearnMoreTopic, LearnMoreContent> = {
       { label: "Recovery tip", value: "soreness 4+ or energy 2 or less, averaged over 7 days (3+ entries)" },
     ],
     note: "For information only, not medical advice.",
+  },
+  // Figma log/04 and log/03 (25 Oct 2026): what the workout screen does, from lib/fastLogging.ts and lib/supersets.ts.
+  warmups: {
+    title: "Warm-up sets",
+    description:
+      "Lighter sets before your first working set get your muscles and joints ready for the weight. They're worked out from the weight of your first working set.",
+    facts: WARMUP_SCHEME.map((w, i) => ({ label: `Warm-up ${i + 1}`, value: `about ${Math.round(w.pct * 100)}% for ${w.reps} reps` })),
+    calculation: {
+      label: "Rounding",
+      text: "Each weight is rounded to what you can load: 2.5 kg steps on a barbell, 2 kg on anything else. A weight that comes out the same as another, or as heavy as your working set, is left out.",
+    },
+    note: "Warm-up sets are marked W and don't count toward your volume or personal bests. Change any value before you log it.",
+  },
+  supersets: {
+    title: "Supersets",
+    description: "A superset links exercises you do back to back: one set of each in order with no rest in between, then a rest before the next round.",
+    facts: [
+      { label: "Order", value: "A1, then A2 (then A3 if there is one)" },
+      { label: "Rest", value: "after the last exercise of each round" },
+      { label: "When one is done", value: "the others carry on in the same order" },
+      { label: "To undo", value: "⋯ › Remove from superset" },
+    ],
   },
 };

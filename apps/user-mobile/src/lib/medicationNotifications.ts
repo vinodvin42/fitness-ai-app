@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import type { Medication } from "@fitness-ai-app/types";
 import { lockScreenBody, lockScreenCopy } from "./medicationReminder";
+import { planSchedule } from "./reminderSchedule";
 
 /**
  * Local on-device notifications for medication schedule times, following
@@ -15,10 +16,10 @@ import { lockScreenBody, lockScreenCopy } from "./medicationReminder";
  * ever appears outside the app. Per-medication toggles: push off => nothing
  * is scheduled; sound off => silent; vibration => Android vibrate pattern
  * (iOS has no per-notification haptic).
- * Weekly-repeating triggers can't express start/end dates, so ended
- * medications are simply not scheduled and a past `startDate` is ignored
- * (a not-yet-started medication still fires; the in-app due list is the
- * source of truth). "Once" reminders are scheduled as a single dated trigger.
+ * Weekly-repeating triggers can't express start/end dates, so a medicine
+ * that starts later or ends soon gets one dated trigger per dose instead
+ * (lib/reminderSchedule.ts; 25 Oct 2026), and an ended one gets nothing.
+ * "Once" reminders are scheduled as a single dated trigger.
  * Unverified on a physical device.
  */
 
@@ -46,10 +47,26 @@ export async function syncMedicationNotifications(medications: Medication[]): Pr
     }
 
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
     for (const med of medications) {
       if (!med.isActive || med.pushEnabled === false) continue;
-      if (med.endDate && med.endDate.slice(0, 10) < today) continue;
+      const times = med.scheduleTimes
+        .map((time) => time.split(":").map((v) => Number(v)))
+        .filter(([h, m]) => !Number.isNaN(h) && !Number.isNaN(m))
+        .map(([hour, minute]) => ({ hour, minute }));
+      if (med.repeatMode !== "once") {
+        const plan = planSchedule({ daysOfWeek: med.daysOfWeek, times, startDate: med.startDate, endDate: med.endDate }, now);
+        if (plan.kind === "none") continue;
+        if (plan.kind === "dated") {
+          for (const at of plan.at) {
+            const time = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+            await Notifications.scheduleNotificationAsync({
+              content: contentFor(med, { kind: "medication", medicationId: med.id, time, deepLink: "/medicine/due" }),
+              trigger: { date: at },
+            });
+          }
+          continue;
+        }
+      }
       for (const time of med.scheduleTimes) {
         const [h, m] = time.split(":").map((v) => Number(v));
         if (Number.isNaN(h) || Number.isNaN(m)) continue;

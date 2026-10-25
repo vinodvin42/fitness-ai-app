@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MyProgram } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { Icon } from "../../components/Icon";
@@ -105,8 +104,7 @@ export function MyProgramsScreen({ navigation }: Props) {
     navigation.navigate(item.status === "completed" ? "ProgramCompletion" : "ProgramProgress", { programId: item.program.id });
 
   return (
-    <ScreenContainer title="My Programs">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="My Programs" onBack={() => navigation.goBack()}>
       {isLoading ? (
         <ActivityIndicator color={colors.accent} />
       ) : isError ? (

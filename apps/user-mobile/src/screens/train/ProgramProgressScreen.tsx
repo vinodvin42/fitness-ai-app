@@ -6,7 +6,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ProgramProgressDetail } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Button } from "../../components/Button";
-import { BackButton } from "../../components/BackButton";
 import { ErrorState } from "../../components/ErrorState";
 import { Icon } from "../../components/Icon";
 import { ProgressRing } from "../../components/ProgressRing";
@@ -109,16 +108,14 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
 
   if (isError) {
     return (
-      <ScreenContainer title="Program Progress">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Program Progress" onBack={() => navigation.goBack()}>
         <ErrorState onRetry={() => refetch()} />
       </ScreenContainer>
     );
   }
   if (isLoading || !progress) {
     return (
-      <ScreenContainer title="Program Progress">
-        <BackButton onPress={() => navigation.goBack()} />
+      <ScreenContainer title="Program Progress" onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -146,8 +143,7 @@ export function ProgramProgressScreen({ route, navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Program Progress">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Program Progress" onBack={() => navigation.goBack()}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
         <Text style={{ color: colors.textPrimary, ...typography.h2, flex: 1 }}>{progress.program.name}</Text>
         {progress.weekNumber ? (

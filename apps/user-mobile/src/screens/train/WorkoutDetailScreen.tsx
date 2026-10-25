@@ -3,7 +3,6 @@ import { ActivityIndicator, Alert, Image, Pressable, Text, View } from "react-na
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
@@ -117,8 +116,7 @@ export function WorkoutDetailScreen({ route, navigation }: Props) {
   const score = readiness.data?.score ?? null;
 
   return (
-    <ScreenContainer title={workout.name}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title={workout.name} onBack={() => navigation.goBack()}>
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: -spacing.sm }}>
         {workout.durationMinutes} min · {workout.exercises.length} exercises · {LEVEL_LABEL[workout.intensity]}
       </Text>

@@ -220,7 +220,7 @@ export function ConnectedDevicesScreen({ navigation }: Props) {
       ))}
       <Text style={{ color: colors.textMuted, ...typography.meta }}>
         {hc.android
-          ? "Connect opens Health Connect, which brings in what your watch, band or scale records. Other devices' values are recorded when you import them from their sync button."
+          ? "Connect opens Health Connect, which brings in what your watch, band or scale records. No watch? Turn on Health Connect sharing in Google Fit and the steps your phone counts come in too. Other devices' values are recorded when you import them from their sync button."
           : "Connect opens the consent screen. Reading from Health Connect is Android-only, so here values are recorded when you import them from a device's sync button."}
       </Text>
     </RecoverShell>

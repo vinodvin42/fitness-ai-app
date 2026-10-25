@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RecoveryLogItem, UpsertRecoveryInput } from "@fitness-ai-app/types";
@@ -8,6 +8,8 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
+import { TimeWheel } from "../../components/WheelPicker";
+import { bedWakeTimes } from "../../lib/sleepStats";
 import { fetchRecovery, upsertRecovery } from "../../api/recovery";
 import { fetchTodayMindfulnessLogs, logMindfulness } from "../../api/progress";
 import { extractErrorMessage } from "../../lib/apiError";
@@ -74,6 +76,10 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [mindfulForm, setMindfulForm] = useState(EMPTY_MINDFULNESS);
+  // Bed and wake times (25 Oct 2026): they give Sleep its efficiency and consistency without a device.
+  const [withTimes, setWithTimes] = useState(false);
+  const [bedTime, setBedTime] = useState("23:00");
+  const [wakeTime, setWakeTime] = useState("07:00");
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["recovery"], queryFn: fetchRecovery });
   const { data: todayMindfulness } = useQuery({
@@ -92,11 +98,13 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
         soreness: numField(form.soreness),
         energyLevel: numField(form.energyLevel),
         notes: form.notes.trim() || undefined,
+        ...(withTimes ? bedWakeTimes(bedTime, wakeTime) : {}),
       };
       return upsertRecovery(payload);
     },
     onSuccess: () => {
       setForm(EMPTY);
+      setWithTimes(false);
       queryClient.invalidateQueries({ queryKey: ["recovery"] });
     },
     onError: (err) => Alert.alert("Couldn't save", extractErrorMessage(err, "Please try again.")),
@@ -122,7 +130,8 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
   const set = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
   const hasAny =
     [form.restingHeartRate, form.sleepHours, form.hrvMs, form.soreness, form.energyLevel].some((v) => v.trim() !== "") ||
-    form.notes.trim() !== "";
+    form.notes.trim() !== "" ||
+    withTimes;
 
   const mindfulDuration = Number(mindfulForm.durationMinutes);
   const mindfulValid = mindfulForm.durationMinutes.trim() !== "" && Number.isInteger(mindfulDuration) && mindfulDuration > 0;
@@ -142,6 +151,26 @@ export function RecoveryScreen({ navigation: _navigation }: Props) {
           <LabeledInput label={t("recover.metrics.restingHr")} unit="bpm" value={form.restingHeartRate} onChange={(v) => set("restingHeartRate", v)} />
           <LabeledInput label={t("recover.metrics.sleep")} unit="hrs" value={form.sleepHours} onChange={(v) => set("sleepHours", v)} />
         </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md }}>
+          <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>Add bedtime and wake time</Text>
+          <Switch
+            value={withTimes}
+            onValueChange={setWithTimes}
+            accessibilityLabel="Add bedtime and wake time"
+            trackColor={{ false: colors.surfaceHigh, true: colors.success }}
+          />
+        </View>
+        {withTimes ? (
+          <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Went to bed</Text>
+            <TimeWheel value={bedTime} onChange={setBedTime} />
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Woke up</Text>
+            <TimeWheel value={wakeTime} onChange={setWakeTime} />
+            <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+              Leave hours slept empty and they count as your time in bed. Type them in too and Sleep can show your efficiency.
+            </Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
           <LabeledInput label={t("recover.metrics.hrv")} unit="ms" value={form.hrvMs} onChange={(v) => set("hrvMs", v)} />
           <LabeledInput label={t("recover.metrics.soreness")} unit="1-5" value={form.soreness} onChange={(v) => set("soreness", v)} />

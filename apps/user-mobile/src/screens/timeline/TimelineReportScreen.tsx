@@ -5,7 +5,6 @@ import * as Sharing from "expo-sharing";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
@@ -77,8 +76,7 @@ export function TimelineReportScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenContainer title="Journey Report" eyebrow={BRAND_NAME} subtitle="Your progress over time">
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer title="Journey Report" eyebrow={BRAND_NAME} subtitle="Your progress over time" onBack={() => navigation.goBack()}>
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading || !data ? (

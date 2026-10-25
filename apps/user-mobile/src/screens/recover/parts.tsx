@@ -4,41 +4,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { Edge } from "react-native-safe-area-context";
 import { Icon, IconName } from "../../components/Icon";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
+import { HeaderIconButton } from "../../components/HeaderIconButton";
+import { sectionTitleStyle } from "../../components/SectionHeader";
 
 /**
  * Shared pieces for the Recover section frames (Figma 05 - Recover).
  */
 
-/** Circular icon button used in the centered Recover headers. */
+/** Circular icon button used in the Recover headers: the app-wide HeaderIconButton. */
 export function CircleButton({
   icon,
   onPress,
   label,
-  tint = colors.textPrimary,
+  tint,
 }: {
   icon: IconName;
   onPress: () => void;
   label: string;
   tint?: string;
 }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={6}
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: colors.surfaceRaised,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Icon name={icon} size={18} color={tint} />
-    </Pressable>
-  );
+  return <HeaderIconButton icon={icon} onPress={onPress} label={label} iconColor={tint} />;
 }
 
 interface ShellProps {
@@ -69,24 +55,12 @@ export function RecoverShell({ title, subtitle, centered, onBack, right, childre
           paddingTop: spacing.sm,
           paddingBottom: spacing.md,
           flexDirection: "row",
-          alignItems: centered ? "center" : "flex-start",
-          gap: spacing.sm,
+          alignItems: "center",
+          gap: 12,
         }}
       >
         {onBack ? (
-          centered ? (
-            <CircleButton icon="chevron-left" onPress={onBack} label="Back" />
-          ) : (
-            <Pressable
-              onPress={onBack}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={10}
-              style={{ paddingTop: 6, paddingRight: 4 }}
-            >
-              <Icon name="chevron-left" size={22} color={colors.textPrimary} />
-            </Pressable>
-          )
+          <CircleButton icon="chevron-left" onPress={onBack} label="Back" />
         ) : centered ? (
           <View style={{ width: 40 }} />
         ) : null}
@@ -130,15 +104,16 @@ export function RecoverShell({ title, subtitle, centered, onBack, right, childre
   );
 }
 
+/** A section title (the app-wide SectionHeader style), or with `small` a quiet sub-label. */
 export function SectionLabel({ children, small }: { children: string; small?: boolean }) {
   return (
     <Text
-      style={{
-        color: small ? colors.textSecondary : colors.textPrimary,
-        fontFamily: fonts.displaySemi,
-        fontSize: small ? 12 : 16,
-        letterSpacing: small ? 0.4 : -0.1,
-      }}
+      accessibilityRole={small ? undefined : "header"}
+      style={
+        small
+          ? { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.4 }
+          : { color: colors.textPrimary, ...sectionTitleStyle, marginTop: spacing.xs }
+      }
     >
       {children}
     </Text>
@@ -272,18 +247,21 @@ export function ActionButton({
   icon?: IconName;
   style?: ViewStyle;
 }) {
-  const bg = variant === "primary" ? colors.accent : variant === "dark" ? colors.background : "transparent";
-  const border = variant === "primary" ? colors.accent : variant === "outline" ? colors.accent : colors.border;
-  const fg = variant === "outline" ? colors.accent : colors.textPrimary;
+  // Same look as the app's Button (compact): accent with dark text, or the raised secondary style.
+  const { colors: theme } = useTheme();
+  const bg = variant === "primary" ? theme.accent : variant === "dark" ? colors.surfaceRaised : "transparent";
+  const border = variant === "primary" ? theme.accent : variant === "outline" ? theme.accent : colors.borderStrong;
+  const fg = variant === "primary" ? theme.textOnAccent : variant === "outline" ? theme.accentText : colors.textPrimary;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[
+      style={({ pressed }) => [
         {
-          height: 46,
-          borderRadius: radius.sm,
+          height: 48,
+          borderRadius: radius.md,
+          opacity: pressed ? 0.88 : 1,
           backgroundColor: bg,
           borderWidth: 1,
           borderColor: border,
@@ -296,7 +274,7 @@ export function ActionButton({
       ]}
     >
       {icon ? <Icon name={icon} size={16} color={fg} /> : null}
-      <Text style={{ color: fg, fontFamily: fonts.bodySemi, fontSize: 14 }}>{label}</Text>
+      <Text style={{ color: fg, fontFamily: fonts.displayBold, fontSize: 15 }}>{label}</Text>
     </Pressable>
   );
 }

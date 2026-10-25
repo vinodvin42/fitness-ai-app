@@ -9,7 +9,9 @@ import { Card } from "../../components/Card";
 import { Chip } from "../../components/Chip";
 import { Stepper } from "../../components/Stepper";
 import { Button } from "../../components/Button";
+import { ReminderDateRange } from "../../components/ReminderDateRange";
 import { createReminder, deleteReminder, updateReminder } from "../../api/reminders";
+import { localYmd } from "../../lib/reminderSchedule";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, themed } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -65,6 +67,15 @@ export function ReminderFormScreen({ navigation, route }: Props) {
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(existing?.daysOfWeek ?? ALL_DAYS);
   const [playSound, setPlaySound] = useState(existing?.playSound ?? true);
   const [isEnabled, setIsEnabled] = useState(existing?.isEnabled ?? true);
+  // Start / end dates (owner, 25 Oct 2026). A reminder saved before dates existed starts today
+  // (or on its end day, if that has already passed).
+  const [startDate, setStartDate] = useState(() => {
+    const today = localYmd();
+    const end = existing?.endDate?.slice(0, 10);
+    return existing?.startDate?.slice(0, 10) ?? (end && end < today ? end : today);
+  });
+  const [endDate, setEndDate] = useState<string | null>(existing?.endDate?.slice(0, 10) ?? null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -86,7 +97,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
     setDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));
   };
 
-  const canSubmit = label.trim().length > 0 && daysOfWeek.length > 0;
+  const canSubmit = label.trim().length > 0 && daysOfWeek.length > 0 && !dateError;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["reminders"] });
 
@@ -102,6 +113,8 @@ export function ReminderFormScreen({ navigation, route }: Props) {
         daysOfWeek,
         playSound,
         isEnabled,
+        startDate,
+        endDate,
       };
       if (existing) {
         await updateReminder(existing.id, input);
@@ -132,7 +145,7 @@ export function ReminderFormScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScreenContainer title={existing ? "Edit Reminder" : "Add Reminder"}>
+    <ScreenContainer title={existing ? "Edit Reminder" : "Add Reminder"} onBack={() => navigation.goBack()}>
       <Card>
         <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Category</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
@@ -197,6 +210,19 @@ export function ReminderFormScreen({ navigation, route }: Props) {
             <Chip key={day} label={dayLabel} selected={daysOfWeek.includes(day)} onPress={() => toggleDay(day)} />
           ))}
         </View>
+      </Card>
+
+      <Card style={{ marginTop: spacing.md }}>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.xs }}>Dates</Text>
+        <ReminderDateRange
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(next) => {
+            setStartDate(next.startDate);
+            setEndDate(next.endDate);
+            setDateError(next.error);
+          }}
+        />
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>

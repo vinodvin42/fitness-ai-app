@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { BodyMeasurement, ProgressPhoto } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { BackButton } from "../../components/BackButton";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
@@ -142,8 +141,7 @@ export function ProgressPhotosScreen({ navigation }: Props) {
   const latest = items[0];
 
   return (
-    <ScreenContainer {...header}>
-      <BackButton onPress={() => navigation.goBack()} />
+    <ScreenContainer {...header} onBack={() => navigation.goBack()}>
 
       <Card style={{ gap: spacing.sm }}>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Transformation Slider</Text>

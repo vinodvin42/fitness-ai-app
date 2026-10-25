@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COMMON_COUNTRIES } from "@fitness-ai-app/types";
 import { MyAvatar } from "../../components/MyAvatar";
-import { ProfilePhotoButtons, ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
+import { ProfilePhotoSheet } from "../../components/ProfilePhotoSheet";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { toDobString, validateDobParts } from "../../components/AboutYouParts";
@@ -175,20 +175,39 @@ export function EditProfileScreen({ navigation }: Props) {
   return (
     <RecoverShell centered title="View Profile" onBack={() => navigation.goBack()}>
       <View style={{ alignItems: "center", gap: 6 }}>
-        <Pressable
-          onPress={() => setPhotoSheet(true)}
-          disabled={photoActions.busy}
-          accessibilityRole="button"
-          accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
-        >
-          <MyAvatar name={fullName || user?.fullName} size={84} busy={photoActions.busy} />
-        </Pressable>
-        <ProfilePhotoButtons
-          hasPhoto={!!photo.data}
-          busy={photoActions.busy}
-          onChoose={photoActions.choose}
-          onRemove={photoActions.remove}
-        />
+        <View>
+          <Pressable
+            onPress={() => setPhotoSheet(true)}
+            disabled={photoActions.busy}
+            accessibilityRole="button"
+            accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
+          >
+            <MyAvatar name={fullName || user?.fullName} size={84} busy={photoActions.busy} />
+          </Pressable>
+          {/* The camera button opens upload / take / remove (owner, 25 Oct 2026). */}
+          <Pressable
+            onPress={() => setPhotoSheet(true)}
+            disabled={photoActions.busy}
+            accessibilityRole="button"
+            accessibilityLabel={photo.data ? "Change profile photo" : "Add profile photo"}
+            hitSlop={8}
+            style={{
+              position: "absolute",
+              right: -2,
+              bottom: -2,
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: theme.accent,
+              borderWidth: 2,
+              borderColor: colors.background,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="camera" size={13} color={theme.textOnAccent} />
+          </Pressable>
+        </View>
       </View>
       <ProfilePhotoSheet
         visible={photoSheet}

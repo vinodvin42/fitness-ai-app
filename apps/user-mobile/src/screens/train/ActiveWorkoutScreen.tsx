@@ -6,7 +6,7 @@ import type { ExerciseSetLog, WorkoutSession } from "@fitness-ai-app/types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
-import { ReasoningSheet } from "../../components/ReasoningSheet";
+import { HeaderIconButton } from "../../components/HeaderIconButton";
 import { ErrorState } from "../../components/ErrorState";
 import { RestTimer } from "../../components/RestTimer";
 import { SetQuickEditSheet } from "../../components/SetQuickEditSheet";
@@ -16,6 +16,7 @@ import { SetEditSheet } from "../../components/SetEditSheet";
 import { AddExerciseSheet } from "../../components/AddExerciseSheet";
 import { InWorkoutSafetySheet } from "../../components/InWorkoutSafetySheet";
 import { GuidedCues } from "../../components/GuidedCues";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
 import { cancelRestOver, clearWorkoutNotification, scheduleRestOver, showWorkoutNotification } from "../../lib/workoutNotification";
 import { WorkoutSheetList } from "../../components/WorkoutSheetList";
 import { OfflineSyncNotice } from "../../components/OfflineSyncNotice";
@@ -24,7 +25,6 @@ import { isPendingRow } from "../../lib/offlineSetQueue";
 import { speak, speechAvailable, stopSpeech } from "../../lib/speech";
 import { clearExerciseRest, setExerciseRest, useWorkoutSettings } from "../../api/workoutSettings";
 import { fetchExercises, fetchWorkoutDetail } from "../../api/programs";
-import { fetchReadiness } from "../../api/recovery";
 import { fetchOnboardingProfile } from "../../api/users";
 import {
   abandonWorkoutSession,
@@ -38,11 +38,10 @@ import {
 } from "../../api/workoutSessions";
 import { trackClientEvent } from "../../api/analytics";
 import { extractErrorMessage } from "../../lib/apiError";
-import { readinessFactorLabel } from "../../lib/readinessFactors";
 import { phaseLabel } from "../../lib/workoutExercises";
 import { clearSwaps, useSwaps } from "../../lib/exerciseSwaps";
 import { buildSessionExerciseList } from "../../lib/sessionExerciseList";
-import { afterWorkingSet, nextFreeLetter, supersetLabel } from "../../lib/supersets";
+import { afterWorkingSet, groupMembers, nextFreeLetter, supersetLabel } from "../../lib/supersets";
 import { nextSetNumber, setLogsFor, withSetLog } from "../../lib/setNumbering";
 import {
   formatSetValues,
@@ -51,6 +50,7 @@ import {
   loadingStepKg,
   previousSessionId,
   setRowLabels,
+  WARMUP_SCHEME,
   warmUpSets,
   type SetValues,
 } from "../../lib/fastLogging";
@@ -58,7 +58,7 @@ import { formatMmSs } from "../../lib/format";
 import { useDailyReviewStore } from "../../lib/dailyReviewStore";
 import { activeLightWeek } from "../../lib/dailySuggestions";
 import { useTheme } from "../../theme/ThemeProvider";
-import { colors, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
+import { colors, elevation, fonts, layout, radius, spacing, typography, themed } from "../../theme/tokens";
 import type { TrainStackParamList } from "../../navigation/TrainStack";
 import { exitTaskToHome } from "../../navigation/taskExits";
 
@@ -212,12 +212,10 @@ function formatElapsed(totalSeconds: number): string {
 export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { workoutId, sessionId } = route.params;
   const queryClient = useQueryClient();
-  const { colors: theme } = useTheme();
-  const readiness = useQuery({ queryKey: ["readiness"], queryFn: fetchReadiness });
+  const { colors: theme, scheme } = useTheme();
   // A lighter week the member said yes to in the daily review (24 Oct 2026): a reminder only.
   const lightWeek = activeLightWeek(useDailyReviewStore().decisions, new Date());
   const profile = useQuery({ queryKey: ["onboardingProfile"], queryFn: fetchOnboardingProfile, staleTime: 60_000 });
-  const [whyOpen, setWhyOpen] = useState(false);
   // Also warms the cache so the rest timer starts at the user's configured length.
   const { data: workoutSettings } = useWorkoutSettings();
   const { data: workout, isLoading, isError, refetch } = useQuery({
@@ -532,8 +530,20 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
     void advance();
   };
 
-  const advance = async () => {
-    if (isLastExercise) {
+  const onFinishNow = () => {
+    if (paused || isFinishing) return;
+    if (isLastExercise && setsRemaining <= 0) {
+      void finishWorkout();
+      return;
+    }
+    Alert.alert("Finish this workout now?", "Sets you haven't logged won't count. Everything you've logged is saved.", [
+      { text: "Keep going", style: "cancel" },
+      { text: "Finish workout", onPress: () => void finishWorkout() },
+    ]);
+  };
+
+  const finishWorkout = async () => {
+    {
       // Sets waiting on this phone reach the server before the workout is closed (its summary and PRs need them).
       const waiting = waitingFor(sessionId);
       if (waiting > 0) {
@@ -562,6 +572,12 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       } finally {
         setIsFinishing(false);
       }
+    }
+  };
+
+  const advance = async () => {
+    if (isLastExercise) {
+      await finishWorkout();
       return;
     }
     const nextIndex = exerciseIndex + 1;
@@ -664,10 +680,15 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
   const targetSets = (currentExercise?.targetSets ?? 0) + extraSets;
   const setsRemaining = currentExercise ? Math.max(0, targetSets - workingLogged.length) : 0;
   const equipment = currentExercise?.exercise.equipment ?? "";
+  // "None" (bodyweight) isn't worth a word in the subtitle.
+  const shownEquipment = /^\s*(none)?\s*$/i.test(equipment) ? "" : equipment;
   const defaultRest = workoutSettings?.restTimerSeconds ?? 60;
   const restSeconds = currentExercise?.restSeconds ?? defaultRest;
   const sessionExerciseId = currentExercise?.sessionExerciseId ?? null;
   const groupLabel = supersetLabel(orderedExercises, exerciseIndex);
+  // Figma log/03: this exercise's superset (two or more members), shown as one group.
+  const members = groupMembers(orderedExercises, exerciseIndex);
+  const inSuperset = !!currentExercise?.supersetGroup && members.length > 1;
   // Exercises this one can be linked with: any other entry not already in a superset.
   const supersetCandidates = orderedExercises
     .map((e, i) => ({ e, i }))
@@ -826,10 +847,19 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
       ? [{ key: "remove", label: "Remove from this workout", icon: "trash" as const, onPress: onRemoveExercise }]
       : []),
   ];
-  const score = readiness.data?.score ?? null;
   const context = profile.data?.equipmentContext ?? null;
   const modeTitle = context === "full_gym" ? "Gym Mode" : context ? "Home Mode" : null;
   const currentSetNumber = Math.min(workingLogged.length + 1, targetSets || 1);
+  // Figma log/04: "Add warm-up sets" under the card, before the first working set, once there's a weight.
+  const canAddWarmups = workingLogged.length === 0 && pendingWarmups.length === 0 && parseFloat(active.weight) > 0;
+  // Figma log/02 colours: a logged set's filled ✓, and the yellow personal-best pill.
+  const doneCheckColor = scheme === "dark" ? colors.background : "#ffffff";
+  const pb =
+    scheme === "dark"
+      ? { fg: "#facc15", bg: "rgba(250,204,21,0.16)", border: "rgba(250,204,21,0.5)" }
+      : { fg: "#854d0e", bg: "rgba(234,179,8,0.14)", border: "rgba(161,98,7,0.45)" };
+  const firstTodo = setType === "normal" ? nextWorkingNumber + 1 : nextWorkingNumber;
+  const todoCount = Math.max(0, setsRemaining - (setType === "normal" ? 1 : 0));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -847,36 +877,50 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
                 paddingVertical: 2,
               }}
             >
-              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-                Exercise {exerciseIndex + 1} of {orderedExercises.length}
+              <Text
+                style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}
+                numberOfLines={1}
+                accessibilityLabel={`Exercise ${exerciseIndex + 1} of ${orderedExercises.length}${currentExercise ? `, ${phaseLabel(currentExercise.phase)}` : ""}`}
+              >
+                {exerciseIndex + 1}/{orderedExercises.length}
                 {currentExercise ? ` · ${phaseLabel(currentExercise.phase)}` : ""}
               </Text>
             </View>
-            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 22 }} numberOfLines={1}>
+            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 20 }} numberOfLines={1}>
               {workout.name}
             </Text>
           </View>
           {timerStarted ? (
-            <Text style={{ color: paused ? colors.textMuted : colors.aiAccent, fontFamily: fonts.mono, fontSize: 18 }}>
+            <Text style={{ color: paused ? colors.textMuted : colors.aiText, fontFamily: fonts.monoSemi, fontSize: 17, fontVariant: ["tabular-nums"] }}>
               {formatElapsed(elapsedSeconds)}
             </Text>
           ) : null}
-          <Pressable
+          <HeaderIconButton
+            icon={paused ? "play" : "pause"}
+            label={paused ? "Resume workout timer" : "Pause workout timer"}
             onPress={() => setPaused((p) => !p)}
+          />
+          <Pressable
+            onPress={onFinishNow}
+            disabled={paused || isFinishing}
             accessibilityRole="button"
-            accessibilityLabel={paused ? "Resume workout timer" : "Pause workout timer"}
-            style={{
-              width: 44,
-              height: 44,
+            accessibilityLabel="Finish workout"
+            hitSlop={6}
+            style={({ pressed }) => ({
+              height: 40,
+              paddingHorizontal: 14,
               borderRadius: radius.md,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
+              backgroundColor: theme.accent,
               alignItems: "center",
               justifyContent: "center",
-            }}
+              opacity: paused || isFinishing ? 0.5 : pressed ? 0.88 : 1,
+            })}
           >
-            <Icon name={paused ? "play" : "pause"} size={18} color={colors.textPrimary} />
+            {isFinishing ? (
+              <ActivityIndicator color={theme.textOnAccent} />
+            ) : (
+              <Text style={{ color: theme.textOnAccent, fontFamily: fonts.bodyBold, fontSize: 14 }}>Finish</Text>
+            )}
           </Pressable>
         </View>
         {paused ? <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>Paused. Logging is disabled until you resume.</Text> : null}
@@ -893,27 +937,9 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ ...column, paddingHorizontal: layout.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.md }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: spacing.sm,
-            backgroundColor: colors.surface,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: spacing.md,
-          }}
-        >
-          <Icon name="heart" size={15} color={colors.textMuted} />
-          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-            Heart Rate:{" "}
-            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold }}>
-              {readiness.data?.source?.kind === "device" ? "Not shown during workouts yet" : "No wearable connected"}
-            </Text>{" "}
-            (Optional — set logging remains available)
-          </Text>
-        </View>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+          {previousWorking.length > 0 ? "Last time's numbers are pre-filled. Tap ✓ to log, or tap a number to change it." : "Tap ✓ to log, or tap a number to change it."}
+        </Text>
 
         {lightWeek ? (
           <View
@@ -936,30 +962,6 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           </View>
         ) : null}
 
-        {score != null ? (
-          <View style={{ backgroundColor: colors.aiSurface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.aiBorder, padding: spacing.md, gap: spacing.sm }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
-              ✦ Your recovery score is {score}/100.{readiness.data?.summary ? ` ${readiness.data.summary}` : ""}
-            </Text>
-            <Pressable
-              onPress={() => setWhyOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Why this recovery score?"
-              style={{
-                alignSelf: "flex-start",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: radius.sm,
-                borderWidth: 1,
-                borderColor: colors.aiBorder,
-                backgroundColor: colors.aiAccentSoft,
-              }}
-            >
-              <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Why?</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {modeTitle ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 }}>
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.displaySemi, fontSize: 14 }}>{modeTitle}</Text>
@@ -969,252 +971,338 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           </View>
         ) : null}
 
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: radius.card,
-            borderWidth: 1,
-            borderColor: theme.accent,
-            padding: spacing.md,
-            gap: spacing.sm,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-            <Text style={{ flex: 1, color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6 }}>ACTIVE EXERCISE</Text>
-            {setsRemaining > 0 ? (
-              <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
-                Set {currentSetNumber} of {targetSets}
+        {warmupsAddedFrom != null && pendingWarmups.length > 0 ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.sm,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.warning,
+              backgroundColor: colors.warningSoft,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: colors.warningText, fontFamily: fonts.bodySemi, fontSize: 14 }}>
+                {pendingWarmups.length} warm-up set{pendingWarmups.length === 1 ? "" : "s"} added
               </Text>
-            ) : (
-              <Text style={{ color: colors.successText, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
-            )}
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>From working weight {formatWeight(warmupsAddedFrom)} kg. Edit any value.</Text>
+            </View>
             <Pressable
-              onPress={() => setMenuOpen(true)}
+              onPress={() => {
+                setPendingWarmups([]);
+                setWarmupsAddedFrom(null);
+              }}
               accessibilityRole="button"
-              accessibilityLabel={`More actions for ${currentExercise?.exercise.name ?? "this exercise"}`}
-              hitSlop={10}
-              style={{ paddingHorizontal: 4 }}
+              accessibilityLabel="Undo warm-up sets"
+              hitSlop={8}
+              style={{ borderRadius: radius.pill, backgroundColor: colors.surfaceHigh, paddingHorizontal: 12, paddingVertical: 6 }}
             >
-              <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 20 }}>⋯</Text>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 }}>Undo</Text>
             </Pressable>
           </View>
-          {groupLabel && currentExercise?.supersetGroup ? (
-            <View style={{ alignSelf: "flex-start", borderRadius: radius.pill, backgroundColor: theme.accentSoft, paddingHorizontal: 10, paddingVertical: 3 }}>
-              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-                Superset {currentExercise.supersetGroup} · {groupLabel} · rest after the last one
-              </Text>
-            </View>
-          ) : null}
-          <Pressable onLongPress={() => setMenuOpen(true)} accessibilityRole="text" delayLongPress={350}>
-            <Text style={{ color: colors.textPrimary, ...typography.h1, fontSize: 20 }}>{currentExercise?.exercise.name}</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>
-              Rest {formatMmSs(restSeconds)}
-              {equipment ? ` · ${equipment}` : ""} · {currentExercise?.targetSets} × {currentExercise?.targetReps}
-            </Text>
-          </Pressable>
-          {currentExercise ? (
-            <GuidedCues
-              exercise={currentExercise.exercise}
-              onTutorial={() => navigation.navigate("ExerciseDetail", { exerciseId: currentExercise.exercise.id })}
-            />
-          ) : null}
+        ) : null}
 
-          {warmupsAddedFrom != null && pendingWarmups.length > 0 ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: spacing.sm,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: colors.warning,
-                backgroundColor: colors.warningSoft,
-                padding: spacing.sm + 2,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.warningText, fontFamily: fonts.bodyBold, fontSize: 14 }}>
-                  {pendingWarmups.length} warm-up set{pendingWarmups.length === 1 ? "" : "s"} added
+        {inSuperset ? (
+          <View
+            style={{
+              alignSelf: "flex-start",
+              borderRadius: radius.pill,
+              borderWidth: 1,
+              borderColor: colors.aiAccent,
+              backgroundColor: colors.aiAccentSoft,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+            }}
+          >
+            <Text style={{ color: colors.aiText, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+              Superset {currentExercise?.supersetGroup} · rest after {members.length === 2 ? "both" : `all ${members.length}`}
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          {inSuperset ? <View style={{ width: 4, borderRadius: 2, backgroundColor: colors.aiAccent }} /> : null}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: colors.surface,
+              borderRadius: radius.card,
+              borderWidth: 1,
+              borderColor: inSuperset ? colors.aiAccent : theme.accent,
+              padding: spacing.md,
+              gap: spacing.sm,
+              ...elevation.card,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <Pressable onLongPress={() => setMenuOpen(true)} accessibilityRole="text" delayLongPress={350} style={{ flex: 1 }}>
+                <Text style={{ color: theme.accentText, fontFamily: fonts.displayBold, fontSize: 18 }}>
+                  {inSuperset && groupLabel ? `${groupLabel} · ` : ""}
+                  {currentExercise?.exercise.name}
                 </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                  About 40%, 65% and 85% of {formatWeight(warmupsAddedFrom)} kg. Tap a value to change it.
+              </Pressable>
+              {setsRemaining > 0 ? (
+                <Text style={{ color: theme.accentText, fontFamily: fonts.bodyBold, fontSize: 13 }}>
+                  Set {currentSetNumber} of {targetSets}
                 </Text>
-              </View>
+              ) : (
+                <Text style={{ color: colors.successText, fontFamily: fonts.bodyBold, fontSize: 13 }}>All sets done</Text>
+              )}
               <Pressable
-                onPress={() => {
-                  setPendingWarmups([]);
-                  setWarmupsAddedFrom(null);
-                }}
+                onPress={() => setMenuOpen(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Undo warm-up sets"
-                hitSlop={8}
-                style={{ borderRadius: radius.pill, backgroundColor: colors.surfaceRaised, paddingHorizontal: 12, paddingVertical: 6 }}
+                accessibilityLabel={`More actions for ${currentExercise?.exercise.name ?? "this exercise"}`}
+                hitSlop={10}
+                style={{ paddingHorizontal: 4 }}
               >
-                <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 13 }}>Undo</Text>
+                <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 20 }}>⋯</Text>
               </Pressable>
             </View>
-          ) : null}
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: -4 }}>
+              Rest {formatMmSs(restSeconds)}
+              {shownEquipment ? ` · ${shownEquipment}` : ""} · {currentExercise?.targetSets} × {currentExercise?.targetReps}
+            </Text>
+            {currentExercise ? (
+              <GuidedCues
+                exercise={currentExercise.exercise}
+                onTutorial={() => navigation.navigate("ExerciseDetail", { exerciseId: currentExercise.exercise.id })}
+              />
+            ) : null}
 
-          <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-            {previousWorking.length > 0
-              ? "Last time's numbers are pre-filled. Tap ✓ to log, or tap a number to change it."
-              : "Tap ✓ to log, or tap a number to change it."}
-          </Text>
+            {/* Set table: SET · PREVIOUS · KG · REPS · ✓ */}
+            <View style={{ gap: 6 }}>
+              <View style={tableStyles.row}>
+                <Text style={[tableStyles.head, tableStyles.setCol]}>SET</Text>
+                <Text style={[tableStyles.head, tableStyles.prevCol]}>PREVIOUS</Text>
+                <Text style={[tableStyles.head, tableStyles.numCol]}>KG</Text>
+                <Text style={[tableStyles.head, tableStyles.numCol]}>REPS</Text>
+                <Text style={[tableStyles.head, tableStyles.checkCol]}>✓</Text>
+              </View>
 
-          {/* Set table: SET · PREVIOUS · KG · REPS · ✓ */}
-          <View style={{ gap: 6 }}>
-            <View style={tableStyles.row}>
-              <Text style={[tableStyles.head, tableStyles.setCol]}>SET</Text>
-              <Text style={[tableStyles.head, tableStyles.prevCol]}>PREVIOUS</Text>
-              <Text style={[tableStyles.head, tableStyles.numCol]}>KG</Text>
-              <Text style={[tableStyles.head, tableStyles.numCol]}>REPS</Text>
-              <Text style={[tableStyles.head, tableStyles.checkCol]}>✓</Text>
-            </View>
+              {loggedSets.map((s, i) => {
+                const label = rowLabels[i];
+                const working = /^\d+$/.test(label) ? previousFor(parseInt(label, 10)) : undefined;
+                const isPr = s.id === prSetId;
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => setEditingSet(session?.setLogs.find((l) => l.id === s.id) ?? null)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${label === "W" ? "Warm-up" : label === "D" ? "Drop set" : `Set ${label}`}, ${formatSetValues(s)}, ${
+                      s.pending ? "saved on this phone, waiting to sync" : "logged"
+                    }${isPr ? ", personal best" : ""}. Edit`}
+                    style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: s.pending ? colors.warningSoft : colors.successSoft, paddingVertical: 4 }]}
+                  >
+                    <Text style={[tableStyles.label, tableStyles.setCol, label === "W" ? { color: colors.warningText } : label === "D" ? { color: colors.aiText } : null]}>
+                      {label}
+                    </Text>
+                    <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
+                      {formatSetValues(working)}
+                    </Text>
+                    <Text style={[tableStyles.value, tableStyles.numCol]}>{s.weightKg != null ? formatWeight(s.weightKg) : "—"}</Text>
+                    <Text style={[tableStyles.value, tableStyles.numCol]}>{s.reps}</Text>
+                    <View style={[tableStyles.checkCol, { alignItems: "center" }]}>
+                      {s.pending ? (
+                        <Icon name="cloud-off" size={17} color={colors.warningText} />
+                      ) : (
+                        <View style={tableStyles.doneCheck}>
+                          <Icon name="check" size={16} color={doneCheckColor} strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
 
-            {loggedSets.map((s, i) => {
-              const label = rowLabels[i];
-              const working = /^\d+$/.test(label) ? previousFor(parseInt(label, 10)) : undefined;
-              const isPr = s.id === prSetId;
-              return (
-                <Pressable
-                  key={s.id}
-                  onPress={() => setEditingSet(session?.setLogs.find((l) => l.id === s.id) ?? null)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${label === "W" ? "Warm-up" : label === "D" ? "Drop set" : `Set ${label}`}, ${formatSetValues(s)}, ${
-                    s.pending ? "saved on this phone, waiting to sync" : "logged"
-                  }${isPr ? ", personal best" : ""}. Edit`}
-                  style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: s.pending ? colors.warningSoft : colors.successSoft, paddingVertical: 4 }]}
+              {pr && prSetId ? (
+                <View
+                  accessible
+                  accessibilityLabel={`Personal best: ${pr.weightKg != null ? `${formatWeight(pr.weightKg)} kilograms, ` : ""}${pr.reps} reps`}
+                  style={{
+                    alignSelf: "flex-start",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: pb.border,
+                    backgroundColor: pb.bg,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                  }}
                 >
-                  <Text style={[tableStyles.label, tableStyles.setCol, label === "W" ? { color: colors.warningText } : label === "D" ? { color: colors.aiText } : null]}>
-                    {label}
+                  <Icon name="trophy" size={13} color={pb.fg} />
+                  <Text style={{ color: pb.fg, fontFamily: fonts.bodySemi, fontSize: 12 }}>
+                    Personal best! {pr.weightKg != null ? `${formatWeight(pr.weightKg)} kg × ${pr.reps}` : `${pr.reps} reps`}
+                  </Text>
+                </View>
+              ) : null}
+
+              {pendingWarmups.map((w, i) => (
+                <View key={`warmup-${i}`} style={[tableStyles.row, { borderRadius: radius.sm, backgroundColor: colors.warningSoft, paddingVertical: 3 }]}>
+                  <Text style={[tableStyles.label, tableStyles.setCol, { color: colors.warningText }]}>W</Text>
+                  <Text style={[tableStyles.prev, tableStyles.prevCol]}>—</Text>
+                  <Pressable
+                    onPress={() => setQuickEdit({ kind: "warmup", index: i })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Warm-up weight ${w.weightKg ?? "none"} kilograms. Change`}
+                    style={[tableStyles.cell, tableStyles.numCol]}
+                  >
+                    <Text style={tableStyles.value}>{w.weightKg != null ? formatWeight(w.weightKg) : "—"}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setQuickEdit({ kind: "warmup", index: i })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Warm-up reps ${w.reps}. Change`}
+                    style={[tableStyles.cell, tableStyles.numCol]}
+                  >
+                    <Text style={tableStyles.value}>{w.reps}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onLogSet(i)}
+                    disabled={paused || isSubmittingSet || !hasHydrated}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Log warm-up set, ${formatSetValues(w)}`}
+                    style={[tableStyles.checkButton, tableStyles.checkCol, { opacity: paused || !hasHydrated ? 0.4 : 1 }]}
+                  >
+                    <Icon name="check" size={18} color={colors.textPrimary} strokeWidth={3} />
+                  </Pressable>
+                </View>
+              ))}
+
+              {setsRemaining > 0 ? (
+                <View style={[tableStyles.row, { borderRadius: radius.sm, borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.accentSoft, paddingVertical: 3 }]}>
+                  <Text style={[tableStyles.label, tableStyles.setCol, setType !== "normal" ? { color: colors.aiText } : null]}>
+                    {setType === "drop" ? "D" : setType === "failure" ? "F" : nextWorkingNumber}
                   </Text>
                   <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
-                    {formatSetValues(working)}
+                    {formatSetValues(lastTime)}
                   </Text>
-                  <Text style={[tableStyles.value, tableStyles.numCol]}>{s.weightKg != null ? formatWeight(s.weightKg) : "—"}</Text>
-                  <Text style={[tableStyles.value, tableStyles.numCol]}>{s.reps}</Text>
-                  <View style={[tableStyles.checkCol, { alignItems: "center" }]}>
-                    {s.pending ? (
-                      <Icon name="cloud-off" size={17} color={colors.warningText} />
-                    ) : isPr ? (
-                      <Icon name="trophy" size={18} color={colors.warning} />
+                  <Pressable
+                    onPress={() => setQuickEdit({ kind: "active" })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Weight ${active.weight || "none"} kilograms. Change`}
+                    style={[tableStyles.cell, tableStyles.numCol]}
+                  >
+                    <Text style={tableStyles.value}>{active.weight || "—"}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setQuickEdit({ kind: "active" })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reps ${active.reps || "none"}. Change`}
+                    style={[tableStyles.cell, tableStyles.numCol]}
+                  >
+                    <Text style={tableStyles.value}>{active.reps || "—"}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onLogSet()}
+                    disabled={!(activeReps > 0) || paused || isSubmittingSet || !hasHydrated}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Log set ${nextWorkingNumber}`}
+                    style={[
+                      tableStyles.checkButton,
+                      tableStyles.checkCol,
+                      { opacity: !(activeReps > 0) || paused || !hasHydrated ? 0.4 : 1 },
+                    ]}
+                  >
+                    {isSubmittingSet ? (
+                      <ActivityIndicator color={colors.textPrimary} />
                     ) : (
-                      <Icon name="check" size={18} color={colors.successText} strokeWidth={3} />
+                      <Icon name="check" size={18} color={colors.textPrimary} strokeWidth={3} />
                     )}
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {/* The sets still to do after this one, with this set's numbers (Figma log/02 "todo"). */}
+              {Array.from({ length: todoCount }, (_, i) => {
+                const n = firstTodo + i;
+                return (
+                  <View
+                    key={`todo-${n}`}
+                    style={tableStyles.row}
+                    accessible
+                    accessibilityLabel={`Set ${n}, still to do${active.weight ? `, ${active.weight} kilograms` : ""}, ${active.reps || "no"} reps`}
+                  >
+                    <Text style={[tableStyles.label, tableStyles.setCol]}>{n}</Text>
+                    <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
+                      {formatSetValues(previousFor(n))}
+                    </Text>
+                    <View style={[tableStyles.cell, tableStyles.numCol]}>
+                      <Text style={tableStyles.planned}>{active.weight || "—"}</Text>
+                    </View>
+                    <View style={[tableStyles.cell, tableStyles.numCol]}>
+                      <Text style={tableStyles.planned}>{active.reps || "—"}</Text>
+                    </View>
+                    <View style={[tableStyles.checkButton, tableStyles.checkCol]}>
+                      <Icon name="check" size={16} color={colors.textMuted} strokeWidth={3} />
+                    </View>
                   </View>
-                </Pressable>
-              );
-            })}
+                );
+              })}
+            </View>
 
-            {pendingWarmups.map((w, i) => (
-              <View key={`warmup-${i}`} style={tableStyles.row}>
-                <Text style={[tableStyles.label, tableStyles.setCol, { color: colors.warningText }]}>W</Text>
-                <Text style={[tableStyles.prev, tableStyles.prevCol]}>—</Text>
-                <Pressable
-                  onPress={() => setQuickEdit({ kind: "warmup", index: i })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Warm-up weight ${w.weightKg ?? "none"} kilograms. Change`}
-                  style={[tableStyles.cell, tableStyles.numCol]}
-                >
-                  <Text style={tableStyles.value}>{w.weightKg != null ? formatWeight(w.weightKg) : "—"}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setQuickEdit({ kind: "warmup", index: i })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Warm-up reps ${w.reps}. Change`}
-                  style={[tableStyles.cell, tableStyles.numCol]}
-                >
-                  <Text style={tableStyles.value}>{w.reps}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => onLogSet(i)}
-                  disabled={paused || isSubmittingSet || !hasHydrated}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log warm-up set, ${formatSetValues(w)}`}
-                  style={[tableStyles.checkButton, tableStyles.checkCol, { opacity: paused || !hasHydrated ? 0.4 : 1 }]}
-                >
-                  <Icon name="check" size={18} color={colors.textPrimary} strokeWidth={3} />
-                </Pressable>
-              </View>
-            ))}
-
-            {setsRemaining > 0 ? (
-              <View style={tableStyles.row}>
-                <Text style={[tableStyles.label, tableStyles.setCol, setType !== "normal" ? { color: colors.aiText } : null]}>
-                  {setType === "drop" ? "D" : setType === "failure" ? "F" : nextWorkingNumber}
-                </Text>
-                <Text style={[tableStyles.prev, tableStyles.prevCol]} numberOfLines={1}>
-                  {formatSetValues(lastTime)}
-                </Text>
-                <Pressable
-                  onPress={() => setQuickEdit({ kind: "active" })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Weight ${active.weight || "none"} kilograms. Change`}
-                  style={[tableStyles.cell, tableStyles.numCol, { borderColor: theme.accent }]}
-                >
-                  <Text style={tableStyles.value}>{active.weight || "—"}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setQuickEdit({ kind: "active" })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Reps ${active.reps || "none"}. Change`}
-                  style={[tableStyles.cell, tableStyles.numCol, { borderColor: theme.accent }]}
-                >
-                  <Text style={tableStyles.value}>{active.reps || "—"}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => onLogSet()}
-                  disabled={!(activeReps > 0) || paused || isSubmittingSet || !hasHydrated}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log set ${nextWorkingNumber}`}
-                  style={[
-                    tableStyles.checkButton,
-                    tableStyles.checkCol,
-                    { backgroundColor: theme.accent, opacity: !(activeReps > 0) || paused || !hasHydrated ? 0.4 : 1 },
-                  ]}
-                >
-                  {isSubmittingSet ? (
-                    <ActivityIndicator color={theme.textOnAccent} />
-                  ) : (
-                    <Icon name="check" size={18} color={theme.textOnAccent} strokeWidth={3} />
-                  )}
-                </Pressable>
-              </View>
+            {setsRemaining > 0 && rpe ? (
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+                RPE {rpe} — {rpeLabel(rpe)}
+              </Text>
             ) : null}
+
+            <Pressable
+              onPress={() => setExtraSets((n) => n + 1)}
+              accessibilityRole="button"
+              accessibilityLabel="Add set"
+              style={{ height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 14 }}>+ Add set</Text>
+            </Pressable>
           </View>
-
-          {setsRemaining > 0 && rpe ? (
-            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-              RPE {rpe} — {rpeLabel(rpe)}
-            </Text>
-          ) : null}
-
-          <Pressable
-            onPress={() => setExtraSets((n) => n + 1)}
-            accessibilityRole="button"
-            accessibilityLabel="Add set"
-            style={{ height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" }}
-          >
-            <Text style={{ color: colors.textPrimary, ...typography.label, fontSize: 14 }}>+ Add set</Text>
-          </Pressable>
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>W warm-up · 1–{currentExercise?.targetSets} working · D drop set · F to failure</Text>
         </View>
 
-        {showRestTimer ? (
-          <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md }}>
-            <RestTimer
-              key={`${exerciseIndex}-${loggedSets.length}`}
-              layout="compact"
-              defaultSeconds={restSeconds}
-              autoStart={restManual || (workoutSettings?.autoStartRest ?? true)}
-              onDismiss={() => setShowRestTimer(false)}
-              onRestChange={(endsAt, finished) => {
-                setRestEndsAt(endsAt);
-                if (endsAt && currentExercise) void scheduleRestOver(endsAt, currentExercise.exercise.name, notifyNextLine);
-                else if (!endsAt && !finished) void cancelRestOver();
-              }}
-            />
+        {inSuperset ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 6 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+              Do {members.map((m) => supersetLabel(orderedExercises, m)).join(" then ")}, then rest{" "}
+              {formatMmSs(orderedExercises[members[0]]?.restSeconds ?? defaultRest)}.
+            </Text>
+            <LearnMoreLink topic="supersets" />
           </View>
+        ) : null}
+
+        {warmupsAddedFrom != null && pendingWarmups.length > 0 ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 6 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+              Warm-ups: about {WARMUP_SCHEME.map((w) => `${Math.round(w.pct * 100)}%`).join(", ").replace(/, ([^,]*)$/, " and $1")} of{" "}
+              {formatWeight(warmupsAddedFrom)} kg.
+            </Text>
+            <LearnMoreLink topic="warmups" />
+          </View>
+        ) : null}
+        {canAddWarmups ? (
+          <Pressable
+            onPress={onAddWarmups}
+            accessibilityRole="button"
+            accessibilityLabel="Add warm-up sets"
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.warning,
+              backgroundColor: colors.surfaceRaised,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.88 : 1,
+            })}
+          >
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>Add warm-up sets</Text>
+          </Pressable>
+        ) : null}
+        {canAddWarmups || pendingWarmups.length > 0 ? (
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>W sets don't count toward volume or personal bests.</Text>
         ) : null}
 
         {/* Figma log/01 (24 Oct 2026): every other exercise of this workout, each with its own set table. */}
@@ -1249,9 +1337,39 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
             <Text style={{ color: theme.accentText, ...typography.label, fontSize: 15 }}>+ Add exercise</Text>
           </Pressable>
         ) : null}
+
+        <Text style={{ color: colors.textMuted, ...typography.meta }}>W warm-up · 1–{currentExercise?.targetSets} working · D drop set · F to failure</Text>
+        <Pressable
+          onPress={onAbandon}
+          disabled={isAbandoning}
+          accessibilityRole="button"
+          accessibilityLabel="Abandon workout"
+          hitSlop={8}
+          style={{ alignSelf: "center", paddingVertical: spacing.xs, opacity: isAbandoning ? 0.5 : 1 }}
+        >
+          <Text style={{ color: colors.dangerText, fontFamily: fonts.bodySemi, fontSize: 14 }}>{isAbandoning ? "Discarding…" : "Abandon workout"}</Text>
+        </Pressable>
       </ScrollView>
 
       <View style={{ ...column, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.sm }}>
+        {/* Figma log/02: the rest timer as one pill at the bottom, over the actions. */}
+        {showRestTimer ? (
+          <View style={{ marginBottom: spacing.sm }}>
+            <RestTimer
+              key={`${exerciseIndex}-${loggedSets.length}`}
+              layout="pill"
+              caption={restManual || !(workoutSettings?.autoStartRest ?? true) ? "Rest" : "Rest · auto"}
+              defaultSeconds={restSeconds}
+              autoStart={restManual || (workoutSettings?.autoStartRest ?? true)}
+              onDismiss={() => setShowRestTimer(false)}
+              onRestChange={(endsAt, finished) => {
+                setRestEndsAt(endsAt);
+                if (endsAt && currentExercise) void scheduleRestOver(endsAt, currentExercise.exercise.name, notifyNextLine);
+                else if (!endsAt && !finished) void cancelRestOver();
+              }}
+            />
+          </View>
+        ) : null}
         {currentExercise ? (
           <Pressable
             onPress={openSafety}
@@ -1265,30 +1383,14 @@ export function ActiveWorkoutScreen({ route, navigation }: Props) {
           </Pressable>
         ) : null}
         <Button
-          label={isLastExercise ? "Finish Workout" : "Next Exercise"}
+          label={isLastExercise ? "Finish workout" : "Next exercise"}
+          size="compact"
           onPress={onNextExercise}
           loading={isFinishing || isAdvancing}
           disabled={paused}
           variant={setsRemaining > 0 ? "secondary" : "primary"}
         />
-        <Button
-          label="Abandon Workout"
-          variant="secondary"
-          onPress={onAbandon}
-          loading={isAbandoning}
-          style={{ marginTop: spacing.xs, height: 34 }}
-        />
       </View>
-
-      <ReasoningSheet
-        visible={whyOpen}
-        onClose={() => setWhyOpen(false)}
-        title="Why this recovery score?"
-        heading="Based on your own logs"
-        rationale={readiness.data?.summary ?? readiness.data?.headline ?? "Computed from the recovery data you have logged."}
-        rows={(readiness.data?.components ?? []).map((c) => ({ label: readinessFactorLabel(c.key), value: `${Math.round(c.score)}/100` }))}
-        caveat={readiness.data?.basis ?? "Based on your logged data"}
-      />
 
       <SetQuickEditSheet
         visible={quickEdit !== null}
@@ -1409,28 +1511,36 @@ function rpeLabel(n: number): string {
 
 /** Set table columns (Figma log/01): SET · PREVIOUS · KG · REPS · ✓. */
 const tableStyles = themed(() => ({
-  row: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40 },
-  head: { color: colors.textMuted, fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.4 },
-  setCol: { width: 30, textAlign: "center" },
+  row: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 40 },
+  head: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11, letterSpacing: 0.3 },
+  setCol: { width: 34, textAlign: "center" },
   prevCol: { flex: 1 },
-  numCol: { width: 64, textAlign: "center" },
-  checkCol: { width: 40, textAlign: "center" },
-  label: { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15 },
+  numCol: { width: 62, textAlign: "center" },
+  checkCol: { width: 36, textAlign: "center" },
+  label: { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 },
   prev: { color: colors.textSecondary, fontSize: 13 },
-  value: { color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15, textAlign: "center" },
+  value: { color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14, textAlign: "center" },
+  planned: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 14, textAlign: "center" },
+  // Cells stay 38 tall (Figma 30) so they're comfortable to tap mid-set.
   cell: {
     height: 38,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surfaceHigh,
     alignItems: "center",
     justifyContent: "center",
   },
   checkButton: {
     height: 38,
     borderRadius: radius.sm,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surfaceHigh,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doneCheck: {
+    width: 36,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.success,
     alignItems: "center",
     justifyContent: "center",
   },
