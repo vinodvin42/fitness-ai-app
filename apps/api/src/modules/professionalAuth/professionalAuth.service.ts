@@ -132,6 +132,13 @@ export async function professionalRefresh(rawRefreshToken: string) {
     throw new ApiHttpError(401, "invalid_refresh_token", "Refresh token is invalid or expired");
   }
 
+  // Suspension revokes every refresh token (adminProfessionals.service.ts's
+  // suspendProfessional); this also covers a token issued by a refresh that
+  // raced the suspension, or a status changed some other way.
+  if (record.professional.status !== "active") {
+    throw new ApiHttpError(401, "account_suspended", "This account is suspended");
+  }
+
   await prisma.professionalRefreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
 
   const tokens = await issueTokenPair(record.professional.id, record.professional.email);

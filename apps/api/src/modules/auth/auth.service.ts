@@ -149,8 +149,10 @@ export async function verifyTwoFactorLogin(twoFactorToken: string, code: string)
     throw new ApiHttpError(401, "invalid_challenge", "This login attempt has expired — log in again");
   }
 
+  // The status check repeats login()'s: an account suspended during the
+  // 5-minute challenge window must not get a session from the second step.
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !user.twoFactorEnabled) {
+  if (!user || !user.twoFactorEnabled || user.status !== "active") {
     throw new ApiHttpError(401, "invalid_challenge", "This login attempt has expired — log in again");
   }
 
@@ -174,6 +176,13 @@ export async function refresh(rawRefreshToken: string) {
 
   if (!record || record.revokedAt || record.expiresAt < new Date()) {
     throw new ApiHttpError(401, "invalid_refresh_token", "Refresh token is invalid or expired");
+  }
+
+  // Suspension revokes every refresh token (adminUsers.service.ts's
+  // suspendUser); this also covers a token issued by a refresh that raced
+  // the suspension, or a status changed some other way.
+  if (record.user.status !== "active") {
+    throw new ApiHttpError(401, "account_suspended", "This account is suspended");
   }
 
   // Rotate: revoke the used token, issue a new pair. Prevents replay of a

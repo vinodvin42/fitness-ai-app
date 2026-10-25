@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { buildApp, prisma, uniqueEmail } from "./helpers";
 import { hashPassword } from "../src/lib/password";
+import { getLifecycleSummary } from "../src/modules/professionalLifecycle/professionalLifecycle.service";
 
 /**
  * R2 Wave 1 (20 Sep 2026) — Professional.lifecycleStatus's real
@@ -246,13 +247,17 @@ describe("Professional R1 lifecycle (application -> verification -> approved -> 
 
     // While suspended, isAvailableForNewClients must read false even
     // though lifecycleStatus alone might not — Professional.status is the
-    // authoritative "can this professional do anything" gate.
-    const summaryWhileSuspended = await request(app)
+    // authoritative "can this professional do anything" gate. The coach's
+    // own unexpired token is refused outright now (coach communication
+    // audit B1, 20 Oct 2026), so the summary is read from the service.
+    const refusedWhileSuspended = await request(app)
       .get("/professionals/me/lifecycle")
       .set("Authorization", `Bearer ${professionalToken}`);
-    expect(summaryWhileSuspended.status).toBe(200);
-    expect(summaryWhileSuspended.body.status).toBe("suspended");
-    expect(summaryWhileSuspended.body.isAvailableForNewClients).toBe(false);
+    expect(refusedWhileSuspended.status).toBe(401);
+    expect(refusedWhileSuspended.body.error.code).toBe("account_suspended");
+    const summaryWhileSuspended = await getLifecycleSummary(professionalId);
+    expect(summaryWhileSuspended.status).toBe("suspended");
+    expect(summaryWhileSuspended.isAvailableForNewClients).toBe(false);
 
     const reactivateRes = await request(app)
       .post(`/admin/professionals/${professionalId}/reactivate`)

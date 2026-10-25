@@ -435,17 +435,28 @@ export async function suspendProfessional(adminId: string, professionalId: strin
     throw new ApiHttpError(404, "not_found", "Professional not found");
   }
 
-  const updated = await prisma.professional.update({
-    where: { id: professionalId },
-    data: { status: "suspended", adminNotes: input.adminNotes ?? undefined },
-  });
+  // Suspension ends every signed-in session at once (coach communication
+  // audit B1, 20 Oct 2026): all refresh tokens are revoked in the same
+  // transaction as the status change, and requireProfessionalAuth refuses
+  // the access tokens already issued. Before this, a coach suspended after
+  // a safety report stayed signed in and could keep messaging clients.
+  const [updated, revoked] = await prisma.$transaction([
+    prisma.professional.update({
+      where: { id: professionalId },
+      data: { status: "suspended", adminNotes: input.adminNotes ?? undefined },
+    }),
+    prisma.professionalRefreshToken.updateMany({
+      where: { professionalId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
 
   await recordAudit({
     actorAdminId: adminId,
     action: "admin.professional.suspended",
     entityType: "Professional",
     entityId: professionalId,
-    metadata: { adminNotes: input.adminNotes },
+    metadata: { adminNotes: input.adminNotes, revokedSessions: revoked.count },
   });
 
   // R2 Wave 1 (20 Sep 2026) — keeps `lifecycleStatus` in step with `status`

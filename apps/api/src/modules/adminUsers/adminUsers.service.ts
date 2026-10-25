@@ -614,9 +614,16 @@ export async function denySensitiveAccessRequest(
  * this file's top comment for why this doesn't need the 08.04 Safety/
  * Abuse Reports moderation-policy decision that's still genuinely open.
  * Blocks login immediately for future login attempts (auth.service.ts's
- * login()) — same limitation as Professional/AdminUser suspend: an
- * already-issued, still-valid access/refresh token pair isn't proactively
- * revoked, only blocked from being renewed via a fresh login.
+ * login()).
+ *
+ * 20 Oct 2026 (coach communication audit B1): suspension also revokes
+ * every refresh token in the same transaction, and auth.service.ts's
+ * refresh() refuses a suspended account, so an already-signed-in app can't
+ * renew its session. The access token it already holds still works until
+ * it expires (JWT_ACCESS_TTL_MIN, 15 minutes by default): requireAuth
+ * deliberately doesn't look up the user's status on every consumer
+ * request. Coaches get that per-request check instead (see
+ * middleware/professionalAuth.ts).
  */
 export async function suspendUser(adminId: string, userId: string, input: SuspendUserInput) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -624,17 +631,23 @@ export async function suspendUser(adminId: string, userId: string, input: Suspen
     throw new ApiHttpError(404, "not_found", "User not found");
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { status: "suspended", adminNotes: input.adminNotes ?? undefined },
-  });
+  const [updated, revoked] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { status: "suspended", adminNotes: input.adminNotes ?? undefined },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
 
   await recordAudit({
     actorAdminId: adminId,
     action: "admin.user.suspended",
     entityType: "User",
     entityId: userId,
-    metadata: { adminNotes: input.adminNotes },
+    metadata: { adminNotes: input.adminNotes, revokedSessions: revoked.count },
   });
 
   return updated;
