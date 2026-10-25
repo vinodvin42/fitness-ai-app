@@ -11,8 +11,11 @@ import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
 
-const TIER_LABELS: Record<SubscriptionTier, string> = { basic: "Basic", grow: "Grow", prime: "Prime" };
+// Grow was retired on 21 Oct 2026 (owner: Basic and Prime only). It stays as a filter so its archived
+// plans and their history can still be found, but new or edited plans can't be put on it.
+const TIER_LABELS: Record<SubscriptionTier, string> = { basic: "Basic", grow: "Grow (retired)", prime: "Prime" };
 const TIER_OPTIONS: SubscriptionTier[] = ["basic", "grow", "prime"];
+const PLAN_TIERS: SubscriptionTier[] = ["basic", "prime"];
 const CYCLE_LABELS: Record<BillingCycle, string> = { monthly: "Monthly", quarterly: "Every 3 months", annual: "Annual" };
 
 function dateText(iso: string): string {
@@ -286,7 +289,7 @@ export function PricingScreen() {
                   onChange={(e) => setForm((prev) => ({ ...prev, tier: e.target.value as SubscriptionTier }))}
                   className="rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
                 >
-                  {TIER_OPTIONS.map((t) => (
+                  {(form.tier === "grow" ? TIER_OPTIONS : PLAN_TIERS).map((t) => (
                     <option key={t} value={t}>
                       {TIER_LABELS[t]}
                     </option>

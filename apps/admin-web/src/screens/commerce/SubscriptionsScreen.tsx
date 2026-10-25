@@ -28,6 +28,8 @@ function money(cents: number): string {
 }
 
 function label(value: string): string {
+  // Grow was retired on 21 Oct 2026; older subscriptions on it can still be found.
+  if (value === "grow") return "Grow (retired)";
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, " ");
 }
 

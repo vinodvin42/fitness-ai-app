@@ -22,7 +22,7 @@ import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
-const MEMBERSHIP_LABELS: Record<MembershipTier, string> = { free: "Free", basic: "Basic", grow: "Grow", prime: "Prime" };
+const MEMBERSHIP_LABELS: Record<MembershipTier, string> = { free: "Free", basic: "Basic", grow: "Grow (retired)", prime: "Prime" };
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
 const PAYMENT_PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase" };
 

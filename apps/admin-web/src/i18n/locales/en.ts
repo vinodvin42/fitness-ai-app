@@ -1209,7 +1209,7 @@ export const en = {
     loading: "Loading…",
     membership: "Membership",
     nameOrEmail: "Name or email…",
-    grow: "Grow",
+    grow: "Grow (retired)",
     registered: "Registered",
     selectAllUsersOn: "Select all users on this page",
     suspended: "Suspended",

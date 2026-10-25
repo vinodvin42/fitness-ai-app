@@ -13,7 +13,7 @@ import { extractErrorMessage } from "../../lib/apiError";
 const MEMBERSHIP_LABELS: Record<MembershipTier, string> = {
   free: "Free",
   basic: "Basic",
-  grow: "Grow",
+  grow: "Grow (retired)",
   prime: "Prime",
 };
 
