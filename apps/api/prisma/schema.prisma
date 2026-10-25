@@ -3013,6 +3013,20 @@ model Relationship {
   // sets `endedAt` today either).
   endReason      String?
 
+  // 25 Oct 2026 (Figma coach/02, 05, 07): what the member asked for when they
+  // requested guidance, before anything is paid. `requestedAt` is when the
+  // request was last made (a re-request after an ended/declined/expired one
+  // starts the reply window again, unlike `createdAt`); the coach has
+  // REQUEST_REPLY_WINDOW_MS from it to answer, else the row becomes `expired`
+  // (lazily, on read, like the stuck-activation check: no scheduler exists).
+  // `acceptedAt` is when the coach accepted. Legacy `requested` rows have a
+  // null `requestedAt` and fall back to `createdAt`.
+  requestedOfferingId String?
+  preferredDate       DateTime?
+  requestNote         String?
+  requestedAt         DateTime?
+  acceptedAt          DateTime?
+
   changeRequests RelationshipChangeRequest[]
 
   // Added 15 Sep 2026 alongside the richer status enum above: one row per

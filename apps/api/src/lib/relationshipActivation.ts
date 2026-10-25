@@ -14,3 +14,12 @@ export const STUCK_ACTIVATING_THRESHOLD_MS = 15 * 60 * 1000;
  */
 export const FINISHED_RELATIONSHIP_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 export const FINISHED_RELATIONSHIP_STATUSES = ["declined", "expired", "completed"] as const;
+
+/**
+ * How long a coach has to answer a guidance request before it ends (25 Oct
+ * 2026, Figma coach/05 and 05b: "48 hours to reply, or the request ends").
+ * Checked when either side reads the request, since this app has no scheduler
+ * (see coaching.service.ts's expireOverdueRequests). Nothing is ever charged
+ * before a coach accepts, so an expired request costs the member nothing.
+ */
+export const REQUEST_REPLY_WINDOW_MS = 48 * 60 * 60 * 1000;

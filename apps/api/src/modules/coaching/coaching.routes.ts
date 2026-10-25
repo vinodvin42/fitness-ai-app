@@ -6,6 +6,7 @@ import {
   availabilityQuerySchema,
   createBookingSchema,
   createChangeRequestSchema,
+  createGuidanceRequestSchema,
   declineRelationshipSchema,
   discoverProfessionalsQuerySchema,
 } from "./coaching.schema";
@@ -179,6 +180,25 @@ coachingRouter.get("/coaching/team", requireAuth, async (req: AuthedRequest, res
 coachingRouter.get("/coaching/relationships/status", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await coachingService.listRelationshipStatus(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 25 Oct 2026 (Figma coach/02, 05, 07): ask a coach for guidance with no
+// payment and no exact slot, and take the request back before it is paid.
+coachingRouter.post("/coaching/relationships/request", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    const input = createGuidanceRequestSchema.parse(req.body);
+    res.status(201).json(await coachingService.createGuidanceRequest(req.userId!, input));
+  } catch (err) {
+    next(err);
+  }
+});
+
+coachingRouter.post("/coaching/relationships/:id/cancel", requireAuth, writeRateLimit, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await coachingService.cancelGuidanceRequest(req.userId!, req.params.id));
   } catch (err) {
     next(err);
   }

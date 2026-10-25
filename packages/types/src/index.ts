@@ -2243,10 +2243,42 @@ export interface RelationshipStatusItem {
   stuck?: boolean;
   /** For `activation_failed` or stuck rows: the captured booking payment that never activated, for support. */
   paymentId?: string | null;
+  // What the member asked for and when (25 Oct 2026, Figma coach/05, 07). All
+  // absent or null for a request made before this existed.
+  /** When the request was made (falls back to `createdAt`). */
+  requestedAt?: string | null;
+  /** `requested` only: when the coach's reply window closes; after that the request expires. */
+  replyBy?: string | null;
+  /** When the coach accepted. */
+  acceptedAt?: string | null;
+  /** The service (offering) the member asked about, for pre-filling the booking. */
+  offeringId?: string | null;
+  serviceName?: string | null;
+  /** The day the member would like to start, `YYYY-MM-DDT00:00:00.000Z`. */
+  preferredDate?: string | null;
+  note?: string | null;
 }
 
 export interface RelationshipStatusResponse {
   relationships: RelationshipStatusItem[];
+}
+
+/** Matches coaching.schema.ts's createGuidanceRequestSchema, POST /coaching/relationships/request (25 Oct 2026). */
+export interface CreateGuidanceRequestInput {
+  professionalId: string;
+  serviceType: ProfessionalServiceType;
+  offeringId?: string;
+  /** `YYYY-MM-DD`, today up to 60 days ahead. */
+  preferredDate?: string;
+  note?: string;
+}
+
+export interface GuidanceRequestResult {
+  relationshipId: string;
+  /** `requested` for a new or still-waiting request; anything else means the relationship was already further along and nothing changed. */
+  status: RelationshipStatus;
+  created: boolean;
+  replyBy: string | null;
 }
 
 /**
@@ -2263,6 +2295,13 @@ export interface PendingRelationshipItem {
   userFullName: string;
   serviceType: ProfessionalServiceType;
   createdAt: string;
+  // What the member asked for (25 Oct 2026); null for a request made before this existed.
+  requestedAt?: string | null;
+  /** When the reply window closes; the request expires after this. */
+  replyBy?: string | null;
+  serviceName?: string | null;
+  preferredDate?: string | null;
+  note?: string | null;
 }
 
 export interface PendingRelationshipsResponse {

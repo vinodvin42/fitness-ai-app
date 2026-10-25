@@ -6,6 +6,7 @@ import { createActionItem } from "../../lib/adminActionQueue";
 import {
   FINISHED_RELATIONSHIP_STATUSES,
   FINISHED_RELATIONSHIP_WINDOW_MS,
+  REQUEST_REPLY_WINDOW_MS,
   STUCK_ACTIVATING_THRESHOLD_MS,
 } from "../../lib/relationshipActivation";
 import { ApiHttpError } from "../../middleware/errorHandler";
@@ -15,6 +16,7 @@ import {
   AvailabilityQuery,
   CreateBookingInput,
   CreateChangeRequestInput,
+  CreateGuidanceRequestInput,
   DiscoverProfessionalsQuery,
 } from "./coaching.schema";
 
@@ -405,7 +407,7 @@ export async function claimRelationship(
 ): Promise<RelationshipClaimRow> {
   try {
     const created = await prisma.relationship.create({
-      data: { userId, professionalId, serviceType, status: "requested" },
+      data: { userId, professionalId, serviceType, status: "requested", requestedAt: new Date() },
     });
 
     // §8 "professional.requested" — the real, brand-new request, fired at
@@ -427,9 +429,20 @@ export async function claimRelationship(
     // `ended`): createOrder's and createBooking's gates only refuse
     // `requested`, so a declined row handed back as-is would let the user
     // pay a coach who said no.
+    // `expired` is reclaimed too (25 Oct 2026): a request the coach never answered
+    // can be made again, with a fresh reply window and none of the old details.
     const reclaimed = await prisma.relationship.updateMany({
-      where: { userId, professionalId, serviceType, status: { in: ["ended", "declined"] } },
-      data: { status: "requested", endedAt: null, endReason: null },
+      where: { userId, professionalId, serviceType, status: { in: ["ended", "declined", "expired"] } },
+      data: {
+        status: "requested",
+        endedAt: null,
+        endReason: null,
+        requestedAt: new Date(),
+        acceptedAt: null,
+        requestedOfferingId: null,
+        preferredDate: null,
+        requestNote: null,
+      },
     });
 
     const existing = await prisma.relationship.findUnique({
@@ -461,15 +474,143 @@ export async function acceptRelationship(professionalId: string, relationshipId:
     throw new ApiHttpError(404, "relationship_not_found", "Relationship request not found");
   }
 
+  // A request that sat past the reply window has ended: accepting it now would
+  // start a booking the member already saw as expired.
+  const lapsed = await expireOverdueRequests({ id: relationshipId });
+  if (lapsed > 0) {
+    throw new ApiHttpError(409, "relationship_expired", "This request has expired: it wasn't answered in time");
+  }
+
   const result = await prisma.relationship.updateMany({
     where: { id: relationshipId, professionalId, status: "requested" },
-    data: { status: "accepted" },
+    data: { status: "accepted", acceptedAt: new Date() },
   });
   if (result.count === 0) {
     throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
   }
 
   return { id: relationshipId, status: "accepted" };
+}
+
+/**
+ * Ends every `requested` relationship (matching `extra`) that has waited longer
+ * than REQUEST_REPLY_WINDOW_MS for the coach: `expired`, with `endReason`
+ * "no_reply". This app has no scheduler, so it runs when either side reads or
+ * acts on a request (the same lazy pattern as the stuck-activation check in
+ * professionalDashboard.service.ts) and is atomic and idempotent: the
+ * status-filtered `updateMany` only ever moves a row that is still
+ * `requested`, so it can never race an accept or a decline. A legacy row with
+ * no `requestedAt` counts from `createdAt`. Returns how many rows it ended.
+ */
+export async function expireOverdueRequests(extra: { id?: string; userId?: string; professionalId?: string }, now: Date = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - REQUEST_REPLY_WINDOW_MS);
+  const result = await prisma.relationship.updateMany({
+    where: {
+      ...extra,
+      status: "requested",
+      OR: [{ requestedAt: { lt: cutoff } }, { requestedAt: null, createdAt: { lt: cutoff } }],
+    },
+    data: { status: "expired", endedAt: now, endReason: "no_reply" },
+  });
+  return result.count;
+}
+
+/** When the coach's reply window closes for a request made at `requestedAt` (or `createdAt` for a legacy row). */
+function replyBy(row: { requestedAt?: Date | null; createdAt: Date }): Date {
+  return new Date((row.requestedAt ?? row.createdAt).getTime() + REQUEST_REPLY_WINDOW_MS);
+}
+
+/**
+ * Figma coach/02, 05: ask a coach for guidance with no payment and no exact
+ * slot. Claims the (user, coach, service) relationship the same way a booking
+ * attempt always did (claimRelationship), then keeps what the member asked for
+ * (which offering, a preferred day, a note) so the coach can review it and the
+ * member can see it again, and later pay for exactly that. Safe to repeat:
+ * while the request is still `requested` the details are updated in place;
+ * once the coach has accepted (or the relationship is further along) nothing
+ * changes and the current status is returned, so the app can carry on from
+ * there. Nothing is charged here.
+ */
+export async function createGuidanceRequest(userId: string, input: CreateGuidanceRequestInput) {
+  const professional = (await prisma.professional.findUnique({
+    where: { id: input.professionalId },
+    select: { id: true, status: true, credentials: { select: { serviceType: true, status: true } } },
+  })) as { id: string; status: string; credentials: CredentialRow[] } | null;
+  if (!professional || professional.status !== "active") {
+    throw new ApiHttpError(404, "professional_not_found", "Coach not found");
+  }
+  if (!verifiedServiceTypes(professional.credentials).includes(input.serviceType)) {
+    throw new ApiHttpError(400, "service_not_offered", "This coach doesn't offer that service");
+  }
+
+  if (input.offeringId) {
+    const offering = (await prisma.professionalServiceOffering.findUnique({ where: { id: input.offeringId } })) as {
+      professionalId: string;
+      serviceType: string | null;
+      isActive: boolean;
+    } | null;
+    // A combined offering (no serviceType) covers both services.
+    if (
+      !offering ||
+      offering.professionalId !== input.professionalId ||
+      !offering.isActive ||
+      (offering.serviceType != null && offering.serviceType !== input.serviceType)
+    ) {
+      throw new ApiHttpError(404, "offering_not_found", "This coaching service could not be found");
+    }
+  }
+
+  let preferredDate: Date | null = null;
+  if (input.preferredDate) {
+    preferredDate = parseDateOnlyUtc(input.preferredDate);
+    // The member picks a day in their own time zone, so "today" can be a day behind UTC for them.
+    const today = parseDateOnlyUtc(new Date().toISOString().slice(0, 10));
+    const earliest = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const latest = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(preferredDate.getTime()) || preferredDate < earliest || preferredDate > latest) {
+      throw new ApiHttpError(400, "invalid_preferred_date", "Pick a day from today up to 60 days ahead");
+    }
+  }
+
+  const claimed = await claimRelationship(userId, input.professionalId, input.serviceType);
+  if (claimed.status !== "requested") {
+    return { relationshipId: claimed.id, status: claimed.status, created: false, replyBy: null as Date | null };
+  }
+
+  const updated = await prisma.relationship.update({
+    where: { id: claimed.id },
+    data: {
+      requestedOfferingId: input.offeringId ?? null,
+      preferredDate,
+      requestNote: input.note?.trim() ? input.note.trim() : null,
+    },
+  });
+  return { relationshipId: updated.id, status: "requested", created: true, replyBy: replyBy(updated) };
+}
+
+/**
+ * Figma coach/05, 07 "Cancel request": the member takes a request back before
+ * any payment exists, while it is still waiting for the coach (`requested`) or
+ * accepted but not yet paid (`accepted`). Atomic and ownership-filtered like
+ * the coach's accept/decline; a relationship that is further along (a payment
+ * started, an active coach) can only be changed through the change-request
+ * flow, never silently here. The row ends (`ended`, "cancelled_by_member"), so
+ * it leaves the member's list and the coach's pending list, and the same coach
+ * can be asked again later.
+ */
+export async function cancelGuidanceRequest(userId: string, relationshipId: string) {
+  const existing = await prisma.relationship.findUnique({ where: { id: relationshipId }, select: { userId: true } });
+  if (!existing || existing.userId !== userId) {
+    throw new ApiHttpError(404, "relationship_not_found", "Request not found");
+  }
+  const result = await prisma.relationship.updateMany({
+    where: { id: relationshipId, userId, status: { in: ["requested", "accepted"] } },
+    data: { status: "ended", endedAt: new Date(), endReason: "cancelled_by_member" },
+  });
+  if (result.count === 0) {
+    throw new ApiHttpError(409, "relationship_not_cancellable", "This request can no longer be cancelled here");
+  }
+  return { id: relationshipId, status: "ended" as const };
 }
 
 /**
@@ -513,8 +654,23 @@ type PendingRelationshipRow = {
   userId: string;
   serviceType: string;
   createdAt: Date;
+  requestedAt: Date | null;
+  requestedOfferingId: string | null;
+  preferredDate: Date | null;
+  requestNote: string | null;
   user: { fullName: string };
 };
+
+/** The service name for each requested offering, for showing what a member asked for. */
+async function offeringLabels(ids: Array<string | null>): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id): id is string => !!id))];
+  if (wanted.length === 0) return new Map();
+  const rows = (await prisma.professionalServiceOffering.findMany({
+    where: { id: { in: wanted } },
+    select: { id: true, label: true },
+  })) as Array<{ id: string; label: string }>;
+  return new Map(rows.map((r) => [r.id, r.label] as const));
+}
 
 /**
  * Backs apps/coach-mobile's new Pending Requests screen (gap §56) — every
@@ -523,12 +679,15 @@ type PendingRelationshipRow = {
  * each one instead of it auto-advancing unseen.
  */
 export async function listPendingRelationships(professionalId: string) {
+  // A request the coach let lapse is gone from their list too (25 Oct 2026).
+  await expireOverdueRequests({ professionalId });
   const relationships = await prisma.relationship.findMany({
     where: { professionalId, status: "requested" },
     include: { user: { select: { fullName: true } } },
     orderBy: { createdAt: "asc" },
   });
   const rows = relationships as PendingRelationshipRow[];
+  const labels = await offeringLabels(rows.map((r) => r.requestedOfferingId));
 
   return {
     requests: rows.map((r) => ({
@@ -537,6 +696,12 @@ export async function listPendingRelationships(professionalId: string) {
       userFullName: r.user.fullName,
       serviceType: r.serviceType,
       createdAt: r.createdAt,
+      // What the member asked for (25 Oct 2026); all null for a request made before this existed.
+      requestedAt: r.requestedAt ?? r.createdAt,
+      replyBy: replyBy(r),
+      serviceName: r.requestedOfferingId ? (labels.get(r.requestedOfferingId) ?? null) : null,
+      preferredDate: r.preferredDate,
+      note: r.requestNote,
     })),
   };
 }
@@ -765,6 +930,11 @@ type RelationshipStatusRow = {
   createdAt: Date;
   updatedAt: Date;
   endedAt: Date | null;
+  requestedAt: Date | null;
+  acceptedAt: Date | null;
+  requestedOfferingId: string | null;
+  preferredDate: Date | null;
+  requestNote: string | null;
   professional: { id: string; fullName: string };
 };
 
@@ -794,6 +964,9 @@ type RelationshipStatusRow = {
  *    later than the row's last status change — so support can find it.
  */
 export async function listRelationshipStatus(userId: string, now: Date = new Date()) {
+  // A request the coach never answered ends here, so the member sees it as
+  // expired instead of waiting forever (25 Oct 2026).
+  await expireOverdueRequests({ userId }, now);
   const finishedSince = new Date(now.getTime() - FINISHED_RELATIONSHIP_WINDOW_MS);
   const relationships = await prisma.relationship.findMany({
     where: {
@@ -812,6 +985,7 @@ export async function listRelationshipStatus(userId: string, now: Date = new Dat
   const isStuck = (r: RelationshipStatusRow) => r.status === "activating" && r.updatedAt.getTime() < stuckCutoff;
   const needsPayment = rows.filter((r) => r.status === "activation_failed" || isStuck(r));
   const paymentByRelationship = await unactivatedBookingPayments(userId, needsPayment);
+  const labels = await offeringLabels(rows.map((r) => r.requestedOfferingId));
 
   return {
     relationships: rows.map((r) => ({
@@ -825,6 +999,14 @@ export async function listRelationshipStatus(userId: string, now: Date = new Dat
       activatingSince: r.status === "activating" ? r.updatedAt : null,
       stuck: isStuck(r),
       paymentId: paymentByRelationship.get(r.id) ?? null,
+      // What the member asked for and when (25 Oct 2026, Figma coach/05, 07): all null for a request made before this existed.
+      requestedAt: r.requestedAt ?? r.createdAt,
+      replyBy: r.status === "requested" ? replyBy(r) : null,
+      acceptedAt: r.acceptedAt,
+      offeringId: r.requestedOfferingId,
+      serviceName: r.requestedOfferingId ? (labels.get(r.requestedOfferingId) ?? null) : null,
+      preferredDate: r.preferredDate,
+      note: r.requestNote,
     })),
   };
 }

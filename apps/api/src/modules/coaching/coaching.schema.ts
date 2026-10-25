@@ -52,6 +52,18 @@ export const createChangeRequestSchema = z.object({
 });
 export type CreateChangeRequestInput = z.infer<typeof createChangeRequestSchema>;
 
+// 25 Oct 2026 (Figma coach/02): ask a coach for guidance without paying or
+// choosing an exact slot. The offering (which service) and a preferred day are
+// optional; the coach sees them when they review the request.
+export const createGuidanceRequestSchema = z.object({
+  professionalId: z.string().min(1).max(191),
+  serviceType: z.enum(["fitness", "nutrition"]),
+  offeringId: z.string().min(1).max(191).optional(),
+  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "preferredDate must be YYYY-MM-DD").optional(),
+  note: z.string().trim().max(300).optional(),
+});
+export type CreateGuidanceRequestInput = z.infer<typeof createGuidanceRequestSchema>;
+
 // 16 Sep 2026 (gap §56) — the coach's own real accept/decline actions on a
 // `requested` relationship. Decline's reason is an optional short free-text
 // note (not the structured ChangeReasonCategory above — that's the USER's
