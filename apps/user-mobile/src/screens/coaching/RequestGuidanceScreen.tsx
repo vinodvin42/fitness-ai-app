@@ -62,7 +62,7 @@ const SERVICES: Array<{ value: "fitness" | "nutrition"; label: string }> = [
   { value: "nutrition", label: "Nutrition" },
 ];
 
-export function RequestGuidanceScreen(_props: Props) {
+export function RequestGuidanceScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [serviceType, setServiceType] = useState<"fitness" | "nutrition">("fitness");
@@ -98,14 +98,14 @@ export function RequestGuidanceScreen(_props: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title={t("guidance.title")}>
+      <ScreenContainer title={t("guidance.title")} onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
   }
   if (isError) {
     return (
-      <ScreenContainer title={t("guidance.title")}>
+      <ScreenContainer title={t("guidance.title")} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
@@ -117,7 +117,7 @@ export function RequestGuidanceScreen(_props: Props) {
   const canRequest = live.length === 0;
 
   return (
-    <ScreenContainer title={t("guidance.title")} subtitle={t("guidance.subtitle")}>
+    <ScreenContainer title={t("guidance.title")} subtitle={t("guidance.subtitle")} onBack={() => navigation.goBack()}>
       {live.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("guidance.yourRequest")}</Text>

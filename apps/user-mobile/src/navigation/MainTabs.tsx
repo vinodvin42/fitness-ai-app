@@ -3,8 +3,8 @@ import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
-import type { NavigatorScreenParams } from "@react-navigation/native";
+import { CommonActions, StackActions, getFocusedRouteNameFromRoute } from "@react-navigation/native";
+import type { NavigationProp, NavigatorScreenParams, ParamListBase } from "@react-navigation/native";
 import { TodayStack } from "./TodayStack";
 import type { TodayStackParamList } from "./TodayStack";
 import { TrainStack } from "./TrainStack";
@@ -59,6 +59,23 @@ export type MainTabsParamList = {
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
+/**
+ * Picking More from another tab opens the More menu (owner, 25 Oct 2026), not whichever screen was last left open
+ * in it, such as My coaches, which made More look like it only had the coach option. Tapping More while it's
+ * already showing keeps the tab bar's own pop-to-top. Links from other screens into More navigate() directly and
+ * don't pass through here.
+ */
+function openMoreAtMenu(navigation: NavigationProp<ParamListBase>) {
+  if (navigation.isFocused()) return;
+  const more = navigation.getState().routes.find((r) => r.name === "More")?.state;
+  if (!more?.key) return;
+  const atMenu = more.routes[0]?.name === "MoreHub";
+  if (atMenu && (more.index ?? 0) === 0) return;
+  // POP_TO_TOP is unhandled on a one-screen stack, so a stack opened straight into a screen is reset instead.
+  if (atMenu) navigation.dispatch({ ...StackActions.popToTop(), target: more.key });
+  else navigation.dispatch({ ...CommonActions.reset({ index: 0, routes: [{ name: "MoreHub" }] }), target: more.key });
+}
+
 
 export function MainTabs() {
   const { t } = useTranslation();
@@ -96,7 +113,12 @@ export function MainTabs() {
       <Tab.Screen name="Train" component={TrainStack} options={{ title: t(TAB_LABEL_KEYS.Train) }} />
       <Tab.Screen name="Fuel" component={FuelStack} options={{ title: t(TAB_LABEL_KEYS.Fuel) }} />
       <Tab.Screen name="Recover" component={RecoverStack} options={{ title: t(TAB_LABEL_KEYS.Recover) }} />
-      <Tab.Screen name="More" component={MoreStack} options={{ title: t(TAB_LABEL_KEYS.More) }} />
+      <Tab.Screen
+        name="More"
+        component={MoreStack}
+        options={{ title: t(TAB_LABEL_KEYS.More) }}
+        listeners={({ navigation }) => ({ tabPress: () => openMoreAtMenu(navigation) })}
+      />
     </Tab.Navigator>
   );
 }

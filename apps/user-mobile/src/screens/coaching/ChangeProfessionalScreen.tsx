@@ -58,7 +58,7 @@ export function ChangeProfessionalScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScreenContainer title={t("coaching.change.title")}>
+    <ScreenContainer title={t("coaching.change.title")} onBack={() => navigation.goBack()}>
       <Card>
         <Text style={{ color: colors.warningText, ...typography.h2 }}>{t("coaching.change.headsUp")}</Text>
         <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>

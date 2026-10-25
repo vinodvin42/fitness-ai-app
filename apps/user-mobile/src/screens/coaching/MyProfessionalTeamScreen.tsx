@@ -43,7 +43,7 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title={t("coaching.team.title")}>
+      <ScreenContainer title={t("coaching.team.title")} onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -51,14 +51,14 @@ export function MyProfessionalTeamScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title={t("coaching.team.title")}>
+      <ScreenContainer title={t("coaching.team.title")} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title={t("coaching.team.title")}>
+    <ScreenContainer title={t("coaching.team.title")} onBack={() => navigation.goBack()}>
       {data.team.length === 0 ? (
         <EmptyState
           title={t("coaching.team.emptyTitle")}

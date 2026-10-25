@@ -36,7 +36,7 @@ export function ConversationsScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title={t("coaching.messages.title")}>
+      <ScreenContainer title={t("coaching.messages.title")} onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -44,14 +44,14 @@ export function ConversationsScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title={t("coaching.messages.title")}>
+      <ScreenContainer title={t("coaching.messages.title")} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title={t("coaching.messages.title")}>
+    <ScreenContainer title={t("coaching.messages.title")} onBack={() => navigation.goBack()}>
       {data.conversations.length === 0 ? (
         <EmptyState
           title={t("coaching.messages.emptyTitle")}

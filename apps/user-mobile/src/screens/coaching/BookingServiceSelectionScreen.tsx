@@ -179,7 +179,7 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   if (profileLoading) {
     return (
-      <ScreenContainer title={t("coaching.booking.selectTitle")}>
+      <ScreenContainer title={t("coaching.booking.selectTitle")} onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -187,14 +187,14 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   if (profileError || !profile) {
     return (
-      <ScreenContainer title={t("coaching.booking.selectTitle")}>
+      <ScreenContainer title={t("coaching.booking.selectTitle")} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={refetchProfile} />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer title={t("coaching.booking.selectTitle")}>
+    <ScreenContainer title={t("coaching.booking.selectTitle")} onBack={() => navigation.goBack()}>
       <Card>
         <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{profile.fullName}</Text>
         <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: 2 }}>
