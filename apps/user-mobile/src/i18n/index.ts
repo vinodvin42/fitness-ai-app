@@ -1,6 +1,16 @@
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import { en } from "./locales/en";
+import type { LocaleCatalogue } from "./locales/en";
+import { hi } from "./locales/hi";
+import { ta } from "./locales/ta";
+import { te } from "./locales/te";
+import { kn } from "./locales/kn";
+import { mr } from "./locales/mr";
+import { bn } from "./locales/bn";
+import { gu } from "./locales/gu";
+import { ml } from "./locales/ml";
+import { pa } from "./locales/pa";
 
 /**
  * Translation layer for the user app.
@@ -43,15 +53,32 @@ export const SUPPORTED_LANGUAGES = [
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
-const RESOURCES: Partial<Record<SupportedLanguage, { translation: typeof en }>> = { en: { translation: en } };
+const RESOURCES: Partial<Record<SupportedLanguage, { translation: LocaleCatalogue }>> = {
+  en: { translation: en },
+  // Owner, 25 Oct 2026: "add indian languages". The nine catalogues are machine-translated from en.ts and
+  // need a native speaker's review; screens whose copy isn't in the catalogue yet stay English, so the
+  // Language screen marks these Beta (BETA_LANGUAGES). tests/i18n-locales.check.cjs keeps their keys and
+  // {{placeholders}} in step with en.ts.
+  hi: { translation: hi },
+  ta: { translation: ta },
+  te: { translation: te },
+  kn: { translation: kn },
+  mr: { translation: mr },
+  bn: { translation: bn },
+  gu: { translation: gu },
+  ml: { translation: ml },
+  pa: { translation: pa },
+};
 
 /**
- * Languages whose copy actually exists — today only English. The Language
- * screen offers only these: listing nine languages that all render English
- * is a choice that changes nothing. Derived from the resources below, so a
- * new catalogue appears on that screen the moment it is added here.
+ * Languages whose copy exists. The Language screen offers only these: a language that would render all
+ * English is a choice that changes nothing. Derived from the resources above, so a new catalogue appears
+ * on that screen the moment it is added there.
  */
 export const TRANSLATED_LANGUAGES = SUPPORTED_LANGUAGES.filter((code) => RESOURCES[code] != null);
+
+/** Partly translated (25 Oct 2026): the catalogue covers menus and the screens moved to it; the rest is English. */
+export const BETA_LANGUAGES: readonly string[] = TRANSLATED_LANGUAGES.filter((code) => code !== "en");
 
 void i18next.use(initReactI18next).init({
   resources: RESOURCES,

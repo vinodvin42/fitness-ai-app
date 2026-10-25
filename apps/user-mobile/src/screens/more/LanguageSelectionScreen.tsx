@@ -6,7 +6,7 @@ import { Icon } from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { extractErrorMessage } from "../../lib/apiError";
 import { LANGUAGES } from "../../lib/languages";
-import { TRANSLATED_LANGUAGES } from "../../i18n";
+import { BETA_LANGUAGES, TRANSLATED_LANGUAGES } from "../../i18n";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
@@ -21,9 +21,10 @@ const AVAILABLE = LANGUAGES.filter((l) => (TRANSLATED_LANGUAGES as readonly stri
  * Choose Your Language (Figma Profile & Settings 07): a two-column grid of
  * languages with a radio, and Save. The choice is saved to
  * `User.languagePreference`. Only languages with real translations are
- * listed (English today) — the other nine the API accepts would all render
- * English, so offering them changed nothing. Search appears once the list
- * is long enough to need it.
+ * listed. Search appears once the list is long enough to need it.
+ *
+ * Owner, 25 Oct 2026 ("add indian languages"): the nine Indian languages are offered, marked Beta: menus
+ * and the screens already in the catalogue switch; the rest of the app stays English for now.
  */
 export function LanguageSelectionScreen({ navigation }: Props) {
   const { user, updateProfile } = useAuth();
@@ -108,7 +109,14 @@ export function LanguageSelectionScreen({ navigation }: Props) {
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 17 }} numberOfLines={1}>
                   {l.native}
                 </Text>
-                <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{l.english}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={{ color: colors.textMuted, ...typography.meta, fontSize: 13 }}>{l.english}</Text>
+                  {BETA_LANGUAGES.includes(l.code) ? (
+                    <View style={{ borderRadius: radius.pill, backgroundColor: colors.warningSoft, paddingHorizontal: 6, paddingVertical: 1 }}>
+                      <Text style={{ color: colors.warningText, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.3 }}>BETA</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
               <View
                 style={{
@@ -131,7 +139,9 @@ export function LanguageSelectionScreen({ navigation }: Props) {
       {filtered.length === 0 ? <Text style={{ color: colors.textSecondary }}>No languages match "{query}".</Text> : null}
 
       <Text style={{ color: colors.textMuted, ...typography.meta, lineHeight: 18 }}>
-        More languages will appear here when they are ready.
+        {BETA_LANGUAGES.includes(selected)
+          ? "Beta: menus and many screens switch to this language. Some screens are still in English while we translate them."
+          : "Indian languages are in Beta: menus and many screens are translated, the rest is still in English."}
       </Text>
 
       <Button label="Save" onPress={onSave} loading={isSaving} disabled={selected === saved} />

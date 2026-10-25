@@ -626,3 +626,7 @@ export const en = {
 } as const;
 
 export type TranslationCatalogue = typeof en;
+
+/** The same keys with plain strings: what every other language (hi, ta, ...) must provide (25 Oct 2026). */
+type DeepStrings<T> = { readonly [K in keyof T]: T[K] extends string ? string : DeepStrings<T[K]> };
+export type LocaleCatalogue = DeepStrings<TranslationCatalogue>;
