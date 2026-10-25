@@ -1,112 +1,101 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { useToast } from "../../components/Toast";
+import { DetailRow, ProfessionalRow, RequestStepBar, StateHeading, SummaryCard } from "../../components/GuidanceParts";
+import { addToCalendar } from "../../lib/calendarInvite";
 import { formatRupees } from "../../lib/money";
+import { colors, fonts, spacing } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "BookingConfirmation">;
 
 function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatPrice(paise: number) {
-  return formatRupees(paise);
+  return new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
 
 /**
- * Booking Confirmation (docs/coach/03-screen-inventory.md §E) — a real
- * session-details card from the just-created Booking (passed via route
- * params, no refetch needed). "amount" is a real, honestly-displayed
- * `priceCents` — no payment was actually collected this pass, see
- * coaching.service.ts's doc comment. Two navigation calls interpret the
- * design's own CTAs, since no dedicated "My Bookings" list screen exists
- * among the seven adopted screens: "View My Bookings" opens My
- * Professional Team (which already shows real last/next session dates
- * per relationship), and "Back to Home" returns to the More hub — same
- * "reasonable reading of an underspecified design element" precedent as
- * Workout History's Compare action.
+ * Session booked (Figma coach/08; redesigned 25 Oct 2026): what was paid (fee + GST), the session, and
+ * the two next steps, Add to calendar (an .ics file, no calendar permission) and Message. Built from the
+ * booking the payment just created (route params, no refetch).
+ *
+ * Not copied from the Figma: "Sarah has been notified" (nothing sends the coach a notice yet), the
+ * payment method ("by UPI": not stored) and a receipt link (no receipts yet; the payment is listed under
+ * More › Purchases).
  */
 export function BookingConfirmationScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const { colors: theme } = useTheme();
+  const toast = useToast();
   const { booking } = route.params;
+  const [adding, setAdding] = useState(false);
+  const first = booking.professionalFullName.split(" ")[0];
+  const total = booking.priceCents + booking.gstCents;
+  const paid =
+    booking.priceCents === 0
+      ? "Free session"
+      : booking.gstCents > 0
+        ? `You paid ${formatRupees(total)} (${formatRupees(booking.priceCents)} + ${formatRupees(booking.gstCents)} GST).`
+        : `You paid ${formatRupees(total)}.`;
+
+  const onAddToCalendar = async () => {
+    setAdding(true);
+    try {
+      const ok = await addToCalendar({
+        uid: booking.id,
+        title: `${booking.offeringLabel} with ${booking.professionalFullName}`,
+        start: booking.scheduledAt,
+        durationMinutes: booking.durationMinutes,
+        description: `Your FynroX session with ${booking.professionalFullName}. Open the app to message them.`,
+      });
+      if (!ok) toast.show("This phone can't share a calendar file.", "error");
+    } catch {
+      toast.show("Couldn't create the calendar file. Try again.", "error");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <ScreenContainer title={t("coaching.booking.confirmedTitle")}>
-      <Card style={{ alignItems: "center" }}>
-        <Text style={{ color: colors.successText, ...typography.h1 }}>{t("coaching.booking.booked")}</Text>
-        <Text style={{ color: colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }}>
-          Your session with {booking.professionalFullName} is confirmed.
+      <View style={{ gap: 18 }}>
+        <StateHeading icon="calendar" flow="Professional Guidance / Booked" title="Session booked" body={paid} />
+        <ProfessionalRow name={booking.professionalFullName} role="Your professional" />
+        <RequestStepBar step={4} />
+        <SummaryCard title="Your session">
+          <DetailRow label={t("coaching.booking.service")} value={booking.offeringLabel} />
+          <DetailRow label={t("coaching.booking.dateTime")} value={formatDateTime(booking.scheduledAt)} />
+          <DetailRow label={t("coaching.booking.duration")} value={`${booking.durationMinutes} minutes`} />
+          <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>Your payment is listed in More › Purchases.</Text>
+        </SummaryCard>
+        {booking.priceCents > 0 ? (
+          <SummaryCard tone="accent">
+            <Text style={{ color: colors.textSecondary, fontSize: 12, letterSpacing: 0.4 }}>PAID</Text>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 18 }}>{formatRupees(total)}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+              {booking.gstCents > 0
+                ? `${formatRupees(booking.priceCents)} session fee + ${formatRupees(booking.gstCents)} GST · paid to FynroX`
+                : `${formatRupees(booking.priceCents)} session fee · paid to FynroX`}
+            </Text>
+          </SummaryCard>
+        ) : null}
+        <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17, textAlign: "center" }}>
+          {`Professional guidance is separate from programs and app plans. You paid FynroX; FynroX pays ${first} after keeping a fee.`}
         </Text>
-      </Card>
-
-      <Card style={{ marginTop: spacing.md }}>
-        <Row label={t("coaching.booking.coach")} value={booking.professionalFullName} />
-        <Row label={t("coaching.booking.service")} value={booking.offeringLabel} />
-        <Row label={t("coaching.booking.dateTime")} value={formatDateTime(booking.scheduledAt)} />
-        <Row label={t("coaching.booking.duration")} value={`${booking.durationMinutes} min`} />
-        <Row
-          label={t("coaching.booking.amount")}
-          value={
-            booking.gstCents > 0
-              ? `${formatPrice(booking.priceCents + booking.gstCents)} (incl. ${formatPrice(booking.gstCents)} GST)`
-              : formatPrice(booking.priceCents)
-          }
-          last
+        <Button label="Add to calendar" onPress={() => void onAddToCalendar()} loading={adding} disabled={adding} />
+        <Button
+          label={t("coaching.booking.messageCoach", { name: first })}
+          variant="secondary"
+          onPress={() => navigation.navigate("MessageThread", { professionalId: booking.professionalId, fullName: booking.professionalFullName })}
         />
-      </Card>
-
-      <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm }}>
-        A reminder for this session isn't scheduled automatically yet — add one from Reminders if you'd like a
-        notification beforehand.
-      </Text>
-
-      <Button
-        label={t("coaching.booking.viewBookings")}
-        onPress={() => navigation.navigate("MyProfessionalTeam")}
-        style={{ marginTop: spacing.lg }}
-      />
-      {/* Figma coach/08 (25 Oct 2026): the thread already exists, so offer it right away. */}
-      <Button
-        label={t("coaching.booking.messageCoach", { name: booking.professionalFullName.split(" ")[0] })}
-        variant="secondary"
-        onPress={() => navigation.navigate("MessageThread", { professionalId: booking.professionalId, fullName: booking.professionalFullName })}
-        style={{ marginTop: spacing.sm }}
-      />
-      <Button
-        label={t("coaching.booking.backHome")}
-        variant="secondary"
-        onPress={() => navigation.popToTop()}
-        style={{ marginTop: spacing.sm }}
-      />
+        <Pressable onPress={() => navigation.popToTop()} accessibilityRole="button" hitSlop={8} style={{ alignSelf: "center", paddingVertical: spacing.xs }}>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>{t("coaching.booking.backHome")}</Text>
+        </Pressable>
+      </View>
     </ScreenContainer>
-  );
-}
-
-function Row({ label, value, last }: { label: string; value: string; last?: boolean }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: spacing.xs,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <Text style={{ color: colors.textSecondary }}>{label}</Text>
-      <Text style={{ color: colors.textPrimary }}>{value}</Text>
-    </View>
   );
 }

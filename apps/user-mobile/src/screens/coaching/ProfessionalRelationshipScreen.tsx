@@ -1,22 +1,25 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { RelationshipStatus, RelationshipStatusItem } from "@fitness-ai-app/types";
+import type { CoachTeamMember, ProfessionalDataSharing, RelationshipStatus, RelationshipStatusItem } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
-import { EmptyState } from "../../components/EmptyState";
-import { cancelCoachRequest, fetchRelationshipStatus } from "../../api/coaching";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
+import { cancelCoachRequest, fetchMyTeam, fetchRelationshipStatus } from "../../api/coaching";
+import { fetchSharing } from "../../api/dataSharing";
+import { DetailRow, ProfessionalRow } from "../../components/GuidanceParts";
+import { useTheme } from "../../theme/ThemeProvider";
 import { retryPaymentActivation } from "../../api/payments";
 import { useToast } from "../../components/Toast";
 import { extractErrorMessage } from "../../lib/apiError";
 import { formatPreferredDay, formatReplyBy, preferredDayForBooking } from "../../lib/coachRequest";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
 
@@ -56,6 +59,10 @@ const NOTE_KEY: Partial<Record<RelationshipStatus, string>> = {
   changing: "coaching.relationship.changingNote",
   completed: "coaching.relationship.completedNote",
 };
+
+/** States that open the full request screen (RequestStatusScreen, Figma coach/05, 06, 05b, 07, 12). */
+const OPENS_SCREEN: ReadonlySet<RelationshipStatus> = new Set(["requested", "accepted", "awaiting_payment", "declined", "expired", "activation_failed"]);
+const opensScreen = (r: RelationshipStatusItem) => OPENS_SCREEN.has(r.status) || !!r.stuck;
 
 function statusPresentation(status: RelationshipStatus): { color: string; icon: IconName } {
   switch (status) {
@@ -120,6 +127,10 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
   });
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { colors: theme } = useTheme();
+  // Figma professional/10: next and last session, and what each professional can see.
+  const team = useQuery({ queryKey: ["coaching", "team"], queryFn: fetchMyTeam });
+  const sharing = useQuery({ queryKey: ["coaching", "sharing"], queryFn: fetchSharing });
   // The payment whose "Try again" is running (Figma coach/12, 24 Oct 2026).
   const [retrying, setRetrying] = useState<string | null>(null);
   // The request being cancelled (Figma coach/05, 07; 25 Oct 2026).
@@ -127,7 +138,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
 
   if (isLoading) {
     return (
-      <ScreenContainer title={t("coaching.title")}>
+      <ScreenContainer title={t("coaching.title")} onBack={() => navigation.goBack()}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -135,7 +146,7 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title={t("coaching.title")}>
+      <ScreenContainer title={t("coaching.title")} onBack={() => navigation.goBack()}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
@@ -192,60 +203,90 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
   const active = data.relationships.filter((r) => r.status === "active");
 
   return (
-    <ScreenContainer title={t("coaching.title")} subtitle={t("coaching.subtitle")}>
+    <ScreenContainer
+      title={t("coaching.title")}
+      subtitle={data.relationships.length === 0 ? undefined : t("coaching.subtitle")}
+      onBack={() => navigation.goBack()}
+    >
       {data.relationships.length === 0 ? (
-        <EmptyState
-          title={t("coaching.relationship.emptyTitle")}
-          subtitle={t("coaching.relationship.emptySubtitle")}
-          actionLabel={t("coaching.team.findCoach")}
-          onAction={findCoach}
+        <NoProfessionals
+          onFind={(serviceType) =>
+            COACH_BROWSING_ENABLED ? navigation.navigate("CoachDiscovery", { serviceType }) : navigation.navigate("RequestGuidance")
+          }
         />
       ) : (
         <View style={{ gap: spacing.md }}>
-          {inFlight.length > 0 ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("coaching.relationship.yourRequest")}</Text>
-              {inFlight.map((r) => (
-                <RelationshipStatusCard
-                  key={r.relationshipId}
-                  item={r}
-                  // Always offered once the coach has accepted — not tied to
-                  // the browsing flag, or a hire stalled halfway with no way
-                  // to pay. The API refuses the payment itself if it must.
-                  onContinuePayment={
-                    r.status === "accepted" || r.status === "awaiting_payment"
-                      ? () =>
-                          // The service and day the member asked for are already chosen (25 Oct 2026).
-                          navigation.navigate("BookingServiceSelection", {
-                            professionalId: r.professionalId,
-                            offeringId: r.offeringId ?? undefined,
-                            preferredDate: preferredDayForBooking(r.preferredDate) ?? undefined,
-                          })
-                      : undefined
-                  }
-                  onCancel={r.status === "requested" || r.status === "accepted" ? () => confirmCancel(r) : undefined}
-                  cancelling={cancelling === r.relationshipId}
-                  onContactSupport={
-                    r.status === "activation_failed" || r.stuck
-                      ? () => navigation.navigate("SupportTicketForm", { category: "billing" })
-                      : undefined
-                  }
-                  onRetry={r.status === "activation_failed" && r.paymentId && !r.stuck ? () => void retry(r.paymentId as string) : undefined}
-                  retrying={!!r.paymentId && retrying === r.paymentId}
-                  onPickTime={
-                    r.status === "activation_failed" && r.paymentId && !r.stuck
-                      ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId, rebookPaymentId: r.paymentId as string })
-                      : undefined
-                  }
-                />
-              ))}
-            </View>
-          ) : null}
+          {/* Figma professional/10 (25 Oct 2026): one card per service, with the active professional and any open request. */}
+          {(["fitness", "nutrition"] as const).map((service) => {
+            const slotActive = active.filter((r) => r.serviceType === service);
+            const slotOpen = inFlight.filter((r) => r.serviceType === service);
+            if (slotActive.length === 0 && slotOpen.length === 0) return null;
+            return (
+              <View
+                key={service}
+                style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.md }}
+              >
+                <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 12 }}>{service === "fitness" ? "Fitness" : "Nutrition"}</Text>
+                {slotActive.map((r) => (
+                  <ActiveProfessional
+                    key={r.relationshipId}
+                    item={r}
+                    member={team.data?.team.find((m) => m.relationshipId === r.relationshipId)}
+                    sharing={sharing.data?.find((p) => p.professionalId === r.professionalId)}
+                    onMessage={() => navigation.navigate("MessageThread", { professionalId: r.professionalId, fullName: r.professionalFullName })}
+                    onBook={() => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })}
+                    onSharing={() => navigation.navigate("PrivacySettings")}
+                  />
+                ))}
+                {slotOpen.map((r) =>
+                  opensScreen(r) ? (
+                    <OpenRequest key={r.relationshipId} item={r} onView={() => navigation.navigate("RequestStatus", { relationshipId: r.relationshipId })} />
+                  ) : (
+                      <RelationshipStatusCard
+                        key={r.relationshipId}
+                        item={r}
+                        // Always offered once the coach has accepted — not tied to
+                        // the browsing flag, or a hire stalled halfway with no way
+                        // to pay. The API refuses the payment itself if it must.
+                        onContinuePayment={
+                          r.status === "accepted" || r.status === "awaiting_payment"
+                            ? () =>
+                                // The service and day the member asked for are already chosen (25 Oct 2026).
+                                navigation.navigate("BookingServiceSelection", {
+                                  professionalId: r.professionalId,
+                                  offeringId: r.offeringId ?? undefined,
+                                  preferredDate: preferredDayForBooking(r.preferredDate) ?? undefined,
+                                })
+                            : undefined
+                        }
+                        onCancel={r.status === "requested" || r.status === "accepted" ? () => confirmCancel(r) : undefined}
+                        cancelling={cancelling === r.relationshipId}
+                        onContactSupport={
+                          r.status === "activation_failed" || r.stuck
+                            ? () => navigation.navigate("SupportTicketForm", { category: "billing" })
+                            : undefined
+                        }
+                        onRetry={r.status === "activation_failed" && r.paymentId && !r.stuck ? () => void retry(r.paymentId as string) : undefined}
+                        retrying={!!r.paymentId && retrying === r.paymentId}
+                        onPickTime={
+                          r.status === "activation_failed" && r.paymentId && !r.stuck
+                            ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId, rebookPaymentId: r.paymentId as string })
+                            : undefined
+                        }
+                      />
+                  ),
+                )}
+              </View>
+            );
+          })}
 
           {past.length > 0 ? (
             <View style={{ gap: spacing.sm }}>
               <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("coaching.relationship.earlier")}</Text>
-              {past.map((r) => (
+              {past.map((r) =>
+                opensScreen(r) ? (
+                  <RequestRow key={r.relationshipId} item={r} onPress={() => navigation.navigate("RequestStatus", { relationshipId: r.relationshipId })} />
+                ) : (
                 <RelationshipStatusCard
                   key={r.relationshipId}
                   item={r}
@@ -257,28 +298,25 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                       : undefined
                   }
                 />
-              ))}
+                ),
+              )}
             </View>
           ) : null}
 
           {active.length > 0 ? (
-            <Card>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.xs }}>
-                <Icon name="check" size={18} color={colors.success} />
-                <Text style={{ color: colors.successText, ...typography.label }}>{t("coaching.relationship.step.active")}</Text>
-              </View>
-              <Text style={{ color: colors.textPrimary, ...typography.h2 }}>
-                {active.length === 1 ? "You have 1 coach working with you" : `You have ${active.length} coaches working with you`}
-              </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
-                {active.map((r) => `${r.professionalFullName} (${t(serviceLabelKey(r.serviceType))})`).join(" · ")}
-              </Text>
-              <Button
-                label={t("coaching.relationship.viewTeam")}
-                onPress={() => navigation.navigate("MyProfessionalTeam")}
-                style={{ marginTop: spacing.md }}
-              />
-            </Card>
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+              {active.map((r, i) => (
+                <LinkRow
+                  key={r.relationshipId}
+                  first={i === 0}
+                  label={`Change ${r.serviceType} professional (${r.professionalFullName.split(" ")[0]})`}
+                  onPress={() =>
+                    navigation.navigate("ChangeProfessional", { relationshipId: r.relationshipId, professionalFullName: r.professionalFullName, serviceType: r.serviceType })
+                  }
+                />
+              ))}
+              <LinkRow label={t("coaching.relationship.viewTeam")} onPress={() => navigation.navigate("MyProfessionalTeam")} />
+            </View>
           ) : null}
         </View>
       )}
@@ -442,6 +480,163 @@ function RelationshipStatusCard({
         />
       ) : null}
     </Card>
+  );
+}
+
+/** An active professional in their service card (Figma professional/10): sessions, sharing, Message and Book. */
+function ActiveProfessional({
+  item,
+  member,
+  sharing,
+  onMessage,
+  onBook,
+  onSharing,
+}: {
+  item: RelationshipStatusItem;
+  member?: CoachTeamMember;
+  sharing?: ProfessionalDataSharing;
+  onMessage: () => void;
+  onBook: () => void;
+  onSharing: () => void;
+}) {
+  const { colors: theme } = useTheme();
+  const shared = sharing
+    ? [sharing.steps ? "Steps" : null, sharing.foodLogs ? "Food logs" : null, sharing.sleepRecovery ? "Sleep & recovery" : null].filter(Boolean)
+    : null;
+  const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  return (
+    <View style={{ gap: 10 }}>
+      <ProfessionalRow name={item.professionalFullName} role={item.serviceType === "fitness" ? "Fitness Professional" : "Nutrition Professional"} size={44} />
+      <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, backgroundColor: colors.successSoft, paddingHorizontal: 10, paddingVertical: 4 }}>
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success }} />
+        <Text style={{ color: colors.successText, fontFamily: fonts.bodySemi, fontSize: 12 }}>Active</Text>
+      </View>
+      <DetailRow label="Next session" value={member?.nextSessionAt ? when(member.nextSessionAt) : "None booked"} />
+      {member?.lastSessionAt ? <DetailRow label="Last session" value={when(member.lastSessionAt)} /> : null}
+      {shared ? <DetailRow label="Sharing" value={shared.length > 0 ? shared.join(", ") : "Nothing shared"} /> : null}
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Button label="Message" size="compact" onPress={onMessage} style={{ flex: 1 }} />
+        <Button label="Book session" variant="secondary" size="compact" onPress={onBook} style={{ flex: 1 }} />
+      </View>
+      <Pressable onPress={onSharing} accessibilityRole="button" hitSlop={8} style={{ alignSelf: "flex-start" }}>
+        <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Change what they can see</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** An open request in its service card (Figma professional/10, nutrition slot). */
+function OpenRequest({ item, onView }: { item: RelationshipStatusItem; onView: () => void }) {
+  const first = item.professionalFullName.split(" ")[0];
+  const pill = item.stuck || item.status === "activation_failed"
+    ? { text: "Booking didn't finish", fg: colors.dangerText, bg: colors.dangerSoft }
+    : item.status === "accepted"
+      ? { text: item.payBy ? `${first} accepted · pay by ${formatReplyBy(item.payBy)}` : `${first} accepted · pay to book`, fg: colors.successText, bg: colors.successSoft }
+      : item.status === "awaiting_payment"
+        ? { text: "Payment not finished", fg: colors.warningText, bg: colors.warningSoft }
+        : { text: `Waiting for ${first} to accept`, fg: colors.warningText, bg: colors.warningSoft };
+  const detail = [item.serviceName, item.preferredDate ? formatPreferredDay(item.preferredDate) : null].filter(Boolean).join(" · ");
+  return (
+    <View style={{ gap: 10 }}>
+      <ProfessionalRow name={item.professionalFullName} role={item.serviceType === "fitness" ? "Fitness Professional" : "Nutrition Professional"} size={44} />
+      <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, backgroundColor: pill.bg, paddingHorizontal: 10, paddingVertical: 4 }}>
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: pill.fg }} />
+        <Text style={{ color: pill.fg, fontFamily: fonts.bodySemi, fontSize: 12 }}>{pill.text}</Text>
+      </View>
+      {detail ? <DetailRow label="Request" value={detail} /> : null}
+      <Button label="View request" size="compact" onPress={onView} />
+    </View>
+  );
+}
+
+function LinkRow({ label, onPress, first }: { label: string; onPress: () => void; first?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        minHeight: 48,
+        paddingHorizontal: spacing.md,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: colors.border,
+        backgroundColor: pressed ? colors.surfaceRaised : "transparent",
+      })}
+    >
+      <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14 }}>{label}</Text>
+      <Icon name="chevron-right" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+}
+
+/** Figma professional/15 (25 Oct 2026): no professional yet, one card per service. */
+function NoProfessionals({ onFind }: { onFind: (serviceType: "fitness" | "nutrition") => void }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ gap: spacing.md }}>
+      <View style={{ gap: 6 }}>
+        <Text accessibilityRole="header" style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 22 }}>
+          {t("coaching.relationship.emptyTitle")}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{t("coaching.relationship.emptySubtitle")}</Text>
+        <View style={{ alignSelf: "flex-start" }}>
+          <LearnMoreLink topic="coach_requests" />
+        </View>
+      </View>
+      <ServiceCard
+        title="Fitness professional"
+        body="Training, technique and progress reviews with a verified fitness coach."
+        action="Find a fitness professional"
+        onPress={() => onFind("fitness")}
+      />
+      <ServiceCard
+        title="Nutrition professional"
+        body="Food and eating guidance from a verified nutrition professional."
+        action="Find a nutrition professional"
+        onPress={() => onFind("nutrition")}
+      />
+    </View>
+  );
+}
+
+function ServiceCard({ title, body, action, onPress }: { title: string; body: string; action: string; onPress: () => void }) {
+  return (
+    <View style={{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm }}>
+      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 15 }}>{title}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>{body}</Text>
+      <Button label={action} variant="secondary" size="compact" onPress={onPress} style={{ marginTop: 4 }} />
+    </View>
+  );
+}
+
+/** A request on the hub (25 Oct 2026): who, what, its state in a word, and a tap through to the full request screen. */
+function RequestRow({ item, onPress }: { item: RelationshipStatusItem; onPress: () => void }) {
+  const { t } = useTranslation();
+  const presentation = item.stuck ? statusPresentation("activation_failed") : statusPresentation(item.status);
+  const stateLabel = item.stuck ? t("coaching.relationship.stuckStatus") : t(`coaching.relationship.status.${item.status}`);
+  const detail = [item.serviceName, item.preferredDate ? formatPreferredDay(item.preferredDate) : null].filter(Boolean).join(" · ");
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.professionalFullName}, ${stateLabel}. View request`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+    >
+      <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Icon name={presentation.icon} size={15} color={presentation.color} />
+            <Text style={{ color: presentation.color, ...typography.label, fontSize: 13 }}>{stateLabel}</Text>
+          </View>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{item.professionalFullName}</Text>
+          <Text style={{ color: colors.textMuted, ...typography.meta }} numberOfLines={1}>
+            {detail || t(serviceLabelKey(item.serviceType))}
+          </Text>
+        </View>
+        <Icon name="chevron-right" size={18} color={colors.textMuted} />
+      </Card>
+    </Pressable>
   );
 }
 

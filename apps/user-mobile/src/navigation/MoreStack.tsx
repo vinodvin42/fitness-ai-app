@@ -43,6 +43,9 @@ import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
 import { BookingServiceSelectionScreen } from "../screens/coaching/BookingServiceSelectionScreen";
 import { RequestCoachScreen } from "../screens/coaching/RequestCoachScreen";
+import { RequestStatusScreen } from "../screens/coaching/RequestStatusScreen";
+import { RateSessionScreen } from "../screens/coaching/RateSessionScreen";
+import { RescheduleSessionScreen } from "../screens/coaching/RescheduleSessionScreen";
 import { BookingConfirmationScreen } from "../screens/coaching/BookingConfirmationScreen";
 import { MyProfessionalTeamScreen } from "../screens/coaching/MyProfessionalTeamScreen";
 import { ChangeProfessionalScreen } from "../screens/coaching/ChangeProfessionalScreen";
@@ -204,6 +207,12 @@ export type MoreStackParamList = {
   BookingServiceSelection: { professionalId: string; rebookPaymentId?: string; offeringId?: string; preferredDate?: string };
   /** 25 Oct 2026 (Figma coach/02): ask a coach for guidance before paying. */
   RequestCoach: { professionalId: string };
+  /** 25 Oct 2026 (Figma coach/05, 06, 05b, 07, 12): one guidance request, full screen. */
+  RequestStatus: { relationshipId: string };
+  /** 25 Oct 2026 (Figma coach/11): rate a past session; `context` is the service, day and length line. */
+  RateSession: { bookingId: string; coachName: string; context?: string };
+  /** 25 Oct 2026 (Figma coach/15): move a booked session, up to 24 hours before it. */
+  RescheduleSession: { bookingId: string; professionalId: string; professionalFullName: string; scheduledAt: string; offeringLabel: string };
   BookingConfirmation: { booking: BookingConfirmation };
   MyProfessionalTeam: undefined;
   ChangeProfessional: { relationshipId: string; professionalFullName: string; serviceType: ProfessionalServiceType };
@@ -276,6 +285,9 @@ export function MoreStack() {
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />
       <Stack.Screen name="BookingServiceSelection" component={BookingServiceSelectionScreen} />
       <Stack.Screen name="RequestCoach" component={RequestCoachScreen} />
+      <Stack.Screen name="RequestStatus" component={RequestStatusScreen} />
+      <Stack.Screen name="RateSession" component={RateSessionScreen} />
+      <Stack.Screen name="RescheduleSession" component={RescheduleSessionScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
       <Stack.Screen name="MyProfessionalTeam" component={MyProfessionalTeamScreen} />
       <Stack.Screen name="ChangeProfessional" component={ChangeProfessionalScreen} />

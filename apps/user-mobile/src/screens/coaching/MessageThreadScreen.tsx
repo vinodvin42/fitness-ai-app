@@ -16,6 +16,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { CoachMessageItem, SafetyReportReason } from "@fitness-ai-app/types";
 import { ErrorState } from "../../components/ErrorState";
+import { Avatar } from "../../components/Avatar";
+import { HeaderIconButton } from "../../components/HeaderIconButton";
+import { fetchRelationshipStatus } from "../../api/coaching";
 import { Button } from "../../components/Button";
 import { fetchThread, reportCoach, sendMessage, setCoachBlocked } from "../../api/coachMessages";
 import { ReportSheet } from "../../components/ReportSheet";
@@ -65,6 +68,18 @@ export function MessageThreadScreen({ route, navigation }: Props) {
     onError: (err) => Alert.alert("Message not sent", extractErrorMessage(err, "Please try again.")),
   });
 
+  // Figma coach/03 header: what this professional does for the member.
+  const status = useQuery({ queryKey: ["coaching", "relationships", "status"], queryFn: fetchRelationshipStatus });
+  const services = (status.data?.relationships ?? []).filter((r) => r.professionalId === professionalId && r.status === "active").map((r) => r.serviceType);
+  const role =
+    services.includes("fitness") && services.includes("nutrition")
+      ? "Fitness & Nutrition Professional"
+      : services[0] === "nutrition"
+        ? "Nutrition Professional"
+        : services[0] === "fitness"
+          ? "Fitness Professional"
+          : "Professional";
+
   const canSend = draft.trim().length > 0 && !mutation.isPending;
   const blocked = data?.blocked;
   const isBlocked = Boolean(blocked?.byMe || blocked?.byThem);
@@ -96,7 +111,7 @@ export function MessageThreadScreen({ route, navigation }: Props) {
             onPress: () =>
               Alert.alert(
                 `Block ${fullName.split(" ")[0]}?`,
-                "Neither of you will be able to send messages here. Your coaching plan isn't changed — you can end coaching separately.",
+                `Neither of you will be able to send messages here. This doesn't end your coaching: ${fullName.split(" ")[0]} can still see what you share with them. To stop, send a change request from My coaches and the Fynrox team will review it.`,
                 [
                   { text: "Cancel", style: "cancel" },
                   { text: "Block", style: "destructive", onPress: () => blockMutation.mutate(true) },
@@ -117,11 +132,24 @@ export function MessageThreadScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text onPress={() => navigation.goBack()} style={{ color: colors.accentText, fontFamily: fonts.bodySemi }}>
-            ‹ Back
+      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <HeaderIconButton icon="chevron-left" label="Back" onPress={() => navigation.goBack()} />
+          <Text accessibilityRole="header" style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 }}>
+            Professional Messaging
           </Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <Avatar name={fullName} size={40} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 16 }} numberOfLines={1}>
+              {fullName}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={1}>
+              {role}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>Response time is not guaranteed</Text>
+          </View>
           <Pressable
             onPress={openMenu}
             accessibilityRole="button"
@@ -132,7 +160,6 @@ export function MessageThreadScreen({ route, navigation }: Props) {
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodyBold, fontSize: 20 }}>⋯</Text>
           </Pressable>
         </View>
-        <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{fullName}</Text>
       </View>
 
       <KeyboardAvoidingView

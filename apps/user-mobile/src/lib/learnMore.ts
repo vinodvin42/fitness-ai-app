@@ -2,6 +2,7 @@ import { HARD_EFFORT_RPE, HISTORY_DAYS, LIGHT_WEEK_COOLDOWN_DAYS, LIGHT_WEEK_HAR
 import { PORTION_GUIDE } from "./indianPortions";
 import { DAILY_TARGETS } from "./nutritionTargets";
 import { WARMUP_SCHEME } from "./fastLogging";
+import { REQUEST_REPLY_HOURS } from "./coachRequest";
 
 /**
  * Figma pattern/learn-more-sheet (24 Oct 2026): one sheet shape (a title, a
@@ -10,7 +11,7 @@ import { WARMUP_SCHEME } from "./fastLogging";
  * the same constants the code uses, so the explanation can't drift from the
  * behaviour.
  */
-export type LearnMoreTopic = "food_estimates" | "daily_targets" | "daily_review" | "insights" | "warmups" | "supersets";
+export type LearnMoreTopic = "food_estimates" | "daily_targets" | "daily_review" | "insights" | "warmups" | "supersets" | "coach_requests";
 
 export interface LearnMoreContent {
   title: string;
@@ -91,5 +92,17 @@ export const LEARN_MORE: Record<LearnMoreTopic, LearnMoreContent> = {
       { label: "When one is done", value: "the others carry on in the same order" },
       { label: "To undo", value: "⋯ › Remove from superset" },
     ],
+  },
+  // Figma coach/05 (25 Oct 2026): the request flow as the API runs it (apps/api coaching.service.ts).
+  coach_requests: {
+    title: "How requests work",
+    description: "You ask a professional first. Nothing is charged until they accept and you choose to pay.",
+    facts: [
+      { label: "1. Request", value: "the service you want, a preferred day and an optional note" },
+      { label: "2. Reply", value: `the professional accepts or declines within ${REQUEST_REPLY_HOURS} hours, or the request ends` },
+      { label: "3. Pay", value: "pick a time and pay the fee FynroX set for their level, plus GST" },
+      { label: "4. Booked", value: "your session is booked as soon as the payment goes through" },
+    ],
+    note: "You can cancel a request until you pay. You pay FynroX through Razorpay; FynroX pays the professional.",
   },
 };

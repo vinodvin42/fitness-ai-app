@@ -1,19 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { ProfessionalServiceType } from "@fitness-ai-app/types";
+import type { CoachDiscoveryItem, ProfessionalServiceType } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
+import { Avatar } from "../../components/Avatar";
 import { Card } from "../../components/Card";
 import { Chip } from "../../components/Chip";
 import { Button } from "../../components/Button";
-import { Pill } from "../../components/Pill";
 import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
 import { discoverCoaches } from "../../api/coaching";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import { formatRupees } from "../../lib/money";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -23,34 +25,20 @@ type ServiceFilter = ProfessionalServiceType | "combined" | "all";
 
 const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
   { value: "all", label: "All" },
-  { value: "fitness", label: "Fitness coach" },
-  { value: "nutrition", label: "Nutrition coach" },
+  { value: "fitness", label: "Fitness" },
+  { value: "nutrition", label: "Nutrition" },
   { value: "combined", label: "Fitness + Nutrition" },
 ];
 
-// Coach fees are set by FynroX per coach level and shown before GST,
-// which is added on top at checkout (Package 4).
-function formatPrice(cents: number | null) {
-  if (cents == null) return "Not bookable yet";
-  return `From ${formatRupees(cents)} + GST`;
-}
-
 /**
- * Discovery Filters + Discovery List, combined into one screen
- * (docs/coach/03-screen-inventory.md §E — two of the seven §E screens).
- * Same "combine near-duplicate design screens into one real one"
- * precedent already used for Security (folds in Data & Privacy) and
- * Subscription (folds in Subscription Plans + Management) — a search bar
- * plus filter/sort chips over a live list works better as one screen on
- * mobile than a separate "apply filters" step before seeing any results.
+ * Professional Guidance: find a professional (Figma coach/01; redesigned 25 Oct 2026). Search, a
+ * service filter, then one card per verified professional with their level, what they focus on, the
+ * lowest fee for their level, and View Profile / Request Guidance.
  *
- * The design's "Rating/Price/Availability" sort pills are narrowed to
- * Price/Experience — no rating/review system exists anywhere in this
- * build, and a fixed slot grid (see BookingServiceSelectionScreen) has no
- * meaningful cross-coach "soonest available" ranking. Coach-type chips
- * use v1-coach's Fitness Coach / Nutrition Professional / Fitness +
- * Nutrition taxonomy, not the original consumer-app design's Yoga/Sports
- * categories — nothing else in this product supports those, see gap §1.
+ * Not copied from the Figma: the "Trainers at Elevation Fitness" section and "your professional" tag
+ * (gym partners are switched off), the 24-hour gym-first rule, a Yoga filter (not a service type) and
+ * photos (the API has none). Kept from earlier owner decisions: male / female and sort chips, and
+ * "Ask us to match you".
  */
 export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -60,15 +48,8 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   // Owner, 24 Oct 2026: browse male or female coaches (as "Ask for a coach" already allows).
   const [gender, setGender] = useState<"any" | "male" | "female">("any");
 
-  // Found via a live Playwright walkthrough, not just typecheck/lint: when
-  // Change Professional's "Find New [Service] Coach" navigates back here
-  // with a pre-filter, React Navigation reuses this screen's EXISTING
-  // stack instance (it was already pushed once from the More menu) rather
-  // than remounting it — so route.params updates, but the `useState`
-  // initializer above never re-runs, and the filter chip silently stayed
-  // on "All". Re-syncing on every change to route.params.serviceType fixes
-  // that without disturbing a user's own manual filter choice otherwise
-  // (this only fires when a caller actually passes a new serviceType).
+  // A caller can open this again with a new pre-filter while the screen is still mounted (Change
+  // Professional's "Find new coach"); re-sync then, without overriding the member's own choice otherwise.
   useEffect(() => {
     if (route.params?.serviceType) {
       setServiceFilter(route.params.serviceType);
@@ -89,114 +70,121 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const items = useMemo(() => data?.items ?? [], [data]);
 
   return (
-    <ScreenContainer title={t("coaching.team.findCoach")}>
+    <ScreenContainer title="Professional Guidance" onBack={() => navigation.goBack()}>
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
+          Verified professionals. FynroX sets each coach's fee by their coach level, so fees can differ. You pay only after they accept.
+        </Text>
+        <View style={{ alignSelf: "flex-start" }}>
+          <LearnMoreLink topic="coach_requests" />
+        </View>
+      </View>
+
       <SearchBar value={search} onChangeText={setSearch} placeholder={t("coaching.discovery.search")} />
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
         {SERVICE_CHIPS.map(({ value, label }) => (
           <Chip key={value} label={label} selected={serviceFilter === value} onPress={() => setServiceFilter(value)} />
         ))}
-      </View>
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
+        <Chip label="Any" variant="outlined" selected={gender === "any"} onPress={() => setGender("any")} />
+        <Chip label="Male" variant="outlined" selected={gender === "male"} onPress={() => setGender("male")} />
+        <Chip label="Female" variant="outlined" selected={gender === "female"} onPress={() => setGender("female")} />
+        <View style={{ width: 1, backgroundColor: colors.border, marginHorizontal: 4 }} />
+        <Chip label={t("coaching.discovery.mostExperienced")} variant="outlined" selected={sort === "experience"} onPress={() => setSort("experience")} />
+        <Chip label={t("coaching.discovery.lowestPrice")} variant="outlined" selected={sort === "price"} onPress={() => setSort("price")} />
+      </ScrollView>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
-        <Chip label="Any coach" selected={gender === "any"} onPress={() => setGender("any")} />
-        <Chip label="Male coach" selected={gender === "male"} onPress={() => setGender("male")} />
-        <Chip label="Female coach" selected={gender === "female"} onPress={() => setGender("female")} />
-      </View>
-
-      <View style={{ flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm }}>
-        <Chip label={t("coaching.discovery.mostExperienced")} selected={sort === "experience"} onPress={() => setSort("experience")} />
-        <Chip label={t("coaching.discovery.lowestPrice")} selected={sort === "price"} onPress={() => setSort("price")} />
-      </View>
+      {isLoading ? (
+        <Card>
+          <Text style={{ color: colors.textSecondary }}>{t("coaching.discovery.loading")}</Text>
+        </Card>
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : items.length === 0 ? (
+        <EmptyState title={t("coaching.discovery.emptyTitle")} subtitle={t("coaching.discovery.emptySubtitle")} />
+      ) : (
+        <View style={{ gap: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11, letterSpacing: 0.7 }}>
+            {`ONLINE PROFESSIONALS · ${items.length}`}
+          </Text>
+          {items.map((coach) => (
+            <ProfessionalCard
+              key={coach.id}
+              coach={coach}
+              onProfile={() => navigation.navigate("CoachProfileDetail", { professionalId: coach.id })}
+              onRequest={coach.startingPriceCents != null ? () => navigation.navigate("RequestCoach", { professionalId: coach.id }) : undefined}
+            />
+          ))}
+        </View>
+      )}
 
       <Pressable
         onPress={() => navigation.navigate("RequestGuidance")}
         accessibilityRole="button"
-        accessibilityLabel="Not sure who to pick? Ask us to match you with a coach"
-        style={{
-          marginTop: spacing.md,
+        accessibilityLabel="Not sure who to pick? Ask us to match you with a professional"
+        style={({ pressed }) => ({
           padding: spacing.md,
           borderRadius: radius.md,
           borderWidth: 1,
           borderColor: colors.border,
-          backgroundColor: colors.surfaceRaised,
+          backgroundColor: pressed ? colors.surfaceHigh : colors.surfaceRaised,
           gap: 2,
-        }}
+        })}
       >
         <Text style={{ color: colors.textPrimary, ...typography.label }}>Not sure who to pick?</Text>
-        <Text style={{ color: colors.textSecondary, ...typography.meta }}>Ask us to match you. You can choose a male or female coach.</Text>
+        <Text style={{ color: colors.textSecondary, ...typography.meta }}>Ask us to match you. You can choose a male or female professional.</Text>
       </Pressable>
-
-      <Button
-        label={t("coaching.discovery.findTeam")}
-        variant="secondary"
-        onPress={() => navigation.navigate("MyProfessionalTeam")}
-        style={{ marginTop: spacing.md, height: 40 }}
-      />
-
-      {isLoading ? (
-        <Card style={{ marginTop: spacing.md }}>
-          <Text style={{ color: colors.textSecondary }}>{t("coaching.discovery.loading")}</Text>
-        </Card>
-      ) : isError ? (
-        <ErrorState style={{ marginTop: spacing.md }} onRetry={refetch} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          style={{ marginTop: spacing.md }}
-          title={t("coaching.discovery.emptyTitle")}
-          subtitle={t("coaching.discovery.emptySubtitle")}
-        />
-      ) : (
-        <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>
-            Showing {items.length} verified coach{items.length === 1 ? "" : "es"}
-          </Text>
-          {items.map((coach) => (
-            <Card key={coach.id}>
-              <View style={{ flexDirection: "row", gap: spacing.md }}>
-                <View
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: radius.pill,
-                    backgroundColor: colors.accentSoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.accentText, ...typography.h1 }}>{coach.fullName.slice(0, 1)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{coach.fullName}</Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
-                    {coach.verifiedServices.map((s) => (
-                      <Pill key={s} label={s === "fitness" ? "Fitness" : "Nutrition"} tone="accent" icon="check" />
-                    ))}
-                  </View>
-                  <Text style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
-                    {coach.gender ? `${coach.gender === "female" ? "Female" : "Male"} · ` : ""}
-                    {coach.level ? `${coach.level.name} · ` : ""}
-                    {coach.yearsExperience != null ? `${coach.yearsExperience} yrs` : "Experience n/a"}
-                    {" · "}
-                    {formatPrice(coach.startingPriceCents)}
-                  </Text>
-                </View>
-              </View>
-              {coach.specializationTags.length > 0 ? (
-                <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
-                  {coach.specializationTags.join(" · ")}
-                </Text>
-              ) : null}
-              <Button
-                label={t("coaching.team.viewProfile")}
-                variant="secondary"
-                onPress={() => navigation.navigate("CoachProfileDetail", { professionalId: coach.id })}
-                style={{ marginTop: spacing.md, height: 42 }}
-              />
-            </Card>
-          ))}
-        </View>
-      )}
+      <Button label={t("coaching.discovery.findTeam")} variant="secondary" size="compact" onPress={() => navigation.navigate("MyProfessionalTeam")} />
     </ScreenContainer>
+  );
+}
+
+/** One professional (Figma coach/01 card): avatar, name and level, focus and lowest fee, two text actions. */
+function ProfessionalCard({ coach, onProfile, onRequest }: { coach: CoachDiscoveryItem; onProfile: () => void; onRequest?: () => void }) {
+  const { colors: theme } = useTheme();
+  const focus = coach.specializationTags[0] ?? coach.verifiedServices.map((s) => (s === "fitness" ? "Fitness" : "Nutrition")).join(" & ");
+  const fee = coach.startingPriceCents == null ? "Not bookable yet" : `from ${formatRupees(coach.startingPriceCents)} + GST`;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.md,
+        backgroundColor: colors.surface,
+        borderRadius: radius.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: spacing.md,
+      }}
+    >
+      <Avatar name={coach.fullName} size={64} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 16 }} numberOfLines={1}>
+            {coach.fullName}
+          </Text>
+          {coach.level ? (
+            <View style={{ borderRadius: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11, letterSpacing: 0.4 }}>{coach.level.name.toUpperCase()}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+          {[focus, coach.yearsExperience != null ? `${coach.yearsExperience} yrs` : null, fee].filter(Boolean).join(" · ")}
+        </Text>
+        <View style={{ flexDirection: "row", gap: spacing.lg, marginTop: 2 }}>
+          <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel={`View ${coach.fullName}'s profile`} hitSlop={10}>
+            <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>View Profile</Text>
+          </Pressable>
+          {onRequest ? (
+            <Pressable onPress={onRequest} accessibilityRole="button" accessibilityLabel={`Request guidance from ${coach.fullName}`} hitSlop={10}>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>Request Guidance</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    </View>
   );
 }

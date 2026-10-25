@@ -2,6 +2,8 @@ import type {
   BookingSummary,
   CoachBookingListItem,
   CoachBookingListResponse,
+  RescheduleBookingInput,
+  RescheduledBooking,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
@@ -23,6 +25,11 @@ export interface SessionRating {
   tags: SessionRatingTag[];
   comment: string | null;
   updatedAt: string;
+}
+
+/** Move a session up to 24 hours before it starts (Figma coach/15, 25 Oct 2026). */
+export function rescheduleBooking(bookingId: string, scheduledAt: string) {
+  return apiClient.post<RescheduledBooking>(`/coaching/bookings/${bookingId}/reschedule`, { scheduledAt } satisfies RescheduleBookingInput).then((r) => r.data);
 }
 
 export function fetchSessionRating(bookingId: string) {

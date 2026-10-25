@@ -3,49 +3,44 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { CoachServiceOffering, ProfessionalServiceType } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Card } from "../../components/Card";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
-import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
+import { LearnMoreLink } from "../../components/LearnMoreSheet";
+import { DetailRow } from "../../components/GuidanceParts";
 import { fetchCoachProfile, fetchRelationshipStatus } from "../../api/coaching";
-import { colors, radius, spacing, typography } from "../../theme/tokens";
+import { colors, fonts, radius, spacing } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 import { formatRupees } from "../../lib/money";
 import { preferredDayForBooking } from "../../lib/coachRequest";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachProfileDetail">;
 
-function formatPrice(paise: number) {
-  return formatRupees(paise);
+function roleLine(services: ProfessionalServiceType[]): string {
+  if (services.includes("fitness") && services.includes("nutrition")) return "Fitness & Nutrition Professional";
+  return services.includes("nutrition") ? "Nutrition Professional" : "Fitness Professional";
 }
 
-function serviceLabel(serviceType: string | null) {
-  if (serviceType === "fitness") return "Fitness Coaching";
-  if (serviceType === "nutrition") return "Nutrition Session";
-  return "Combined Session";
+function offeringName(o: CoachServiceOffering): string {
+  if (o.label) return o.label;
+  return o.serviceType === "fitness" ? "Fitness session" : o.serviceType === "nutrition" ? "Nutrition session" : "Fitness + nutrition session";
 }
 
 /**
- * Coach Profile Detail (docs/coach/03-screen-inventory.md §E). Real
- * bio/specialization tags/years experience (all real `Professional`
- * fields), a real Total Clients count (active `Relationship` rows), and
- * real `ProfessionalServiceOffering` pricing. The design's 3-stat row
- * also names "Rating" — dropped, not modeled, see gap §1/coaching.service.ts.
- * "Book Session" leads to Booking: Service Selection, where the actual
- * offering/date/time gets picked — this screen's own CTA is deliberately
- * singular even though a coach may have several offerings, matching the
- * design's own single "Book Session" button.
- *
- * 25 Oct 2026 (Figma coach/02, professional/11): the one CTA follows where the
- * member is with this coach. No relationship yet: "Request guidance" (asks the
- * coach first, nothing charged). Request waiting: "Request pending · View".
- * Coach accepted: "Continue to payment", with what they asked for already
- * chosen. Active: "Book session". Anything else in flight: "View status".
+ * Professional profile (Figma professional/11, coach/02; redesigned 25 Oct 2026): a centred header
+ * with focus tags and level, About, Services with the fee FynroX set for the coach's level, then the
+ * one action that fits where the member is with this professional. No relationship yet: "Request
+ * guidance" (asks first, nothing charged). Request waiting: "Request pending · View". Accepted:
+ * "Continue to payment" with what they asked for already chosen. Active: "Book session". Anything
+ * else open: "View status". City and languages aren't in the API, so they aren't shown.
  */
 export function CoachProfileDetailScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const { colors: theme } = useTheme();
   const { professionalId } = route.params;
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -62,10 +57,11 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
   const FURTHEST_FIRST = ["active", "accepted", "awaiting_payment", "activating", "requested"];
   const place = (s: string) => (FURTHEST_FIRST.includes(s) ? FURTHEST_FIRST.indexOf(s) : FURTHEST_FIRST.length);
   const current = [...mine].sort((a, b) => place(a.status) - place(b.status))[0] ?? null;
+  const back = () => navigation.goBack();
 
   if (isLoading) {
     return (
-      <ScreenContainer title={t("coaching.profile.title")}>
+      <ScreenContainer title={t("coaching.profile.title")} onBack={back}>
         <ActivityIndicator color={colors.accent} />
       </ScreenContainer>
     );
@@ -73,90 +69,74 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
 
   if (isError || !data) {
     return (
-      <ScreenContainer title={t("coaching.profile.title")}>
+      <ScreenContainer title={t("coaching.profile.title")} onBack={back}>
         <ErrorState onRetry={refetch} />
       </ScreenContainer>
     );
   }
 
+  const tags = [...data.specializationTags, ...(data.level ? [data.level.name] : [])];
+  const nutritionOnly = data.verifiedServices.length === 1 && data.verifiedServices[0] === "nutrition";
+
   return (
-    <ScreenContainer title={t("coaching.profile.title")}>
-      <Card>
-        <View style={{ flexDirection: "row", gap: spacing.md }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: radius.pill,
-              backgroundColor: colors.accentSoft,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: colors.accentText, ...typography.display }}>{data.fullName.slice(0, 1)}</Text>
-          </View>
-          <View style={{ flex: 1, justifyContent: "center" }}>
-            <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{data.fullName}</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs }}>
-              {data.verifiedServices.map((s) => (
-                <Pill key={s} label={s === "fitness" ? "Fitness" : "Nutrition"} tone="accent" icon="check" />
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-          <StatTile icon="clock" label={t("coaching.profile.yearsExp")} value={String(data.yearsExperience ?? "—")} />
-          <StatTile icon="heart" label={t("coaching.profile.clients")} value={String(data.totalClients)} />
-        </View>
-      </Card>
-
-      {data.bio ? (
-        <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>About</Text>
-          <Text style={{ color: colors.textSecondary, ...typography.body }}>{data.bio}</Text>
-        </Card>
-      ) : null}
-
-      {data.specializationTags.length > 0 ? (
-        <Card>
-          <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>Specializations</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
-            {data.specializationTags.map((tag) => (
-              <Pill key={tag} label={tag} />
+    <ScreenContainer title={t("coaching.profile.title")} onBack={back}>
+      {/* Header */}
+      <Section style={{ alignItems: "center", paddingVertical: spacing.lg }}>
+        <Avatar name={data.fullName} size={84} />
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.displayBold, fontSize: 22, marginTop: spacing.sm, textAlign: "center" }}>
+          {data.fullName}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{roleLine(data.verifiedServices)}</Text>
+        {tags.length > 0 ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: spacing.sm }}>
+            {tags.map((tag) => (
+              <View key={tag} style={{ borderRadius: radius.pill, backgroundColor: theme.accentSoft, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 12 }}>{tag}</Text>
+              </View>
             ))}
           </View>
-        </Card>
-      ) : null}
+        ) : null}
+      </Section>
 
-      <Card>
-        <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.xs }}>{t("coaching.profile.services")}</Text>
-        <Text style={{ color: colors.textMuted, ...typography.meta, marginBottom: spacing.sm }}>
-          {data.level ? `${data.level.name} coach · ` : ""}Fees are set by FynroX. {data.gstPercent}% GST is added on top.
-        </Text>
+      {/* About */}
+      <Section>
+        <SectionTitle>About</SectionTitle>
+        {data.bio ? <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{data.bio}</Text> : null}
+        <DetailRow label={t("coaching.profile.yearsExp")} value={data.yearsExperience != null ? `${data.yearsExperience} years` : "—"} />
+        <DetailRow label={t("coaching.profile.clients")} value={String(data.totalClients)} />
+      </Section>
+
+      {/* Services */}
+      <Section>
+        <SectionTitle>{t("coaching.profile.services")}</SectionTitle>
         {data.offerings.length === 0 ? (
-          <Text style={{ color: colors.textSecondary }}>{t("coaching.profile.noServices")}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{t("coaching.profile.noServices")}</Text>
         ) : (
-          data.offerings.map((o, i) => (
-            <View
-              key={o.id}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingVertical: spacing.sm,
-                borderTopWidth: i === 0 ? 0 : 1,
-                borderTopColor: colors.border,
-              }}
-            >
-              <Text style={{ color: colors.textPrimary, flex: 1 }}>
-                {o.label ?? serviceLabel(o.serviceType)} · {o.durationMinutes}min
+          data.offerings.map((o) => (
+            <View key={o.id} style={{ backgroundColor: colors.surfaceRaised, borderRadius: radius.md, padding: spacing.md, gap: 4 }}>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 14 }}>{offeringName(o)}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{`${o.durationMinutes} min session`}</Text>
+              <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 17 }}>
+                {o.priceCents === 0 ? "Free" : `${formatRupees(o.priceCents)} + GST · Fee set by FynroX for this coach's level`}
               </Text>
-              <Pill label={o.priceCents === 0 ? "Free" : `${formatPrice(o.priceCents)} + GST`} tone="accent" />
             </View>
           ))
         )}
-      </Card>
+      </Section>
+
+      <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" }}>
+        <Icon name="info" size={16} color={colors.textMuted} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+            {nutritionOnly
+              ? "Nutrition guidance, not medical treatment. Nothing is charged until they accept and you pay."
+              : "Nothing is charged until they accept and you pay."}
+          </Text>
+          <View style={{ alignSelf: "flex-start" }}>
+            <LearnMoreLink topic="coach_requests" />
+          </View>
+        </View>
+      </View>
 
       {current === null ? (
         <Button
@@ -184,32 +164,30 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
       ) : (
         <Button
           label={current.status === "requested" ? t("coaching.profile.requestPending") : t("coaching.profile.viewStatus")}
-          variant="secondary"
-          onPress={() => navigation.navigate("ProfessionalRelationship")}
+          onPress={() =>
+            current.status === "requested" || current.status === "activation_failed" || current.stuck
+              ? navigation.navigate("RequestStatus", { relationshipId: current.relationshipId })
+              : navigation.navigate("ProfessionalRelationship")
+          }
         />
       )}
+      <Button
+        label="Compare professionals"
+        variant="secondary"
+        onPress={() => navigation.navigate("CoachDiscovery", { serviceType: data.verifiedServices.length === 1 ? data.verifiedServices[0] : undefined })}
+      />
     </ScreenContainer>
   );
 }
 
-function StatTile({ icon, label, value }: { icon: "clock" | "heart"; label: string; value: string }) {
+function Section({ children, style }: { children: React.ReactNode; style?: object }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: spacing.sm,
-        backgroundColor: colors.surfaceRaised,
-        borderRadius: radius.md,
-        padding: spacing.md,
-      }}
-    >
-      <Icon name={icon} size={18} color={colors.accent} />
-      <View>
-        <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{value}</Text>
-        <Text style={{ color: colors.textMuted, ...typography.caption }}>{label}</Text>
-      </View>
+    <View style={[{ backgroundColor: colors.surface, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 10 }, style]}>
+      {children}
     </View>
   );
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={{ color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 15 }}>{children}</Text>;
 }
