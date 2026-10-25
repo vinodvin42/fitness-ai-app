@@ -58,7 +58,6 @@ const FOOTER_COLS = [
     ["terms.html", "Terms of Service"],
   ]],
   ["Sign in", [
-    ["/app/", "Admin"],
     ["https://calm-ground-04d678410.3.azurestaticapps.net/", "Coach"],
   ]],
 ];
@@ -86,22 +85,37 @@ function keyOf(label) {
   return words.map((w, i) => (i === 0 ? w : w[0].toUpperCase() + w.slice(1))).join("");
 }
 
-function navBlock(current) {
+// Page links are written root-absolute ("/pricing.html"): the site's URLs
+// became root-absolute on 3 Oct 2026, because a relative link breaks under
+// the /gym/* and /r/* rewrites (apps/api/tests/landingUrls.test.ts). The
+// lists above stay as bare file names so `current` can be compared to them.
+function siteUrl(href) {
+  return /^(?:\/|https?:)/.test(href) ? href : `/${href}`;
+}
+
+// A programme's own page sits under Programs, so the nav marks Programs as
+// the current section there.
+function sectionOf(page) {
+  return page.startsWith("programme-") ? "programs.html" : page;
+}
+
+function navBlock(page) {
+  const current = sectionOf(page);
   const lines = [
     '      <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="primaryNav" hidden>',
     '        <span class="nav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span>',
     '        <span data-i18n="shell.nav.menu">Menu</span>',
     "      </button>",
     '      <nav class="nav" id="primaryNav" aria-label="Primary" data-i18n-attr="aria-label:shell.nav.ariaPrimary">',
-    `        <a class="nav__link" href="index.html"${current === "index.html" ? ' aria-current="page"' : ""} data-i18n="shell.nav.home">Home</a>`,
+    `        <a class="nav__link" href="/index.html"${current === "index.html" ? ' aria-current="page"' : ""} data-i18n="shell.nav.home">Home</a>`,
   ];
   for (const [href, label] of NAV_LINKS) {
     lines.push(
-      `        <a class="nav__link" href="${href}"${href === current ? ' aria-current="page"' : ""} data-i18n="shell.nav.${keyOf(label)}">${label}</a>`,
+      `        <a class="nav__link" href="${siteUrl(href)}"${href === current ? ' aria-current="page"' : ""} data-i18n="shell.nav.${keyOf(label)}">${label}</a>`,
     );
   }
   lines.push(
-    '        <a class="btn btn--primary btn--sm" href="early-access.html" data-i18n="shell.nav.cta">Get early access</a>',
+    '        <a class="btn btn--primary btn--sm" href="/early-access.html" data-i18n="shell.nav.cta">Get early access</a>',
   );
   lines.push("      </nav>");
   return lines.join("\n");
@@ -132,7 +146,7 @@ function footerBlock() {
     lines.push(`          <p class="footer__col-title" data-i18n="shell.footer.col.${keyOf(title)}">${title}</p>`);
     for (const [href, label] of links) {
       lines.push(
-        `          <a class="footer__col-link" href="${href}" data-i18n="shell.footer.link.${keyOf(label)}">${label}</a>`,
+        `          <a class="footer__col-link" href="${siteUrl(href)}" data-i18n="shell.footer.link.${keyOf(label)}">${label}</a>`,
       );
     }
     lines.push("        </div>");
@@ -143,7 +157,9 @@ function footerBlock() {
 
 // The toggle is optional in the match so this is idempotent: it replaces
 // both the original nav-only markup and its own previous output.
-const NAV_RE = /(?:[ \t]*<button class="nav-toggle"[\s\S]*?<\/button>\n)?[ \t]*<nav class="nav"[^>]*>[\s\S]*?<\/nav>/;
+// `\r?` because a Windows checkout (core.autocrlf) has CRLF pages: with a
+// bare `\n` the toggle went unmatched and every run added a second one.
+const NAV_RE = /(?:[ \t]*<button class="nav-toggle"[\s\S]*?<\/button>\r?\n)?[ \t]*<nav class="nav"[^>]*>[\s\S]*?<\/nav>/;
 const FOOTER_RE = /[ \t]*<nav class="footer__nav"[^>]*>[\s\S]*?<\/nav>/;
 // Matches both the original bottom bar and this script's own output, so
 // re-running is a no-op rather than a second copy.
@@ -164,10 +180,14 @@ const changed = [];
 for (const name of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html") && !SKIP.has(f)).sort()) {
   const file = path.join(ROOT, name);
   const src = fs.readFileSync(file, "utf8");
+  // Generated blocks take the page's own line endings, so a CRLF checkout
+  // doesn't end up with LF lines in the middle of each page.
+  const eol = src.includes("\r\n") ? "\r\n" : "\n";
+  const block = (text) => text.replace(/\n/g, eol);
   let out = src;
-  if (!OWN_NAV.has(name) && NAV_RE.test(out)) out = out.replace(NAV_RE, () => navBlock(name));
-  if (FOOTER_RE.test(out)) out = out.replace(FOOTER_RE, () => footerBlock());
-  if (BOTTOM_RE.test(out)) out = out.replace(BOTTOM_RE, () => bottomBlock());
+  if (!OWN_NAV.has(name) && NAV_RE.test(out)) out = out.replace(NAV_RE, () => block(navBlock(name)));
+  if (FOOTER_RE.test(out)) out = out.replace(FOOTER_RE, () => block(footerBlock()));
+  if (BOTTOM_RE.test(out)) out = out.replace(BOTTOM_RE, () => block(bottomBlock()));
   if (out !== src) {
     fs.writeFileSync(file, out);
     changed.push(name);

@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <title data-i18n="earlyAccess.pageTitle">Get early access — Fynrox</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta data-i18n-attr="content:earlyAccess.metaDescription" name="description" content="Register for early access to Fynrox. The app is in a closed pilot; join the list and we'll email you when there's a place." />
+  <meta data-i18n-attr="content:earlyAccess.metaDescription" name="description" content="Join the Fynrox early access list. The Android app is available to download now; leave your details if you'd like to hear from us." />
   <meta name="theme-color" content="#0a0a0a" />
   <meta name="color-scheme" content="light" />
 
   <meta data-i18n-attr="content:earlyAccess.metaOgTitle" property="og:title" content="Get early access — Fynrox" />
-  <meta data-i18n-attr="content:earlyAccess.metaOgDescription" property="og:description" content="Join the early access list for the Fynrox pilot." />
+  <meta data-i18n-attr="content:earlyAccess.metaOgDescription" property="og:description" content="Join the Fynrox early access list." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
 
@@ -61,10 +61,10 @@
         <p class="eyebrow">
           <span data-i18n="earlyAccess.earlyAccess" class="eyebrow__mark">EARLY ACCESS</span>
           <span aria-hidden="true">·</span>
-          <span data-i18n="earlyAccess.closedPilot">Closed pilot</span>
+          <span data-i18n="earlyAccess.androidAppAvailable">Android app available</span>
         </p>
-        <h1 data-i18n="earlyAccess.fynroxIsntOpenTo" class="page-hero__title">Fynrox isn't open to everyone yet.</h1>
-        <p data-i18n="earlyAccess.theAppIsIn" class="page-hero__subtitle">The app is in a closed pilot with a small number of testers. Leave your details and we'll email you when there's a place — no app store listing, no download link, nothing to install today.</p>
+        <h1 data-i18n="earlyAccess.joinTheFynroxList" class="page-hero__title">Join the Fynrox list.</h1>
+        <p data-i18n="earlyAccess.youCanInstallThe" class="page-hero__subtitle">You can install the Android app from the Download page today. If you'd rather hear from us first, leave your details and we'll email you.</p>
       </div>
     </section>
 
@@ -77,7 +77,7 @@
           data-kind="early_access"
           data-state-region="earlyAccessState"
           data-success-title="You're on the list"
-          data-success-body="We've got your details. We'll email you when there's a place in the pilot — there's nothing else you need to do, and nothing to install yet." data-known-body="This email is already on the early access list, so there's nothing more to do. We'll be in touch at the same address when a place opens."
+          data-success-body="We've got your details, and we'll be in touch by email. If you'd like to start now, the Android app is on the Download page." data-known-body="This email is already on the early access list, so there's nothing more to do. We'll be in touch at the same address when a place opens."
           method="post"
           action="/api/public/applications"
           novalidate
@@ -89,7 +89,7 @@
           </div>
           <div class="field">
             <label data-i18n="earlyAccess.email" class="field__label" for="earlyAccessemail">Email</label>
-            <p data-i18n="earlyAccess.whereWellSendYour" class="field__hint">Where we'll send your invite. One invite per address.</p>
+            <p data-i18n="earlyAccess.whereWellEmailYou" class="field__hint">Where we'll email you.</p>
             <input class="field__input" type="email" id="earlyAccessemail" name="email" required />
             <p class="field__error"></p>
           </div>
@@ -123,7 +123,7 @@
         </form>
         <div class="note-box">
           <p data-i18n-html="earlyAccess.weEmailYouAbout">
-            <strong>What we do with this:</strong> we email you about the pilot, and that's
+            <strong>What we do with this:</strong> we email you about Fynrox, and that's
             it. We don't sell it, we don't pass it to partners, and the optional box above is
             the only thing that opts you into anything else.
             <a href="/privacy.html">Privacy policy</a>.
@@ -134,7 +134,7 @@
 
     <section class="content-section content-section--raised">
       <div class="wrap">
-        <p data-i18n="earlyAccess.whileYouWait" class="section-eyebrow">WHILE YOU WAIT</p>
+        <p data-i18n="earlyAccess.worthALook" class="section-eyebrow">WORTH A LOOK</p>
         <h2 data-i18n="earlyAccess.worthReadingFirst" class="section-title">Worth reading first</h2>
         <div class="feature-grid">
           <a class="article-card" href="/how-it-works.html">
@@ -166,8 +166,7 @@
           <span class="brand__word">Fynrox</span>
         </span>
         <p data-i18n="shell.trainingNutritionRecoveryAnd" class="footer__tagline">
-          Training, nutrition, recovery, and AI coaching in one app. Pilot build — not yet
-          publicly available.
+          Training, nutrition, recovery, and AI coaching in one app.
         </p>
         <ul class="footer__social" aria-label="Fynrox on social media" data-i18n-attr="aria-label:shell.footer.social.label">
           <li><a class="footer__social-link" href="https://www.instagram.com/fynrox.fit/" target="_blank" rel="noopener" aria-label="Fynrox on Instagram" data-i18n-attr="aria-label:shell.footer.social.instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg></a></li>
@@ -204,7 +203,6 @@
         </div>
         <div>
           <p class="footer__col-title" data-i18n="shell.footer.col.signIn">Sign in</p>
-          <a class="footer__col-link" href="/app/" data-i18n="shell.footer.link.admin">Admin</a>
           <a class="footer__col-link" href="https://calm-ground-04d678410.3.azurestaticapps.net/" data-i18n="shell.footer.link.coach">Coach</a>
         </div>
       </nav>

@@ -15,92 +15,83 @@
  *     networks, and the fallback was a system sans — on a site whose
  *     display face is the brand.
  *
+ * 25 Oct 2026: the 18 Oct redesign moved the site to Bricolage Grotesque /
+ * Figtree / IBM Plex Mono and loaded them from Google again (an @import in
+ * styles.css and a <link> in index.html). These are those same files,
+ * downloaded from fonts.gstatic.com with the same query the pages used
+ * (Bricolage opsz 12..96 wght 700..800, Figtree 400..800, Plex Mono 500),
+ * so the type renders exactly as before, just from here. The Archivo
+ * Black / Inter / JetBrains Mono faces this file used to declare were no
+ * longer referenced by any stylesheet.
+ *
  * Only the latin and latin-ext subsets are kept. `unicode-range` means
  * latin-ext is fetched only by a page that actually uses those
  * codepoints, so it costs an English visitor nothing and is there when
  * the site gains its second language.
  *
- * Inter is the variable font (400..700 in one file) rather than four
- * static instances: those were 47 KB each per subset, 520 KB in total,
- * for four weights of the same typeface.
+ * Bricolage Grotesque and Figtree are variable fonts: one file per subset
+ * covers every weight, and Bricolage's file carries the optical-size axis
+ * that home.css relies on (the default font-optical-sizing: auto).
  */
 
 /* latin */
 @font-face {
-  font-family: 'Archivo Black';
+  font-family: 'Bricolage Grotesque';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 700 800;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("../fonts/archivo-black-400-latin.woff2") format('woff2');
+  src: url("../fonts/bricolage-grotesque-700-800-latin.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* latin-ext */
 @font-face {
-  font-family: 'Archivo Black';
+  font-family: 'Bricolage Grotesque';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 700 800;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("../fonts/archivo-black-400-latin-ext.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url("../fonts/bricolage-grotesque-700-800-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* latin */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Figtree';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 400 800;
   font-display: swap;
-  src: url("../fonts/inter-400-700-latin.woff2") format('woff2');
+  src: url("../fonts/figtree-400-800-latin.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* latin-ext */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Figtree';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 400 800;
   font-display: swap;
-  src: url("../fonts/inter-400-700-latin-ext.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url("../fonts/figtree-400-800-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* latin */
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'IBM Plex Mono';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   font-display: swap;
-  src: url("../fonts/jetbrains-mono-600-latin.woff2") format('woff2');
+  src: url("../fonts/ibm-plex-mono-500-latin.woff2") format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* latin-ext */
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'IBM Plex Mono';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   font-display: swap;
-  src: url("../fonts/jetbrains-mono-600-latin-ext.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* latin */
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("../fonts/jetbrains-mono-700-latin.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* latin-ext */
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("../fonts/jetbrains-mono-700-latin-ext.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  src: url("../fonts/ibm-plex-mono-500-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }

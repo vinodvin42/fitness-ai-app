@@ -7,8 +7,9 @@
  * has no light palette either (tokens.ts defines one dark system only), so
  * matching it exactly means staying dark-only here too, on purpose.
  *
- * Fonts (Sora / Manrope / JetBrains Mono) are the same three families the
- * app uses, loaded from Google Fonts in index.html's <head>.
+ * Fonts are self-hosted: assets/css/fonts.css declares them and every
+ * page links it ahead of this file. Nothing loads from Google Fonts, so
+ * no third party sees a visitor before they answer the cookie banner.
  *
  * 18 Oct 2026: the inner pages now share the rebuilt homepage's look
  * (assets/css/home.css): white canvas, ink and mint, Bricolage Grotesque /
@@ -16,8 +17,6 @@
  * below carry most of it; the "Homepage look" block at the end of this
  * file does the rest.
  */
-
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap");
 
 /* ---------------------------------------------------------------------- */
 /* Tokens                                                                  */
@@ -1400,9 +1399,14 @@ button {
   margin-top: var(--space-6);
 }
 
+/* Android is the only platform card now. Two fixed columns left the right
+   one empty, so the tracks are capped and auto-fit instead: a lone card is
+   centred at a readable width, and a second card would sit beside it again
+   when there is room for both. */
 @media (min-width: 720px) {
   .download-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(0, 32rem));
+    justify-content: center;
   }
 }
 
