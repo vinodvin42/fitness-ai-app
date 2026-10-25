@@ -23,6 +23,11 @@ export function setMyGender(gender: "male" | "female" | null) {
   return apiClient.patch<{ gender: "male" | "female" | null }>("/professionals/me/gender", { gender }).then((r) => r.data);
 }
 
+/** Languages (25 Oct 2026): the ISO 639-1 codes you coach in; an empty list clears them. */
+export function setMyLanguages(languages: string[]) {
+  return apiClient.patch<{ languages: string[] }>("/professionals/me/languages", { languages }).then((r) => r.data);
+}
+
 export function fetchMe() {
   return apiClient.get<ProfessionalMeResponse>("/professionals/me").then((r) => r.data);
 }

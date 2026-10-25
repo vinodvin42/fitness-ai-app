@@ -13,6 +13,7 @@ import {
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from "../../lib/coachFees";
 import { activeGstPercent, gstOnTop } from "../../lib/gst";
+import { professionalPublicId } from "../../lib/professionalCode";
 import {
   AvailabilityQuery,
   CreateBookingInput,
@@ -143,7 +144,14 @@ type ProfessionalListRow = {
   coachLevel: LevelRow;
   credentials: CredentialRow[];
   serviceOfferings: OfferingSummaryRow[];
+  profilePhoto?: { updatedAt: Date } | null;
+  languages?: string[];
 };
+
+/** The photo's last change, so the app re-reads it when it changes; null when there's no photo. */
+function photoVersion(p: { profilePhoto?: { updatedAt: Date } | null }): string | null {
+  return p.profilePhoto ? p.profilePhoto.updatedAt.toISOString() : null;
+}
 
 function verifiedServiceTypes(credentials: CredentialRow[]): string[] {
   return credentials.filter((c) => c.status === "verified").map((c) => c.serviceType);
@@ -167,10 +175,13 @@ function startingPriceCents(offerings: OfferingSummaryRow[], fees: Map<string, n
 function toDiscoveryItem(p: ProfessionalListRow, fees: Map<string, number>, gstPercent: number) {
   return {
     id: p.id,
+    publicId: professionalPublicId(p.id),
     fullName: p.fullName,
+    photoVersion: photoVersion(p),
     bio: p.bio,
     specializationTags: p.specializationTags,
     yearsExperience: p.yearsExperience,
+    languages: p.languages ?? [],
     verifiedServices: verifiedServiceTypes(p.credentials),
     // Lowest fee before GST; GST (`gstPercent`) is added on top at checkout.
     startingPriceCents: startingPriceCents(p.serviceOfferings, fees),
@@ -189,6 +200,7 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
   };
 
   if (query.gender) where.gender = query.gender;
+  if (query.language) where.languages = { has: query.language };
 
   if (query.search) {
     where.OR = [
@@ -206,6 +218,7 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
         where: { isActive: true },
         select: { id: true, serviceId: true, serviceType: true, isActive: true },
       },
+      profilePhoto: { select: { updatedAt: true } },
     },
   });
 
@@ -233,18 +246,64 @@ export async function listProfessionals(query: DiscoverProfessionalsQuery) {
   return { items, notAvailable: DISCOVERY_NOT_AVAILABLE };
 }
 
-type ProfessionalDetailRow = Omit<ProfessionalListRow, "serviceOfferings"> & {
+type CredentialDetailRow = CredentialRow & {
+  certificationName: string | null;
+  certifyingBody: string | null;
+  yearObtained: number | null;
+  expiresAt: Date | null;
+};
+
+type ProfessionalDetailRow = Omit<ProfessionalListRow, "serviceOfferings" | "credentials"> & {
   status: string;
+  maxActiveClients: number;
+  createdAt: Date;
+  credentials: CredentialDetailRow[];
   serviceOfferings: Array<OfferingSummaryRow & { label: string; durationMinutes: number }>;
 };
 
-export async function getProfessionalDetail(id: string) {
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How many days of open times the profile lists (25 Oct 2026). */
+const OPEN_TIME_DAYS = 7;
+
+/**
+ * Free times on the same 9:00-18:00 UTC hourly grid getAvailability() offers, for each of the next
+ * OPEN_TIME_DAYS UTC days starting today: past times and times overlapping a confirmed booking are left
+ * out. Days with nothing free are kept (empty `times`), so the profile can say so.
+ */
+function openTimesByDay(now: Date, bookings: BookingOverlapRow[]): Array<{ date: string; times: string[] }> {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const days: Array<{ date: string; times: string[] }> = [];
+  for (let d = 0; d < OPEN_TIME_DAYS; d++) {
+    const dayStart = today + d * DAY_MS;
+    const times: string[] = [];
+    for (let hour = SLOT_START_HOUR; hour < SLOT_END_HOUR; hour++) {
+      const start = new Date(dayStart + hour * 60 * 60 * 1000);
+      const end = new Date(start.getTime() + SLOT_DURATION_MINUTES * 60 * 1000);
+      if (start.getTime() > now.getTime() && !overlaps(start, end, bookings)) times.push(start.toISOString());
+    }
+    days.push({ date: new Date(dayStart).toISOString().slice(0, 10), times });
+  }
+  return days;
+}
+
+/**
+ * The professional's profile as members see it. 25 Oct 2026 (owner: show ID, photo, open times, active
+ * status, experience and certifications) added `publicId`, `photoVersion`, `status`,
+ * `acceptingNewClients`, `pastSessions`, `joinedAt`, `certifications` and `openTimes`.
+ * Certifications are the verified, unexpired ones, by name, issuer and year only: the uploaded
+ * documents are never selected here.
+ */
+export async function getProfessionalDetail(id: string, now: Date = new Date()) {
   const professional = await prisma.professional.findUnique({
     where: { id },
     include: {
       coachLevel: { select: { id: true, name: true, rank: true } },
-      credentials: { select: { serviceType: true, status: true } },
+      credentials: {
+        select: { serviceType: true, status: true, certificationName: true, certifyingBody: true, yearObtained: true, expiresAt: true },
+        orderBy: { serviceType: "asc" },
+      },
       serviceOfferings: { where: { isActive: true }, orderBy: { createdAt: "asc" } },
+      profilePhoto: { select: { updatedAt: true } },
     },
   });
 
@@ -253,7 +312,24 @@ export async function getProfessionalDetail(id: string) {
     throw new ApiHttpError(404, "professional_not_found", "Coach not found");
   }
 
-  const totalClients = await prisma.relationship.count({ where: { professionalId: id, status: "active" } });
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const [totalClients, pastSessions, comingBookings] = await Promise.all([
+    prisma.relationship.count({ where: { professionalId: id, status: "active" } }),
+    prisma.booking.count({ where: { professionalId: id, status: "confirmed", scheduledAt: { lt: now } } }),
+    prisma.booking.findMany({
+      where: { professionalId: id, status: "confirmed", scheduledAt: { gte: new Date(today - DAY_MS), lt: new Date(today + OPEN_TIME_DAYS * DAY_MS) } },
+      select: { scheduledAt: true, durationMinutes: true },
+    }),
+  ]);
+  const certifications = p.credentials
+    .filter((c) => c.status === "verified" && (!c.expiresAt || c.expiresAt.getTime() > now.getTime()))
+    .map((c) => ({
+      serviceType: c.serviceType,
+      name: c.certificationName,
+      issuedBy: c.certifyingBody,
+      year: c.yearObtained,
+      validUntil: c.expiresAt ? c.expiresAt.toISOString() : null,
+    }));
   const [fees, gstPercent] = await Promise.all([feesForProfessionals([p]), activeGstPercent()]);
   // Only offerings with a fee at this coach's level can be booked.
   const bookable = p.serviceOfferings
@@ -263,12 +339,25 @@ export async function getProfessionalDetail(id: string) {
 
   return {
     id: p.id,
+    publicId: professionalPublicId(p.id),
     fullName: p.fullName,
+    photoVersion: photoVersion(p),
+    // Only active professionals get this far (a suspended one is a 404 above).
+    status: "active" as const,
+    // Below the client limit FynroX or the coach set (maxActiveClients), the only availability lever a
+    // coach has. A request isn't refused at the limit: the coach decides.
+    acceptingNewClients: totalClients < p.maxActiveClients,
     bio: p.bio,
     specializationTags: p.specializationTags,
     yearsExperience: p.yearsExperience,
+    languages: p.languages ?? [],
     verifiedServices: verifiedServiceTypes(p.credentials),
     totalClients,
+    // Confirmed sessions whose start has passed.
+    pastSessions,
+    joinedAt: p.createdAt.toISOString(),
+    certifications,
+    openTimes: openTimesByDay(now, comingBookings as BookingOverlapRow[]),
     level: p.coachLevel ? { name: p.coachLevel.name, rank: p.coachLevel.rank } : null,
     gstPercent,
     offerings: bookable.map((o) => {

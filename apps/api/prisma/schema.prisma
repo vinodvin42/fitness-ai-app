@@ -2839,6 +2839,9 @@ model Professional {
   // Coach gender (20 Oct 2026): stated by the coach or set by an admin; null = not stated.
   // Members can ask for a male or female coach (GuidanceRequest.coachGenderPreference).
   gender             CoachGender?
+  // Languages (25 Oct 2026): ISO 639-1 codes the professional coaches in, chosen in the coach app;
+  // members see them on the profile and can filter by one. Empty = not stated. See lib/coachLanguages.ts.
+  languages          String[]                    @default([])
   status             ProfessionalStatus          @default(active)
   // Coach level (Package 4, Oct 2026): FynroX places each coach in a level,
   // and the level's fee for each service is what users pay. Coaches can't
@@ -2915,6 +2918,8 @@ model Professional {
   dataSharing      ProfessionalDataSharing[]
   // Package 4 — per-coach commission overrides (see CommissionRate).
   commissionRates  CommissionRate[]
+  // Profile photo (25 Oct 2026), shown to members on the profile. See ProfessionalProfilePhoto.
+  profilePhoto     ProfessionalProfilePhoto?
 
   @@index([coachLevelId])
   @@map("professionals")
@@ -2963,6 +2968,19 @@ model ProfessionalCredential {
 
   @@unique([professionalId, serviceType])
   @@map("professional_credentials")
+}
+
+// Professional profile photo (owner, 25 Oct 2026: members see the professional's picture on their
+// profile and in Find a professional). Same storage as UserProfilePhoto: a JPEG or PNG data URI, one
+// row per professional, set by the coach in the coach app, deleted with the account.
+model ProfessionalProfilePhoto {
+  professionalId String       @id
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  imageData      String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("professional_profile_photos")
 }
 
 model ProfessionalRefreshToken {

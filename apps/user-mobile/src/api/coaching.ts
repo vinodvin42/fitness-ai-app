@@ -9,6 +9,7 @@ import type {
   CreateGuidanceRequestInput,
   GuidanceRequestResult,
   ProfessionalServiceType,
+  ProfilePhoto,
   RelationshipChangeRequest,
   RelationshipStatusResponse,
 } from "@fitness-ai-app/types";
@@ -23,12 +24,19 @@ export function discoverCoaches(params: {
   search?: string;
   sort?: "price" | "experience";
   gender?: "male" | "female";
+  /** 25 Oct 2026: only professionals who coach in this language (ISO 639-1, SPOKEN_LANGUAGES). */
+  language?: string;
 }) {
   return apiClient.get<CoachDiscoveryResponse>("/coaching/professionals", { params }).then((r) => r.data);
 }
 
 export function fetchCoachProfile(professionalId: string) {
   return apiClient.get<CoachProfileDetail>(`/coaching/professionals/${professionalId}`).then((r) => r.data);
+}
+
+/** A professional's profile photo (25 Oct 2026), or null when they haven't set one. */
+export function fetchCoachPhoto(professionalId: string) {
+  return apiClient.get<{ photo: ProfilePhoto | null }>(`/coaching/professionals/${professionalId}/photo`).then((r) => r.data.photo);
 }
 
 export function fetchCoachAvailability(professionalId: string, date: string) {

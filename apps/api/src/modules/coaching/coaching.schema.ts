@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SPOKEN_LANGUAGE_CODES } from "../../lib/coachLanguages";
 
 /**
  * Coach Discovery & Booking (docs/coach/03-screen-inventory.md §E), added
@@ -23,6 +24,8 @@ export const discoverProfessionalsQuerySchema = z.object({
   sort: z.enum(["price", "experience"]).optional().default("experience"),
   // Coach gender (24 Oct 2026): browse male or female coaches only.
   gender: z.enum(["male", "female"]).optional(),
+  // Languages (25 Oct 2026): only professionals who coach in this language.
+  language: z.enum(SPOKEN_LANGUAGE_CODES).optional(),
 });
 export type DiscoverProfessionalsQuery = z.infer<typeof discoverProfessionalsQuerySchema>;
 

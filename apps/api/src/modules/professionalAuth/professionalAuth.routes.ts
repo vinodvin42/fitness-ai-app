@@ -5,6 +5,7 @@ import { hasSelectedServices } from "../professionalOnboarding/professionalOnboa
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
 import { authRateLimit, writeRateLimit } from "../../middleware/rateLimit";
 import { setCoachGender, setCoachGenderSchema } from "../../lib/coachGender";
+import { setCoachLanguages, setCoachLanguagesSchema } from "../../lib/coachLanguages";
 
 export const professionalAuthRouter = Router();
 
@@ -69,6 +70,22 @@ professionalAuthRouter.patch(
       const input = setCoachGenderSchema.parse(req.body);
       const professionalId = req.professionalId as string;
       res.status(200).json(await setCoachGender(professionalId, input, { professionalId }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Languages (25 Oct 2026): the coach picks the languages they coach in (an empty list clears them).
+professionalAuthRouter.patch(
+  "/professionals/me/languages",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = setCoachLanguagesSchema.parse(req.body);
+      const professionalId = req.professionalId as string;
+      res.status(200).json(await setCoachLanguages(professionalId, input, { professionalId }));
     } catch (err) {
       next(err);
     }

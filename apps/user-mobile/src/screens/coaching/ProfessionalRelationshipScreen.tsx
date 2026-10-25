@@ -11,9 +11,10 @@ import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { LearnMoreLink } from "../../components/LearnMoreSheet";
-import { cancelCoachRequest, fetchMyTeam, fetchRelationshipStatus } from "../../api/coaching";
+import { cancelCoachRequest, fetchCoachProfile, fetchMyTeam, fetchRelationshipStatus } from "../../api/coaching";
 import { fetchSharing } from "../../api/dataSharing";
-import { DetailRow, ProfessionalRow } from "../../components/GuidanceParts";
+import { DetailRow } from "../../components/GuidanceParts";
+import { ProfessionalAvatar } from "../../components/ProfessionalAvatar";
 import { useTheme } from "../../theme/ThemeProvider";
 import { retryPaymentActivation } from "../../api/payments";
 import { useToast } from "../../components/Toast";
@@ -236,11 +237,17 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                     onMessage={() => navigation.navigate("MessageThread", { professionalId: r.professionalId, fullName: r.professionalFullName })}
                     onBook={() => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })}
                     onSharing={() => navigation.navigate("PrivacySettings")}
+                    onProfile={() => navigation.navigate("CoachProfileDetail", { professionalId: r.professionalId })}
                   />
                 ))}
                 {slotOpen.map((r) =>
                   opensScreen(r) ? (
-                    <OpenRequest key={r.relationshipId} item={r} onView={() => navigation.navigate("RequestStatus", { relationshipId: r.relationshipId })} />
+                    <OpenRequest
+                      key={r.relationshipId}
+                      item={r}
+                      onView={() => navigation.navigate("RequestStatus", { relationshipId: r.relationshipId })}
+                      onProfile={() => navigation.navigate("CoachProfileDetail", { professionalId: r.professionalId })}
+                    />
                   ) : (
                       <RelationshipStatusCard
                         key={r.relationshipId}
@@ -483,6 +490,48 @@ function RelationshipStatusCard({
   );
 }
 
+/**
+ * Photo, name (with a shield when FynroX has checked their certifications), role, experience and FynroX
+ * ID; tapping it opens the full profile (owner, 25 Oct 2026). Read from the same profile query the
+ * profile screen uses, so it's shared; until it loads (or if it can't), the initials and name show alone.
+ */
+function ProfessionalHeader({ item, onOpen }: { item: RelationshipStatusItem; onOpen: () => void }) {
+  const { colors: theme } = useTheme();
+  const profile = useQuery({
+    queryKey: ["coaching", "professional", item.professionalId],
+    queryFn: () => fetchCoachProfile(item.professionalId),
+    staleTime: 5 * 60_000,
+  });
+  const p = profile.data;
+  const role = item.serviceType === "fitness" ? "Fitness Professional" : "Nutrition Professional";
+  const meta = [p?.yearsExperience != null ? `${p.yearsExperience} yrs exp` : null, p ? `ID ${p.publicId}` : null].filter(Boolean).join(" · ");
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.professionalFullName}, ${role}. View profile`}
+      style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}
+    >
+      <ProfessionalAvatar professionalId={item.professionalId} name={item.professionalFullName} photoVersion={p?.photoVersion} size={52} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 15 }}>
+            {item.professionalFullName}
+          </Text>
+          {p && p.certifications.length > 0 ? <Icon name="shield-check" size={15} color={theme.accentText} /> : null}
+        </View>
+        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{role}</Text>
+        {meta ? (
+          <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 11 }}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textMuted} />
+    </Pressable>
+  );
+}
+
 /** An active professional in their service card (Figma professional/10): sessions, sharing, Message and Book. */
 function ActiveProfessional({
   item,
@@ -491,6 +540,7 @@ function ActiveProfessional({
   onMessage,
   onBook,
   onSharing,
+  onProfile,
 }: {
   item: RelationshipStatusItem;
   member?: CoachTeamMember;
@@ -498,6 +548,7 @@ function ActiveProfessional({
   onMessage: () => void;
   onBook: () => void;
   onSharing: () => void;
+  onProfile: () => void;
 }) {
   const { colors: theme } = useTheme();
   const shared = sharing
@@ -506,7 +557,7 @@ function ActiveProfessional({
   const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   return (
     <View style={{ gap: 10 }}>
-      <ProfessionalRow name={item.professionalFullName} role={item.serviceType === "fitness" ? "Fitness Professional" : "Nutrition Professional"} size={44} />
+      <ProfessionalHeader item={item} onOpen={onProfile} />
       <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, backgroundColor: colors.successSoft, paddingHorizontal: 10, paddingVertical: 4 }}>
         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success }} />
         <Text style={{ color: colors.successText, fontFamily: fonts.bodySemi, fontSize: 12 }}>Active</Text>
@@ -516,17 +567,23 @@ function ActiveProfessional({
       {shared ? <DetailRow label="Sharing" value={shared.length > 0 ? shared.join(", ") : "Nothing shared"} /> : null}
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <Button label="Message" size="compact" onPress={onMessage} style={{ flex: 1 }} />
-        <Button label="Book session" variant="secondary" size="compact" onPress={onBook} style={{ flex: 1 }} />
+        {/* "Book session" wrapped onto two lines in a half-width button (owner's screenshot, 25 Oct 2026). */}
+        <Button label="Book" accessibilityLabel={`Book a session with ${item.professionalFullName}`} variant="secondary" size="compact" onPress={onBook} style={{ flex: 1 }} />
       </View>
-      <Pressable onPress={onSharing} accessibilityRole="button" hitSlop={8} style={{ alignSelf: "flex-start" }}>
-        <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Change what they can see</Text>
-      </Pressable>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: spacing.sm }}>
+        <Pressable onPress={onProfile} accessibilityRole="button" hitSlop={8}>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>View profile</Text>
+        </Pressable>
+        <Pressable onPress={onSharing} accessibilityRole="button" hitSlop={8}>
+          <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 13 }}>Change what they can see</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 /** An open request in its service card (Figma professional/10, nutrition slot). */
-function OpenRequest({ item, onView }: { item: RelationshipStatusItem; onView: () => void }) {
+function OpenRequest({ item, onView, onProfile }: { item: RelationshipStatusItem; onView: () => void; onProfile: () => void }) {
   const first = item.professionalFullName.split(" ")[0];
   const pill = item.stuck || item.status === "activation_failed"
     ? { text: "Booking didn't finish", fg: colors.dangerText, bg: colors.dangerSoft }
@@ -538,7 +595,7 @@ function OpenRequest({ item, onView }: { item: RelationshipStatusItem; onView: (
   const detail = [item.serviceName, item.preferredDate ? formatPreferredDay(item.preferredDate) : null].filter(Boolean).join(" · ");
   return (
     <View style={{ gap: 10 }}>
-      <ProfessionalRow name={item.professionalFullName} role={item.serviceType === "fitness" ? "Fitness Professional" : "Nutrition Professional"} size={44} />
+      <ProfessionalHeader item={item} onOpen={onProfile} />
       <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, backgroundColor: pill.bg, paddingHorizontal: 10, paddingVertical: 4 }}>
         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: pill.fg }} />
         <Text style={{ color: pill.fg, fontFamily: fonts.bodySemi, fontSize: 12 }}>{pill.text}</Text>

@@ -330,6 +330,20 @@ export const en = {
     preferNot: "Prefer not to say",
     saved: "Saved",
     saveFailed: "Couldn't save",
+    // Profile photo (25 Oct 2026).
+    photoTitle: "Profile photo",
+    photoHelp: "Members see this on your profile and when they look for a professional. Use a clear photo of your face.",
+    choosePhoto: "Choose photo",
+    changePhoto: "Change photo",
+    takePhoto: "Take photo",
+    removePhoto: "Remove photo",
+    removePhotoTitle: "Remove your photo?",
+    removePhotoBody: "Members will see your initials instead.",
+    photoSaved: "Photo saved",
+    photoFailed: "Couldn't update your photo",
+    // Languages (25 Oct 2026).
+    languagesTitle: "Languages you coach in",
+    languagesHelp: "Members see these on your profile and can look for a professional who speaks their language. Pick every language you can run a session in.",
   },
 } as const;
 

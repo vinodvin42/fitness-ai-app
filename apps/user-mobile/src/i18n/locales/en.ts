@@ -183,8 +183,8 @@ export const en = {
     },
     profile: {
       title: "Professional Profile",
-      yearsExp: "Years of experience",
-      clients: "Clients",
+      yearsExp: "Experience",
+      clients: "Clients now",
       services: "What they offer",
       noServices: "No services with a price yet.",
       // 25 Oct 2026: the one button follows where the member is with this coach.

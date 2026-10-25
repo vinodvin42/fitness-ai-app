@@ -78,6 +78,7 @@ import { professionalAlertsRouter } from "./modules/professionalAlerts/professio
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
+import { professionalPhotoRouter } from "./modules/professionalPhoto/professionalPhoto.routes";
 import { dataSharingRouter } from "./modules/dataSharing/dataSharing.routes";
 import { helpRouter } from "./modules/help/help.routes";
 import { learnRouter } from "./modules/learn/learn.routes";
@@ -425,6 +426,8 @@ export function createApp() {
   // not Professional Bearer, since it's the user-mobile side of the
   // journey — see coaching.service.ts's doc comment (closes gap §1).
   app.use("/", coachingRouter);
+  // Professional profile photo (25 Oct 2026): coach sets it, members see it. See professionalPhoto.service.ts.
+  app.use("/", professionalPhotoRouter);
   app.use("/", dataSharingRouter);
   app.use("/", helpRouter);
   // 05.04 Educational Content (Oct 2026): the app's Learn library.

@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { SPOKEN_LANGUAGES, spokenLanguageNames } from "@fitness-ai-app/types";
 import type { CoachDiscoveryItem, ProfessionalServiceType } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
-import { Avatar } from "../../components/Avatar";
+import { ProfessionalAvatar } from "../../components/ProfessionalAvatar";
 import { Card } from "../../components/Card";
 import { Chip } from "../../components/Chip";
 import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
 import { SearchBar } from "../../components/SearchBar";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
@@ -36,9 +38,10 @@ const SERVICE_CHIPS: Array<{ value: ServiceFilter; label: string }> = [
  * lowest fee for their level, and View Profile / Request Guidance.
  *
  * Not copied from the Figma: the "Trainers at Elevation Fitness" section and "your professional" tag
- * (gym partners are switched off), the 24-hour gym-first rule, a Yoga filter (not a service type) and
- * photos (the API has none). Kept from earlier owner decisions: male / female and sort chips, and
- * "Ask us to match you".
+ * (gym partners are switched off), the 24-hour gym-first rule and a Yoga filter (not a service type).
+ * Kept from earlier owner decisions: male / female and sort chips, and "Ask us to match you".
+ * 25 Oct 2026 (owner): the professional's photo on each card, the languages they coach in, and a
+ * language filter.
  */
 export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -47,6 +50,8 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   const [sort, setSort] = useState<"experience" | "price">("experience");
   // Owner, 24 Oct 2026: browse male or female coaches (as "Ask for a coach" already allows).
   const [gender, setGender] = useState<"any" | "male" | "female">("any");
+  // Owner, 25 Oct 2026: find a professional who speaks your language.
+  const [language, setLanguage] = useState<string>("any");
 
   // A caller can open this again with a new pre-filter while the screen is still mounted (Change
   // Professional's "Find new coach"); re-sync then, without overriding the member's own choice otherwise.
@@ -57,13 +62,14 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
   }, [route.params?.serviceType]);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["coaching", "professionals", serviceFilter, sort, search, gender],
+    queryKey: ["coaching", "professionals", serviceFilter, sort, search, gender, language],
     queryFn: () =>
       discoverCoaches({
         serviceType: serviceFilter === "all" ? undefined : serviceFilter,
         search: search.trim() || undefined,
         sort,
         gender: gender === "any" ? undefined : gender,
+        language: language === "any" ? undefined : language,
       }),
   });
 
@@ -94,6 +100,12 @@ export function CoachDiscoveryScreen({ navigation, route }: Props) {
         <View style={{ width: 1, backgroundColor: colors.border, marginHorizontal: 4 }} />
         <Chip label={t("coaching.discovery.mostExperienced")} variant="outlined" selected={sort === "experience"} onPress={() => setSort("experience")} />
         <Chip label={t("coaching.discovery.lowestPrice")} variant="outlined" selected={sort === "price"} onPress={() => setSort("price")} />
+      </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }} accessibilityLabel="Language">
+        <Chip label="Any language" variant="outlined" selected={language === "any"} onPress={() => setLanguage("any")} />
+        {SPOKEN_LANGUAGES.map((l) => (
+          <Chip key={l.code} label={l.english} variant="outlined" selected={language === l.code} onPress={() => setLanguage(l.code)} />
+        ))}
       </ScrollView>
 
       {isLoading ? (
@@ -159,7 +171,7 @@ function ProfessionalCard({ coach, onProfile, onRequest }: { coach: CoachDiscove
         padding: spacing.md,
       }}
     >
-      <Avatar name={coach.fullName} size={64} />
+      <ProfessionalAvatar professionalId={coach.id} name={coach.fullName} photoVersion={coach.photoVersion} size={64} />
       <View style={{ flex: 1, gap: 4 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Text style={{ flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 16 }} numberOfLines={1}>
@@ -174,7 +186,16 @@ function ProfessionalCard({ coach, onProfile, onRequest }: { coach: CoachDiscove
         <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
           {[focus, coach.yearsExperience != null ? `${coach.yearsExperience} yrs` : null, fee].filter(Boolean).join(" · ")}
         </Text>
-        <View style={{ flexDirection: "row", gap: spacing.lg, marginTop: 2 }}>
+        {coach.languages.length > 0 ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Icon name="globe" size={13} color={colors.textMuted} />
+            <Text style={{ flex: 1, color: colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+              {`Speaks ${spokenLanguageNames(coach.languages).join(", ")}`}
+            </Text>
+          </View>
+        ) : null}
+        {/* Wraps on narrow phones rather than pushing "Request Guidance" off the card. */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: spacing.lg, rowGap: 4, marginTop: 2 }}>
           <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel={`View ${coach.fullName}'s profile`} hitSlop={10}>
             <Text style={{ color: theme.accentText, fontFamily: fonts.bodySemi, fontSize: 14 }}>View Profile</Text>
           </Pressable>

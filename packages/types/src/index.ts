@@ -1994,6 +1994,8 @@ export interface Professional {
   yearsExperience: number | null;
   /** Coach gender (20 Oct 2026): stated by the coach or an admin; null = not stated. */
   gender?: CoachGender | null;
+  /** Languages they coach in (25 Oct 2026), ISO 639-1 codes from SPOKEN_LANGUAGES; empty = not stated. */
+  languages?: string[];
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
   /** R2 Wave 1 (20 Sep 2026) — see `ProfessionalLifecycleStatus`'s own doc comment. */
@@ -2161,13 +2163,42 @@ export type BookingStatus = "confirmed" | "cancelled";
 export type ChangeReasonCategory = "schedule_conflict" | "different_specialization" | "other";
 export type RelationshipChangeStatus = "pending" | "approved" | "rejected";
 
+/**
+ * Languages a professional can say they coach in (25 Oct 2026): ISO 639-1, the same ten the member app's
+ * Language setting offers (apps/api lib/coachLanguages.ts keeps the API's copy of the codes).
+ */
+export const SPOKEN_LANGUAGES = [
+  { code: "en", native: "English", english: "English" },
+  { code: "hi", native: "हिन्दी", english: "Hindi" },
+  { code: "ta", native: "தமிழ்", english: "Tamil" },
+  { code: "te", native: "తెలుగు", english: "Telugu" },
+  { code: "kn", native: "ಕನ್ನಡ", english: "Kannada" },
+  { code: "mr", native: "मराठी", english: "Marathi" },
+  { code: "bn", native: "বাংলা", english: "Bengali" },
+  { code: "gu", native: "ગુજરાતી", english: "Gujarati" },
+  { code: "ml", native: "മലയാളം", english: "Malayalam" },
+  { code: "pa", native: "ਪੰਜਾਬੀ", english: "Punjabi" },
+] as const;
+export type SpokenLanguageCode = (typeof SPOKEN_LANGUAGES)[number]["code"];
+
+/** English names for language codes, in SPOKEN_LANGUAGES order; unknown codes are left out. */
+export function spokenLanguageNames(codes: readonly string[]): string[] {
+  return SPOKEN_LANGUAGES.filter((l) => codes.includes(l.code)).map((l) => l.english);
+}
+
 /** One row of GET /coaching/professionals — the Discovery List card. */
 export interface CoachDiscoveryItem {
   id: string;
+  /** Short public ID to quote, e.g. "FXP-7K3M-9Q2D" (25 Oct 2026). */
+  publicId: string;
   fullName: string;
+  /** When the profile photo last changed (GET /coaching/professionals/:id/photo), or null when there's none. */
+  photoVersion: string | null;
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  /** Languages they coach in (25 Oct 2026), ISO 639-1; empty = not stated. */
+  languages: string[];
   verifiedServices: ProfessionalServiceType[];
   /** Lowest fee (before GST) among this coach's bookable offerings, or null if none can be booked yet. */
   startingPriceCents: number | null;
@@ -2206,15 +2237,49 @@ export interface CoachServiceOffering {
   totalCents: number;
 }
 
+/** A verified, unexpired certification on a professional's profile (25 Oct 2026). Never the document itself. */
+export interface CoachCertification {
+  serviceType: ProfessionalServiceType;
+  name: string | null;
+  issuedBy: string | null;
+  year: number | null;
+  validUntil: string | null;
+}
+
+/** Free session times on one UTC day of the profile's next 7 days; `times` is empty when the day is full. */
+export interface CoachOpenDay {
+  /** YYYY-MM-DD (UTC), the same key GET /coaching/professionals/:id/availability takes. */
+  date: string;
+  /** ISO 8601 slot starts. */
+  times: string[];
+}
+
 /** The shape returned by GET /coaching/professionals/:id. */
 export interface CoachProfileDetail {
   id: string;
+  /** Short public ID to quote, e.g. "FXP-7K3M-9Q2D" (25 Oct 2026). */
+  publicId: string;
   fullName: string;
+  /** When the profile photo last changed, or null when there's none. */
+  photoVersion: string | null;
+  /** Only active professionals have a profile members can open. */
+  status: "active";
+  /** Below their client limit; requests still go through at the limit and the professional decides. */
+  acceptingNewClients: boolean;
   bio: string | null;
   specializationTags: string[];
   yearsExperience: number | null;
+  /** Languages they coach in (25 Oct 2026), ISO 639-1; empty = not stated. */
+  languages: string[];
   verifiedServices: ProfessionalServiceType[];
   totalClients: number;
+  /** Confirmed sessions whose start has passed. */
+  pastSessions: number;
+  /** When they joined FynroX (ISO 8601). */
+  joinedAt: string;
+  certifications: CoachCertification[];
+  /** Next 7 days of free times, from today (UTC days). */
+  openTimes: CoachOpenDay[];
   level: CoachLevelSummary | null;
   gstPercent: number;
   /** Only offerings that can be booked (a fee is set for the coach's level). */
