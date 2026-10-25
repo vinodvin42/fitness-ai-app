@@ -1,11 +1,11 @@
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
-import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme, type NavigatorScreenParams } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AuthStack } from "./AuthStack";
 import { OnboardingStack } from "./OnboardingStack";
-import { MainTabs } from "./MainTabs";
+import { MainTabs, type MainTabsParamList } from "./MainTabs";
 import { NotificationsScreen } from "../screens/notifications/NotificationsScreen";
 import { colors } from "../theme/tokens";
 
@@ -30,7 +30,7 @@ const navigationTheme = {
 // locally, so this doesn't need every nested stack's param list threaded
 // with a `Notifications` entry, just this one real registration.
 export type RootStackParamList = {
-  Main: undefined;
+  Main: NavigatorScreenParams<MainTabsParamList> | undefined;
   Notifications: undefined;
 };
 

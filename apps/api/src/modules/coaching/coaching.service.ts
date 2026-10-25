@@ -1234,6 +1234,7 @@ type ScheduleBookingRow = {
   scheduledAt: Date;
   durationMinutes: number;
   status: string;
+  summaryPublishedAt: Date | null;
   user: { fullName: string };
   offering: { label: string; serviceType: string | null };
 };
@@ -1249,6 +1250,7 @@ function toScheduleItem(b: ScheduleBookingRow) {
     scheduledAt: b.scheduledAt,
     durationMinutes: b.durationMinutes,
     status: b.status,
+    hasSummary: b.summaryPublishedAt != null,
   };
 }
 

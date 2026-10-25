@@ -164,11 +164,23 @@ export const en = {
   notifications: {
     title: "Notifications",
     emptyTitle: "Nothing needs your attention",
-    emptySubtitle: "Pending requests and account issues will show up here.",
+    emptySubtitle: "New requests, bookings, offers from Fynrox and unread messages show up here.",
     pendingRequests: "Pending client requests",
+    reviewRequests: "Accept or decline ›",
     stuckActivating: "Needs attention — stuck activating",
-    openClientsTab: 'Open the Clients tab\'s "Pending Requests" to accept or decline.',
     alreadyFlagged: "Already flagged to Fynrox support — no action required from you.",
+    unreadTitle: "Unread messages",
+    unreadCount_one: "{{count}} unread message",
+    unreadCount_other: "{{count}} unread messages",
+    openMessages: "Open Messages ›",
+    offersTitle: "Offers from Fynrox",
+    offeredAgo: "Offered {{ago}}",
+    reviewOffers: "Accept or decline ›",
+    newBookings: "New bookings",
+    newBookingsHint: "Booked since you last opened Alerts.",
+    bookedAgo: "Booked {{ago}}",
+    moreBookings: "{{count}} more in Calendar.",
+    openCalendar: "Open Calendar ›",
   },
 
   earnings: {
@@ -204,6 +216,15 @@ export const en = {
         "When Fynrox proposes you as a coach for a specific client, it'll show up here for you to accept or decline.",
       offerNote: "Fynrox proposed you as this client's coach — accepting creates the relationship.",
       notResponded: "You haven't responded to this yet — Fynrox support can see this too.",
+      // What the member asked for when they requested (25 Oct 2026).
+      askedFor: "Asked for",
+      preferredDay: "Preferred day",
+      anyDay: "Any day",
+      note: "Their note",
+      replyBy: "Reply by {{when}}",
+      expiredTitle: "This request expired",
+      expiredBody: "{{name}}'s request wasn't answered in time, so it's no longer on your list.",
+      dismiss: "Dismiss",
     },
     offers: {
       title: "Offers",
@@ -270,11 +291,31 @@ export const en = {
     recentLimit: "Showing the most recent 50 past sessions.",
   },
 
+  /** Session summary (25 Oct 2026): the coach's write-up of a session, which the client reads in their app. */
+  sessionSummary: {
+    write: "Write summary",
+    published: "Summary published",
+    title: "Session summary",
+    intro: "{{name}} can read this summary in their app once you publish it.",
+    replaceNote: "Publishing replaces the summary {{name}} can read now.",
+    placeholder: "What you covered, how it went and what to do before the next session",
+    inputLabel: "Session summary",
+    publish: "Publish summary",
+    publishedAt: "Published {{when}}",
+    edit: "Edit summary",
+    done: "Done",
+    close: "Close",
+    failed: "Couldn't publish the summary",
+    loading: "Loading the summary",
+    loadFailed: "Couldn't load the summary",
+  },
+
   messages: {
     title: "Messages",
     emptyTitle: "No conversations yet",
     emptySubtitle: "When you have an active client, you can message each other here.",
     placeholder: "Message…",
+    tabUnread: "Messages, {{count}} unread",
   },
 
   /** My profile (20 Oct 2026): the coach's gender, for members who ask for a male or female coach. */

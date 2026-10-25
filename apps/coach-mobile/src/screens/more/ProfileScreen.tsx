@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -10,6 +10,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { SelectCard } from "../../components/SelectCard";
 import { fetchMe, setMyGender } from "../../api/professionalAuth";
 import { extractErrorMessage } from "../../lib/apiError";
+import { showAlert } from "../../lib/dialogs";
 import { colors, spacing, typography } from "../../theme/tokens";
 
 type Choice = "female" | "male" | "none";
@@ -42,9 +43,9 @@ export function ProfileScreen() {
     mutationFn: (c: Choice) => setMyGender(c === "none" ? null : c),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionalMe"] });
-      Alert.alert(t("profile.saved"));
+      showAlert(t("profile.saved"));
     },
-    onError: (err) => Alert.alert(t("profile.saveFailed"), extractErrorMessage(err, t("common.checkConnection"))),
+    onError: (err) => showAlert(t("profile.saveFailed"), extractErrorMessage(err, t("common.checkConnection"))),
   });
 
   return (

@@ -5,7 +5,7 @@ import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { colors, spacing, typography } from "../theme/tokens";
 import { fetchDashboardStats } from "../api/professionalDashboard";
-import { fetchPendingRelationships } from "../api/relationshipRequests";
+import { useCoachAlerts } from "../lib/coachAlerts";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 interface ScreenContainerProps {
@@ -19,19 +19,21 @@ interface ScreenContainerProps {
 /**
  * Global Notifications ("Alerts") header button (Wave 3, 20 Sep 2026) — see
  * NotificationsScreen.tsx's own doc comment for what this button leads to
- * and why it's Notifications-only, not an AI entry point too. Reuses the
- * exact same react-query cache keys (`professional-dashboard-stats`,
- * `coach-pending-requests`) TodayScreen.tsx / PendingRequestsScreen.tsx
- * already poll, so this doesn't add a new network round trip on screens
- * that already fetch one of those — it's a second subscriber to the same
- * cached query, not a duplicate fetch (react-query dedupes by key).
+ * and why it's Notifications-only, not an AI entry point too.
+ *
+ * 25 Oct 2026 (audit B2): the count is waiting requests, open Fynrox offers
+ * and new bookings from GET /professionals/me/alerts, which MainTabs polls
+ * every minute (lib/coachAlerts.ts), plus stuck activations from the
+ * dashboard query TodayScreen.tsx shares (that one isn't polled).
  */
 function AlertsButton() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const dashboardQuery = useQuery({ queryKey: ["professional-dashboard-stats"], queryFn: fetchDashboardStats });
-  const pendingQuery = useQuery({ queryKey: ["coach-pending-requests"], queryFn: fetchPendingRelationships });
+  const alerts = useCoachAlerts().data;
 
-  const count = (dashboardQuery.data?.stuckRelationships.length ?? 0) + (pendingQuery.data?.requests.length ?? 0);
+  const count =
+    (dashboardQuery.data?.stuckRelationships.length ?? 0) +
+    (alerts ? alerts.pendingRequests + alerts.openOffers + alerts.newBookingCount : 0);
 
   return (
     <Pressable

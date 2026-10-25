@@ -9,3 +9,12 @@ export function extractErrorMessage(err: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/** The API's stable error `code` (e.g. `relationship_expired`), for failures that need their own handling. Mirrors apps/user-mobile. */
+export function extractErrorCode(err: unknown): string | undefined {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: { code?: string } } | undefined;
+    return data?.error?.code;
+  }
+  return undefined;
+}

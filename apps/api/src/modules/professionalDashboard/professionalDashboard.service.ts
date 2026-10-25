@@ -32,6 +32,7 @@ type TodayBookingRow = {
   scheduledAt: Date;
   durationMinutes: number;
   status: string;
+  summaryPublishedAt: Date | null;
   user: { fullName: string };
   offering: { label: string; serviceType: string | null };
 };
@@ -156,6 +157,7 @@ export async function getDashboardStats(professionalId: string) {
       scheduledAt: b.scheduledAt,
       durationMinutes: b.durationMinutes,
       status: b.status,
+      hasSummary: b.summaryPublishedAt != null,
     })),
     // Stuck-relationship signal (Wave 3, 20 Sep 2026) — see
     // detectAndQueueStuckRelationships's own doc comment above. Deliberately

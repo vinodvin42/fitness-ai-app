@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -10,6 +10,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchLifecycleSummary, updateMyCapacity } from "../../api/professionalLifecycle";
 import { fetchOnboardingStatus } from "../../api/professionalOnboarding";
 import { extractErrorMessage } from "../../lib/apiError";
+import { showAlert } from "../../lib/dialogs";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 
 const MIN_CAPACITY = 1;
@@ -75,9 +76,9 @@ export function AvailabilityScreen() {
     mutationFn: (maxActiveClients: number) => updateMyCapacity({ maxActiveClients }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coach-lifecycle"] });
-      Alert.alert("Saved", "Your client capacity was updated.");
+      showAlert("Saved", "Your client capacity was updated.");
     },
-    onError: (err) => Alert.alert("Couldn't save", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't save", extractErrorMessage(err, "Please try again.")),
   });
 
   const summary = lifecycleQuery.data;

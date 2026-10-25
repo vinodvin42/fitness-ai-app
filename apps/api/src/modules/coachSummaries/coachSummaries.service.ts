@@ -153,10 +153,20 @@ export async function publishBookingSummary(professionalId: string, bookingId: s
     entityId: booking.id,
     metadata: { userId: booking.userId },
   });
+  return getMyBookingSummary(professionalId, bookingId);
+}
+
+/**
+ * The coach's read-back of a session's summary (25 Oct 2026), so the coach
+ * app can show what was published after a reload. Only the professional's own
+ * bookings; the text is null until one is published.
+ */
+export async function getMyBookingSummary(professionalId: string, bookingId: string) {
   const row = (await prisma.booking.findFirst({
     where: { id: bookingId, professionalId },
     include: INCLUDE,
-  })) as BookingRow;
+  })) as BookingRow | null;
+  if (!row) throw new ApiHttpError(404, "booking_not_found", "Booking not found");
   return {
     ...toBooking(row),
     summaryText: row.summaryText,

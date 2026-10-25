@@ -7,6 +7,7 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
+import { SessionSummaryLink, SessionSummarySheet, canWriteSummary } from "../../components/SessionSummarySheet";
 import { fetchMySchedule } from "../../api/coaching";
 import { colors, spacing, typography } from "../../theme/tokens";
 
@@ -41,7 +42,7 @@ function groupByDay(items: CoachScheduleItem[]): Array<{ label: string; items: C
   return groups;
 }
 
-function SessionRow({ item }: { item: CoachScheduleItem }) {
+function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWriteSummary?: () => void }) {
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs }}>
       <View style={{ flex: 1 }}>
@@ -50,6 +51,7 @@ function SessionRow({ item }: { item: CoachScheduleItem }) {
           {item.offeringLabel}
           {item.serviceType ? ` · ${SERVICE_LABELS[item.serviceType] ?? item.serviceType}` : ""} · {item.durationMinutes} min
         </Text>
+        {onWriteSummary ? <SessionSummaryLink item={item} onPress={onWriteSummary} /> : null}
       </View>
       <View style={{ alignItems: "flex-end" }}>
         <Text style={{ color: colors.textPrimary }}>{timeLabel(item.scheduledAt)}</Text>
@@ -76,6 +78,8 @@ export function CalendarScreen() {
   const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["coach-schedule"], queryFn: fetchMySchedule });
   const [showPast, setShowPast] = useState(false);
+  // Session summary (25 Oct 2026): written from a past session that went ahead.
+  const [summarySession, setSummarySession] = useState<CoachScheduleItem | null>(null);
 
   const upcomingGroups = data ? groupByDay(data.upcoming) : [];
   const pastGroups = data ? groupByDay(data.past) : [];
@@ -133,7 +137,10 @@ export function CalendarScreen() {
                           key={item.id}
                           style={i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.xs } : undefined}
                         >
-                          <SessionRow item={item} />
+                          <SessionRow
+                            item={item}
+                            onWriteSummary={canWriteSummary(item) ? () => setSummarySession(item) : undefined}
+                          />
                         </View>
                       ))}
                     </Card>
@@ -147,6 +154,12 @@ export function CalendarScreen() {
           )}
         </>
       )}
+
+      <SessionSummarySheet
+        session={summarySession}
+        clientName={summarySession?.clientFullName ?? ""}
+        onClose={() => setSummarySession(null)}
+      />
     </ScreenContainer>
   );
 }

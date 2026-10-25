@@ -2,6 +2,7 @@ import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { getRedis, isRedisConfigured } from "../lib/redis";
 import { AuthedRequest } from "./auth";
+import type { ProfessionalAuthedRequest } from "./professionalAuth";
 
 /**
  * Go-live hardening (25 Aug 2026) — previously NOTHING in this API was
@@ -68,6 +69,29 @@ export const writeRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "too_many_requests", message: "Too many requests — try again in a few minutes" } },
+});
+
+// Coach ↔ client chat sends (25 Oct 2026, coach audit S2). These used to
+// share writeRateLimit's single IP-keyed bucket (30 per 15 minutes) with
+// every other write route, so a coach answering several clients, or anyone
+// on shared gym Wi-Fi or carrier NAT, got "Too many requests" mid-chat and
+// then couldn't accept a request either. Keyed by the sending account
+// instead: this only runs after requireAuth or requireProfessionalAuth, and
+// the "chat:" prefix keeps its counts apart from the other limiters' keys in
+// the shared Redis store. 120 per 15 minutes is a coach replying all day;
+// it still bounds a compromised or abusive account.
+export const chatRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  store: sharedStore(),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const professionalId = (req as ProfessionalAuthedRequest).professionalId;
+    if (professionalId) return `chat:professional:${professionalId}`;
+    return `chat:user:${(req as AuthedRequest).userId ?? "anonymous"}`;
+  },
+  message: { error: { code: "too_many_requests", message: "Too many messages — try again in a few minutes" } },
 });
 
 // AI Coach messages (25 Aug 2026, Phase 2 §H) — the one endpoint in this

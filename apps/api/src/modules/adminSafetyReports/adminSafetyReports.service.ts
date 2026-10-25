@@ -20,7 +20,8 @@ import { ListSafetyReportsQuery, ResolveSafetyReportInput } from "./adminSafetyR
  * - warning: the reported person is told (in-app, users only — professionals
  *   have no inbox yet) to keep messages respectful.
  * - message_removed: the reported message is hidden in both apps ("Removed
- *   by Fynrox"); its text stays on the report as evidence.
+ *   by Fynrox"), including the client's inbox copy of a coach's message;
+ *   its text stays on the report as evidence.
  * - account_suspended: recorded only once the account really is suspended,
  *   with the existing reason-gated suspend action on the user's or coach's
  *   profile — this screen never suspends anyone itself.
@@ -164,6 +165,35 @@ export async function getSafetyReport(adminId: string, id: string) {
   };
 }
 
+/**
+ * A coach's message also lands in the client's inbox: sendMessage
+ * (coachMessages.service.ts) copies its first 140 characters into a
+ * Notification body. Removing the message has to hide that copy too, or the
+ * inbox keeps showing the text the thread now hides. The row has no message
+ * id, so it's matched on what sendMessage wrote: same client, the chat link,
+ * the same excerpt, and created moments after the message (the closest one
+ * wins if the same text was sent twice).
+ */
+async function hideRemovedMessageInInbox(message: { userId: string; sender: string; content: string; createdAt: Date }) {
+  if (message.sender !== "professional") return;
+  const sentAt = message.createdAt.getTime();
+  const candidates = await prisma.notification.findMany({
+    where: {
+      userId: message.userId,
+      kind: "coach",
+      deepLink: "coach-messages",
+      body: message.content.slice(0, 140),
+      createdAt: { gte: new Date(sentAt - 5_000), lte: new Date(sentAt + 60_000) },
+    },
+    select: { id: true, createdAt: true },
+  });
+  if (candidates.length === 0) return;
+  const closest = candidates.reduce((a, b) =>
+    Math.abs(b.createdAt.getTime() - sentAt) < Math.abs(a.createdAt.getTime() - sentAt) ? b : a,
+  );
+  await prisma.notification.update({ where: { id: closest.id }, data: { body: REMOVED_MESSAGE_TEXT } });
+}
+
 export async function resolveSafetyReport(adminId: string, id: string, input: ResolveSafetyReportInput) {
   const r = await getReportOrThrow(id);
   if (r.status !== "open") {
@@ -174,7 +204,8 @@ export async function resolveSafetyReport(adminId: string, id: string, input: Re
     if (!r.messageId) {
       throw new ApiHttpError(400, "no_message", "This report isn't about a single message");
     }
-    await prisma.coachMessage.update({ where: { id: r.messageId }, data: { removedAt: new Date() } });
+    const removed = await prisma.coachMessage.update({ where: { id: r.messageId }, data: { removedAt: new Date() } });
+    await hideRemovedMessageInInbox(removed);
   }
   if (input.outcome === "account_suspended") {
     const status = r.reportedUser?.status ?? r.reportedProfessional?.status ?? null;

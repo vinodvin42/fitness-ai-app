@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -9,6 +9,7 @@ import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
 import { fetchFormReview, submitFormReview } from "../../api/formReviews";
 import { extractErrorMessage } from "../../lib/apiError";
+import { showAlert } from "../../lib/dialogs";
 import { colors, radius, spacing } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -35,10 +36,10 @@ export function FormReviewDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coach-form-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["coach-form-review", id] });
-      Alert.alert("Review sent", "Your client has been notified.");
+      showAlert("Review sent", "Your client has been notified.");
       navigation.goBack();
     },
-    onError: (err) => Alert.alert("Couldn't submit", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't submit", extractErrorMessage(err, "Please try again.")),
   });
 
   const item = query.data;

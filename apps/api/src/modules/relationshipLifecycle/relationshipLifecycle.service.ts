@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createOffer, createOfferAsProfessional } from "../professionalOffers/professionalOffers.service";
+import { createNotification } from "../notifications/notifications.service";
 
 /**
  * Relationship Lifecycle — End Relationship / Handover (R1 U6, Wave 3,
@@ -221,7 +222,44 @@ export async function endRelationship(actor: Actor, relationshipId: string, reas
     { ruleId: "BR-ACC-007", metadata: { cause: "relationship_ended" } },
   );
 
+  await notifyClientOfEnd(relationship);
+
   return updated as RelationshipRow;
+}
+
+// Statuses where coaching had started, and where it was still only a request.
+// Anything else (declined, expired, completed) was already over for the client.
+const STARTED_STATUSES = ["active", "changing"];
+const REQUEST_STATUSES = ["requested", "accepted", "awaiting_payment", "activating", "activation_failed", "offered"];
+
+/**
+ * Inbox row for the client (coach audit S3, 25 Oct 2026): before this, an
+ * ended relationship just disappeared from their app. The same copy whoever
+ * ended it (the coach, an admin, an approved change request), and the reason
+ * stays internal.
+ */
+async function notifyClientOfEnd(before: RelationshipRow) {
+  const started = STARTED_STATUSES.includes(before.status);
+  if (!started && !REQUEST_STATUSES.includes(before.status)) return;
+  const professional = await prisma.professional
+    .findUnique({ where: { id: before.professionalId }, select: { fullName: true } })
+    .catch(() => null);
+  const coach = professional?.fullName ?? "your coach";
+  const next = "You can ask for a new coach whenever you're ready.";
+  await createNotification(
+    before.userId,
+    started
+      ? {
+          kind: "coach",
+          title: "Your coaching has ended",
+          body: `Your ${before.serviceType} coaching with ${coach} has ended. ${next}`,
+        }
+      : {
+          kind: "coach",
+          title: "Your coaching request was closed",
+          body: `Your ${before.serviceType} coaching request with ${coach} was closed. ${next}`,
+        },
+  );
 }
 
 /**

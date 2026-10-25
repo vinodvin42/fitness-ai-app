@@ -52,6 +52,19 @@ coachSummariesRouter.get("/professionals/me/ratings", requireProfessionalAuth, a
   }
 });
 
+// The coach reads back what they published (25 Oct 2026); text is null until then.
+coachSummariesRouter.get(
+  "/professionals/me/bookings/:id/summary",
+  requireProfessionalAuth,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      res.json(await coachSummariesService.getMyBookingSummary(req.professionalId as string, req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 coachSummariesRouter.post(
   "/professionals/me/bookings/:id/summary",
   requireProfessionalAuth,

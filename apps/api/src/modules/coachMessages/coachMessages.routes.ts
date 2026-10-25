@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middleware/professionalAuth";
-import { writeRateLimit } from "../../middleware/rateLimit";
+import { chatRateLimit, writeRateLimit } from "../../middleware/rateLimit";
 import { reportConversationSchema, sendCoachMessageSchema } from "./coachMessages.schema";
 import * as coachMessagesService from "./coachMessages.service";
 
@@ -40,7 +40,7 @@ coachMessagesRouter.get(
 coachMessagesRouter.post(
   "/coaching/conversations/:professionalId",
   requireAuth,
-  writeRateLimit,
+  chatRateLimit,
   async (req: AuthedRequest, res, next) => {
     try {
       const input = sendCoachMessageSchema.parse(req.body);
@@ -83,7 +83,7 @@ coachMessagesRouter.get(
 coachMessagesRouter.post(
   "/professionals/me/conversations/:userId",
   requireProfessionalAuth,
-  writeRateLimit,
+  chatRateLimit,
   async (req: ProfessionalAuthedRequest, res, next) => {
     try {
       const input = sendCoachMessageSchema.parse(req.body);

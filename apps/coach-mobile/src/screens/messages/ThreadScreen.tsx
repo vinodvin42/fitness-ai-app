@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import { Button } from "../../components/Button";
 import { fetchThread, reportClient, sendMessage, setClientBlocked } from "../../api/coachMessages";
 import { ReportSheet } from "../../components/ReportSheet";
 import { extractErrorMessage } from "../../lib/apiError";
+import { confirmAction, showAlert } from "../../lib/dialogs";
 import type { MessagesStackParamList } from "../../navigation/MessagesStack";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 
@@ -57,6 +57,14 @@ export function ThreadScreen() {
     refetchInterval: 8_000,
   });
 
+  // Each thread read marks the client's messages read, so refresh the
+  // conversation list (and the Messages tab badge) whenever a read brings in
+  // a newest message the badge may still be counting.
+  const newestMessageId = data?.messages[data.messages.length - 1]?.id;
+  useEffect(() => {
+    if (newestMessageId) queryClient.invalidateQueries({ queryKey: ["coach-conversations"] });
+  }, [newestMessageId, queryClient]);
+
   const mutation = useMutation({
     mutationFn: () => sendMessage(userId, { content: draft.trim() }),
     onSuccess: () => {
@@ -64,7 +72,7 @@ export function ThreadScreen() {
       queryClient.invalidateQueries({ queryKey: ["coach-thread", userId] });
       queryClient.invalidateQueries({ queryKey: ["coach-conversations"] });
     },
-    onError: (err) => Alert.alert("Message not sent", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Message not sent", extractErrorMessage(err, "Please try again.")),
   });
 
   const canSend = draft.trim().length > 0 && !mutation.isPending;
@@ -76,45 +84,43 @@ export function ThreadScreen() {
       reportClient(userId, { reason: input.reason, details: input.details || undefined, messageId: input.messageId }),
     onSuccess: () => {
       setReporting(null);
-      Alert.alert("Report sent", "Thanks for telling us. Fynrox's safety team will review it.");
+      showAlert("Report sent", "Thanks for telling us. Fynrox's safety team will review it.");
     },
-    onError: (err) => Alert.alert("Report not sent", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Report not sent", extractErrorMessage(err, "Please try again.")),
   });
 
   const blockMutation = useMutation({
     mutationFn: (block: boolean) => setClientBlocked(userId, block),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coach-thread", userId] }),
-    onError: (err) => Alert.alert("That didn't work", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("That didn't work", extractErrorMessage(err, "Please try again.")),
   });
 
-  const openMenu = () => {
-    Alert.alert(fullName, undefined, [
-      { text: `Report ${firstName}`, onPress: () => setReporting({}) },
-      blocked?.byMe
-        ? { text: "Unblock", onPress: () => blockMutation.mutate(false) }
-        : {
-            text: "Block",
-            style: "destructive",
-            onPress: () =>
-              Alert.alert(
-                `Block ${firstName}?`,
-                "Neither of you will be able to send messages here. Their coaching isn't changed.",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Block", style: "destructive", onPress: () => blockMutation.mutate(true) },
-                ],
-              ),
-          },
-      { text: "Cancel", style: "cancel" },
-    ]);
+  // "⋯" opens a small menu on the screen rather than a three-button Alert,
+  // which react-native-web can't show and a browser confirm can't express.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const onMenuReport = () => {
+    setMenuOpen(false);
+    setReporting({});
+  };
+
+  const onMenuBlock = () => {
+    setMenuOpen(false);
+    if (blocked?.byMe) {
+      blockMutation.mutate(false);
+      return;
+    }
+    confirmAction(
+      `Block ${firstName}?`,
+      "Neither of you will be able to send messages here. Their coaching isn't changed.",
+      "Block",
+      () => blockMutation.mutate(true),
+    );
   };
 
   const onLongPressMessage = (m: CoachMessageItem) => {
     if (m.sender === "professional" || m.removed) return;
-    Alert.alert("Report this message?", undefined, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Report", onPress: () => setReporting({ messageId: m.id }) },
-    ]);
+    confirmAction("Report this message?", undefined, "Report", () => setReporting({ messageId: m.id }), false);
   };
 
   return (
@@ -125,15 +131,34 @@ export function ThreadScreen() {
             ‹ Messages
           </Text>
           <Pressable
-            onPress={openMenu}
+            onPress={() => setMenuOpen((open) => !open)}
             accessibilityRole="button"
             accessibilityLabel={`More options for ${fullName}: report or block`}
+            aria-expanded={menuOpen}
             hitSlop={8}
             style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
           >
             <Text style={{ color: colors.textPrimary, fontWeight: "700", fontSize: 20 }}>⋯</Text>
           </Pressable>
         </View>
+        {menuOpen ? (
+          <View
+            accessibilityRole="menu"
+            style={{
+              alignSelf: "flex-end",
+              minWidth: 200,
+              backgroundColor: colors.surfaceRaised,
+              borderRadius: radius.sm,
+              borderWidth: 1,
+              borderColor: colors.border,
+              marginBottom: spacing.sm,
+            }}
+          >
+            <ThreadMenuItem label={`Report ${firstName}`} onPress={onMenuReport} />
+            <ThreadMenuItem label={blocked?.byMe ? "Unblock" : "Block"} onPress={onMenuBlock} destructive={!blocked?.byMe} />
+            <ThreadMenuItem label="Cancel" onPress={() => setMenuOpen(false)} muted />
+          </View>
+        ) : null}
         <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{fullName}</Text>
       </View>
 
@@ -249,6 +274,35 @@ function MessageBubble({ message, mine, onLongPress }: { message: CoachMessageIt
       </Text>
       <Text style={{ color: mine ? "rgba(11,11,15,0.6)" : colors.textMuted, fontSize: 10, marginTop: 2, textAlign: "right" }}>
         {timeLabel(message.createdAt)}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ThreadMenuItem({
+  label,
+  onPress,
+  destructive,
+  muted,
+}: {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="menuitem"
+      style={{ minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.md }}
+    >
+      <Text
+        style={{
+          color: destructive ? colors.danger : muted ? colors.textSecondary : colors.textPrimary,
+          fontWeight: "600",
+        }}
+      >
+        {label}
       </Text>
     </Pressable>
   );

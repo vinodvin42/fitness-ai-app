@@ -2089,6 +2089,8 @@ export interface CoachScheduleItem {
   scheduledAt: string;
   durationMinutes: number;
   status: BookingStatus;
+  /** 25 Oct 2026: the coach has published a session summary for this booking; its text is GET /professionals/me/bookings/:id/summary. */
+  hasSummary: boolean;
 }
 
 /** One `Relationship` stuck at `activating` past the read-time detection threshold — see professionalDashboard.service.ts's detectAndQueueStuckRelationships doc comment. Added Wave 3, 20 Sep 2026. */
@@ -2112,6 +2114,36 @@ export interface ProfessionalDashboardStats {
   stuckRelationships: StuckRelationshipItem[];
   /** Always ["avgRating"] today — no Review model exists anywhere in this build. sessionsThisWeek/todaysSchedule are no longer in this list as of 26 Aug 2026. */
   notAvailable: string[];
+}
+
+/** One booking a client made since the coach last opened Alerts (25 Oct 2026). */
+export interface CoachNewBookingItem {
+  id: string;
+  clientFullName: string;
+  offeringLabel: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  /** When the client booked (the booking's createdAt). */
+  bookedAt: string;
+}
+
+/**
+ * GET /professionals/me/alerts (25 Oct 2026, coach communication audit B2):
+ * what the coach app's Alerts badge polls. Requests and offers count for as
+ * long as they wait for the coach. Bookings count once: the ones made after
+ * `bookingsSince`, the mark the app moves forward when the coach opens Alerts.
+ */
+export interface CoachAlertsResponse {
+  /** `requested` relationships still inside their reply window. */
+  pendingRequests: number;
+  /** Fynrox offers still open: `offered` and not past `expiresAt`. */
+  openOffers: number;
+  /** Confirmed bookings made after `bookingsSince`, newest first, at most 20. Always empty when `bookingsSince` isn't sent. */
+  newBookings: CoachNewBookingItem[];
+  /** All of them, which can be more than `newBookings` lists. */
+  newBookingCount: number;
+  /** Server time of this read. The app stores it as its next `bookingsSince`, so the phone's clock never matters. */
+  asOf: string;
 }
 
 // ---- Coach Discovery & Booking (added 25 Aug 2026) -------------------

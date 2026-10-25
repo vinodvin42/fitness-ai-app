@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -19,6 +19,7 @@ import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { ErrorState } from "../../components/ErrorState";
+import { SessionSummaryLink, SessionSummarySheet, canWriteSummary } from "../../components/SessionSummarySheet";
 import { fetchClientProfile, fetchClientSummary } from "../../api/professionalClients";
 import { createClientNote, deleteClientNote, fetchClientNotes, updateClientNote } from "../../api/coachNotes";
 import { RATING_TAG_LABEL, fetchMyRatings } from "../../api/sessionRatings";
@@ -30,6 +31,7 @@ import {
   handoverRelationship,
 } from "../../api/relationshipLifecycle";
 import { extractErrorMessage } from "../../lib/apiError";
+import { confirmAction, showAlert } from "../../lib/dialogs";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 
@@ -79,7 +81,8 @@ function sessionLine(item: CoachScheduleItem): string {
  * relationshipLifecycle.service.ts. A plain required-reason text field
  * (this app has no shared reason-gated-action component like admin-web's
  * `ReasonGatedAction` — see that file's own doc comment for why this build
- * doesn't share one across apps) plus a native `Alert.alert` confirmation,
+ * doesn't share one across apps) plus a `confirmAction` confirmation
+ * (lib/dialogs.ts: `Alert.alert` on native, the browser's confirm on web),
  * same "confirm via Alert" precedent PendingRequestsScreen.tsx's own
  * `confirmDecline`/`confirmDeclineOffer` already use for a destructive
  * action. Handover's replacement-professional picker reuses
@@ -118,7 +121,7 @@ export function ClientProfileScreen() {
   // "action, then leave the now-irrelevant screen" precedent.
   const onRelationshipEnded = (message: string) => {
     queryClient.invalidateQueries({ queryKey: ["coach-clients"] });
-    Alert.alert("Done", message, [{ text: "OK", onPress: () => navigation.goBack() }]);
+    showAlert("Done", message, () => navigation.goBack());
   };
 
   return (
@@ -212,7 +215,7 @@ function RelationshipActionsSection({
       resetForm();
       onComplete("This relationship has ended.");
     },
-    onError: (err) => Alert.alert("Couldn't end this relationship", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't end this relationship", extractErrorMessage(err, "Please try again.")),
   });
 
   const completeMutation = useMutation({
@@ -222,7 +225,7 @@ function RelationshipActionsSection({
       onComplete("Programme marked complete. This client's access has ended.");
     },
     onError: (err) =>
-      Alert.alert("Couldn't complete this programme", extractErrorMessage(err, "Please try again.")),
+      showAlert("Couldn't complete this programme", extractErrorMessage(err, "Please try again.")),
   });
 
   const handoverMutation = useMutation({
@@ -239,7 +242,7 @@ function RelationshipActionsSection({
           : "This relationship has ended.",
       );
     },
-    onError: (err) => Alert.alert("Couldn't complete the handover", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't complete the handover", extractErrorMessage(err, "Please try again.")),
   });
 
   const openForm = (relationshipId: string, nextMode: RelationshipMode) => {
@@ -253,7 +256,7 @@ function RelationshipActionsSection({
     if (trimmedReason.length === 0) return;
 
     const isHandoverWithReplacement = mode === "handover" && replacementId != null;
-    Alert.alert(
+    confirmAction(
       mode === "handover"
         ? "Confirm handover"
         : mode === "complete"
@@ -264,22 +267,17 @@ function RelationshipActionsSection({
         : mode === "complete"
           ? "This marks the programme finished and ends your access to this client's data. They'll see a completion summary. This can't be undone from here."
           : "This ends your relationship with this client. This can't be undone from here.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: mode === "handover" ? "Hand Over" : mode === "complete" ? "Complete" : "End Relationship",
-          // Completing is not destructive in the way the other two are —
-          // it is the good ending, and styling it red would tell a coach
-          // finishing a programme well that they are doing damage.
-          style: mode === "complete" ? "default" : "destructive",
-          onPress: () =>
-            mode === "handover"
-              ? handoverMutation.mutate(relationshipId)
-              : mode === "complete"
-                ? completeMutation.mutate(relationshipId)
-                : endMutation.mutate(relationshipId),
-        },
-      ],
+      mode === "handover" ? "Hand Over" : mode === "complete" ? "Complete" : "End Relationship",
+      () =>
+        mode === "handover"
+          ? handoverMutation.mutate(relationshipId)
+          : mode === "complete"
+            ? completeMutation.mutate(relationshipId)
+            : endMutation.mutate(relationshipId),
+      // Completing is not destructive in the way the other two are —
+      // it is the good ending, and styling it red would tell a coach
+      // finishing a programme well that they are doing damage.
+      mode !== "complete",
     );
   };
 
@@ -441,12 +439,12 @@ function SafetyFlagCard({ userId, fullName }: { userId: string; fullName: string
       setOpen(false);
       setConcern("");
       setUrgent(false);
-      Alert.alert(
+      showAlert(
         "Flag raised",
         "Our safety team has been notified and will review this. You'll be contacted if they need anything from you.",
       );
     },
-    onError: (err) => Alert.alert("Couldn't raise the flag", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't raise the flag", extractErrorMessage(err, "Please try again.")),
   });
 
   return (
@@ -557,7 +555,7 @@ function NotesSection({ userId }: { userId: string }) {
       setDraft("");
       invalidate();
     },
-    onError: (err) => Alert.alert("Note not saved", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Note not saved", extractErrorMessage(err, "Please try again.")),
   });
 
   const updateMutation = useMutation({
@@ -567,20 +565,17 @@ function NotesSection({ userId }: { userId: string }) {
       setEditDraft("");
       invalidate();
     },
-    onError: (err) => Alert.alert("Note not updated", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Note not updated", extractErrorMessage(err, "Please try again.")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (noteId: string) => deleteClientNote(userId, noteId),
     onSuccess: invalidate,
-    onError: (err) => Alert.alert("Note not deleted", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Note not deleted", extractErrorMessage(err, "Please try again.")),
   });
 
   function confirmDelete(noteId: string) {
-    Alert.alert("Delete note?", "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteMutation.mutate(noteId) },
-    ]);
+    confirmAction("Delete note?", "This can't be undone.", "Delete", () => deleteMutation.mutate(noteId));
   }
 
   function startEdit(note: CoachNote) {
@@ -866,6 +861,8 @@ function BodyMeasurementRow({ measurement }: { measurement: CoachClientSummaryBo
 
 function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
   const { t } = useTranslation();
+  // Session summary (25 Oct 2026): written from a recent session that went ahead.
+  const [summarySession, setSummarySession] = useState<CoachScheduleItem | null>(null);
   return (
     <>
       <Card style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, alignItems: "center" }}>
@@ -939,13 +936,13 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
               Recent
             </Text>
             {profile.sessions.past.map((item) => (
-              <Text
-                key={item.id}
-                style={{ color: item.status === "cancelled" ? colors.textMuted : colors.textSecondary, marginTop: 2 }}
-              >
-                {sessionLine(item)}
-                {item.status === "cancelled" ? " (cancelled)" : ""}
-              </Text>
+              <View key={item.id} style={{ marginTop: 2 }}>
+                <Text style={{ color: item.status === "cancelled" ? colors.textMuted : colors.textSecondary }}>
+                  {sessionLine(item)}
+                  {item.status === "cancelled" ? " (cancelled)" : ""}
+                </Text>
+                {canWriteSummary(item) ? <SessionSummaryLink item={item} onPress={() => setSummarySession(item)} /> : null}
+              </View>
             ))}
             {profile.sessions.pastTruncated ? (
               <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: spacing.xs }}>
@@ -966,6 +963,8 @@ function ClientProfileBody({ profile }: { profile: CoachClientProfile }) {
           </Text>
         </Card>
       )}
+
+      <SessionSummarySheet session={summarySession} clientName={profile.fullName} onClose={() => setSummarySession(null)} />
     </>
   );
 }

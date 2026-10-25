@@ -1,11 +1,31 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import type { NavigatorScreenParams } from "@react-navigation/native";
+import { useQuery } from "@tanstack/react-query";
 import { TodayScreen } from "../screens/today/TodayScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
-import { ClientsStack } from "./ClientsStack";
+import { ClientsStack, type ClientsStackParamList } from "./ClientsStack";
 import { MessagesStack } from "./MessagesStack";
 import { MoreStack } from "./MoreStack";
+import { fetchConversations } from "../api/coachMessages";
+import { useCoachAlerts } from "../lib/coachAlerts";
 import { colors } from "../theme/tokens";
+
+/**
+ * Unread client messages across all conversations, for the Messages tab badge
+ * (25 Oct 2026). Same `coach-conversations` query the Conversations list
+ * polls, so it's one cached request, not a second one. Polled, not pushed:
+ * this build has no push notifications.
+ */
+function useUnreadMessageCount(): number {
+  const { data } = useQuery({
+    queryKey: ["coach-conversations"],
+    queryFn: fetchConversations,
+    refetchInterval: 30_000,
+  });
+  return data ? data.conversations.reduce((sum, c) => sum + c.unreadCount, 0) : 0;
+}
 
 /**
  * The coach-side 5-tab bottom bar (docs/coach/02-information-architecture.md
@@ -71,7 +91,8 @@ import { colors } from "../theme/tokens";
  */
 export type MainTabsParamList = {
   Today: undefined;
-  Clients: undefined;
+  // Nested params so Alerts can open Pending Requests directly (25 Oct 2026).
+  Clients: NavigatorScreenParams<ClientsStackParamList> | undefined;
   Calendar: undefined;
   Messages: undefined;
   More: undefined;
@@ -80,6 +101,10 @@ export type MainTabsParamList = {
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 export function MainTabs() {
+  const { t } = useTranslation();
+  const unread = useUnreadMessageCount();
+  // The one poller for the header Alerts badge (25 Oct 2026); every header reads its cache.
+  useCoachAlerts({ poll: true });
   return (
     <Tab.Navigator
       screenOptions={{
@@ -92,7 +117,15 @@ export function MainTabs() {
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Clients" component={ClientsStack} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Messages" component={MessagesStack} />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStack}
+        options={{
+          tabBarBadge: unread > 0 ? (unread > 99 ? "99+" : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.background, fontWeight: "700" },
+          tabBarAccessibilityLabel: unread > 0 ? t("messages.tabUnread", { count: unread }) : undefined,
+        }}
+      />
       <Tab.Screen name="More" component={MoreStack} />
     </Tab.Navigator>
   );

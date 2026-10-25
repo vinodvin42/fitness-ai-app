@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Image, Text, TextInput, View } from "react-native";
+import { Image, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
@@ -9,6 +9,7 @@ import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { submitCredential } from "../../api/professionalOnboarding";
 import { extractErrorMessage } from "../../lib/apiError";
+import { showAlert } from "../../lib/dialogs";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
@@ -24,7 +25,7 @@ async function pickImage(fromCamera: boolean): Promise<string | null> {
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (perm.status !== "granted") {
-    Alert.alert(
+    showAlert(
       fromCamera ? "Camera access needed" : "Photo library access needed",
       "Enable access in your device Settings to upload a document.",
     );

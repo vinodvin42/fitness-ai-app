@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import type { Professional, ProfessionalLoginInput, ProfessionalSignupInput } from "@fitness-ai-app/types";
 import { clearTokens, getStoredTokens, storeTokens } from "../api/client";
 import { fetchMe, loginRequest, logoutRequest, signupRequest } from "../api/professionalAuth";
+import { clearQueryCache } from "../lib/queryClient";
 
 /**
  * Mirrors apps/user-mobile/src/context/AuthContext.tsx's core shape
@@ -82,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
     await clearTokens();
+    // The next coach on this device must not see this one's clients or messages.
+    clearQueryCache();
     setProfessional(null);
     setOnboardingCompleted(false);
   };

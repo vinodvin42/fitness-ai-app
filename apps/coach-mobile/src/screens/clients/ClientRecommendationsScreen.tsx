@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { DecideRecommendationInput, Recommendation } from "@fitness-ai-app/types";
@@ -11,6 +11,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { decideClientRecommendation, fetchClientRecommendations } from "../../api/professionalClients";
 import { extractErrorMessage } from "../../lib/apiError";
+import { showAlert } from "../../lib/dialogs";
 import type { ClientsStackParamList } from "../../navigation/ClientsStack";
 import { colors, spacing, typography } from "../../theme/tokens";
 
@@ -57,7 +58,7 @@ export function ClientRecommendationsScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coach-client-recommendations", userId] });
     },
-    onError: (err) => Alert.alert("Couldn't save this decision", extractErrorMessage(err, "Please try again.")),
+    onError: (err) => showAlert("Couldn't save this decision", extractErrorMessage(err, "Please try again.")),
   });
 
   return (

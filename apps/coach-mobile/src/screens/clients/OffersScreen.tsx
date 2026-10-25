@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -14,6 +14,7 @@ import {
   declineProfessionalOffer,
   fetchProfessionalOffers,
 } from "../../api/professionalOffers";
+import { showAlert } from "../../lib/dialogs";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -74,12 +75,15 @@ export function OffersScreen(_props: Props) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["professionalOffers"] });
     queryClient.invalidateQueries({ queryKey: ["professionalDashboard"] });
+    // Pending Requests' offer list and the header Alerts badge (25 Oct 2026).
+    queryClient.invalidateQueries({ queryKey: ["coach-professional-offers"] });
+    queryClient.invalidateQueries({ queryKey: ["coach-alerts"] });
   };
 
   const accept = useMutation({
     mutationFn: (offerId: string) => acceptProfessionalOffer(offerId),
     onSuccess: invalidate,
-    onError: () => Alert.alert("Couldn't accept", "This offer may have expired or been withdrawn. Pull to refresh."),
+    onError: () => showAlert("Couldn't accept", "This offer may have expired or been withdrawn. Pull to refresh."),
   });
 
   const decline = useMutation({
@@ -89,7 +93,7 @@ export function OffersScreen(_props: Props) {
       setReason("");
       invalidate();
     },
-    onError: () => Alert.alert("Couldn't decline", "This offer may have already been acted on."),
+    onError: () => showAlert("Couldn't decline", "This offer may have already been acted on."),
   });
 
   if (offers.isLoading) {
