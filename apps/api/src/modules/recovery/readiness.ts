@@ -54,6 +54,8 @@ export interface ReadinessResult {
   reason: string | null;
 }
 
+/** The nightly sleep the score treats as enough; Recovery shows it as "sleep need" (a general adult target, not personalised). */
+export const SLEEP_TARGET_HOURS = 8;
 export const MIN_COMPONENTS = 3;
 export const MIN_BASELINE_SAMPLES = 3;
 const WEIGHTS = { sleep: 0.3, hrv: 0.25, restingHr: 0.15, energy: 0.15, soreness: 0.15 } as const;
@@ -84,7 +86,7 @@ export function computeReadiness(
 
   const components: ReadinessComponent[] = [];
   if (latest.sleepHours != null) {
-    components.push({ key: "sleep", score: clamp((latest.sleepHours / 8) * 100), weight: WEIGHTS.sleep });
+    components.push({ key: "sleep", score: clamp((latest.sleepHours / SLEEP_TARGET_HOURS) * 100), weight: WEIGHTS.sleep });
   }
   const hrvBase = baselineLogs.map((l) => l.hrvMs).filter((v): v is number => v != null && v > 0);
   if (latest.hrvMs != null && hrvBase.length >= MIN_BASELINE_SAMPLES) {

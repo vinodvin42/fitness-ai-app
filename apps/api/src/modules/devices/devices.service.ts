@@ -142,6 +142,14 @@ export async function syncDevice(userId: string, deviceId: string, input: SyncDe
       ...(allowed.has("heart_rate") && s.restingHr != null ? { restingHeartRate: s.restingHr } : {}),
       ...(allowed.has("heart_rate") && s.hrvMs != null ? { hrvMs: s.hrvMs } : {}),
       ...(allowed.has("sleep") && s.sleepHours != null ? { sleepHours: s.sleepHours } : {}),
+      ...(allowed.has("sleep") && s.sleepStart != null && s.sleepEnd != null && Date.parse(s.sleepEnd) > Date.parse(s.sleepStart)
+        ? { sleepStart: new Date(s.sleepStart), sleepEnd: new Date(s.sleepEnd) }
+        : {}),
+      ...(allowed.has("sleep") && s.sleepInBedMin != null ? { sleepInBedMin: s.sleepInBedMin } : {}),
+      ...(allowed.has("sleep") && s.sleepAwakeMin != null ? { sleepAwakeMin: s.sleepAwakeMin } : {}),
+      ...(allowed.has("sleep") && s.sleepLightMin != null ? { sleepLightMin: s.sleepLightMin } : {}),
+      ...(allowed.has("sleep") && s.sleepDeepMin != null ? { sleepDeepMin: s.sleepDeepMin } : {}),
+      ...(allowed.has("sleep") && s.sleepRemMin != null ? { sleepRemMin: s.sleepRemMin } : {}),
       ...(allowed.has("steps") && s.steps != null ? { steps: s.steps } : {}),
       ...(allowed.has("workouts") && s.activeCalories != null ? { activeCalories: s.activeCalories } : {}),
       ...(allowed.has("workouts") && s.activeMinutes != null ? { activeMinutes: s.activeMinutes } : {}),
@@ -161,6 +169,26 @@ export async function syncDevice(userId: string, deviceId: string, input: SyncDe
       };
       if (existing) await prisma.bodyMeasurement.update({ where: { id: existing.id }, data: reading });
       else await prisma.bodyMeasurement.create({ data: { userId, source: "device", deviceName: device.name, loggedAt, ...reading } });
+      ingested += 1;
+    }
+    // Healthspan readings (25 Oct 2026): blood pressure with the heart-rate permission, VO2max with workouts.
+    // One per device per day, replaced on each sync like the scale reading above.
+    const dayEnd = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+    const measuredAt = new Date(date.getTime() + 12 * 60 * 60 * 1000);
+    if (allowed.has("heart_rate") && s.systolicBp != null && s.diastolicBp != null && s.systolicBp > s.diastolicBp) {
+      await prisma.healthReading.deleteMany({
+        where: { userId, kind: "blood_pressure", source: "device", deviceName: device.name, measuredAt: { gte: date, lt: dayEnd } },
+      });
+      await prisma.healthReading.create({
+        data: { userId, kind: "blood_pressure", systolic: s.systolicBp, diastolic: s.diastolicBp, measuredAt, source: "device", deviceName: device.name },
+      });
+      ingested += 1;
+    }
+    if (allowed.has("workouts") && s.vo2max != null) {
+      await prisma.healthReading.deleteMany({
+        where: { userId, kind: "vo2max", source: "device", deviceName: device.name, measuredAt: { gte: date, lt: dayEnd } },
+      });
+      await prisma.healthReading.create({ data: { userId, kind: "vo2max", vo2max: s.vo2max, measuredAt, source: "device", deviceName: device.name } });
       ingested += 1;
     }
     if (Object.keys(kept).length === 0) continue;

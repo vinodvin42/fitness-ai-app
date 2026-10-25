@@ -1,6 +1,6 @@
 import { prisma } from "../../db/prisma";
 import { UpsertRecoveryInput } from "./recovery.schema";
-import { computeReadiness } from "./readiness";
+import { computeReadiness, SLEEP_TARGET_HOURS } from "./readiness";
 
 /**
  * Recovery & Devices — manual-entry stopgap (docs/mobile Phase 2 §E), added
@@ -36,6 +36,13 @@ type RecoveryRow = {
   activeMinutes?: number | null;
   spo2?: number | null;
   stressScore?: number | null;
+  sleepStart?: Date | null;
+  sleepEnd?: Date | null;
+  sleepInBedMin?: number | null;
+  sleepAwakeMin?: number | null;
+  sleepLightMin?: number | null;
+  sleepDeepMin?: number | null;
+  sleepRemMin?: number | null;
 };
 
 function toItem(r: RecoveryRow) {
@@ -53,6 +60,19 @@ function toItem(r: RecoveryRow) {
     activeMinutes: r.activeMinutes ?? null,
     spo2: r.spo2 ?? null,
     stressScore: r.stressScore ?? null,
+    ...sleepDetail(r),
+  };
+}
+
+function sleepDetail(r: RecoveryRow) {
+  return {
+    sleepStart: r.sleepStart ? r.sleepStart.toISOString() : null,
+    sleepEnd: r.sleepEnd ? r.sleepEnd.toISOString() : null,
+    sleepInBedMin: r.sleepInBedMin ?? null,
+    sleepAwakeMin: r.sleepAwakeMin ?? null,
+    sleepLightMin: r.sleepLightMin ?? null,
+    sleepDeepMin: r.sleepDeepMin ?? null,
+    sleepRemMin: r.sleepRemMin ?? null,
   };
 }
 
@@ -86,6 +106,23 @@ export async function listRecovery(userId: string) {
   };
 }
 
+/**
+ * The member's own bed and wake times: time in bed, and (when they didn't type hours slept) hours
+ * asleep taken as the time in bed, since a self-log can't tell awake minutes apart.
+ */
+function bedAndWake(input: UpsertRecoveryInput) {
+  if (input.sleepStart == null || input.sleepEnd == null) return {};
+  const start = new Date(input.sleepStart);
+  const end = new Date(input.sleepEnd);
+  const inBedMin = Math.round((end.getTime() - start.getTime()) / 60_000);
+  return {
+    sleepStart: start,
+    sleepEnd: end,
+    sleepInBedMin: inBedMin,
+    ...(input.sleepHours == null ? { sleepHours: Math.round((inBedMin / 60) * 100) / 100 } : {}),
+  };
+}
+
 export async function upsertRecovery(userId: string, input: UpsertRecoveryInput) {
   const date = dateOnlyUtc(input.date);
   // Only write the fields the caller sent, so saving soreness/energy never
@@ -97,6 +134,7 @@ export async function upsertRecovery(userId: string, input: UpsertRecoveryInput)
     ...(input.soreness != null ? { soreness: input.soreness } : {}),
     ...(input.energyLevel != null ? { energyLevel: input.energyLevel } : {}),
     ...(input.notes != null ? { notes: input.notes } : {}),
+    ...bedAndWake(input),
   };
 
   const log = await prisma.recoveryLog.upsert({
@@ -197,6 +235,43 @@ export function buildInsight(
     return { kind: m.kind, text, changePct: pct };
   }
   return null;
+}
+
+const TREND_BASELINE_DAYS = 30;
+
+/**
+ * GET /recovery/trends?days=30 (owner, 25 Oct 2026: sleep need, stages, efficiency, consistency and
+ * sleep / HRV / resting HR / stress / recovery trends). One row per logged day, oldest first, with
+ * that day's recovery score worked out exactly like /recovery/readiness (the day's log against the
+ * 30 days before it). Days without a log are left out; the app computes averages, efficiency and
+ * consistency from these rows (apps/user-mobile/src/lib/sleepStats.ts). sleepNeedHours is the same
+ * general target the score uses, not a personalised need.
+ */
+export async function getTrends(userId: string, days: number) {
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - (days - 1) * DAY_MS);
+  const logs = (await prisma.recoveryLog.findMany({
+    where: { userId, date: { gte: new Date(from.getTime() - TREND_BASELINE_DAYS * DAY_MS) } },
+    orderBy: { date: "asc" },
+  })) as RecoveryRow[];
+  const items = logs
+    .filter((l) => l.date.getTime() >= from.getTime())
+    .map((l) => {
+      const baseline = logs.filter((b) => b.date.getTime() < l.date.getTime() && b.date.getTime() >= l.date.getTime() - TREND_BASELINE_DAYS * DAY_MS);
+      const readiness = computeReadiness(l, baseline, l.date);
+      return {
+        date: l.date.toISOString().slice(0, 10),
+        sleepHours: l.sleepHours,
+        ...sleepDetail(l),
+        hrvMs: l.hrvMs,
+        restingHeartRate: l.restingHeartRate,
+        stressScore: l.stressScore ?? null,
+        soreness: l.soreness,
+        energyLevel: l.energyLevel,
+        recoveryScore: readiness.score,
+      };
+    });
+  return { days, sleepNeedHours: SLEEP_TARGET_HOURS, items };
 }
 
 /**

@@ -14,11 +14,24 @@ export const upsertRecoverySchema = z
     soreness: z.number().int().min(1).max(5).optional(),
     energyLevel: z.number().int().min(1).max(5).optional(),
     notes: z.string().trim().max(500).optional(),
+    // Bed and wake times for the night (25 Oct 2026), so sleep efficiency and consistency work without a device.
+    sleepStart: z.string().datetime({ offset: true }).optional(),
+    sleepEnd: z.string().datetime({ offset: true }).optional(),
   })
+  .refine((v) => (v.sleepStart == null) === (v.sleepEnd == null), { message: "Send both bed and wake times", path: ["sleepEnd"] })
+  .refine(
+    (v) => {
+      if (v.sleepStart == null || v.sleepEnd == null) return true;
+      const span = Date.parse(v.sleepEnd) - Date.parse(v.sleepStart);
+      return span > 0 && span <= 24 * 60 * 60 * 1000;
+    },
+    { message: "Wake time must be after bedtime, within 24 hours", path: ["sleepEnd"] },
+  )
   .refine(
     (v) =>
       v.restingHeartRate != null ||
       v.sleepHours != null ||
+      v.sleepStart != null ||
       v.hrvMs != null ||
       v.soreness != null ||
       v.energyLevel != null ||
@@ -26,3 +39,8 @@ export const upsertRecoverySchema = z
     { message: "Log at least one metric" },
   );
 export type UpsertRecoveryInput = z.infer<typeof upsertRecoverySchema>;
+
+/** GET /recovery/trends?days= (7 to 90, default 30). */
+export const recoveryTrendsQuerySchema = z.object({
+  days: z.coerce.number().int().min(7).max(90).default(30),
+});

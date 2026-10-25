@@ -30,6 +30,18 @@ export const syncSampleSchema = z.object({
   activeMinutes: z.number().int().min(0).max(1440).optional(),
   spo2: z.number().int().min(50).max(100).optional(),
   stressScore: z.number().int().min(0).max(100).optional(),
+  // Night detail (25 Oct 2026): main sleep's bed/wake times, time in bed and minutes per stage.
+  sleepStart: z.string().datetime({ offset: true }).optional(),
+  sleepEnd: z.string().datetime({ offset: true }).optional(),
+  sleepInBedMin: z.number().int().min(0).max(1440).optional(),
+  sleepAwakeMin: z.number().int().min(0).max(1440).optional(),
+  sleepLightMin: z.number().int().min(0).max(1440).optional(),
+  sleepDeepMin: z.number().int().min(0).max(1440).optional(),
+  sleepRemMin: z.number().int().min(0).max(1440).optional(),
+  // Healthspan (25 Oct 2026): that day's latest blood pressure (mmHg) and VO2max (mL/kg/min).
+  systolicBp: z.number().int().min(70).max(260).optional(),
+  diastolicBp: z.number().int().min(40).max(160).optional(),
+  vo2max: z.number().min(10).max(90).optional(),
   // Smart-scale readings. Only ingested for devices paired with kind "scale".
   weightKg: z.number().positive().max(500).optional(),
   bodyFatPercent: z.number().positive().max(70).optional(),

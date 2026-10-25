@@ -440,6 +440,7 @@ model User {
   couponRedemptions           CouponRedemption[]
   referralRewardsEarned       ReferralReward[]             @relation("ReferralRewardsEarned")
   recoveryLogs                RecoveryLog[]
+  healthReadings              HealthReading[]
   notifications               Notification[]
   pushTokens                  PushToken[]
   notificationPreference      NotificationPreference?
@@ -515,6 +516,9 @@ model OnboardingProfile {
   /// itself health information.
   medicalConditionsEnc  String?
   injuriesEnc           String?
+  /// Healthspan answers (25 Oct 2026): smoking, blood-pressure medicine and the
+  /// HUNT activity questions, one AES-256-GCM JSON blob (lib/fieldCrypto.ts).
+  healthspanEnc         String?
   // Availability/Schedule (R1 Developer 1, 18 Sep 2026 — closes the "no
   // Availability/schedule screen or field anywhere" gap confirmed by
   // audit). A real, honest self-report of how often and roughly when a
@@ -1949,6 +1953,10 @@ model Reminder {
   daysOfWeek Int[]            @default([0, 1, 2, 3, 4, 5, 6])
   playSound  Boolean          @default(true)
   isEnabled  Boolean          @default(true)
+  // Optional date range (25 Oct 2026): first and last day the reminder fires (UTC midnight of the
+  // member's calendar day). Null = from now / no end.
+  startDate  DateTime?
+  endDate    DateTime?
   createdAt  DateTime         @default(now())
 
   @@index([userId])
@@ -4114,12 +4122,44 @@ model RecoveryLog {
   spo2             Int?
   // Device-reported stress score 0-100 (higher = more stressed).
   stressScore      Int?
+  // Night detail (25 Oct 2026): the main sleep's bed and wake times (device, or the member's own
+  // log), total time in bed, and minutes per stage when the source records stages (Health Connect
+  // sleep stages). Null = not reported. sleepHours stays the time asleep.
+  sleepStart       DateTime?
+  sleepEnd         DateTime?
+  sleepInBedMin    Int?
+  sleepAwakeMin    Int?
+  sleepLightMin    Int?
+  sleepDeepMin     Int?
+  sleepRemMin      Int?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
   @@map("recovery_logs")
+}
+
+// Healthspan readings (25 Oct 2026): blood pressure and VO2max, typed in by the
+// member or synced from Health Connect (one per device per day). Feed heart
+// age and fitness age (modules/healthspan).
+model HealthReading {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "blood_pressure" | "vo2max"
+  kind       String
+  systolic   Int?
+  diastolic  Int?
+  vo2max     Float?
+  measuredAt DateTime
+  // "manual" | "device"
+  source     String   @default("manual")
+  deviceName String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, kind, measuredAt])
+  @@map("health_readings")
 }
 
 // ---- Gym Partner Lite — R1 Wave 1 (added 20 Sep 2026) ------------------

@@ -11,6 +11,7 @@ import { workoutSessionsRouter } from "./modules/workoutSessions/workoutSessions
 import { nutritionRouter } from "./modules/nutrition/nutrition.routes";
 import { progressRouter } from "./modules/progress/progress.routes";
 import { recoveryRouter } from "./modules/recovery/recovery.routes";
+import { healthspanRouter } from "./modules/healthspan/healthspan.routes";
 import { subscriptionsRouter } from "./modules/subscriptions/subscriptions.routes";
 import { timelineRouter } from "./modules/timeline/timeline.routes";
 import { remindersRouter } from "./modules/reminders/reminders.routes";
@@ -203,6 +204,7 @@ export function createApp() {
   app.use("/", progressRouter);
   // Recovery & Devices — manual-entry stopgap (31 Aug 2026). See recovery.service.ts.
   app.use("/", recoveryRouter);
+  app.use("/", healthspanRouter);
   app.use("/", subscriptionsRouter);
   app.use("/", timelineRouter);
   app.use("/", remindersRouter);

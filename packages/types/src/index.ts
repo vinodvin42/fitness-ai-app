@@ -1570,6 +1570,9 @@ export interface Reminder {
   daysOfWeek: number[];
   playSound: boolean;
   isEnabled: boolean;
+  /** First / last day it fires (ISO; the date part is the member's calendar day). Null = no limit. */
+  startDate?: string | null;
+  endDate?: string | null;
   createdAt: string;
 }
 
@@ -1582,6 +1585,9 @@ export interface CreateReminderInput {
   daysOfWeek: number[];
   playSound?: boolean;
   isEnabled?: boolean;
+  /** YYYY-MM-DD; null clears it. */
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 /** Matches apps/api's updateReminderSchema (Zod) — all fields optional, at least one required. */
@@ -4925,6 +4931,134 @@ export interface RecoveryLogItem {
   activeMinutes: number | null;
   spo2: number | null;
   stressScore: number | null;
+  /** Night detail (25 Oct 2026): main sleep's bed/wake times (ISO), time in bed and minutes per stage; null when not reported. */
+  sleepStart: string | null;
+  sleepEnd: string | null;
+  sleepInBedMin: number | null;
+  sleepAwakeMin: number | null;
+  sleepLightMin: number | null;
+  sleepDeepMin: number | null;
+  sleepRemMin: number | null;
+}
+
+/** One logged day in GET /recovery/trends. recoveryScore is that day's readiness score (null without enough data). */
+export interface RecoveryTrendDay {
+  date: string; // YYYY-MM-DD
+  sleepHours: number | null;
+  /** Night detail (25 Oct 2026): main sleep's bed/wake times (ISO), time in bed and minutes per stage; null when not reported. */
+  sleepStart: string | null;
+  sleepEnd: string | null;
+  sleepInBedMin: number | null;
+  sleepAwakeMin: number | null;
+  sleepLightMin: number | null;
+  sleepDeepMin: number | null;
+  sleepRemMin: number | null;
+  hrvMs: number | null;
+  restingHeartRate: number | null;
+  stressScore: number | null;
+  soreness: number | null;
+  energyLevel: number | null;
+  recoveryScore: number | null;
+}
+
+/** GET /recovery/trends?days=7..90 - logged days oldest first; sleepNeedHours is the general target the score uses. */
+export interface RecoveryTrendsResponse {
+  days: number;
+  sleepNeedHours: number;
+  items: RecoveryTrendDay[];
+}
+
+// ---- Healthspan (25 Oct 2026): fitness age, heart age, BP / VO2max, long-term trends ----
+
+export type PaFrequency = "never" | "less_than_weekly" | "weekly" | "two_three_weekly" | "almost_daily";
+export type PaIntensity = "easy" | "breathless" | "near_exhaustion";
+export type PaDuration = "under_15" | "from_15_to_29" | "from_30_to_60" | "over_60";
+
+export interface HealthspanAnswers {
+  smoking?: "never" | "former" | "current";
+  bpMedication?: boolean;
+  activity?: { frequency: PaFrequency; intensity?: PaIntensity | null; duration?: PaDuration | null };
+}
+
+export type FitnessMissing = "age" | "sex" | "waist" | "resting_hr" | "activity";
+export type HeartMissing = "age" | "sex" | "blood_pressure" | "height_weight" | "smoking" | "bp_medication" | "health_answers";
+
+/** GET /healthspan */
+export interface HealthspanSummary {
+  age: number | null;
+  sex: "male" | "female" | null;
+  fitness: {
+    status: "ready" | "missing" | "out_of_range";
+    vo2max: number | null;
+    vo2Source: "measured" | "estimated" | null;
+    vo2At: string | null;
+    fitnessAge: number | null;
+    /** "under": younger than 20; "over": older than 90 (the scale's ends). */
+    bound: "under" | "over" | null;
+    inputs: { waistCm: number | null; restingHr: number | null; paIndex: number | null };
+    missing: FitnessMissing[];
+  };
+  heart: {
+    status: "ready" | "missing" | "out_of_range";
+    heartAge: number | null;
+    /** Framingham 10-year risk of a cardiovascular event, %. */
+    riskPct: number | null;
+    drivers: Array<"blood_pressure" | "bp_medication" | "bmi" | "smoking" | "diabetes">;
+    inputs: {
+      systolic: number | null;
+      diastolic: number | null;
+      bpAt: string | null;
+      bpReadings: number;
+      bmi: number | null;
+      smoker: boolean | null;
+      bpTreated: boolean | null;
+      diabetes: boolean | null;
+    };
+    missing: HeartMissing[];
+  };
+  /** 10-year risk of a heart attack or stroke: WHO 2019 non-laboratory model, South Asia (ages 40-74). */
+  risk: {
+    status: "ready" | "missing" | "out_of_range";
+    model: "who_2019_south_asia";
+    riskPct: number | null;
+    band: "<5" | "5-10" | "10-20" | "20-30" | ">=30" | null;
+    /** The WHO model has no diabetes term; true when the member said they have diabetes. */
+    diabetesNotIncluded: boolean;
+    missing: Array<"age" | "sex" | "blood_pressure" | "height_weight" | "smoking">;
+  };
+  answers: HealthspanAnswers;
+}
+
+export interface HealthReading {
+  id: string;
+  kind: "blood_pressure" | "vo2max";
+  systolic: number | null;
+  diastolic: number | null;
+  vo2max: number | null;
+  measuredAt: string;
+  source: "manual" | "device";
+  deviceName: string | null;
+}
+
+export type HealthReadingInput =
+  | { kind: "blood_pressure"; systolic: number; diastolic: number; measuredAt?: string }
+  | { kind: "vo2max"; vo2max: number; measuredAt?: string };
+
+/** GET /healthspan/trends?months=12 - monthly averages, oldest first; null = nothing logged that month. */
+export interface LongTermTrends {
+  months: number;
+  items: Array<{
+    month: string; // YYYY-MM
+    weightKg: number | null;
+    waistCm: number | null;
+    restingHr: number | null;
+    hrvMs: number | null;
+    sleepHours: number | null;
+    steps: number | null;
+    systolic: number | null;
+    diastolic: number | null;
+    vo2max: number | null;
+  }>;
 }
 
 /** GET /recovery/summary - real values behind the Recovery dashboard; every field null when no data. */
@@ -5002,6 +5136,9 @@ export interface UpsertRecoveryInput {
   soreness?: number;
   energyLevel?: number;
   notes?: string;
+  /** Bed and wake times (ISO, both or neither); hours asleep default to the time in bed when sleepHours is left out. */
+  sleepStart?: string;
+  sleepEnd?: string;
 }
 
 // ---- Plan-Generation / Recommendation Engine (14 Sep 2026) ---------------
@@ -5698,6 +5835,18 @@ export interface DeviceSyncSample {
   activeMinutes?: number;
   spo2?: number;
   stressScore?: number;
+  /** Night detail: main sleep's bed/wake times (ISO), time in bed and minutes per stage (needs the "sleep" permission). */
+  sleepStart?: string;
+  sleepEnd?: string;
+  sleepInBedMin?: number;
+  sleepAwakeMin?: number;
+  sleepLightMin?: number;
+  sleepDeepMin?: number;
+  sleepRemMin?: number;
+  /** Healthspan: that day's latest blood pressure (mmHg, heart_rate permission) and VO2max (workouts permission). */
+  systolicBp?: number;
+  diastolicBp?: number;
+  vo2max?: number;
   /** Smart-scale readings - only ingested for devices paired as kind "scale". */
   weightKg?: number;
   bodyFatPercent?: number;

@@ -28,6 +28,21 @@ async function getOwnedReminder(reminderId: string, userId: string) {
   return reminder;
 }
 
+/** YYYY-MM-DD to UTC midnight; null stays null (clears the limit); undefined leaves it unchanged. */
+function dateField(v: string | null | undefined): Date | null | undefined {
+  if (v === undefined) return undefined;
+  return v === null ? null : new Date(`${v}T00:00:00.000Z`);
+}
+
+function withDates<T extends { startDate?: string | null; endDate?: string | null }>(input: T) {
+  const { startDate, endDate, ...rest } = input;
+  return {
+    ...rest,
+    ...(startDate !== undefined ? { startDate: dateField(startDate) } : {}),
+    ...(endDate !== undefined ? { endDate: dateField(endDate) } : {}),
+  };
+}
+
 export async function listReminders(userId: string) {
   return prisma.reminder.findMany({
     where: { userId },
@@ -37,7 +52,7 @@ export async function listReminders(userId: string) {
 
 export async function createReminder(userId: string, input: CreateReminderInput) {
   const reminder = await prisma.reminder.create({
-    data: { userId, ...input },
+    data: { userId, ...withDates(input) },
   });
 
   await recordAudit({
@@ -52,11 +67,17 @@ export async function createReminder(userId: string, input: CreateReminderInput)
 }
 
 export async function updateReminder(userId: string, reminderId: string, input: UpdateReminderInput) {
-  await getOwnedReminder(reminderId, userId);
+  const current = await getOwnedReminder(reminderId, userId);
+  // With only one end of the range sent, check it against the stored other end.
+  const start = input.startDate !== undefined ? input.startDate : current.startDate ? current.startDate.toISOString().slice(0, 10) : null;
+  const end = input.endDate !== undefined ? input.endDate : current.endDate ? current.endDate.toISOString().slice(0, 10) : null;
+  if (start && end && end < start) {
+    throw new ApiHttpError(400, "reminder_end_before_start", "The end date can't be before the start date");
+  }
 
   const reminder = await prisma.reminder.update({
     where: { id: reminderId },
-    data: input,
+    data: withDates(input),
   });
 
   await recordAudit({

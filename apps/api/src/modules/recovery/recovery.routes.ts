@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthedRequest } from "../../middleware/auth";
 import { writeRateLimit } from "../../middleware/rateLimit";
-import { upsertRecoverySchema } from "./recovery.schema";
+import { recoveryTrendsQuerySchema, upsertRecoverySchema } from "./recovery.schema";
 import * as recoveryService from "./recovery.service";
 
 /**
@@ -29,6 +29,15 @@ recoveryRouter.get("/recovery/readiness", requireAuth, async (req: AuthedRequest
 recoveryRouter.get("/recovery/summary", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     res.json(await recoveryService.getSummary(req.userId!));
+  } catch (err) {
+    next(err);
+  }
+});
+
+recoveryRouter.get("/recovery/trends", requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { days } = recoveryTrendsQuerySchema.parse(req.query);
+    res.json(await recoveryService.getTrends(req.userId!, days));
   } catch (err) {
     next(err);
   }
