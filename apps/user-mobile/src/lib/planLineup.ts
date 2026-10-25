@@ -38,6 +38,29 @@ export function freePlanNeverEnds<
   };
 }
 
+// `key` is a catalogue key (`subscription.features.*`); the array carries only
+// which tiers include what, which is the actual product decision.
+// Owner, 20 Oct 2026: Basic (free) is workout and nutrition tracking, the
+// progress timeline, reminders, AI coach chat and recovery logs; Prime is
+// everything in Basic plus requesting a coach (billed separately) and
+// priority support. The four Fynrox programs are bought separately on either.
+// Grow is archived in the admin portal, so its column only shows if a Grow plan
+// is switched on again; its ticks are the last decided ones (D13).
+export const COMPARISON_FEATURES: Array<{ key: string } & Record<PlanTier, boolean>> = [
+  { key: "tracking", basic: true, grow: true, prime: true },
+  { key: "progress", basic: true, grow: true, prime: true },
+  { key: "reminders", basic: true, grow: true, prime: true },
+  { key: "aiCoach", basic: true, grow: true, prime: true },
+  { key: "recovery", basic: true, grow: true, prime: true },
+  { key: "humanCoaching", basic: false, grow: true, prime: true },
+  { key: "prioritySupport", basic: false, grow: false, prime: true },
+];
+
+/** What a tier adds: everything in the tier below it, plus its own extras (COMPARISON_FEATURES). */
+export function featuresFor(tier: PlanTier, lowerTier: PlanTier | null): string[] {
+  return COMPARISON_FEATURES.filter((f) => f[tier] && (!lowerTier || !f[lowerTier])).map((f) => f.key);
+}
+
 /** Today's price is a launch offer when a higher price is already scheduled for later. */
 export function hasLaunchOffer(plan: { priceCents: number; upcomingPrice?: { priceCents: number } | null }): boolean {
   return !!plan.upcomingPrice && plan.upcomingPrice.priceCents > plan.priceCents;

@@ -9,9 +9,10 @@ import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
-import { fetchCoachProfile } from "../../api/coaching";
+import { fetchCoachProfile, fetchRelationshipStatus } from "../../api/coaching";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 import { formatRupees } from "../../lib/money";
+import { preferredDayForBooking } from "../../lib/coachRequest";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "CoachProfileDetail">;
@@ -36,6 +37,12 @@ function serviceLabel(serviceType: string | null) {
  * offering/date/time gets picked — this screen's own CTA is deliberately
  * singular even though a coach may have several offerings, matching the
  * design's own single "Book Session" button.
+ *
+ * 25 Oct 2026 (Figma coach/02, professional/11): the one CTA follows where the
+ * member is with this coach. No relationship yet: "Request guidance" (asks the
+ * coach first, nothing charged). Request waiting: "Request pending · View".
+ * Coach accepted: "Continue to payment", with what they asked for already
+ * chosen. Active: "Book session". Anything else in flight: "View status".
  */
 export function CoachProfileDetailScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -45,6 +52,16 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
     queryKey: ["coaching", "professional", professionalId],
     queryFn: () => fetchCoachProfile(professionalId),
   });
+  // Where this member stands with this coach. If the status can't be read the
+  // request button still works: asking again is safe (the API repeats it harmlessly).
+  const status = useQuery({ queryKey: ["coaching", "relationships", "status"], queryFn: fetchRelationshipStatus });
+  const mine = (status.data?.relationships ?? []).filter(
+    (r) => r.professionalId === professionalId && !["declined", "expired", "completed", "ended"].includes(r.status),
+  );
+  // The furthest along wins (a coach can be active for one service and only requested for another).
+  const FURTHEST_FIRST = ["active", "accepted", "awaiting_payment", "activating", "requested"];
+  const place = (s: string) => (FURTHEST_FIRST.includes(s) ? FURTHEST_FIRST.indexOf(s) : FURTHEST_FIRST.length);
+  const current = [...mine].sort((a, b) => place(a.status) - place(b.status))[0] ?? null;
 
   if (isLoading) {
     return (
@@ -141,11 +158,36 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
         )}
       </Card>
 
-      <Button
-        label={t("coaching.team.bookSession")}
-        onPress={() => navigation.navigate("BookingServiceSelection", { professionalId })}
-        disabled={data.offerings.length === 0}
-      />
+      {current === null ? (
+        <Button
+          label={t("coaching.profile.requestGuidance")}
+          onPress={() => navigation.navigate("RequestCoach", { professionalId })}
+          disabled={data.offerings.length === 0 || status.isLoading}
+        />
+      ) : current.status === "active" ? (
+        <Button
+          label={t("coaching.team.bookSession")}
+          onPress={() => navigation.navigate("BookingServiceSelection", { professionalId })}
+          disabled={data.offerings.length === 0}
+        />
+      ) : current.status === "accepted" || current.status === "awaiting_payment" ? (
+        <Button
+          label={t("coaching.relationship.continueToPayment")}
+          onPress={() =>
+            navigation.navigate("BookingServiceSelection", {
+              professionalId,
+              offeringId: current.offeringId ?? undefined,
+              preferredDate: preferredDayForBooking(current.preferredDate) ?? undefined,
+            })
+          }
+        />
+      ) : (
+        <Button
+          label={current.status === "requested" ? t("coaching.profile.requestPending") : t("coaching.profile.viewStatus")}
+          variant="secondary"
+          onPress={() => navigation.navigate("ProfessionalRelationship")}
+        />
+      )}
     </ScreenContainer>
   );
 }

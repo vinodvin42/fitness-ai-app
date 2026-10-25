@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SubscriptionDetail } from "@fitness-ai-app/types";
 import { Button } from "../../components/Button";
@@ -8,8 +8,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { FynroxProgramsSection } from "../../components/FynroxProgramsSection";
 import { Pill } from "../../components/Pill";
 import { useAuth } from "../../context/AuthContext";
-import { cancelSubscription, fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
-import { extractErrorMessage } from "../../lib/apiError";
+import { fetchCurrentSubscription, fetchPlans } from "../../api/subscriptions";
 import { formatRupees } from "../../lib/money";
 import { isFreePlan } from "../../lib/planLineup";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -45,8 +44,9 @@ function price(sub: SubscriptionDetail) {
 
 /**
  * My plan (Figma Profile & Settings 03): a restyled entry point over the real
- * subscription (the same queries and cancel-at-period-end action as the
- * Subscription screen, which still owns plan switching and checkout). Plans
+ * subscription (the same queries as the Subscription screen, which still owns
+ * plan switching and checkout; Cancel plan opens the same CancelSubscription
+ * screen, so a reason is saved from either entry, 25 Oct 2026). Plans
  * and prices are whatever the super admin has on sale in the admin portal.
  * Basic shows no renewal, remaining days or Cancel, just Upgrade, and the
  * payment-method row is gone (owner, 20 Oct 2026). The owner's four Fynrox
@@ -59,8 +59,6 @@ function price(sub: SubscriptionDetail) {
 export function MyPlanScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { colors: theme } = useTheme();
-  const queryClient = useQueryClient();
-  const [canceling, setCanceling] = useState(false);
   const current = useQuery({ queryKey: ["subscriptions", "current"], queryFn: fetchCurrentSubscription });
   const plans = useQuery({ queryKey: ["subscriptions", "plans"], queryFn: fetchPlans });
 
@@ -85,40 +83,6 @@ export function MyPlanScreen({ navigation }: Props) {
   const freePlan = (plans.data ?? []).find((p) => isFreePlan(p));
   const cancellable =
     !!sub && !free && (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") && !sub.cancelAtPeriodEnd;
-
-  const refresh = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "current"] }),
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "history"] }),
-    ]);
-
-  const onCancel = () => {
-    const renews = sub?.renewsAt ? fmtDate(sub.renewsAt) : null;
-    Alert.alert(
-      "Cancel plan?",
-      renews
-        ? `Your plan stays active until ${renews}, then it won't renew. You won't be charged again.`
-        : "Your plan stays active through the end of your current billing period, then it won't renew. You won't be charged again.",
-      [
-        { text: "Keep plan", style: "cancel" },
-        {
-          text: "Cancel plan",
-          style: "destructive",
-          onPress: async () => {
-            setCanceling(true);
-            try {
-              await cancelSubscription();
-              await refresh();
-            } catch (err) {
-              Alert.alert("Couldn't cancel plan", extractErrorMessage(err, "Check your connection and try again."));
-            } finally {
-              setCanceling(false);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   const stat = (label: string, value: string) => (
     <View style={{ flex: 1, gap: 2 }}>
@@ -152,7 +116,7 @@ export function MyPlanScreen({ navigation }: Props) {
           )}
           <Button label={freePlan ? "Upgrade" : "Choose a plan"} onPress={() => navigation.navigate("Subscription")} />
           <RowGroup>
-            <SettingRow icon="file-text" title="Purchase history" onPress={() => navigation.navigate("SubscriptionHistory")} />
+            <SettingRow icon="file-text" title="Purchase history" onPress={() => navigation.navigate("Purchases")} />
           </RowGroup>
           <FynroxProgramsSection />
         </View>
@@ -207,7 +171,7 @@ export function MyPlanScreen({ navigation }: Props) {
           </View>
 
           <RowGroup>
-            <SettingRow icon="file-text" title="Purchase history" onPress={() => navigation.navigate("SubscriptionHistory")} />
+            <SettingRow icon="file-text" title="Purchase history" onPress={() => navigation.navigate("Purchases")} />
             {free ? null : (
               <SettingRow
                 icon="refresh-cw"
@@ -223,7 +187,7 @@ export function MyPlanScreen({ navigation }: Props) {
             </Text>
           ) : null}
 
-          {cancellable ? <TextAction label={canceling ? "Cancelling…" : "Cancel plan"} danger onPress={onCancel} /> : null}
+          {cancellable ? <TextAction label="Cancel plan" danger onPress={() => navigation.navigate("CancelSubscription")} /> : null}
 
           <FynroxProgramsSection />
         </>

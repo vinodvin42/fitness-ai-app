@@ -13,7 +13,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchDueMedications, fetchMedicationAdherence, fetchMedications, localDateString } from "../../api/medications";
-import { dueStatusLabel } from "./MedicineDueScreen";
+import { dueStatusLabel, dueStatusTone } from "./MedicineDueScreen";
 import { formatClockTz, splitMedicationNotes, MEAL_LABEL } from "../../lib/medicationReminder";
 import { syncMedicationNotifications } from "../../lib/medicationNotifications";
 import { formatClock } from "../../lib/format";
@@ -130,7 +130,7 @@ export function MedicationListScreen({ navigation }: Props) {
                   <Text style={{ flex: 1, color: colors.textPrimary, ...typography.label }}>
                     {d.name} · {formatClockTz(d.scheduledFor)}
                   </Text>
-                  <Pill label={dueStatusLabel(d)} />
+                  <Pill label={dueStatusLabel(d)} tone={dueStatusTone(d)} />
                   <Icon name="chevron-right" size={16} color={colors.textMuted} />
                 </Pressable>
               ))}

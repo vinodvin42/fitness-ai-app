@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { r1Flags } from "@fitness-ai-app/config";
 import type { StreakCategory } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
@@ -228,6 +229,9 @@ export function StreakTrackerScreen(_props: Props) {
         </View>
       </Card>
 
+      {/* Streak cards only where gamification is on (R1 decision #13: no streaks by default). */}
+      {r1Flags.GAMIFICATION_ENABLED ? (
+      <>
       <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
         <View
           style={{
@@ -285,6 +289,8 @@ export function StreakTrackerScreen(_props: Props) {
           );
         })}
       </Card>
+      </>
+      ) : null}
     </ScreenContainer>
   );
 }

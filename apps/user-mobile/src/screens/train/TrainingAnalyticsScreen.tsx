@@ -23,11 +23,11 @@ import type { TrainStackParamList } from "../../navigation/TrainStack";
 
 type Props = NativeStackScreenProps<TrainStackParamList, "TrainingAnalytics">;
 
-// Figma tabs 1W 1M 2M 6M 1Y -> API ranges.
+// Figma tabs 1W 1M 3M 6M 1Y -> API ranges (the frame reads 3M; this said 2M until 25 Oct 2026).
 const RANGES: Array<{ value: AnalyticsRange; label: string; long: string }> = [
   { value: "1w", label: "1W", long: "last week" },
   { value: "4w", label: "1M", long: "last 4 weeks" },
-  { value: "8w", label: "2M", long: "last 8 weeks" },
+  { value: "12w", label: "3M", long: "last 12 weeks" },
   { value: "26w", label: "6M", long: "last 6 months" },
   { value: "52w", label: "1Y", long: "last year" },
 ];

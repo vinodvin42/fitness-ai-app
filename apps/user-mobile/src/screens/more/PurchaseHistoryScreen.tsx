@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
+import { Chip } from "../../components/Chip";
 import { Pill } from "../../components/Pill";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -49,11 +50,19 @@ const PURPOSE_LABEL: Record<string, string> = {
   booking: "Coach session",
 };
 
+/** Filter chip labels, in the order the chips show (Figma payments/06). */
+const PURPOSE_FILTER: Array<{ purpose: string; label: string }> = [
+  { purpose: "subscription", label: "Plans" },
+  { purpose: "program_purchase", label: "Programmes" },
+  { purpose: "booking", label: "Coach sessions" },
+];
+
 const itemName = (p: PurchaseRecord) => p.itemName ?? PURPOSE_LABEL[p.purpose] ?? p.purpose;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 export function PurchaseHistoryScreen(_props: Props) {
   const { t } = useTranslation();
+  const [filter, setFilter] = useState<string>("all");
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["purchaseHistory"],
     queryFn: fetchPurchaseHistory,
@@ -83,10 +92,22 @@ export function PurchaseHistoryScreen(_props: Props) {
     );
   }
 
-  const entries = moneyTimeline(purchases);
+  // Filter chips only when there is more than one kind of purchase to tell apart.
+  const kinds = PURPOSE_FILTER.filter((f) => purchases.some((p) => p.purpose === f.purpose));
+  const showFilters = kinds.length > 1;
+  const shown = showFilters && filter !== "all" ? purchases.filter((p) => p.purpose === filter) : purchases;
+  const entries = moneyTimeline(shown);
   return (
     <ScreenContainer title={t("purchases.title")} subtitle={t("purchases.subtitle")}>
-      {refundsInProgress(purchases).map((p) => (
+      {showFilters ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <Chip label="All" selected={filter === "all"} onPress={() => setFilter("all")} />
+          {kinds.map((k) => (
+            <Chip key={k.purpose} label={k.label} selected={filter === k.purpose} onPress={() => setFilter(k.purpose)} />
+          ))}
+        </View>
+      ) : null}
+      {refundsInProgress(shown).map((p) => (
         <RefundInProgressCard key={p.id} purchase={p} />
       ))}
       <Text style={{ color: colors.textPrimary, ...typography.h3 }}>Every charge and refund</Text>

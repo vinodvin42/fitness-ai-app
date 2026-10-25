@@ -42,6 +42,7 @@ import { PurchaseHistoryScreen } from "../screens/more/PurchaseHistoryScreen";
 import { CoachDiscoveryScreen } from "../screens/coaching/CoachDiscoveryScreen";
 import { CoachProfileDetailScreen } from "../screens/coaching/CoachProfileDetailScreen";
 import { BookingServiceSelectionScreen } from "../screens/coaching/BookingServiceSelectionScreen";
+import { RequestCoachScreen } from "../screens/coaching/RequestCoachScreen";
 import { BookingConfirmationScreen } from "../screens/coaching/BookingConfirmationScreen";
 import { MyProfessionalTeamScreen } from "../screens/coaching/MyProfessionalTeamScreen";
 import { ChangeProfessionalScreen } from "../screens/coaching/ChangeProfessionalScreen";
@@ -152,12 +153,17 @@ export type MoreStackParamList = {
   // See PaymentResultScreen.tsx and payments.service.ts's activatePayment.
   // "unconfirmed" (20 Oct 2026): Razorpay took a payment our server could not confirm yet; paymentId is Razorpay's.
   // internalPaymentId / amountCents (24 Oct 2026, Figma payments/11): our record to check, and what was paid.
+  // itemName / purpose / referenceId / code (25 Oct 2026, Figma payments/03, 04): what was bought, for the receipt and for "Try again".
   PaymentResult: {
     status: "success" | "failed" | "activation_failed" | "unconfirmed";
     message?: string;
     paymentId?: string;
     internalPaymentId?: string;
     amountCents?: number;
+    itemName?: string;
+    purpose?: "subscription" | "program_purchase";
+    referenceId?: string;
+    code?: string;
   };
   TimelineOverview: undefined;
   TimelineMonth: { year?: number; month?: number };
@@ -194,7 +200,10 @@ export type MoreStackParamList = {
   CoachDiscovery: { serviceType?: ProfessionalServiceType | "combined" } | undefined;
   CoachProfileDetail: { professionalId: string };
   // rebookPaymentId (24 Oct 2026): pick a new time for a paid session that couldn't be booked.
-  BookingServiceSelection: { professionalId: string; rebookPaymentId?: string };
+  // offeringId / preferredDate (25 Oct 2026): what the member asked for in their request, pre-selected once the coach accepts.
+  BookingServiceSelection: { professionalId: string; rebookPaymentId?: string; offeringId?: string; preferredDate?: string };
+  /** 25 Oct 2026 (Figma coach/02): ask a coach for guidance before paying. */
+  RequestCoach: { professionalId: string };
   BookingConfirmation: { booking: BookingConfirmation };
   MyProfessionalTeam: undefined;
   ChangeProfessional: { relationshipId: string; professionalFullName: string; serviceType: ProfessionalServiceType };
@@ -266,6 +275,7 @@ export function MoreStack() {
       <Stack.Screen name="CoachDiscovery" component={CoachDiscoveryScreen} />
       <Stack.Screen name="CoachProfileDetail" component={CoachProfileDetailScreen} />
       <Stack.Screen name="BookingServiceSelection" component={BookingServiceSelectionScreen} />
+      <Stack.Screen name="RequestCoach" component={RequestCoachScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
       <Stack.Screen name="MyProfessionalTeam" component={MyProfessionalTeamScreen} />
       <Stack.Screen name="ChangeProfessional" component={ChangeProfessionalScreen} />

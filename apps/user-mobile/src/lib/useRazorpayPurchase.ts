@@ -31,7 +31,8 @@ interface Options {
   /** Called after a payment has been verified server-side — invalidate whatever queries this screen needs re-fetched (mirrors the same pattern every other mutation in this app already uses). Receives the full verify result (PAY-01, 5 Sep 2026) — a booking purchase needs `result.booking` to navigate to Booking Confirmation without a second request; Subscribe/Program Purchase ignore the argument, same as before. Return type is unconstrained since callers commonly return `Promise.all([...])` of several invalidations. */
   onVerified: (result: VerifyRazorpayPaymentResult) => unknown;
   /** Optional (31 Aug 2026) — a screen that wants dedicated Payment Success / Failed screens (§M) passes these; when present they REPLACE the default Alert so the flow isn't shown twice. Screens without them (Program/Workout purchase) keep the original Alert behaviour. */
-  onSuccess?: () => void;
+  /** `paid` (25 Oct 2026) carries what the receipt needs: our payment id, Razorpay's payment id and the amount charged. */
+  onSuccess?: (paid?: { paymentId?: string; razorpayPaymentId: string; amountCents: number }) => void;
   onError?: (message: string) => void;
   /**
    * U6 Premium entitlement (15 Sep 2026, §9 / BR-COM-011) — Razorpay really
@@ -97,7 +98,11 @@ export function useRazorpayPurchase({ onVerified, onSuccess, onError, onActivati
       try {
         const verifyResult = await verifyRazorpayPayment(result);
         await onVerified(verifyResult);
-        onSuccess?.();
+        onSuccess?.(
+          paidOrder
+            ? { paymentId: paidOrder.paymentId, razorpayPaymentId: result.razorpayPaymentId, amountCents: paidOrder.amountCents }
+            : undefined,
+        );
       } catch (err) {
         // U6 Premium entitlement — distinguish "the payment itself failed
         // verification" (a real "Payment Failed") from "the payment was

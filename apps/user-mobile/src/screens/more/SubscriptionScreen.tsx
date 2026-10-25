@@ -14,7 +14,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { fetchCurrentSubscription, fetchPlans, subscribe } from "../../api/subscriptions";
 import { usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
 import { extractErrorMessage } from "../../lib/apiError";
-import { TIER_ORDER, comparisonColumns, hasLaunchOffer, isFreePlan, type PlanTier } from "../../lib/planLineup";
+import { COMPARISON_FEATURES, TIER_ORDER, comparisonColumns, featuresFor, hasLaunchOffer, isFreePlan } from "../../lib/planLineup";
 import { formatRupees } from "../../lib/money";
 import { colors, fonts, radius, spacing, typography, themed } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -400,7 +400,7 @@ export function SubscriptionScreen({ navigation, route }: Props) {
       <Button
         label={t("subscription.purchaseHistory")}
         variant="secondary"
-        onPress={() => navigation.navigate("SubscriptionHistory")}
+        onPress={() => navigation.navigate("Purchases")}
         style={{ marginTop: spacing.lg }}
       />
     </ScreenContainer>
@@ -510,11 +510,6 @@ function CurrentPlanCard({
       ) : null}
     </Card>
   );
-}
-
-/** What a tier adds: everything in the tier below it, plus its own extras (COMPARISON_FEATURES). */
-function featuresFor(tier: PlanTier, lowerTier: PlanTier | null): string[] {
-  return COMPARISON_FEATURES.filter((f) => f[tier] && (!lowerTier || !f[lowerTier])).map((f) => f.key);
 }
 
 function PlanCard({
@@ -668,24 +663,6 @@ function CouponField({ value, onChange }: { value: string; onChange: (v: string)
     </Card>
   );
 }
-
-// `label` became `key` on 29 Sep 2026: the copy lives in the catalogue
-// (`subscription.features.*`) and this array carries only which tiers
-// include what, which is the actual product decision.
-// Owner, 20 Oct 2026: Basic (free) is workout and nutrition tracking, the
-// progress timeline, reminders, AI coach chat and recovery logs; Prime is
-// everything in Basic plus requesting a coach (billed separately) and
-// priority support. The four Fynrox programs are bought separately on either. Grow is archived in the admin portal, so its column only shows if
-// a Grow plan is switched on again; its ticks are the last decided ones (D13).
-const COMPARISON_FEATURES: Array<{ key: string } & Record<PlanTier, boolean>> = [
-  { key: "tracking", basic: true, grow: true, prime: true },
-  { key: "progress", basic: true, grow: true, prime: true },
-  { key: "reminders", basic: true, grow: true, prime: true },
-  { key: "aiCoach", basic: true, grow: true, prime: true },
-  { key: "recovery", basic: true, grow: true, prime: true },
-  { key: "humanCoaching", basic: false, grow: true, prime: true },
-  { key: "prioritySupport", basic: false, grow: false, prime: true },
-];
 
 /**
  * Feature comparison (§M) — an honest plan-lineup table. Nothing in the app

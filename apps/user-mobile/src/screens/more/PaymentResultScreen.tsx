@@ -6,10 +6,15 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { Pill } from "../../components/Pill";
 import { fetchPaymentStatus, retryPaymentActivation } from "../../api/payments";
+import { fetchCurrentSubscription } from "../../api/subscriptions";
 import { extractErrorMessage } from "../../lib/apiError";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { featuresFor, isFreePlan } from "../../lib/planLineup";
+import { formatRupees } from "../../lib/money";
+import { colors, fonts, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
+import { TextAction } from "./profileParts";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "PaymentResult">;
 
@@ -36,10 +41,19 @@ type Props = NativeStackScreenProps<MoreStackParamList, "PaymentResult">;
  * schedule, so activation can resolve in the background even if the user
  * never taps Retry themselves; the screen flips itself to the honest
  * success state the moment that happens, rather than making them guess.
+ *
+ * 25 Oct 2026 (Figma payments/03, 04, 11): the screens now say what was
+ * bought and for how much. Success shows a receipt (item, amount, paid-until,
+ * payment id, date) and what the plan unlocks; failure shows the item, amount
+ * and time with "Try again" (back to Checkout, where the method can be
+ * changed) and "Contact support"; a payment still being confirmed has a
+ * "Check status" button. Everything shown is already known to the app: the
+ * payment method is not stored, so no method row; and no refund timing is
+ * promised that the product doesn't already state elsewhere.
  */
 export function PaymentResultScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
-  const { status, message, paymentId, internalPaymentId, amountCents } = route.params;
+  const { status, message, paymentId, internalPaymentId, amountCents, itemName, purpose, referenceId, code } = route.params;
   const [startedAt] = useState(() => new Date());
   const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
@@ -74,7 +88,11 @@ export function PaymentResultScreen({ route, navigation }: Props) {
   // Figma payments/11 (24 Oct 2026): a payment Razorpay took but we couldn't
   // confirm (often UPI still settling) — check our record every few seconds
   // until it is paid and active, or failed.
-  const { data: pendingStatus } = useQuery({
+  const {
+    data: pendingStatus,
+    refetch: refetchPending,
+    isFetching: checkingPending,
+  } = useQuery({
     queryKey: ["payments", "status", internalPaymentId],
     queryFn: () => fetchPaymentStatus(internalPaymentId!),
     enabled: status === "unconfirmed" && !!internalPaymentId,
@@ -122,6 +140,26 @@ export function PaymentResultScreen({ route, navigation }: Props) {
   const success = status === "success" || (status === "activation_failed" && activated) || confirmedLater;
   const pendingActivation = status === "activation_failed" && !activated;
   const unconfirmed = status === "unconfirmed" && !confirmedLater && !failedLater;
+  const failed = !success && !pendingActivation && !unconfirmed;
+
+  // The plan the member is on now: its end date and what it adds over the free plan.
+  const isPlanPurchase = purpose !== "program_purchase";
+  const current = useQuery({
+    queryKey: ["subscriptions", "current"],
+    queryFn: fetchCurrentSubscription,
+    enabled: success && isPlanPurchase,
+  });
+  const plan = current.data && !current.isFetching && !isFreePlan(current.data.plan) ? current.data : null;
+  const unlocked = plan ? featuresFor(plan.plan.tier, "basic") : [];
+
+  const money = (cents: number) => formatRupees(cents);
+  const clock = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const longDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+  const goToday = () => {
+    navigation.popToTop();
+    (navigation.getParent() as { navigate: (name: string) => void } | undefined)?.navigate("Today");
+  };
 
   return (
     <ScreenContainer
@@ -152,9 +190,14 @@ export function PaymentResultScreen({ route, navigation }: Props) {
           }}
         >
           <Text style={{ fontSize: 32, color: success ? colors.success : pendingActivation || unconfirmed ? colors.warning : colors.danger }}>
-            {success ? "✓" : "!"}
+            {success ? "✓" : failed ? "✕" : "!"}
           </Text>
         </View>
+        {unconfirmed ? (
+          <View style={{ marginTop: spacing.md }}>
+            <Pill label={t("payment.waitingForBank")} tone="warning" />
+          </View>
+        ) : null}
         <Text style={{ color: colors.textPrimary, ...typography.h1, marginTop: spacing.md, textAlign: "center" }}>
           {success
             ? t("payment.allSet")
@@ -180,7 +223,7 @@ export function PaymentResultScreen({ route, navigation }: Props) {
             user is most worried, and most likely to try paying again.
             It is now always shown on failure, alongside any specific
             reason. */}
-        {!success && !pendingActivation && !unconfirmed ? (
+        {failed ? (
           <Text
             style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.sm, textAlign: "center" }}
           >
@@ -189,14 +232,38 @@ export function PaymentResultScreen({ route, navigation }: Props) {
         ) : null}
       </Card>
 
-      {unconfirmed && amountCents != null ? (
-        <Card style={{ marginTop: spacing.md, gap: 4 }}>
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>Amount</Text>
-          <Text style={{ color: colors.textPrimary, ...typography.h2 }}>₹{(amountCents / 100).toLocaleString("en-IN")}</Text>
-          <Text style={{ color: colors.textMuted, ...typography.meta }}>
-            Started {startedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-            {internalPaymentId ? " · checking every few seconds" : ""}
-          </Text>
+      {/* Receipt (success) / what was attempted (failed, still confirming). */}
+      {success && (itemName || amountCents != null) ? (
+        <Card style={{ marginTop: spacing.md, gap: spacing.xs }}>
+          {itemName ? <Detail label={t("payment.rowItem")} value={itemName} /> : null}
+          {amountCents != null ? <Detail label={t("payment.rowAmountPaid")} value={money(amountCents)} emphasis /> : null}
+          {plan?.renewsAt ? <Detail label={t("payment.rowPaidUntil")} value={longDate(new Date(plan.renewsAt))} /> : null}
+          <Detail label={t("payment.rowPaidOn")} value={`${longDate(startedAt)}, ${clock(startedAt)}`} />
+          {paymentId || internalPaymentId ? <Detail label={t("payment.rowPaymentId")} value={(paymentId ?? internalPaymentId)!} small /> : null}
+        </Card>
+      ) : null}
+
+      {success && unlocked.length > 0 ? (
+        <Card style={{ marginTop: spacing.md, gap: spacing.xs }}>
+          <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("payment.unlocked")}</Text>
+          {unlocked.map((key) => (
+            <View key={key} style={{ flexDirection: "row", gap: spacing.sm }}>
+              <Text style={{ color: colors.success }}>✓</Text>
+              <Text style={{ flex: 1, color: colors.textSecondary }}>{t(`subscription.features.${key}`)}</Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+
+      {(failed || unconfirmed) && (itemName || amountCents != null) ? (
+        <Card style={{ marginTop: spacing.md, gap: spacing.xs }}>
+          {itemName ? <Detail label={t("payment.rowFor")} value={itemName} /> : null}
+          {amountCents != null ? <Detail label={t("payment.rowAmount")} value={money(amountCents)} emphasis /> : null}
+          <Detail label={failed ? t("payment.rowTime") : t("payment.rowStarted")} value={clock(startedAt)} />
+          {unconfirmed && paymentId ? <Detail label={t("payment.rowReference")} value={paymentId} small /> : null}
+          {unconfirmed && internalPaymentId ? (
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("payment.checkingEvery")}</Text>
+          ) : null}
         </Card>
       ) : null}
 
@@ -204,12 +271,83 @@ export function PaymentResultScreen({ route, navigation }: Props) {
         <Button label={t("payment.retryActivation")} onPress={onRetry} loading={isRetrying} style={{ marginTop: spacing.lg }} />
       ) : null}
 
-      <Button
-        label={success ? t("common.done") : pendingActivation || unconfirmed ? t("payment.checkBackLater") : t("payment.backToPlans")}
-        variant={pendingActivation ? "secondary" : "primary"}
-        onPress={() => navigation.navigate("Subscription")}
-        style={{ marginTop: spacing.md }}
-      />
+      {success ? (
+        <>
+          <Button label={t("payment.startExploring")} onPress={goToday} style={{ marginTop: spacing.lg }} />
+          <Button label={t("payment.viewMyPlan")} variant="secondary" onPress={() => navigation.navigate("Subscription")} style={{ marginTop: spacing.sm }} />
+        </>
+      ) : null}
+
+      {failed ? (
+        <>
+          {purpose && referenceId ? (
+            <>
+              <Button
+                label={t("payment.tryAgain")}
+                onPress={() => navigation.replace("Checkout", { purpose, referenceId, code })}
+                style={{ marginTop: spacing.lg }}
+              />
+              <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.xs }}>
+                {t("payment.pickAnotherMethod")}
+              </Text>
+            </>
+          ) : null}
+          <Button
+            label={t("payment.contactSupport")}
+            variant="secondary"
+            onPress={() => navigation.navigate("Support")}
+            style={{ marginTop: spacing.sm }}
+          />
+          <TextAction label={t("payment.backToPlans")} onPress={() => navigation.navigate("Subscription")} />
+        </>
+      ) : null}
+
+      {unconfirmed ? (
+        <>
+          {internalPaymentId ? (
+            <Button
+              label={t("payment.checkStatus")}
+              onPress={() => refetchPending()}
+              loading={checkingPending}
+              style={{ marginTop: spacing.lg }}
+            />
+          ) : null}
+          <Button
+            label={t("payment.backToToday")}
+            variant="secondary"
+            onPress={goToday}
+            style={{ marginTop: internalPaymentId ? spacing.sm : spacing.lg }}
+          />
+        </>
+      ) : null}
+
+      {pendingActivation ? (
+        <Button
+          label={t("payment.checkBackLater")}
+          variant="secondary"
+          onPress={() => navigation.navigate("Subscription")}
+          style={{ marginTop: spacing.md }}
+        />
+      ) : null}
     </ScreenContainer>
+  );
+}
+
+function Detail({ label, value, emphasis, small }: { label: string; value: string; emphasis?: boolean; small?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.md }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>{label}</Text>
+      <Text
+        selectable={small}
+        style={{
+          flexShrink: 1,
+          textAlign: "right",
+          color: colors.textPrimary,
+          ...(emphasis ? { fontFamily: fonts.bodySemi, fontSize: 16 } : small ? typography.meta : typography.body),
+        }}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }

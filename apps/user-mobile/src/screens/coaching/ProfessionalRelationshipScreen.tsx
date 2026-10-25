@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RelationshipStatus, RelationshipStatusItem } from "@fitness-ai-app/types";
@@ -11,10 +11,11 @@ import { Icon, IconName } from "../../components/Icon";
 import { Pill } from "../../components/Pill";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
-import { fetchRelationshipStatus } from "../../api/coaching";
+import { cancelCoachRequest, fetchRelationshipStatus } from "../../api/coaching";
 import { retryPaymentActivation } from "../../api/payments";
 import { useToast } from "../../components/Toast";
 import { extractErrorMessage } from "../../lib/apiError";
+import { formatPreferredDay, formatReplyBy, preferredDayForBooking } from "../../lib/coachRequest";
 import { colors, spacing, typography } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 import { COACH_BROWSING_ENABLED } from "../../lib/coachEntry";
@@ -43,8 +44,11 @@ const STEPS: RelationshipStatus[] = ["requested", "accepted", "awaiting_payment"
 // "Earlier"; the rest stay with the in-flight request. `stuck` activating rows
 // and `activation_failed` rows show the payment ID and open a billing ticket.
 const PAST: ReadonlySet<RelationshipStatus> = new Set(["declined", "expired", "completed"]);
+// Statuses of a guidance request, before and after the coach's answer: these show what was asked for.
+const REQUEST_STATES: ReadonlySet<RelationshipStatus> = new Set(["requested", "accepted", "awaiting_payment", "declined", "expired"]);
 const NOTE_KEY: Partial<Record<RelationshipStatus, string>> = {
   requested: "coaching.relationship.requestedNote",
+  accepted: "coaching.relationship.acceptedNote",
   offered: "coaching.relationship.offeredNote",
   declined: "coaching.relationship.declinedNote",
   expired: "coaching.relationship.expiredNote",
@@ -118,6 +122,8 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
   const toast = useToast();
   // The payment whose "Try again" is running (Figma coach/12, 24 Oct 2026).
   const [retrying, setRetrying] = useState<string | null>(null);
+  // The request being cancelled (Figma coach/05, 07; 25 Oct 2026).
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -159,6 +165,29 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
       setRetrying(null);
     }
   };
+  // Take a request back before any payment exists. Asks first; nothing has been charged at this point.
+  const confirmCancel = (r: RelationshipStatusItem) => {
+    Alert.alert(t("coaching.relationship.cancelTitle"), t("coaching.relationship.cancelBody", { name: r.professionalFullName }), [
+      { text: t("coaching.relationship.cancelKeep"), style: "cancel" },
+      {
+        text: t("coaching.relationship.cancelRequest"),
+        style: "destructive",
+        onPress: async () => {
+          setCancelling(r.relationshipId);
+          try {
+            await cancelCoachRequest(r.relationshipId);
+            await queryClient.invalidateQueries({ queryKey: ["coaching", "relationships", "status"] });
+            toast.show(t("coaching.relationship.cancelled"), "success");
+          } catch (err) {
+            toast.show(extractErrorMessage(err, t("coaching.relationship.cancelFailed")), "error");
+            await queryClient.invalidateQueries({ queryKey: ["coaching", "relationships", "status"] });
+          } finally {
+            setCancelling(null);
+          }
+        },
+      },
+    ]);
+  };
   const past = data.relationships.filter((r) => PAST.has(r.status));
   const active = data.relationships.filter((r) => r.status === "active");
 
@@ -185,9 +214,17 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                   // to pay. The API refuses the payment itself if it must.
                   onContinuePayment={
                     r.status === "accepted" || r.status === "awaiting_payment"
-                      ? () => navigation.navigate("BookingServiceSelection", { professionalId: r.professionalId })
+                      ? () =>
+                          // The service and day the member asked for are already chosen (25 Oct 2026).
+                          navigation.navigate("BookingServiceSelection", {
+                            professionalId: r.professionalId,
+                            offeringId: r.offeringId ?? undefined,
+                            preferredDate: preferredDayForBooking(r.preferredDate) ?? undefined,
+                          })
                       : undefined
                   }
+                  onCancel={r.status === "requested" || r.status === "accepted" ? () => confirmCancel(r) : undefined}
+                  cancelling={cancelling === r.relationshipId}
                   onContactSupport={
                     r.status === "activation_failed" || r.stuck
                       ? () => navigation.navigate("SupportTicketForm", { category: "billing" })
@@ -213,6 +250,12 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
                   key={r.relationshipId}
                   item={r}
                   onAskAgain={r.status === "declined" || r.status === "expired" ? findCoach : undefined}
+                  // The same coach again, with a fresh reply window (a declined coach said no, so only an expired one).
+                  onRequestAgain={
+                    r.status === "expired" && COACH_BROWSING_ENABLED
+                      ? () => navigation.navigate("RequestCoach", { professionalId: r.professionalId })
+                      : undefined
+                  }
                 />
               ))}
             </View>
@@ -247,12 +290,15 @@ export function ProfessionalRelationshipScreen({ navigation }: Props) {
           The browse path is kept behind the flag rather than deleted —
           it is working, tested code, and whether to retire it is the
           product team's call, not this change's. */}
-      <Button
-        label={t("coaching.team.findCoach")}
-        variant="secondary"
-        onPress={findCoach}
-        style={{ marginTop: spacing.lg }}
-      />
+      {/* The empty state above already has this button; showing it twice is noise (Figma professional/15). */}
+      {data.relationships.length > 0 ? (
+        <Button
+          label={t("coaching.team.findCoach")}
+          variant="secondary"
+          onPress={findCoach}
+          style={{ marginTop: spacing.lg }}
+        />
+      ) : null}
       {/* Owner, 24 Oct 2026: "Browse + request" — browsing is on, and asking to be matched stays. */}
       {COACH_BROWSING_ENABLED ? (
         <Button label="Ask us to match you" variant="secondary" onPress={() => navigation.navigate("RequestGuidance")} style={{ marginTop: spacing.sm }} />
@@ -269,6 +315,9 @@ function RelationshipStatusCard({
   onRetry,
   retrying,
   onPickTime,
+  onCancel,
+  cancelling,
+  onRequestAgain,
 }: {
   item: RelationshipStatusItem;
   onContinuePayment?: () => void;
@@ -277,11 +326,21 @@ function RelationshipStatusCard({
   onRetry?: () => void;
   retrying?: boolean;
   onPickTime?: () => void;
+  onCancel?: () => void;
+  cancelling?: boolean;
+  onRequestAgain?: () => void;
 }) {
   const { t } = useTranslation();
   // A stuck `activating` row reads like a failure (the API flags it after 15 minutes).
   const presentation = item.stuck ? statusPresentation("activation_failed") : statusPresentation(item.status);
   const currentIndex = STEPS.indexOf(item.status);
+  const coachFirstName = item.professionalFullName.split(" ")[0];
+  // What the member asked for (25 Oct 2026, Figma coach/05, 06, 07): shown while the request is open and once it has ended.
+  const hasDetails = !!(item.serviceName || item.preferredDate || item.note);
+  const showSummary = REQUEST_STATES.has(item.status) && (hasDetails || !!item.requestedAt);
+  const sentOn = item.requestedAt
+    ? new Date(item.requestedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : null;
 
   return (
     <Card>
@@ -308,9 +367,36 @@ function RelationshipStatusCard({
         </View>
       ) : null}
 
-      <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
-        {item.stuck ? t("coaching.relationship.stuckNote") : t(NOTE_KEY[item.status] ?? "coaching.relationship.notActiveNote")}
-      </Text>
+      {showSummary ? (
+        <View style={{ marginTop: spacing.sm, gap: 2 }}>
+          {item.serviceName ? <SummaryRow label={t("coaching.relationship.summaryService")} value={item.serviceName} /> : null}
+          {hasDetails ? (
+            <SummaryRow
+              label={t("coaching.relationship.summaryPreferred")}
+              value={item.preferredDate ? formatPreferredDay(item.preferredDate) : t("coaching.relationship.anyDay")}
+            />
+          ) : null}
+          {item.note ? <SummaryRow label={t("coaching.relationship.summaryNote")} value={item.note} /> : null}
+          {sentOn ? <SummaryRow label={t("coaching.relationship.summarySent")} value={sentOn} /> : null}
+        </View>
+      ) : null}
+
+      {item.status === "requested" && !item.stuck ? (
+        <>
+          {item.replyBy ? (
+            <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
+              {t("coaching.relationship.replyBy", { name: coachFirstName, when: formatReplyBy(item.replyBy) })}
+            </Text>
+          ) : null}
+          <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
+            {t("coaching.relationship.nothingCharged", { name: coachFirstName })}
+          </Text>
+        </>
+      ) : (
+        <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.sm }}>
+          {item.stuck ? t("coaching.relationship.stuckNote") : t(NOTE_KEY[item.status] ?? "coaching.relationship.notActiveNote")}
+        </Text>
+      )}
       {item.paymentId ? (
         <Text selectable style={{ color: colors.textMuted, ...typography.meta, marginTop: spacing.xs }}>
           {t("coaching.relationship.paymentId", { id: item.paymentId })}
@@ -334,9 +420,36 @@ function RelationshipStatusCard({
           style={{ marginTop: onRetry ? spacing.sm : spacing.md }}
         />
       ) : null}
+      {onRequestAgain ? (
+        <Button label={t("coaching.relationship.requestAgain", { name: coachFirstName })} onPress={onRequestAgain} style={{ marginTop: spacing.md }} />
+      ) : null}
       {onAskAgain ? (
-        <Button label={t("coaching.relationship.askAgain")} variant="secondary" onPress={onAskAgain} style={{ marginTop: spacing.md }} />
+        <Button
+          label={t("coaching.relationship.askAgain")}
+          variant="secondary"
+          onPress={onAskAgain}
+          style={{ marginTop: onRequestAgain ? spacing.sm : spacing.md }}
+        />
+      ) : null}
+      {onCancel ? (
+        <Button
+          label={t("coaching.relationship.cancelRequest")}
+          variant="secondary"
+          onPress={onCancel}
+          loading={cancelling}
+          disabled={cancelling}
+          style={{ marginTop: spacing.sm }}
+        />
       ) : null}
     </Card>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}>
+      <Text style={{ color: colors.textMuted, ...typography.meta }}>{label}</Text>
+      <Text style={{ flexShrink: 1, textAlign: "right", color: colors.textPrimary, ...typography.meta }}>{value}</Text>
+    </View>
   );
 }

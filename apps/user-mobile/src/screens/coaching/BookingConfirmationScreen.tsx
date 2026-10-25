@@ -77,6 +77,13 @@ export function BookingConfirmationScreen({ navigation, route }: Props) {
         onPress={() => navigation.navigate("MyProfessionalTeam")}
         style={{ marginTop: spacing.lg }}
       />
+      {/* Figma coach/08 (25 Oct 2026): the thread already exists, so offer it right away. */}
+      <Button
+        label={t("coaching.booking.messageCoach", { name: booking.professionalFullName.split(" ")[0] })}
+        variant="secondary"
+        onPress={() => navigation.navigate("MessageThread", { professionalId: booking.professionalId, fullName: booking.professionalFullName })}
+        style={{ marginTop: spacing.sm }}
+      />
       <Button
         label={t("coaching.booking.backHome")}
         variant="secondary"

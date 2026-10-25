@@ -51,6 +51,14 @@ export function CheckoutScreen({ route, navigation }: Props) {
   });
 
   const queryClient = useQueryClient();
+  // What was being bought, handed to the result screen for the receipt, the
+  // failure details and "Try again" (Figma payments/03, 04; 25 Oct 2026).
+  const bought = {
+    itemName: quote.data?.itemName,
+    purpose,
+    referenceId,
+    code: quote.data?.couponCode ?? undefined,
+  };
   const purchase = useRazorpayPurchase({
     // The plan and purchase list change once a payment is verified (20 Oct 2026).
     onVerified: () =>
@@ -65,11 +73,20 @@ export function CheckoutScreen({ route, navigation }: Props) {
         paymentId,
         internalPaymentId: paid?.paymentId,
         amountCents: paid?.amountCents,
+        ...bought,
       }),
-    onSuccess: () => navigation.replace("PaymentResult", { status: "success" }),
-    onError: (message) => navigation.replace("PaymentResult", { status: "failed", message }),
+    onSuccess: (paid) =>
+      navigation.replace("PaymentResult", {
+        status: "success",
+        paymentId: paid?.razorpayPaymentId,
+        internalPaymentId: paid?.paymentId,
+        amountCents: paid?.amountCents ?? quote.data?.totalCents,
+        ...bought,
+      }),
+    onError: (message) =>
+      navigation.replace("PaymentResult", { status: "failed", message, amountCents: quote.data?.totalCents, ...bought }),
     onActivationFailed: (paymentId, message) =>
-      navigation.replace("PaymentResult", { status: "activation_failed", message, paymentId }),
+      navigation.replace("PaymentResult", { status: "activation_failed", message, paymentId, ...bought }),
   });
 
   if (quote.isLoading) {

@@ -6,6 +6,8 @@ import type {
   CoachTeamResponse,
   CreateBookingInput,
   CreateChangeRequestInput,
+  CreateGuidanceRequestInput,
+  GuidanceRequestResult,
   ProfessionalServiceType,
   RelationshipChangeRequest,
   RelationshipStatusResponse,
@@ -48,6 +50,16 @@ export function fetchMyTeam() {
 // screen. See coaching.service.ts's listRelationshipStatus doc comment.
 export function fetchRelationshipStatus() {
   return apiClient.get<RelationshipStatusResponse>("/coaching/relationships/status").then((r) => r.data);
+}
+
+/** Ask a coach for guidance with no payment and no exact slot (25 Oct 2026, Figma coach/02). */
+export function requestGuidanceFromCoach(input: CreateGuidanceRequestInput) {
+  return apiClient.post<GuidanceRequestResult>("/coaching/relationships/request", input).then((r) => r.data);
+}
+
+/** Take a request back while it is waiting for the coach, or accepted but not yet paid. */
+export function cancelCoachRequest(relationshipId: string) {
+  return apiClient.post<{ id: string; status: "ended" }>(`/coaching/relationships/${relationshipId}/cancel`).then((r) => r.data);
 }
 
 export function submitChangeRequest(relationshipId: string, input: CreateChangeRequestInput) {

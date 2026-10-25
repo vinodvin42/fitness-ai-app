@@ -67,11 +67,13 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   // 24 Oct 2026 (Figma coach/12): `rebookPaymentId` picks a new time for a paid session that couldn't be
   // booked. The service is the one already paid for, and confirming books it with that same payment.
-  const { professionalId, rebookPaymentId } = route.params;
+  // 25 Oct 2026: `offeringId` / `preferredDate` are what the member asked for when they requested
+  // this coach; once the coach has accepted they start already chosen (the member can still change them).
+  const { professionalId, rebookPaymentId, offeringId: requestedOfferingId, preferredDate } = route.params;
   const queryClient = useQueryClient();
 
-  const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
-  const [selectedDateKey, setSelectedDateKey] = useState<string>(toDateKey(new Date()));
+  const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(requestedOfferingId ?? null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(preferredDate ?? toDateKey(new Date()));
   const [selectedTimeIso, setSelectedTimeIso] = useState<string | null>(null);
   const [isBookingFree, setIsBookingFree] = useState(false);
   // 5 Sep 2026 — same coupon field SubscriptionScreen.tsx/ProgramDetailScreen.tsx
