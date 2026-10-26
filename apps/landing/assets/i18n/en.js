@@ -26,6 +26,7 @@ window.FYNROX_I18N.en = {
   "shell.footer.col.product": "Product",
   "shell.footer.col.signIn": "Sign in",
   "shell.footer.link.about": "About",
+  "shell.footer.link.adminLogin": "Admin login",
   "shell.footer.link.coach": "Coach",
   "shell.footer.link.download": "Download",
   "shell.footer.link.earlyAccess": "Early access",

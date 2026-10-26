@@ -58,6 +58,7 @@ const FOOTER_COLS = [
     ["terms.html", "Terms of Service"],
   ]],
   ["Sign in", [
+    ["/app/", "Admin login"],
     ["https://calm-ground-04d678410.3.azurestaticapps.net/", "Coach"],
   ]],
 ];
