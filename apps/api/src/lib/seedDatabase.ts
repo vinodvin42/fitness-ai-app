@@ -58,10 +58,9 @@ import { seedHelpArticles } from "./seedContent/helpArticles";
 
 /**
  * `includeAccounts: false` seeds content only — plans, programs, exercises,
- * workouts, recipes, and (5 Sep 2026 — see the comment above the coach
- * block further down for why this changed) the demo-coach accounts and
- * their `ProfessionalServiceOffering` prices too. It skips only the
- * bootstrap-admin section at the very bottom of this file.
+ * workouts, recipes, coach price levels and commission rates. It skips the
+ * demo-coach accounts (26 Oct 2026, see the comment above the coach block)
+ * and the bootstrap-admin section at the very bottom of this file.
  *
  * Added 4 Sep 2026 for `.github/workflows/seed-azure-content.yml`, which
  * re-seeds the live database from a GitHub runner. That runner has no
@@ -347,8 +346,16 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
     update: {},
   });
 
+  // 26 Oct 2026, owner: the demo coaches (Alex Rivera, Priya Nair, Jordan
+  // Blake, @coach.fynrox.demo) were deleted from the live database, and the
+  // content-only seed that `.github/workflows/seed-azure-content.yml` runs
+  // must not bring them back. So they are now seeded only by a full seed
+  // (`includeAccounts`, i.e. a local or first-time setup), and a
+  // content-only seed skips them. This reverses the 5 Sep move above for the
+  // coach accounts only; their offerings went with them, so there are no
+  // live demo prices left for a content reseed to keep in step.
   const coachPasswordHash = await bcrypt.hash("Coach123!", 12);
-  const coaches = [
+  const coaches = !includeAccounts ? [] : [
     {
       id: "coach-alex-rivera",
       email: "alex.rivera@coach.fynrox.demo",
@@ -431,11 +438,15 @@ export async function seedDatabase({ includeAccounts = true }: { includeAccounts
       }),
     );
   }
-  summary.push(`Seeded ${coaches.length} demo verified coaches with real service offerings.`);
+  summary.push(
+    includeAccounts
+      ? `Seeded ${coaches.length} demo verified coaches with real service offerings.`
+      : "Skipped the demo coaches (content-only seed).",
+  );
 
   if (!includeAccounts) {
-    // Admin bootstrap only, now — see the comment above the coach block
-    // for why that block itself already ran regardless of this flag.
+    // Admin bootstrap. (The demo coaches above are skipped by the same flag
+    // since 26 Oct 2026.)
     // `SEED_ADMIN_EMAIL` below is read directly from `process.env` (not
     // validated by config/env.ts), which is exactly the risk this flag
     // guards against: a GitHub Actions runner has no visibility into the
