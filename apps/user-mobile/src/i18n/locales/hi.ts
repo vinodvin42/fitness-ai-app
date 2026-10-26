@@ -20,12 +20,8 @@ export const hi: LocaleCatalogue = {
 
   more: {
     title: "और",
-    logOut: "लॉग आउट",
     rows: {
-      settings: { label: "सेटिंग्स" },
       progress: { label: "प्रगति" },
-      subscription: { label: "सब्सक्रिप्शन" },
-      purchases: { label: "खरीदारी" },
       referral: { label: "रेफ़र करें और बुलाएं" },
     },
   },

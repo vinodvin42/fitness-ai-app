@@ -20,12 +20,8 @@ export const kn: LocaleCatalogue = {
 
   more: {
     title: "ಇನ್ನಷ್ಟು",
-    logOut: "ಲಾಗ್ ಔಟ್",
     rows: {
-      settings: { label: "ಸೆಟ್ಟಿಂಗ್‌ಗಳು" },
       progress: { label: "ಪ್ರಗತಿ" },
-      subscription: { label: "ಸಬ್‌ಸ್ಕ್ರಿಪ್ಷನ್" },
-      purchases: { label: "ಖರೀದಿಗಳು" },
       referral: { label: "ರೆಫರ್ ಮಾಡಿ & ಆಹ್ವಾನಿಸಿ" },
     },
   },

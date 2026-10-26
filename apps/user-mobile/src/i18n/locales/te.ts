@@ -20,12 +20,8 @@ export const te: LocaleCatalogue = {
 
   more: {
     title: "మరిన్ని",
-    logOut: "లాగ్ అవుట్",
     rows: {
-      settings: { label: "సెట్టింగ్‌లు" },
       progress: { label: "పురోగతి" },
-      subscription: { label: "సబ్‌స్క్రిప్షన్" },
-      purchases: { label: "కొనుగోళ్లు" },
       referral: { label: "రిఫర్ చేయండి & ఆహ్వానించండి" },
     },
   },

@@ -20,12 +20,8 @@ export const ta: LocaleCatalogue = {
 
   more: {
     title: "மேலும்",
-    logOut: "வெளியேறு",
     rows: {
-      settings: { label: "அமைப்புகள்" },
       progress: { label: "முன்னேற்றம்" },
-      subscription: { label: "சந்தா" },
-      purchases: { label: "வாங்கியவை" },
       referral: { label: "பரிந்துரை & அழைப்பு" },
     },
   },

@@ -20,12 +20,8 @@ export const ml: LocaleCatalogue = {
 
   more: {
     title: "കൂടുതൽ",
-    logOut: "ലോഗ് ഔട്ട്",
     rows: {
-      settings: { label: "സെറ്റിംഗ്സ്" },
       progress: { label: "പുരോഗതി" },
-      subscription: { label: "സബ്സ്ക്രിപ്ഷൻ" },
-      purchases: { label: "വാങ്ങലുകൾ" },
       referral: { label: "റഫർ ചെയ്യൂ & ക്ഷണിക്കൂ" },
     },
   },

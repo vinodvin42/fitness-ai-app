@@ -37,12 +37,8 @@ export const en = {
 
   more: {
     title: "More",
-    logOut: "Log out",
     rows: {
-      settings: { label: "Settings" },
       progress: { label: "Progress" },
-      subscription: { label: "Subscription" },
-      purchases: { label: "Purchases" },
       referral: { label: "Refer & Invite" },
     },
   },

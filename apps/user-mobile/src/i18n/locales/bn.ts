@@ -20,12 +20,8 @@ export const bn: LocaleCatalogue = {
 
   more: {
     title: "আরও",
-    logOut: "লগ আউট",
     rows: {
-      settings: { label: "সেটিংস" },
       progress: { label: "অগ্রগতি" },
-      subscription: { label: "সাবস্ক্রিপশন" },
-      purchases: { label: "কেনাকাটা" },
       referral: { label: "রেফার ও আমন্ত্রণ" },
     },
   },

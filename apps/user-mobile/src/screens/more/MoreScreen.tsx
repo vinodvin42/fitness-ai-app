@@ -28,19 +28,21 @@ interface MoreRow {
 }
 
 /**
- * More Menu - Figma Today 05. Top block (banner + the design's seven rows) is
- * the frame; the app's other real destinations (Medicine, Reminders list,
- * Referral, Subscription, Settings, Support) are kept in a second group below
- * it rather than removed.
+ * More Menu - Figma Today 05: the banner card and the design's seven rows.
  *
  * 25 Oct 2026 (owner): the first card is Refer & Invite (it was "Compare
- * Basic & Prime"; plans stay one tap away under Subscription). Its line is
+ * Basic & Prime"; plans stay one tap away under Profile > Subscription). Its line is
  * the real referral rule (referrals.service.ts): 1 month of credit when a
  * friend you invite starts a paid plan, or the credit already waiting.
+ *
+ * 26 Oct 2026 (owner): More keeps Refer & Invite, My Schedule, Progress, Coach, Body Composition, Your
+ * Lifetime, Add Reminder and Paid Programs. Subscription, Purchases, Settings, Support and Log out were
+ * duplicates of Profile (the avatar, top right) and are only there now. Learn stays while articles exist,
+ * because nothing else opens it.
  */
 export function MoreScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const referral = useQuery({ queryKey: ["referrals", "me"], queryFn: fetchReferralSummary, staleTime: 60_000 });
   const tabs = () => navigation.getParent<NavigationProp<MainTabsParamList>>();
   // Learn (05.04, Oct 2026) appears only once at least one article is published.
@@ -66,17 +68,7 @@ export function MoreScreen({ navigation }: Props) {
     { label: "Coach", icon: "message", tint: colors.success, onPress: () => navigation.navigate("ProfessionalRelationship") },
     { label: "Add Reminder", icon: "bell", tint: colors.aiAccent, onPress: () => navigation.navigate("ReminderForm", {}) },
     { label: "Paid Programs", icon: "dumbbell", tint: colors.accent, onPress: () => tabs()?.navigate("Train", { screen: "ProgramsMarketplace", initial: false }) },
-  ];
-
-  const secondary: MoreRow[] = [
-    // Owner, 26 Oct 2026: one reminder entry in More ("Add Reminder" above). The list stays reachable from
-    // Today (Daily reminders › View all), the Schedule and Workouts › Reminders & routines.
-    { label: t("more.rows.subscription.label"), icon: "zap", tint: colors.warning, onPress: () => navigation.navigate("Subscription") },
-    // Origin (Fynrox R1, U-M22): receipts and refund status.
-    { label: t("more.rows.purchases.label"), icon: "calendar", tint: colors.cyan, onPress: () => navigation.navigate("Purchases") },
-    { label: t("more.rows.settings.label"), icon: "settings", tint: colors.textSecondary, onPress: () => navigation.navigate("SettingsHub") },
     ...(hasLearn ? [{ label: "Learn", icon: "file-text" as const, tint: colors.success, onPress: () => navigation.navigate("Learn") }] : []),
-    { label: "Support", icon: "info", tint: colors.cyan, onPress: () => navigation.navigate("Support") },
   ];
 
   return (
@@ -107,14 +99,10 @@ export function MoreScreen({ navigation }: Props) {
       </Pressable>
 
       <RowGroup rows={primary} />
-      <RowGroup rows={secondary} />
 
       <Text style={{ color: colors.textMuted, ...typography.meta, textAlign: "center", marginTop: spacing.xs }}>
         {BRAND_NAME} Version {Constants.expoConfig?.version ?? "—"}
       </Text>
-      <Pressable onPress={logout} accessibilityRole="button" accessibilityLabel="Log out of account" style={{ alignSelf: "center", padding: spacing.sm }}>
-        <Text style={{ color: colors.dangerText, fontFamily: fonts.bodySemi, fontSize: 15 }}>{t("more.logOut")}</Text>
-      </Pressable>
     </ScreenContainer>
   );
 }

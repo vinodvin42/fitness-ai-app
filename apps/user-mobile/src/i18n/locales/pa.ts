@@ -20,12 +20,8 @@ export const pa: LocaleCatalogue = {
 
   more: {
     title: "ਹੋਰ",
-    logOut: "ਲੌਗ ਆਊਟ",
     rows: {
-      settings: { label: "ਸੈਟਿੰਗਾਂ" },
       progress: { label: "ਤਰੱਕੀ" },
-      subscription: { label: "ਸਬਸਕ੍ਰਿਪਸ਼ਨ" },
-      purchases: { label: "ਖਰੀਦਦਾਰੀ" },
       referral: { label: "ਰੈਫ਼ਰ ਕਰੋ ਅਤੇ ਸੱਦਾ ਦਿਓ" },
     },
   },
