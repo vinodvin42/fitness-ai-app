@@ -4,6 +4,7 @@ import { trackEvent } from "../../lib/analytics";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createOffer, createOfferAsProfessional } from "../professionalOffers/professionalOffers.service";
 import { createNotification } from "../notifications/notifications.service";
+import { notifyMemberOfCompletion } from "../coaching/memberNotices";
 
 /**
  * Relationship Lifecycle — End Relationship / Handover (R1 U6, Wave 3,
@@ -161,6 +162,7 @@ export async function completeRelationship(
     { ruleId: "BR-ACC-007", metadata: { cause: "relationship_completed" } },
   );
 
+  await notifyMemberOfCompletion(relationshipId);
   return updated as RelationshipRow;
 }
 

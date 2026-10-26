@@ -1,6 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
@@ -11,6 +13,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../context/AuthContext";
 import { fetchOnboardingStatus } from "../../api/professionalOnboarding";
 import { colors, spacing, typography } from "../../theme/tokens";
+import type { OnboardingStackParamList } from "../../navigation/OnboardingStack";
 
 const SERVICE_LABELS: Record<ProfessionalServiceType, string> = {
   fitness: "Fitness Coaching",
@@ -27,21 +30,42 @@ const SERVICE_LABELS: Record<ProfessionalServiceType, string> = {
  * MainTabs the instant `onboardingCompleted` flips true, so calling it
  * before this screen has actually rendered would unmount it before the
  * coach ever saw their verification status.
+ *
+ * 26 Oct 2026 (coach app audit): also reachable from More → Verification &
+ * documents once onboarding is done. There it has a back link instead of
+ * "Go to Dashboard", plus "Upload documents again" (the same credential and
+ * KYC screens, registered in MoreStack under the same names). A rejected
+ * credential shows the reviewer's note, and an expiry date shows when set.
  */
 export function VerificationStatusScreen() {
   const { t } = useTranslation();
-  const { professional, markOnboardingCompleted } = useAuth();
+  const { professional, onboardingCompleted, markOnboardingCompleted } = useAuth();
+  // MoreStack registers the same route names and params as OnboardingStack.
+  const navigation = useNavigation<NativeStackNavigationProp<OnboardingStackParamList>>();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-onboarding-status"],
     queryFn: fetchOnboardingStatus,
   });
+  const services = (data?.credentials ?? []).map((c) => c.serviceType);
+  // A new upload sets that item back to Pending, so only offer the ones that
+  // aren't verified: a coach can't lose a verified status by accident here.
+  const toFix = (data?.credentials ?? []).filter((c) => c.status !== "verified").map((c) => c.serviceType);
+  const kycToFix = !!data && data.kycStatus !== "verified";
+  const uploadAgain = () => {
+    if (toFix.length > 0) navigation.navigate("CredentialUpload", { services: toFix, index: 0 });
+    else navigation.navigate("KycUpload", { services });
+  };
 
   return (
-    // showAlerts=false — the global Notifications route only exists once
-    // onboardingCompleted (see RootNavigator.tsx: OnboardingStack renders
-    // outside the RootStack that registers "Notifications"), so this
-    // pre-onboarding screen can't navigate there yet.
-    <ScreenContainer title={t("onboarding.verification.title")} showAlerts={false}>
+    // showAlerts only after onboarding — the global Notifications route only
+    // exists once onboardingCompleted (see RootNavigator.tsx: OnboardingStack
+    // renders outside the RootStack that registers "Notifications").
+    <ScreenContainer title={t("onboarding.verification.title")} showAlerts={onboardingCompleted}>
+      {onboardingCompleted ? (
+        <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
+          {t("onboarding.verification.back")}
+        </Text>
+      ) : null}
       <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{professional?.fullName}</Text>
       <Text style={{ color: colors.textSecondary, ...typography.meta, marginBottom: spacing.sm }}>
         {professional?.email}
@@ -53,31 +77,53 @@ export function VerificationStatusScreen() {
       {data && (
         <View style={{ gap: spacing.sm }}>
           {data.credentials.map((c) => (
-            <Card key={c.id} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>
-                {SERVICE_LABELS[c.serviceType]}
-              </Text>
-              <StatusBadge status={c.status} />
+            <Card key={c.id} style={{ gap: spacing.xs }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>
+                  {SERVICE_LABELS[c.serviceType]}
+                </Text>
+                <StatusBadge status={c.status} />
+              </View>
+              {c.status === "rejected" ? (
+                <Text style={{ color: colors.danger, ...typography.meta }}>
+                  {t("onboarding.verification.rejected")}
+                  {c.adminNotes ? ` ${t("onboarding.verification.rejectedReason", { reason: c.adminNotes })}` : ""}
+                </Text>
+              ) : null}
+              {c.expiresAt ? (
+                <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+                  {t("onboarding.verification.expires", { date: new Date(c.expiresAt).toLocaleDateString() })}
+                </Text>
+              ) : null}
             </Card>
           ))}
 
-          <Card>
+          <Card style={{ gap: spacing.xs }}>
             <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>{t("onboarding.verification.identity")}</Text>
-            <View style={{ marginTop: spacing.xs }}>
+            <View>
               <StatusBadge status={data.kycStatus} />
             </View>
+            {data.kycStatus === "rejected" ? (
+              <Text style={{ color: colors.danger, ...typography.meta }}>{t("onboarding.verification.rejected")}</Text>
+            ) : null}
           </Card>
 
           <Card style={{ backgroundColor: colors.surfaceRaised }}>
-            <Text style={{ color: colors.textSecondary, ...typography.body }}>
-              You can start accepting clients for any service marked Verified right away — services still Pending
-              will unlock automatically once reviewed.
-            </Text>
+            <Text style={{ color: colors.textSecondary, ...typography.body }}>{t("onboarding.verification.howItWorks")}</Text>
           </Card>
         </View>
       )}
 
-      <Button label={t("onboarding.verification.goToDashboard")} onPress={markOnboardingCompleted} style={{ marginTop: spacing.md }} />
+      {onboardingCompleted ? (
+        toFix.length > 0 || kycToFix ? (
+          <View style={{ gap: spacing.xs, marginTop: spacing.md }}>
+            <Button label={t("onboarding.verification.uploadAgain")} variant="secondary" onPress={uploadAgain} />
+            <Text style={{ color: colors.textMuted, ...typography.meta }}>{t("onboarding.verification.uploadHint")}</Text>
+          </View>
+        ) : null
+      ) : (
+        <Button label={t("onboarding.verification.goToDashboard")} onPress={markOnboardingCompleted} style={{ marginTop: spacing.md }} />
+      )}
     </ScreenContainer>
   );
 }

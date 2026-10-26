@@ -14,6 +14,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from "../../lib/coachFees";
 import { activeGstPercent, gstOnTop } from "../../lib/gst";
 import { professionalPublicId } from "../../lib/professionalCode";
+import { notifyMemberOfAcceptance, notifyMemberOfDecline } from "./memberNotices";
 import {
   AvailabilityQuery,
   CreateBookingInput,
@@ -632,6 +633,8 @@ export async function acceptRelationship(professionalId: string, relationshipId:
     throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
   }
 
+  // Covers both a direct request and a Fynrox match (acceptOffer calls this).
+  await notifyMemberOfAcceptance(relationshipId);
   return { id: relationshipId, status: "accepted" };
 }
 
@@ -811,6 +814,7 @@ export async function declineRelationship(
     throw new ApiHttpError(409, "relationship_not_requested", "This request has already been acted on");
   }
 
+  await notifyMemberOfDecline(relationshipId);
   return { id: relationshipId, status: "declined" };
 }
 
@@ -1320,6 +1324,7 @@ export async function createChangeRequest(
 
 type ScheduleBookingRow = {
   id: string;
+  userId: string;
   scheduledAt: Date;
   durationMinutes: number;
   status: string;
@@ -1333,6 +1338,7 @@ const PAST_SCHEDULE_LIMIT = 50;
 function toScheduleItem(b: ScheduleBookingRow) {
   return {
     id: b.id,
+    clientId: b.userId,
     clientFullName: b.user.fullName,
     offeringLabel: b.offering.label,
     serviceType: b.offering.serviceType,

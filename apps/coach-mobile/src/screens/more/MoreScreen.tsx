@@ -1,10 +1,14 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
+import { useAuth } from "../../context/AuthContext";
+import { fetchFormReviews } from "../../api/formReviews";
+import { confirmAction, showAlert } from "../../lib/dialogs";
 import { colors, spacing } from "../../theme/tokens";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
@@ -18,10 +22,30 @@ import type { MoreStackParamList } from "../../navigation/MoreStack";
  * rather than embedding that screen directly in the tab, so future real
  * More items (earnings settings, notification prefs, etc., none built yet)
  * have an obvious place to land without another MainTabs.tsx rewrite.
+ *
+ * 26 Oct 2026 (coach app audit): an Account section with Verification &
+ * documents (the onboarding screens, reachable again after onboarding),
+ * Help & support, and Sign out with a confirmation (it used to be only an
+ * unconfirmed text link at the bottom of Today). Form reviews shows how many
+ * clips are waiting.
  */
 export function MoreScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>();
+  const { logout } = useAuth();
+  // Same query key as the Form reviews list, so this is one cached request.
+  const formReviews = useQuery({ queryKey: ["coach-form-reviews"], queryFn: fetchFormReviews });
+  const toReview = (formReviews.data ?? []).filter((r) => r.status === "queued").length;
+
+  const signOut = () =>
+    confirmAction(t("more.signOut.confirmTitle"), t("more.signOut.confirmMessage"), t("more.signOut.confirm"), () => {
+      void logout();
+    });
+
+  const help = () => {
+    void Linking.openURL("mailto:support@fynrox.com").catch(() => undefined);
+    showAlert(t("more.help.title"), t("more.help.message"));
+  };
 
   return (
     <ScreenContainer title={t("more.title")}>
@@ -57,17 +81,44 @@ export function MoreScreen() {
         <MenuRow
           label={t("more.formReviews.label")}
           subtitle={t("more.formReviews.subtitle")}
+          badge={toReview > 0 ? t("more.needsReview", { count: toReview }) : undefined}
           onPress={() => navigation.navigate("FormReviews")}
         />
+      </Card>
+
+      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700", letterSpacing: 1, marginTop: spacing.sm }}>
+        {t("more.account").toUpperCase()}
+      </Text>
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <MenuRow
+          label={t("more.verification.label")}
+          subtitle={t("more.verification.subtitle")}
+          onPress={() => navigation.navigate("VerificationStatus")}
+        />
+        <MenuRow label={t("more.help.label")} subtitle={t("more.help.subtitle")} onPress={help} />
+        <MenuRow label={t("more.signOut.label")} subtitle={t("more.signOut.subtitle")} onPress={signOut} danger />
       </Card>
     </ScreenContainer>
   );
 }
 
-function MenuRow({ label, subtitle, onPress }: { label: string; subtitle: string; onPress: () => void }) {
+function MenuRow({
+  label,
+  subtitle,
+  onPress,
+  badge,
+  danger = false,
+}: {
+  label: string;
+  subtitle: string;
+  onPress: () => void;
+  badge?: string;
+  danger?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
       style={({ pressed }) => ({
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.md,
@@ -75,12 +126,18 @@ function MenuRow({ label, subtitle, onPress }: { label: string; subtitle: string
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: spacing.sm,
       })}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{label}</Text>
+        <Text style={{ color: danger ? colors.danger : colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{label}</Text>
         <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{subtitle}</Text>
       </View>
+      {badge ? (
+        <View style={{ backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+          <Text style={{ color: colors.background, fontSize: 12, fontWeight: "700" }}>{badge}</Text>
+        </View>
+      ) : null}
       <Text style={{ color: colors.textMuted, fontSize: 18 }}>›</Text>
     </Pressable>
   );

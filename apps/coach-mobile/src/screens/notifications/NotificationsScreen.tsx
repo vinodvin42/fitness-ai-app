@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import type { CoachNewBookingItem } from "@fitness-ai-app/types";
@@ -204,8 +204,19 @@ export function NotificationsScreen() {
           <Text style={{ color: colors.textPrimary, ...typography.h2 }}>{t("notifications.newBookings")}</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t("notifications.newBookingsHint")}</Text>
           {bookings.map((booking) => (
-            <Card key={booking.id}>
-              <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{booking.clientFullName}</Text>
+            // Each card opens that client (26 Oct 2026); before, only the section link did anything.
+            <Pressable
+              key={booking.id}
+              accessibilityRole="button"
+              onPress={() =>
+                navigation.navigate("Main", {
+                  screen: "Clients",
+                  params: { screen: "ClientProfile", params: { userId: booking.clientId, fullName: booking.clientFullName }, initial: false },
+                })
+              }
+            >
+            <Card>
+              <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{booking.clientFullName} ›</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
                 {booking.offeringLabel} · {sessionLabel(booking.scheduledAt)}
               </Text>
@@ -213,6 +224,7 @@ export function NotificationsScreen() {
                 {t("notifications.bookedAgo", { ago: timeAgo(booking.bookedAt) })}
               </Text>
             </Card>
+            </Pressable>
           ))}
           {newBookings.total > bookings.length && (
             <Text style={{ color: colors.textSecondary, fontSize: 12 }}>

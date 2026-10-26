@@ -11,6 +11,7 @@ import { MoreStack } from "./MoreStack";
 import { fetchConversations } from "../api/coachMessages";
 import { useCoachAlerts } from "../lib/coachAlerts";
 import { colors } from "../theme/tokens";
+import { Ionicons } from "@expo/vector-icons";
 
 /**
  * Unread client messages across all conversations, for the Messages tab badge
@@ -100,29 +101,54 @@ export type MainTabsParamList = {
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
+/** Tab icons (26 Oct 2026, coach app audit): the bar used to be labels only. */
+const TAB_ICONS: Record<keyof MainTabsParamList, [keyof typeof Ionicons.glyphMap, keyof typeof Ionicons.glyphMap]> = {
+  Today: ["today", "today-outline"],
+  Clients: ["people", "people-outline"],
+  Calendar: ["calendar", "calendar-outline"],
+  Messages: ["chatbubbles", "chatbubbles-outline"],
+  More: ["menu", "menu-outline"],
+};
+
+const badgeStyle = { backgroundColor: colors.accent, color: colors.background, fontWeight: "700" } as const;
+const badgeText = (n: number) => (n > 99 ? "99+" : n);
+
 export function MainTabs() {
   const { t } = useTranslation();
   const unread = useUnreadMessageCount();
   // The one poller for the header Alerts badge (25 Oct 2026); every header reads its cache.
-  useCoachAlerts({ poll: true });
+  const alerts = useCoachAlerts({ poll: true }).data;
+  // Clients tab badge (26 Oct 2026): requests and Fynrox offers both wait under Clients.
+  const waiting = alerts ? alerts.pendingRequests + alerts.openOffers : 0;
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-      }}
+        tabBarIcon: ({ focused, color, size }) => (
+          <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={size - 2} color={color} />
+        ),
+      })}
     >
       <Tab.Screen name="Today" component={TodayScreen} />
-      <Tab.Screen name="Clients" component={ClientsStack} />
+      <Tab.Screen
+        name="Clients"
+        component={ClientsStack}
+        options={{
+          tabBarBadge: waiting > 0 ? badgeText(waiting) : undefined,
+          tabBarBadgeStyle: badgeStyle,
+          tabBarAccessibilityLabel: waiting > 0 ? t("clients.tabWaiting", { count: waiting }) : undefined,
+        }}
+      />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen
         name="Messages"
         component={MessagesStack}
         options={{
-          tabBarBadge: unread > 0 ? (unread > 99 ? "99+" : unread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.background, fontWeight: "700" },
+          tabBarBadge: unread > 0 ? badgeText(unread) : undefined,
+          tabBarBadgeStyle: badgeStyle,
           tabBarAccessibilityLabel: unread > 0 ? t("messages.tabUnread", { count: unread }) : undefined,
         }}
       />

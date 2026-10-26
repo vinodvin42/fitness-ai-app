@@ -94,6 +94,14 @@ export const en = {
       title: "Verification Status",
       identity: "Identity Verification",
       goToDashboard: "Go to Dashboard",
+      howItWorks:
+        "You can take clients for a service once your identity and that service's credential are both Verified. Anything still Pending unlocks automatically after Fynrox reviews it.",
+      rejected: "Fynrox couldn't accept this document.",
+      rejectedReason: "Reason: {{reason}}",
+      expires: "Expires {{date}}",
+      uploadAgain: "Upload documents again",
+      uploadHint: "Upload anything that isn't Verified yet. It goes back to Pending until Fynrox reviews it.",
+      back: "‹ More",
     },
   },
 
@@ -103,16 +111,20 @@ export const en = {
     noServices: "No services selected yet.",
     noSessions: "No sessions scheduled today.",
     quickActions: "Quick Actions",
+    actionRequests: "Client requests",
+    actionCalendar: "Calendar",
+    actionMessages: "Messages",
+    openClient: "Opens this client's profile",
+    avgRating: "Avg. Rating",
+    ratingCount_one: "From {{count}} session rating",
+    ratingCount_other: "From {{count}} session ratings",
+    noRatings: "No ratings yet. Clients can rate a session after it ends.",
+    ratingError: "Couldn't load your ratings. Pull down to try again.",
     activeClients: "Active Clients",
     sessionsThisWeek: "Sessions This Week",
     schedule: "Today's Schedule",
     settlementHistory: "Settlement History",
     noSettlements: "No settlements yet — your first one is created once a full month of bookings closes out.",
-    notAvailableYet: "Not available yet",
-    // Named plainly rather than shown as an empty stat: a metric with no
-    // entity behind it is not a metric.
-    noRatingEntity: "Avg. Rating has no backing entity anywhere in this build — no Review model exists yet.",
-    logOut: "Log Out",
     earnings: "Earnings",
     noEarningsYet: "No earnings yet — this fills in once your first confirmed, paid booking lands.",
     thisMonthNet: "This month (net)",
@@ -126,9 +138,6 @@ export const en = {
       "These {{count}} client relationships didn't finish activating and won't show up under Clients yet. This has been flagged to Fynrox support — no action is required from you, but reach out to support if you expected this to be resolved by now.",
     // Stated plainly rather than rendered as disabled buttons: a control
     // that does nothing is a worse lie than a sentence saying so.
-    notBuiltWorkoutPlan: "Create Workout Plan — not built yet",
-    notBuiltNutritionPlan: "Create Nutrition Plan — not built yet",
-    notBuiltSchedule: "Schedule Client Session — not built yet",
   },
 
   availabilityStatus: {
@@ -159,6 +168,23 @@ export const en = {
     offers: { label: "Offers", subtitle: "Clients proposed to you, including ones you declined" },
     formReviews: { label: "Form reviews", subtitle: "Review exercise clips submitted by your clients" },
     profile: { label: "My profile", subtitle: "Your gender, used to match members who ask for a male or female coach" },
+    verification: { label: "Verification & documents", subtitle: "Your credential and ID status, and uploading them again" },
+    help: {
+      label: "Help & support",
+      subtitle: "Email support@fynrox.com",
+      title: "Help & support",
+      message: "Email support@fynrox.com with your question. We usually reply within one working day.",
+    },
+    signOut: {
+      label: "Sign out",
+      subtitle: "Sign out of Fynrox Coach on this device",
+      confirmTitle: "Sign out?",
+      confirmMessage: "You'll need your email and password to sign in again.",
+      confirm: "Sign out",
+    },
+    needsReview_one: "{{count}} to review",
+    needsReview_other: "{{count}} to review",
+    account: "Account",
   },
 
   notifications: {
@@ -200,6 +226,7 @@ export const en = {
 
   clients: {
     title: "Clients",
+    tabWaiting: "Clients, {{count}} requests or offers waiting",
     emptyTitle: "No clients yet",
     emptySubtitle: "When a user books you and a coaching relationship starts, they'll appear here.",
     reviewAndRespond: "Review and accept or decline",
@@ -312,6 +339,7 @@ export const en = {
 
   messages: {
     title: "Messages",
+    viewProfile: "View profile ›",
     emptyTitle: "No conversations yet",
     emptySubtitle: "When you have an active client, you can message each other here.",
     placeholder: "Message…",

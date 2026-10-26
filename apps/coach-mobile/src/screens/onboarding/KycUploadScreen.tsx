@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Image, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../../context/AuthContext";
 import { WizardLayout } from "../../components/WizardLayout";
 import { Button } from "../../components/Button";
 import { submitKyc } from "../../api/professionalOnboarding";
@@ -50,6 +52,8 @@ async function pickImage(fromCamera: boolean): Promise<string | null> {
 export function KycUploadScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [kycDocumentData, setKycDocumentData] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { onboardingCompleted } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,6 +63,7 @@ export function KycUploadScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await submitKyc({ kycDocumentData });
+      await queryClient.invalidateQueries({ queryKey: ["professional-onboarding-status"] });
       // Deliberately does NOT call markOnboardingCompleted() here — that
       // would flip RootNavigator's top-level switch straight to MainTabs
       // before this navigate() below ever gets a chance to render
@@ -80,6 +85,7 @@ export function KycUploadScreen({ navigation }: Props) {
       title={t("onboarding.kyc.title")}
       subtitle={t("onboarding.kyc.subtitle")}
       onNext={onNext}
+      onBack={onboardingCompleted ? () => navigation.goBack() : undefined}
       nextDisabled={!kycDocumentData}
       nextLoading={loading}
     >

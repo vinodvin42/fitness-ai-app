@@ -392,7 +392,7 @@ function RelationshipActionsSection({
 
                 <View style={{ flexDirection: "row", gap: spacing.sm }}>
                   <Button
-                    label={mode === "handover" ? "Hand Over" : "End Relationship"}
+                    label={mode === "handover" ? "Hand Over" : mode === "complete" ? "Complete Coaching" : "End Relationship"}
                     onPress={() => confirmSubmit(r.relationshipId)}
                     disabled={reason.trim().length === 0 || isBusy}
                     loading={isBusy}

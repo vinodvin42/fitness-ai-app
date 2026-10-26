@@ -2,6 +2,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import type { RateSessionInput } from "./coachSummaries.schema";
+import { notifyMemberOfSummary } from "../coaching/memberNotices";
 
 /**
  * Human Coach 04-09 — session summary. The summary is the coach's own
@@ -153,6 +154,13 @@ export async function publishBookingSummary(professionalId: string, bookingId: s
     entityId: booking.id,
     metadata: { userId: booking.userId },
   });
+  // Tell the member on the first publish only; later edits stay quiet.
+  if (!booking.summaryPublishedAt) {
+    const professional = await prisma.professional
+      .findUnique({ where: { id: professionalId }, select: { fullName: true } })
+      .catch(() => null);
+    await notifyMemberOfSummary(booking.userId, professional?.fullName ?? null);
+  }
   return getMyBookingSummary(professionalId, bookingId);
 }
 

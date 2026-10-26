@@ -29,6 +29,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type TodayBookingRow = {
   id: string;
+  userId: string;
   scheduledAt: Date;
   durationMinutes: number;
   status: string;
@@ -151,6 +152,7 @@ export async function getDashboardStats(professionalId: string) {
     sessionsThisWeek,
     todaysSchedule: (todaysRows as TodayBookingRow[]).map((b) => ({
       id: b.id,
+      clientId: b.userId,
       clientFullName: b.user.fullName,
       offeringLabel: b.offering.label,
       serviceType: b.offering.serviceType,

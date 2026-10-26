@@ -1,8 +1,8 @@
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useRef, useState } from "react";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, NavigationProp } from "@react-navigation/native";
-import { useQuery } from "@tanstack/react-query";
+import { useFocusEffect, useNavigation, NavigationProp } from "@react-navigation/native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { colors, spacing, typography } from "../theme/tokens";
 import { fetchDashboardStats } from "../api/professionalDashboard";
 import { useCoachAlerts } from "../lib/coachAlerts";
@@ -64,18 +64,63 @@ function AlertsButton() {
 
 /** Shared per-screen header + safe-area shell — copied near-verbatim from apps/user-mobile, plus this app's own global Notifications button (Wave 3). */
 export function ScreenContainer({ title, children, scroll = true, showAlerts = true }: ScreenContainerProps) {
-  const Wrapper = scroll ? ScrollView : View;
+  const refresh = useRefresh();
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={[styles.header, styles.headerRow]}>
+      <View style={[styles.header, styles.headerRow, styles.column]}>
         <Text style={styles.title}>{title}</Text>
         {showAlerts ? <AlertsButton /> : null}
       </View>
-      <Wrapper contentContainerStyle={scroll ? styles.scrollContent : styles.staticContent}>
-        {children}
-      </Wrapper>
+      {scroll ? (
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, styles.column]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refresh.refreshing}
+              onRefresh={refresh.onRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={[styles.staticContent, styles.column]}>{children}</View>
+      )}
     </SafeAreaView>
   );
+}
+
+/**
+ * Fresh data without a manual reload (26 Oct 2026, coach app audit):
+ * pull-to-refresh refetches every query on screen, and coming back to a
+ * screen refetches the ones older than the 30-second staleTime
+ * (lib/queryClient.ts). The first focus is skipped, since mounting already
+ * fetched.
+ */
+function useRefresh() {
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const focusedBefore = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedBefore.current) void queryClient.refetchQueries({ type: "active", stale: true });
+      focusedBefore.current = true;
+    }, [queryClient]),
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.refetchQueries({ type: "active" });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
+
+  return { refreshing, onRefresh };
 }
 
 const styles = StyleSheet.create({
@@ -105,5 +150,12 @@ const styles = StyleSheet.create({
   staticContent: {
     flex: 1,
     paddingHorizontal: spacing.md,
+  },
+  // On a laptop the web app used to stretch every screen across the whole
+  // window; a phone-to-tablet column reads better (26 Oct 2026).
+  column: {
+    width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
   },
 });

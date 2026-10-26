@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Image, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { ProfessionalServiceType } from "@fitness-ai-app/types";
+import type { ProfessionalOnboardingStatus, ProfessionalServiceType } from "@fitness-ai-app/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../../context/AuthContext";
 import { WizardLayout } from "../../components/WizardLayout";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
@@ -99,6 +101,10 @@ export function CredentialUploadScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { services, index } = route.params;
   const serviceType = services[index];
+  const queryClient = useQueryClient();
+  const { onboardingCompleted } = useAuth();
+  const kycVerified =
+    queryClient.getQueryData<ProfessionalOnboardingStatus>(["professional-onboarding-status"])?.kycStatus === "verified";
 
   const [certificationName, setCertificationName] = useState("");
   const [certifyingBody, setCertifyingBody] = useState("");
@@ -121,9 +127,13 @@ export function CredentialUploadScreen({ navigation, route }: Props) {
         qualificationDocData: qualificationDocData ?? undefined,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ["professional-onboarding-status"] });
       const nextIndex = index + 1;
       if (nextIndex < services.length) {
         navigation.replace("CredentialUpload", { services, index: nextIndex });
+      } else if (onboardingCompleted && kycVerified) {
+        // From More → Verification & documents: an ID that's already verified doesn't need uploading again.
+        navigation.navigate("VerificationStatus");
       } else {
         navigation.navigate("KycUpload", { services });
       }
@@ -142,6 +152,7 @@ export function CredentialUploadScreen({ navigation, route }: Props) {
       title={`${SERVICE_LABELS[serviceType]} credentials`}
       subtitle={t("onboarding.credentials.subtitle")}
       onNext={onNext}
+      onBack={onboardingCompleted ? () => navigation.goBack() : undefined}
       nextLoading={loading}
       nextLabel={index + 1 < services.length ? "Next Service" : "Continue"}
     >

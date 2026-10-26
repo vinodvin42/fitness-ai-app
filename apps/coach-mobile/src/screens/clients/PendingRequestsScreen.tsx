@@ -24,6 +24,8 @@ import { confirmAction, showAlert } from "../../lib/dialogs";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
 
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
+/** The member's time to pay after an accept: the API's PAYMENT_WINDOW_MS (lib/relationshipActivation.ts). */
+const PAYMENT_WINDOW_HOURS = 48;
 
 function relativeDay(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -188,7 +190,15 @@ export function PendingRequestsScreen() {
   const acceptMutation = useMutation({
     mutationFn: (item: PendingRelationshipItem) => acceptRelationshipRequest(item.relationshipId),
     onMutate: () => setExpiredRequest(null),
-    onSuccess: invalidateAfterAction,
+    onSuccess: (_data, item) => {
+      invalidateAfterAction();
+      // A next step instead of a card that just vanishes (26 Oct 2026). Chat
+      // opens once they pay, so there's nothing to message yet.
+      showAlert(
+        "Request accepted",
+        `${item.userFullName.split(" ")[0]} has been told and has ${PAYMENT_WINDOW_HOURS} hours to complete payment. They'll appear under Clients, and you can message them, once they pay.`,
+      );
+    },
     onError: onRequestError("Couldn't accept this request"),
   });
 

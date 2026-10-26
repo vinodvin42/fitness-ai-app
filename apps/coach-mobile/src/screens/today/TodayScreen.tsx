@@ -1,8 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { ProfessionalServiceType } from "@fitness-ai-app/types";
+import { fetchMyRatings } from "../../api/sessionRatings";
+import type { MainTabsParamList } from "../../navigation/MainTabs";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
@@ -206,10 +210,6 @@ const SERVICE_LABELS: Record<ProfessionalServiceType, string> = {
   nutrition: "Nutrition Coaching",
 };
 
-const NOT_AVAILABLE_LABELS: Record<string, string> = {
-  avgRating: "Avg. Rating",
-};
-
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
@@ -246,11 +246,16 @@ function timeLabel(iso: string): string {
  */
 export function TodayScreen() {
   const { t } = useTranslation();
-  const { professional, logout } = useAuth();
+  // Sign out moved to More → Account, behind a confirmation (26 Oct 2026).
+  const { professional } = useAuth();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabsParamList>>();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["professional-dashboard-stats"],
     queryFn: fetchDashboardStats,
   });
+  const ratings = useQuery({ queryKey: ["coach-my-ratings"], queryFn: () => fetchMyRatings() });
+  const openClient = (userId: string, fullName: string) =>
+    navigation.navigate("Clients", { screen: "ClientProfile", params: { userId, fullName }, initial: false });
 
   return (
     <ScreenContainer title={t("today.title")}>
@@ -303,6 +308,15 @@ export function TodayScreen() {
           </View>
 
           <Card>
+            <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickActions")}</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              <QuickAction label={t("today.actionRequests")} onPress={() => navigation.navigate("Clients", { screen: "PendingRequests" })} />
+              <QuickAction label={t("today.actionCalendar")} onPress={() => navigation.navigate("Calendar")} />
+              <QuickAction label={t("today.actionMessages")} onPress={() => navigation.navigate("Messages")} />
+            </View>
+          </Card>
+
+          <Card>
             <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>
               {t("today.schedule")}
             </Text>
@@ -311,13 +325,20 @@ export function TodayScreen() {
             ) : (
               <View style={{ gap: spacing.sm }}>
                 {data.todaysSchedule.map((item) => (
-                  <View key={item.id} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Pressable
+                    key={item.id}
+                    onPress={() => openClient(item.clientId, item.clientFullName)}
+                    accessibilityRole="button"
+                    accessibilityHint={t("today.openClient")}
+                    style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+                  >
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{item.clientFullName}</Text>
                       <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{item.offeringLabel}</Text>
                     </View>
                     <Text style={{ color: colors.textPrimary }}>{timeLabel(item.scheduledAt)}</Text>
-                  </View>
+                    <Text style={{ color: colors.textMuted, fontSize: 18, marginLeft: spacing.sm }}>›</Text>
+                  </Pressable>
                 ))}
               </View>
             )}
@@ -325,50 +346,47 @@ export function TodayScreen() {
 
           <EarningsCard />
 
+          {/* Average rating from the private session ratings clients leave (26 Oct 2026; it used to say no ratings existed). */}
           <Card>
-            <Text style={{ color: colors.textPrimary, ...typography.h2, marginBottom: spacing.sm }}>{t("today.quickActions")}</Text>
-            <View style={{ gap: spacing.xs }}>
-              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltWorkoutPlan")}</Text>
-              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltNutritionPlan")}</Text>
-              <Text style={{ color: colors.textMuted }}>{t("today.notBuiltSchedule")}</Text>
-            </View>
+            <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {t("today.avgRating")}
+            </Text>
+            {ratings.data && ratings.data.count > 0 && ratings.data.average != null ? (
+              <>
+                <Text style={{ color: colors.textPrimary, ...typography.metricLarge, marginTop: spacing.xs }}>
+                  {ratings.data.average.toFixed(1)} ★
+                </Text>
+                <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+                  {t("today.ratingCount", { count: ratings.data.count })}
+                </Text>
+              </>
+            ) : (
+              <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+                {ratings.isError ? t("today.ratingError") : t("today.noRatings")}
+              </Text>
+            )}
           </Card>
-
-          {data.notAvailable.length > 0 && (
-            <Card style={{ borderStyle: "dashed" }}>
-              <Text style={{ color: colors.textMuted, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {t("today.notAvailableYet")}
-              </Text>
-              <Text style={{ color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs }}>
-                {t("today.noRatingEntity")}
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm }}>
-                {data.notAvailable.map((key) => (
-                  <View
-                    key={key}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      borderRadius: 999,
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: 4,
-                    }}
-                  >
-                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{NOT_AVAILABLE_LABELS[key] ?? key}</Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
-          )}
         </>
       )}
-
-      <Text
-        onPress={() => logout()}
-        style={{ color: colors.textSecondary, textAlign: "center", marginTop: spacing.md, textDecorationLine: "underline" }}
-      >
-        {t("today.logOut")}
-      </Text>
     </ScreenContainer>
+  );
+}
+
+function QuickAction({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 999,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        backgroundColor: pressed ? colors.surfaceRaised : "transparent",
+      })}
+    >
+      <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{label}</Text>
+    </Pressable>
   );
 }

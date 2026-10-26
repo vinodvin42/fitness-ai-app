@@ -2052,6 +2052,9 @@ export interface ProfessionalCredential {
   certificationDocData?: string | null;
   qualificationDocData?: string | null;
   status: CredentialStatus;
+  /** The reviewer's note; the coach app shows it only when the credential was rejected. */
+  adminNotes?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2085,6 +2088,8 @@ export interface ProfessionalOnboardingStatus {
 /** One row of the coach's real schedule — shared by ProfessionalDashboardStats.todaysSchedule and GET /professionals/me/schedule. */
 export interface CoachScheduleItem {
   id: string;
+  /** The client (Booking.userId), so a row can open their profile (26 Oct 2026). */
+  clientId: string;
   clientFullName: string;
   offeringLabel: string;
   serviceType: ProfessionalServiceType | null;
@@ -2121,6 +2126,7 @@ export interface ProfessionalDashboardStats {
 /** One booking a client made since the coach last opened Alerts (25 Oct 2026). */
 export interface CoachNewBookingItem {
   id: string;
+  clientId: string;
   clientFullName: string;
   offeringLabel: string;
   scheduledAt: string;

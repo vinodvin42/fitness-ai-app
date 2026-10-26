@@ -68,6 +68,14 @@ export function openNotificationDeepLink(
     case "coach-messages":
       navigation.navigate("More", { screen: "Conversations", initial: false });
       return true;
+    case "coach-request":
+      {
+        // e.g. fynrox://coach-request?relationshipId=… ("coach accepted / declined your request", 26 Oct 2026).
+        const relationshipId = query.get("relationshipId");
+        if (relationshipId) navigation.navigate("More", { screen: "RequestStatus", params: { relationshipId }, initial: false });
+        else navigation.navigate("More", { screen: "Conversations", initial: false });
+      }
+      return true;
     case "billing":
     case "subscription":
       navigation.navigate("More", { screen: "Subscription", initial: false });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -50,6 +50,14 @@ export function ThreadScreen() {
   const [draft, setDraft] = useState("");
   const [reporting, setReporting] = useState<{ messageId?: string } | null>(null);
   const firstName = fullName.split(" ")[0];
+  const scrollRef = useRef<ScrollView>(null);
+  // Thread ↔ client profile, both ways (26 Oct 2026, coach app audit).
+  const openProfile = () =>
+    (navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined)?.navigate("Clients", {
+      screen: "ClientProfile",
+      params: { userId, fullName },
+      initial: false,
+    });
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["coach-thread", userId],
@@ -125,6 +133,8 @@ export function ThreadScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+      {/* Same 760px column as ScreenContainer, so the chat doesn't span a whole laptop screen (26 Oct 2026). */}
+      <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text onPress={() => navigation.goBack()} style={{ color: colors.accent, fontWeight: "600" }}>
@@ -160,6 +170,13 @@ export function ThreadScreen() {
           </View>
         ) : null}
         <Text style={{ color: colors.textPrimary, ...typography.h1 }}>{fullName}</Text>
+        <Text
+          onPress={openProfile}
+          accessibilityRole="link"
+          style={{ color: colors.accent, fontWeight: "600", marginTop: spacing.xs }}
+        >
+          {t("messages.viewProfile")}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -172,6 +189,9 @@ export function ThreadScreen() {
 
         {data && (
           <ScrollView
+            ref={scrollRef}
+            // Open on the newest message, and follow new ones as they arrive.
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
             contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, flexGrow: 1, justifyContent: "flex-end" }}
           >
             {data.messages.length === 0 ? (
@@ -240,6 +260,7 @@ export function ThreadScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+      </View>
 
       <ReportSheet
         visible={reporting !== null}

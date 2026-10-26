@@ -6,6 +6,7 @@ const NEW_BOOKINGS_LIMIT = 20;
 
 type NewBookingRow = {
   id: string;
+  userId: string;
   scheduledAt: Date;
   durationMinutes: number;
   createdAt: Date;
@@ -66,6 +67,7 @@ export async function getAlerts(professionalId: string, query: AlertsQuery) {
     openOffers,
     newBookings: (newBookingRows as NewBookingRow[]).map((b) => ({
       id: b.id,
+      clientId: b.userId,
       clientFullName: b.user.fullName,
       offeringLabel: b.offering.label,
       scheduledAt: b.scheduledAt,

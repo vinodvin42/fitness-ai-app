@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { CoachScheduleItem } from "@fitness-ai-app/types";
+import type { MainTabsParamList } from "../../navigation/MainTabs";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { ErrorState } from "../../components/ErrorState";
@@ -42,11 +45,22 @@ function groupByDay(items: CoachScheduleItem[]): Array<{ label: string; items: C
   return groups;
 }
 
-function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWriteSummary?: () => void }) {
+function SessionRow({
+  item,
+  onWriteSummary,
+  onOpenClient,
+}: {
+  item: CoachScheduleItem;
+  onWriteSummary?: () => void;
+  onOpenClient: () => void;
+}) {
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{item.clientFullName}</Text>
+        {/* The client's name opens their profile (26 Oct 2026). */}
+        <Text onPress={onOpenClient} accessibilityRole="link" style={{ color: colors.textPrimary, fontWeight: "600" }}>
+          {item.clientFullName} <Text style={{ color: colors.accent }}>›</Text>
+        </Text>
         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
           {item.offeringLabel}
           {item.serviceType ? ` · ${SERVICE_LABELS[item.serviceType] ?? item.serviceType}` : ""} · {item.durationMinutes} min
@@ -80,6 +94,13 @@ export function CalendarScreen() {
   const [showPast, setShowPast] = useState(false);
   // Session summary (25 Oct 2026): written from a past session that went ahead.
   const [summarySession, setSummarySession] = useState<CoachScheduleItem | null>(null);
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabsParamList>>();
+  const openClient = (item: CoachScheduleItem) =>
+    navigation.navigate("Clients", {
+      screen: "ClientProfile",
+      params: { userId: item.clientId, fullName: item.clientFullName },
+      initial: false,
+    });
 
   const upcomingGroups = data ? groupByDay(data.upcoming) : [];
   const pastGroups = data ? groupByDay(data.past) : [];
@@ -106,7 +127,7 @@ export function CalendarScreen() {
                       key={item.id}
                       style={i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.xs } : undefined}
                     >
-                      <SessionRow item={item} />
+                      <SessionRow item={item} onOpenClient={() => openClient(item)} />
                     </View>
                   ))}
                 </Card>
@@ -139,6 +160,7 @@ export function CalendarScreen() {
                         >
                           <SessionRow
                             item={item}
+                            onOpenClient={() => openClient(item)}
                             onWriteSummary={canWriteSummary(item) ? () => setSummarySession(item) : undefined}
                           />
                         </View>
