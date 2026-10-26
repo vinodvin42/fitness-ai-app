@@ -11,7 +11,7 @@ import { Icon, type IconName } from "../../components/Icon";
 import { ErrorState } from "../../components/ErrorState";
 import { SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
-import { BodySilhouette, DualLineChart } from "../../components/ProgressCharts";
+import { DualLineChart } from "../../components/ProgressCharts";
 import { fetchBodyComposition } from "../../api/progress";
 import { useMeasureUnits } from "../../lib/measureUnits";
 import { colors, fonts, layout, radius, spacing, typography } from "../../theme/tokens";
@@ -129,8 +129,8 @@ export function BodyCompositionScreen({ navigation }: Props) {
   const units = useMeasureUnits();
   const { colors: theme } = useTheme();
   const { width } = useWindowDimensions();
+  // The trend chart's width: the card's inside on this screen.
   const inner = Math.min(width, layout.maxContentWidth) - layout.screenPadding * 2 - spacing.md * 2;
-  const figW = Math.min(112, inner * 0.32);
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["progress", "composition"], queryFn: fetchBodyComposition });
   const parent = navigation.getParent<NavigationProp<MoreStackParamList>>();
   const logMeasurements = () => navigation.navigate("LogMeasurement");
@@ -159,13 +159,10 @@ export function BodyCompositionScreen({ navigation }: Props) {
         <ErrorState message="Couldn't load your body composition." onRetry={() => refetch()} />
       ) : (
         <>
-          <Card style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
-            <View
-              style={{ width: figW, alignSelf: "stretch", borderRadius: radius.md, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center", paddingVertical: spacing.sm }}
-            >
-              <BodySilhouette width={figW - 16} />
-            </View>
-            <View style={{ flex: 1 }}>
+          {/* 26 Oct 2026 (owner: "replace a better 3d human image or remove the image, decision is yours"): the
+              blocky silhouette is gone. It told nothing the numbers don't, and the metrics now use the full width. */}
+          <Card>
+            <View>
               <MetricRow
                 first
                 label="Body fat"

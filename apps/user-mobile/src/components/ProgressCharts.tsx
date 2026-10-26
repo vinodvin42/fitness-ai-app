@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
-import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
-import { colors, fonts } from "../theme/tokens";
+import Svg, { Circle, Line, Path } from "react-native-svg";
+import { colors } from "../theme/tokens";
 
 /**
  * Progress-specific SVG visuals (Figma Progress 01-03): the weight-vs-goal
@@ -109,67 +109,5 @@ export function DualLineChart({
         {line(b, colorB)}
       </Svg>
     </View>
-  );
-}
-
-export interface Callout {
-  side: "left" | "right";
-  /** Body anchor point in the 300x380 silhouette space. */
-  ax: number;
-  ay: number;
-  label: string;
-  value: string | null;
-}
-
-const BODY = "#3a3a42";
-
-/**
- * A simple, neutral body silhouette (no photo assets exist). Optional
- * callouts are drawn as dashed leader lines to a label + value; a callout
- * with `value: null` is rendered as "-" so a missing measurement is visible.
- */
-/** The figure itself, in the 300×380 space (shared with the Body Measurements map). */
-export function BodyShapes({ fill = BODY }: { fill?: string }) {
-  return (
-    <>
-      <Circle cx={150} cy={38} r={22} fill={fill} />
-      <Rect x={142} y={58} width={16} height={16} rx={4} fill={fill} />
-      <Path d="M98 82 Q150 70 202 82 L196 150 L184 196 L192 238 L108 238 L116 196 L104 150 Z" fill={fill} />
-      <Line x1={94} y1={96} x2={68} y2={172} stroke={fill} strokeWidth={22} strokeLinecap="round" />
-      <Line x1={68} y1={172} x2={60} y2={236} stroke={fill} strokeWidth={18} strokeLinecap="round" />
-      <Line x1={206} y1={96} x2={232} y2={172} stroke={fill} strokeWidth={22} strokeLinecap="round" />
-      <Line x1={232} y1={172} x2={240} y2={236} stroke={fill} strokeWidth={18} strokeLinecap="round" />
-      <Line x1={130} y1={246} x2={126} y2={320} stroke={fill} strokeWidth={34} strokeLinecap="round" />
-      <Line x1={126} y1={320} x2={124} y2={366} stroke={fill} strokeWidth={24} strokeLinecap="round" />
-      <Line x1={170} y1={246} x2={174} y2={320} stroke={fill} strokeWidth={34} strokeLinecap="round" />
-      <Line x1={174} y1={320} x2={176} y2={366} stroke={fill} strokeWidth={24} strokeLinecap="round" />
-    </>
-  );
-}
-
-export function BodySilhouette({ width: rawWidth, callouts = [] }: { width: number; callouts?: Callout[] }) {
-  const width = Math.max(rawWidth, 40);
-  const h = (width * 380) / 300;
-  return (
-    <Svg width={width} height={h} viewBox="0 0 300 380">
-      <BodyShapes />
-      {callouts.map((c, i) => {
-        const tx = c.side === "left" ? 6 : 294;
-        const anchor = c.side === "left" ? "start" : "end";
-        const lineEnd = c.side === "left" ? 78 : 222;
-        return (
-          <React.Fragment key={i}>
-            <Line x1={c.ax} y1={c.ay} x2={lineEnd} y2={c.ay} stroke={colors.accent} strokeWidth={1} strokeDasharray="3 3" />
-            <Circle cx={c.ax} cy={c.ay} r={2.5} fill={colors.accent} />
-            <SvgText x={tx} y={c.ay - 9} fill={colors.textMuted} fontSize={10} fontFamily={fonts.body} textAnchor={anchor}>
-              {c.label}
-            </SvgText>
-            <SvgText x={tx} y={c.ay + 5} fill={colors.accent} fontSize={11.5} fontFamily={fonts.bodyBold} textAnchor={anchor}>
-              {c.value ?? "-"}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-    </Svg>
   );
 }
