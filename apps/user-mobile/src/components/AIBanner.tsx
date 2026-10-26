@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Icon } from "./Icon";
+import { AiMark } from "./AiMark";
 import { colors, radius, spacing, typography } from "../theme/tokens";
 
 interface AIBannerProps {
@@ -40,7 +41,7 @@ export function AIBanner({ title, body, ctaLabel, onPress }: AIBannerProps) {
           justifyContent: "center",
         }}
       >
-        <Icon name="sparkles" size={20} color={colors.aiAccent} />
+        <AiMark size={22} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{title}</Text>

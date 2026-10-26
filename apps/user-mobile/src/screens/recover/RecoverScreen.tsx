@@ -7,6 +7,7 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Icon, IconName } from "../../components/Icon";
 import { ListRow } from "../../components/ListRow";
+import { AiMark } from "../../components/AiMark";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCard } from "../../components/Skeleton";
 import { fetchReadiness, fetchRecoverySummary, fetchRecoveryTrends } from "../../api/recovery";
@@ -322,7 +323,7 @@ export function RecoverScreen({ navigation }: Props) {
                 justifyContent: "center",
               }}
             >
-              <Icon name="sparkles" size={16} color={colors.textOnAccent} />
+              <AiMark size={18} color={colors.textOnAccent} sparkColor={colors.textOnAccent} />
             </View>
             <Text style={{ color: colors.textPrimary, ...typography.h3, fontSize: 14, letterSpacing: 0.3 }}>
               ✦ FYNROX AI INSIGHT
@@ -390,7 +391,7 @@ export function RecoverScreen({ navigation }: Props) {
         onPress={() => navigation.navigate("Recovery")}
       />
       <ListRow
-        icon="sparkles"
+        leading={<AiMark size={22} />}
         title="Chat with Fynrox AI"
         subtitle="Training, nutrition and recovery guidance"
         tint={colors.aiAccent}

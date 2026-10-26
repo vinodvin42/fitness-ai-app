@@ -15,6 +15,7 @@ import { Eyebrow, SectionHeader } from "../../components/SectionHeader";
 import { SkeletonCard } from "../../components/Skeleton";
 import { PARTNER_PROGRAMS_ENABLED } from "../../lib/partnerPrograms";
 import { Icon, IconName } from "../../components/Icon";
+import { AiMark } from "../../components/AiMark";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { fetchProgramDetail, fetchPrograms, fetchWorkoutDetail } from "../../api/programs";
 import { fetchMyPrograms } from "../../api/programPurchases";
@@ -101,7 +102,11 @@ function TabPill({ label, selected, onPress }: { label: string; selected: boolea
   );
 }
 
-/** The ✦ button that opens the AI coach (Figma train/01): purple-to-blue, like the AI accent. */
+/**
+ * The button that opens the AI coach (Figma train/01). 26 Oct 2026 (owner): it shows Fynrox's own AI mark
+ * (the logo with a spark, components/AiMark.tsx) on the app icon's black disc, inside the AI accent's
+ * purple-to-mint ring.
+ */
 function AiCoachFab({ onPress }: { onPress: () => void }) {
   const { colors: theme } = useTheme();
   return (
@@ -134,8 +139,9 @@ function AiCoachFab({ onPress }: { onPress: () => void }) {
           </LinearGradient>
         </Defs>
         <Circle cx={28} cy={28} r={28} fill="url(#aiFab)" />
+        <Circle cx={28} cy={28} r={25.5} fill="#000000" />
       </Svg>
-      <Text style={{ color: "#ffffff", fontFamily: fonts.bodyBold, fontSize: 24 }}>✦</Text>
+      <AiMark size={30} />
     </Pressable>
   );
 }

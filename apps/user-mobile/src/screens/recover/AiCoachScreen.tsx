@@ -24,6 +24,7 @@ import { AiLimitReached } from "../../components/AiLimitReached";
 import { BottomSheet } from "../../components/BottomSheet";
 import { Button } from "../../components/Button";
 import { Icon } from "../../components/Icon";
+import { AiMark } from "../../components/AiMark";
 import { ReasoningSheet } from "../../components/ReasoningSheet";
 import { InfoCard, StateLayout } from "../../components/StatePanels";
 import {
@@ -87,7 +88,7 @@ function formatTime(iso: string): string {
 function AssistantAvatar() {
   return (
     <View style={styles.avatar}>
-      <Icon name="sparkles" size={13} color={colors.aiAccent} />
+      <AiMark size={14} />
     </View>
   );
 }

@@ -14,6 +14,8 @@ interface ListRowProps {
    * navigation rows that never had one.
    */
   imageUrl?: string | null;
+  /** Custom artwork for the icon tile (26 Oct 2026: the Fynrox AI mark), shown on the tinted tile instead of `icon`. */
+  leading?: React.ReactNode;
   title: string;
   subtitle?: string;
   tint?: string;
@@ -31,6 +33,7 @@ interface ListRowProps {
 export function ListRow({
   icon,
   imageUrl,
+  leading,
   title,
   subtitle,
   tint = colors.accent,
@@ -47,7 +50,7 @@ export function ListRow({
           style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: tintSoft }}
           resizeMode="cover"
         />
-      ) : icon ? (
+      ) : leading || icon ? (
         <View
           style={{
             width: 40,
@@ -58,7 +61,7 @@ export function ListRow({
             justifyContent: "center",
           }}
         >
-          <Icon name={icon} size={20} color={tint} />
+          {leading ?? (icon ? <Icon name={icon} size={20} color={tint} /> : null)}
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
