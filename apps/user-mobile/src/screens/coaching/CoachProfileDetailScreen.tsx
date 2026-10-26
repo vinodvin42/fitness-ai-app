@@ -238,11 +238,21 @@ export function CoachProfileDetailScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {current === null ? (
+      {current === null && data.offerings.length === 0 ? (
+        // 26 Oct 2026 (owner: "unable to request guidance"): with no session priced for this professional's
+        // level there is nothing to request, so say why and offer matching instead of a dead grey button.
+        // Fixed in admin: Commerce > Coach levels & fees (place the coach in a level that has a fee).
+        <View style={{ gap: spacing.sm }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
+            {`${data.fullName.split(" ")[0]} isn't taking requests yet: FynroX hasn't set a session fee for them. Ask us to match you with a professional who is available now.`}
+          </Text>
+          <Button label="Ask us to match you" onPress={() => navigation.navigate("RequestGuidance")} />
+        </View>
+      ) : current === null ? (
         <Button
           label={t("coaching.profile.requestGuidance")}
           onPress={() => navigation.navigate("RequestCoach", { professionalId })}
-          disabled={data.offerings.length === 0 || status.isLoading}
+          disabled={status.isLoading}
         />
       ) : current.status === "active" ? (
         <Button
