@@ -26,7 +26,6 @@ export const ta: LocaleCatalogue = {
       progress: { label: "முன்னேற்றம்" },
       subscription: { label: "சந்தா" },
       purchases: { label: "வாங்கியவை" },
-      reminders: { label: "நினைவூட்டல்கள்" },
       referral: { label: "பரிந்துரை & அழைப்பு" },
     },
   },

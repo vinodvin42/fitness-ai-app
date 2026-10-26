@@ -26,7 +26,6 @@ export const ml: LocaleCatalogue = {
       progress: { label: "പുരോഗതി" },
       subscription: { label: "സബ്സ്ക്രിപ്ഷൻ" },
       purchases: { label: "വാങ്ങലുകൾ" },
-      reminders: { label: "റിമൈൻഡറുകൾ" },
       referral: { label: "റഫർ ചെയ്യൂ & ക്ഷണിക്കൂ" },
     },
   },

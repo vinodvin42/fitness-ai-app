@@ -26,7 +26,6 @@ export const kn: LocaleCatalogue = {
       progress: { label: "ಪ್ರಗತಿ" },
       subscription: { label: "ಸಬ್‌ಸ್ಕ್ರಿಪ್ಷನ್" },
       purchases: { label: "ಖರೀದಿಗಳು" },
-      reminders: { label: "ರಿಮೈಂಡರ್‌ಗಳು" },
       referral: { label: "ರೆಫರ್ ಮಾಡಿ & ಆಹ್ವಾನಿಸಿ" },
     },
   },

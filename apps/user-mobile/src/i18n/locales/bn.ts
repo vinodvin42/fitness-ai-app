@@ -26,7 +26,6 @@ export const bn: LocaleCatalogue = {
       progress: { label: "অগ্রগতি" },
       subscription: { label: "সাবস্ক্রিপশন" },
       purchases: { label: "কেনাকাটা" },
-      reminders: { label: "রিমাইন্ডার" },
       referral: { label: "রেফার ও আমন্ত্রণ" },
     },
   },

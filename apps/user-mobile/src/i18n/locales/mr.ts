@@ -26,7 +26,6 @@ export const mr: LocaleCatalogue = {
       progress: { label: "प्रगती" },
       subscription: { label: "सबस्क्रिप्शन" },
       purchases: { label: "खरेदी" },
-      reminders: { label: "रिमाइंडर" },
       referral: { label: "रेफर करा आणि आमंत्रित करा" },
     },
   },

@@ -26,7 +26,6 @@ export const pa: LocaleCatalogue = {
       progress: { label: "ਤਰੱਕੀ" },
       subscription: { label: "ਸਬਸਕ੍ਰਿਪਸ਼ਨ" },
       purchases: { label: "ਖਰੀਦਦਾਰੀ" },
-      reminders: { label: "ਰਿਮਾਈਂਡਰ" },
       referral: { label: "ਰੈਫ਼ਰ ਕਰੋ ਅਤੇ ਸੱਦਾ ਦਿਓ" },
     },
   },

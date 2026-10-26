@@ -69,7 +69,8 @@ export function MoreScreen({ navigation }: Props) {
   ];
 
   const secondary: MoreRow[] = [
-    { label: t("more.rows.reminders.label"), icon: "clock", tint: colors.cyan, onPress: () => navigation.navigate("Reminders") },
+    // Owner, 26 Oct 2026: one reminder entry in More ("Add Reminder" above). The list stays reachable from
+    // Today (Daily reminders › View all), the Schedule and Workouts › Reminders & routines.
     { label: t("more.rows.subscription.label"), icon: "zap", tint: colors.warning, onPress: () => navigation.navigate("Subscription") },
     // Origin (Fynrox R1, U-M22): receipts and refund status.
     { label: t("more.rows.purchases.label"), icon: "calendar", tint: colors.cyan, onPress: () => navigation.navigate("Purchases") },

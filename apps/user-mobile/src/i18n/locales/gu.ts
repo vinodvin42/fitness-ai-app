@@ -26,7 +26,6 @@ export const gu: LocaleCatalogue = {
       progress: { label: "પ્રગતિ" },
       subscription: { label: "સબ્સ્ક્રિપ્શન" },
       purchases: { label: "ખરીદીઓ" },
-      reminders: { label: "રિમાઇન્ડર" },
       referral: { label: "રેફર કરો અને આમંત્રણ આપો" },
     },
   },

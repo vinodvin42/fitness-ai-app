@@ -43,7 +43,6 @@ export const en = {
       progress: { label: "Progress" },
       subscription: { label: "Subscription" },
       purchases: { label: "Purchases" },
-      reminders: { label: "Reminders" },
       referral: { label: "Refer & Invite" },
     },
   },

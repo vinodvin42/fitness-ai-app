@@ -26,7 +26,6 @@ export const te: LocaleCatalogue = {
       progress: { label: "పురోగతి" },
       subscription: { label: "సబ్‌స్క్రిప్షన్" },
       purchases: { label: "కొనుగోళ్లు" },
-      reminders: { label: "రిమైండర్‌లు" },
       referral: { label: "రిఫర్ చేయండి & ఆహ్వానించండి" },
     },
   },
