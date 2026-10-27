@@ -10,6 +10,7 @@ import {
 } from "./adminProfessionals.schema";
 import * as adminProfessionalsService from "./adminProfessionals.service";
 import { setCoachGender, setCoachGenderSchema } from "../../lib/coachGender";
+import { setCoachProfileSchema } from "../../lib/coachProfile";
 
 export const adminProfessionalsRouter = Router();
 
@@ -120,6 +121,28 @@ adminProfessionalsRouter.patch(
     try {
       const input = setCoachGenderSchema.parse(req.body);
       res.status(200).json(await setCoachGender(req.params.id, input, { adminId: req.adminUserId as string }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// About you (27 Oct 2026) — correct a coach's years of experience, bio or specialties
+// (lib/coachProfile.ts). Guarded exactly like gender above: "professionals: edit", so a
+// non-Super-Admin's change goes to the Super Admin for approval (requirePermission).
+adminProfessionalsRouter.patch(
+  "/admin/professionals/:id/profile",
+  requireAdminAuth,
+  requirePermission("professionals", "edit"),
+  async (req: AdminAuthedRequest, res, next) => {
+    try {
+      const input = setCoachProfileSchema.parse(req.body);
+      const professional = await adminProfessionalsService.updateProfessionalProfile(
+        req.adminUserId as string,
+        req.params.id,
+        input,
+      );
+      res.status(200).json({ professional });
     } catch (err) {
       next(err);
     }

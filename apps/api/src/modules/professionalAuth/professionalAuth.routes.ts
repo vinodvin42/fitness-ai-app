@@ -6,6 +6,7 @@ import { requireProfessionalAuth, ProfessionalAuthedRequest } from "../../middle
 import { authRateLimit, writeRateLimit } from "../../middleware/rateLimit";
 import { setCoachGender, setCoachGenderSchema } from "../../lib/coachGender";
 import { setCoachLanguages, setCoachLanguagesSchema } from "../../lib/coachLanguages";
+import { setCoachProfile, setCoachProfileSchema } from "../../lib/coachProfile";
 
 export const professionalAuthRouter = Router();
 
@@ -86,6 +87,23 @@ professionalAuthRouter.patch(
       const input = setCoachLanguagesSchema.parse(req.body);
       const professionalId = req.professionalId as string;
       res.status(200).json(await setCoachLanguages(professionalId, input, { professionalId }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// About you (27 Oct 2026): the coach's own years of experience, bio and specialties (partial
+// update). Members see the change on the coach's profile straight away (lib/coachProfile.ts).
+professionalAuthRouter.patch(
+  "/professionals/me/profile",
+  requireProfessionalAuth,
+  writeRateLimit,
+  async (req: ProfessionalAuthedRequest, res, next) => {
+    try {
+      const input = setCoachProfileSchema.parse(req.body);
+      const professionalId = req.professionalId as string;
+      res.status(200).json({ professional: await setCoachProfile(professionalId, input, { professionalId }) });
     } catch (err) {
       next(err);
     }

@@ -4,6 +4,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { listConsents } from "../users/users.service";
 import { getDecryptedOnboardingProfile } from "../../lib/healthData";
+import { userPhotoUpdatedAtMap } from "../adminPhotos/adminPhotos.service";
 import {
   CreateSensitiveAccessRequestInput,
   ListUsersQuery,
@@ -164,13 +165,21 @@ export async function listUsers(query: ListUsersQuery) {
         prisma.connectedDevice.groupBy({ by: ["userId"], where: { userId: { in: ids } }, _max: { lastSyncAt: true } }),
       ])
     : [[], []];
+  // 27 Oct 2026 (owner: admins may see profile photos): when each listed member's photo last changed,
+  // so the console fetches photos only for members who have one. Never the image itself here.
+  const photoById = await userPhotoUpdatedAtMap(ids);
   const countryById = new Map((countries as Array<{ id: string; countryCode: string | null }>).map((u) => [u.id, u.countryCode]));
   const syncById = new Map(
     (syncs as Array<{ userId: string; _max: { lastSyncAt: Date | null } }>).map((s) => [s.userId, s._max.lastSyncAt]),
   );
 
   return {
-    users: filtered.map((r) => ({ ...r, countryCode: countryById.get(r.id) ?? null, lastSyncAt: syncById.get(r.id) ?? null })),
+    users: filtered.map((r) => ({
+      ...r,
+      countryCode: countryById.get(r.id) ?? null,
+      lastSyncAt: syncById.get(r.id) ?? null,
+      photoUpdatedAt: photoById.get(r.id) ?? null,
+    })),
     total: filtered.length,
     notAvailable: [] as string[],
   };
@@ -195,11 +204,13 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
       createdAt: true,
       updatedAt: true,
       status: true,
+      profilePhoto: { select: { updatedAt: true } },
     },
   });
   if (!user) {
     throw new ApiHttpError(404, "not_found", "User not found");
   }
+  const { profilePhoto, ...userFields } = user;
 
   const [subscriptions, payments, relationships, supportTickets, recentActivity, myLatestRequest, pendingRequestForReview] =
     await Promise.all([
@@ -364,7 +375,8 @@ export async function getUserDetail(id: string, viewingAdminId: string, viewingA
   }
 
   return {
-    user,
+    // photoUpdatedAt (27 Oct 2026): when the member's profile photo last changed; null with none.
+    user: { ...userFields, photoUpdatedAt: profilePhoto?.updatedAt ?? null },
     membership: membershipOf(typedSubscriptions[0] ?? null),
     lifetimeValue: {
       totalSpentCents,

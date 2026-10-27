@@ -57,8 +57,87 @@ export function useGoBack(fallback: string) {
   };
 }
 
-/** No-shell frame for /onboarding/*: brand and theme on top, one centred column. */
-export function OnboardingLayout({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+/** The onboarding flow (27 Oct 2026): every step a new coach goes through, in order. */
+const FLOW = ["services", "credentials", "identity", "review"] as const;
+
+/**
+ * Where the coach is in onboarding: finished steps ticked, the current one
+ * highlighted, the rest greyed. `vertical` sits beside the form on a laptop;
+ * the horizontal version sits above it on phones and tablets.
+ */
+export function OnboardingSteps({ current, orientation }: { current: number; orientation: "vertical" | "horizontal" }) {
+  const { t } = useTranslation();
+  const state = (i: number) => (i + 1 < current ? "done" : i + 1 === current ? "current" : "todo");
+  if (orientation === "horizontal") {
+    return (
+      <ol aria-label={t("web.settings.onboarding.flow.title")} className="flex items-start">
+        {FLOW.map((key, i) => {
+          const s = state(i);
+          return (
+            <li key={key} aria-current={s === "current" ? "step" : undefined} className="flex flex-1 flex-col items-center gap-1.5 text-center">
+              <div className="flex w-full items-center">
+                <span className={cn("h-0.5 flex-1", i === 0 ? "bg-transparent" : s === "todo" ? "bg-border" : "bg-primary")} />
+                <StepDot index={i} state={s} />
+                <span className={cn("h-0.5 flex-1", i === FLOW.length - 1 ? "bg-transparent" : state(i + 1) === "todo" ? "bg-border" : "bg-primary")} />
+              </div>
+              <span className={cn("px-1 text-[11px] leading-tight", s === "current" ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                {t(`web.settings.onboarding.flow.${key}.title`)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+  return (
+    <nav aria-label={t("web.settings.onboarding.flow.title")} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("web.settings.onboarding.flow.title")}</p>
+      <ol>
+        {FLOW.map((key, i) => {
+          const s = state(i);
+          return (
+            <li key={key} aria-current={s === "current" ? "step" : undefined} className="relative flex gap-3 pb-5 last:pb-0">
+              {i < FLOW.length - 1 ? (
+                <span aria-hidden className={cn("absolute top-8 bottom-0 left-[13px] w-0.5", s === "done" ? "bg-primary" : "bg-border")} />
+              ) : null}
+              <StepDot index={i} state={s} />
+              <div className="min-w-0 pt-0.5">
+                <div className={cn("text-sm", s === "current" ? "font-semibold" : s === "done" ? "font-medium" : "text-muted-foreground")}>
+                  {t(`web.settings.onboarding.flow.${key}.title`)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {s === "done" ? t("web.settings.onboarding.flow.done") : t(`web.settings.onboarding.flow.${key}.hint`)}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function StepDot({ index, state }: { index: number; state: "done" | "current" | "todo" }) {
+  return (
+    <span
+      className={cn(
+        "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+        state === "done" && "bg-primary text-primary-foreground",
+        state === "current" && "bg-background text-primary-ink ring-2 ring-primary",
+        state === "todo" && "bg-muted text-muted-foreground",
+      )}
+    >
+      {state === "done" ? <Check className="size-4" strokeWidth={3} /> : index + 1}
+    </span>
+  );
+}
+
+/**
+ * No-shell frame for /onboarding/*: brand and theme on top. With `step`, the
+ * onboarding flow sits beside the content on a laptop and above it on smaller
+ * screens; without it, one centred column.
+ */
+export function OnboardingLayout({ children, footer, step }: { children: ReactNode; footer?: ReactNode; step?: number }) {
   const { t } = useTranslation();
   const { logout } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -75,10 +154,28 @@ export function OnboardingLayout({ children, footer }: { children: ReactNode; fo
         </div>
       </header>
       <div className="flex flex-1 flex-col">
-        <div className="mx-auto w-full max-w-xl flex-1 px-4 pt-6 pb-10 md:pt-10">{children}</div>
+        {step ? (
+          <div className="mx-auto grid w-full max-w-5xl flex-1 gap-8 px-4 pt-6 pb-10 md:pt-10 lg:grid-cols-[260px_minmax(0,1fr)]">
+            <aside className="hidden lg:block">
+              <div className="sticky top-24">
+                <OnboardingSteps current={step} orientation="vertical" />
+              </div>
+            </aside>
+            <div className="mx-auto w-full max-w-xl space-y-6 lg:mx-0">
+              <div className="lg:hidden">
+                <OnboardingSteps current={step} orientation="horizontal" />
+              </div>
+              {children}
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-xl flex-1 px-4 pt-6 pb-10 md:pt-10">{children}</div>
+        )}
         {footer ? (
           <div className="sticky bottom-0 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-            <div className="mx-auto flex w-full max-w-xl gap-2 px-4 py-3">{footer}</div>
+            <div className={cn("mx-auto flex w-full gap-2 px-4 py-3", step ? "max-w-5xl lg:pl-[calc(260px+3rem)]" : "max-w-xl")}>
+              <div className={cn("flex w-full gap-2", step && "max-w-xl")}>{footer}</div>
+            </div>
           </div>
         ) : null}
       </div>
@@ -118,7 +215,8 @@ export function StepProgress({ step, total, label }: { step: number; total: numb
  */
 export function WizardFrame({
   step,
-  total,
+  // Kept for callers; onboarding now shows the full four-step flow (FLOW).
+  total: _total,
   label,
   title,
   subtitle,
@@ -172,10 +270,12 @@ export function WizardFrame({
 
   if (isOnboarding) {
     return (
-      <OnboardingLayout footer={<div className="flex w-full gap-2 sm:justify-end">{buttons}</div>}>
+      <OnboardingLayout step={step} footer={<div className="flex w-full gap-2 sm:justify-end">{buttons}</div>}>
         <div className="space-y-6">
-          <StepProgress step={step} total={total} label={label} />
           <div className="space-y-1.5">
+            <p className="text-xs font-semibold tracking-wide text-primary-ink uppercase">
+              {t("web.settings.onboarding.stepOf", { step, total: FLOW.length, label })}
+            </p>
             <h1 className="font-heading text-2xl font-bold tracking-tight md:text-[28px]">{title}</h1>
             {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>

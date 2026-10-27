@@ -8,9 +8,26 @@
  */
 export const settings = {
   profile: {
-    description: "Your photo, languages and gender. Members see these on your profile and use them to find a coach.",
+    description:
+      "Your photo, experience, specialties, bio, languages and gender. Members see these on your profile and use them to find a coach.",
     photoAlt: "Your profile photo",
     photoNotImage: "Choose an image file (JPG or PNG).",
+    // About you (27 Oct 2026): members see these as soon as you save.
+    aboutTitle: "About you",
+    aboutHelp: "Members see this on your profile as soon as you save.",
+    yearsLabel: "Years of experience",
+    yearsHint: "A whole number from 0 to {{max}}. Leave it empty to hide it.",
+    yearsInvalid: "Enter a whole number from 0 to {{max}}.",
+    specialtiesLabel: "Specialties",
+    specialtiesPlaceholder: "Type a specialty",
+    specialtiesHint: "Press Enter or type a comma to add one. Up to {{max}}.",
+    specialtiesFull: "You've added {{max}} specialties, the most there's room for.",
+    specialtyTooLong: "Keep each specialty to {{max}} characters or fewer.",
+    removeSpecialty: "Remove {{tag}}",
+    suggestions: "Suggestions:",
+    bioLabel: "Bio",
+    bioPlaceholder: "How you coach, who you work with and what members can expect.",
+    bioCount: "{{used}} / {{max}}",
     appearanceTitle: "Appearance",
     appearanceHelp: "Light, dark, or follow this device. Saved in this browser.",
   },
@@ -35,6 +52,15 @@ export const settings = {
 
   onboarding: {
     stepOf: "Step {{step}} of {{total}} — {{label}}",
+    // The onboarding flow beside the form (27 Oct 2026).
+    flow: {
+      title: "Your setup",
+      done: "Done",
+      services: { title: "Services", hint: "What you coach" },
+      credentials: { title: "Credentials", hint: "Your certificates" },
+      identity: { title: "Identity", hint: "A government ID" },
+      review: { title: "Review", hint: "Fynrox checks your documents" },
+    },
     continue: "Continue",
     nextService: "Next Service",
     fitnessSubtitle: "Workouts, posture guides, strength protocols, physical fitness coaching",

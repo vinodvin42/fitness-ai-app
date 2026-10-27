@@ -6,6 +6,7 @@ import type { AdminProfessionalDetailResponse, UpdateMaxActiveClientsInput } fro
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { StatCard } from "../../components/StatCard";
+import { PersonAvatar } from "../../components/PersonAvatar";
 import { useCan } from "../../lib/permissions";
 import { languageNames, ratingLabel } from "../../lib/languages";
 import { ProfessionalRatingsTab } from "./ProfessionalRatingsTab";
@@ -13,9 +14,15 @@ import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
 import { PayoutDetailsPanel } from "./PayoutDetailsPanel";
+import { CoachFeesCard } from "./CoachFeesCard";
 
 const MIN_CAPACITY = 1;
 const MAX_CAPACITY = 500;
+
+/** PATCH /admin/professionals/:id/profile limits (apps/api/src/lib/coachProfile.ts). */
+const MAX_YEARS = 60;
+const MAX_BIO = 1000;
+type ProfileInput = { yearsExperience?: number | null; specializationTags?: string[]; bio?: string | null };
 
 const LIFECYCLE_PRECONDITION_NOTE: Record<string, string> = {
   application: "Hasn't submitted a service credential yet.",
@@ -83,6 +90,38 @@ export function ProfessionalProfileScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professional-detail", id] }),
   });
 
+  // About you (27 Oct 2026): the coach enters their years of experience, specialties and bio in
+  // coach-web; an admin can correct them here, one field per Save (PATCH /admin/professionals/:id/profile,
+  // a partial update guarded like gender). Members see the change straight away.
+  const [draftYears, setDraftYears] = useState("");
+  const [draftTags, setDraftTags] = useState("");
+  const [draftBio, setDraftBio] = useState("");
+  useEffect(() => {
+    if (data) setDraftYears(data.professional.yearsExperience == null ? "" : String(data.professional.yearsExperience));
+  }, [data?.professional.yearsExperience]);
+  useEffect(() => {
+    if (data) setDraftTags(data.professional.specializationTags.join(", "));
+  }, [data?.professional.specializationTags.join("\n")]);
+  useEffect(() => {
+    if (data) setDraftBio(data.professional.bio ?? "");
+  }, [data?.professional.bio]);
+
+  const profileMutation = useMutation({
+    mutationFn: (input: ProfileInput) => apiClient.patch(`/admin/professionals/${id}/profile`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-professional-detail", id] }),
+  });
+  const savingField = profileMutation.isPending && profileMutation.variables ? Object.keys(profileMutation.variables)[0] : null;
+
+  const yearsText = draftYears.trim();
+  const parsedYears = yearsText === "" ? null : Number(yearsText);
+  const yearsValid = parsedYears === null || (Number.isInteger(parsedYears) && parsedYears >= 0 && parsedYears <= MAX_YEARS);
+  // Comma-separated; the API trims and drops case-insensitive duplicates too.
+  const parsedTags = draftTags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag, i, all) => tag !== "" && all.findIndex((x) => x.toLowerCase() === tag.toLowerCase()) === i);
+  const bioValue = draftBio.trim() === "" ? null : draftBio.trim();
+
   // R2 Wave 2 (20 Sep 2026) — admin override for `maxActiveClients`, the
   // same `PATCH /admin/professionals/:id/capacity` endpoint R2 Wave 1
   // shipped with no UI caller anywhere (`requirePermission("professionals",
@@ -112,22 +151,31 @@ export function ProfessionalProfileScreen() {
       {data && (
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface shadow-xs p-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">{data.professional.fullName}</h2>
-                <StatusBadge status={data.professional.status} />
-                <StatusBadge status={data.professional.lifecycleStatus} />
-              </div>
-              <div className="mt-1 text-sm text-text-secondary">{data.professional.email}</div>
-              <div className="font-mono text-xs text-text-dim">{data.professional.publicId}</div>
-              {data.professional.phone && <div className="text-xs text-text-dim">{data.professional.phone}</div>}
-              <div className="mt-2 flex flex-wrap gap-1">
-                {data.professional.credentials.map((c) => (
-                  <span key={c.id} className="flex items-center gap-1 rounded-full border border-border-subtle px-2 py-0.5 text-[11px]">
-                    {SERVICE_LABELS[c.serviceType] ?? c.serviceType}
-                    <StatusBadge status={c.status} />
-                  </span>
-                ))}
+            <div className="flex items-center gap-4">
+              <PersonAvatar
+                kind="professional"
+                id={data.professional.id}
+                name={data.professional.fullName}
+                photoUpdatedAt={data.professional.photoUpdatedAt ?? null}
+                size="xl"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{data.professional.fullName}</h2>
+                  <StatusBadge status={data.professional.status} />
+                  <StatusBadge status={data.professional.lifecycleStatus} />
+                </div>
+                <div className="mt-1 text-sm text-text-secondary">{data.professional.email}</div>
+                <div className="font-mono text-xs text-text-dim">{data.professional.publicId}</div>
+                {data.professional.phone && <div className="text-xs text-text-dim">{data.professional.phone}</div>}
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {data.professional.credentials.map((c) => (
+                    <span key={c.id} className="flex items-center gap-1 rounded-full border border-border-subtle px-2 py-0.5 text-[11px]">
+                      {SERVICE_LABELS[c.serviceType] ?? c.serviceType}
+                      <StatusBadge status={c.status} />
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <Link to="/professionals" className="text-xs text-text-secondary hover:text-text-primary">
@@ -157,7 +205,37 @@ export function ProfessionalProfileScreen() {
               <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.profile")}</div>
                 <dl className="mt-3 space-y-2 text-sm">
-                  <Row label={t("professionalProfile.yearsExperience")} value={data.professional.yearsExperience ?? "—"} />
+                  {canEdit ? (
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-text-dim">{t("professionalProfile.yearsExperience")}</dt>
+                      <dd className="flex items-center gap-2 text-right text-text-secondary">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={MAX_YEARS}
+                          step={1}
+                          aria-label={t("professionalProfile.yearsExperience")}
+                          aria-invalid={!yearsValid || undefined}
+                          title={t("professionalProfile.yearsHint", { max: MAX_YEARS })}
+                          value={draftYears}
+                          onChange={(e) => setDraftYears(e.target.value)}
+                          disabled={profileMutation.isPending}
+                          className="w-20 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-sm text-text-primary outline-none focus:border-accent aria-invalid:border-danger"
+                        />
+                        <button
+                          type="button"
+                          disabled={profileMutation.isPending || !yearsValid || parsedYears === data.professional.yearsExperience}
+                          onClick={() => profileMutation.mutate({ yearsExperience: parsedYears })}
+                          className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-canvas disabled:opacity-40"
+                        >
+                          {savingField === "yearsExperience" ? t("professionalProfile.saving") : t("professionalProfile.save")}
+                        </button>
+                      </dd>
+                    </div>
+                  ) : (
+                    <Row label={t("professionalProfile.yearsExperience")} value={data.professional.yearsExperience ?? "—"} />
+                  )}
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-text-dim">Gender</dt>
                     <dd className="flex items-center gap-2 text-right text-text-secondary">
@@ -188,15 +266,82 @@ export function ProfessionalProfileScreen() {
                       )}
                     </dd>
                   </div>
-                  <Row label={t("professionalProfile.specializations")} value={data.professional.specializationTags.join(", ") || "—"} />
+                  {canEdit ? (
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-text-dim">{t("professionalProfile.specializations")}</dt>
+                      <dd className="flex min-w-0 flex-1 items-center justify-end gap-2 text-right text-text-secondary">
+                        <input
+                          type="text"
+                          aria-label={t("professionalProfile.specializations")}
+                          title={t("professionalProfile.specializationsHint")}
+                          placeholder={t("professionalProfile.specializationsHint")}
+                          value={draftTags}
+                          onChange={(e) => setDraftTags(e.target.value)}
+                          disabled={profileMutation.isPending}
+                          className="min-w-0 max-w-xs flex-1 rounded-md border border-border-subtle bg-surface-raised px-2 py-1 text-sm text-text-primary outline-none focus:border-accent"
+                        />
+                        <button
+                          type="button"
+                          disabled={profileMutation.isPending || parsedTags.join("\n") === data.professional.specializationTags.join("\n")}
+                          onClick={() => profileMutation.mutate({ specializationTags: parsedTags })}
+                          className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-canvas disabled:opacity-40"
+                        >
+                          {savingField === "specializationTags" ? t("professionalProfile.saving") : t("professionalProfile.save")}
+                        </button>
+                      </dd>
+                    </div>
+                  ) : (
+                    <Row label={t("professionalProfile.specializations")} value={data.professional.specializationTags.join(", ") || "—"} />
+                  )}
                   <Row
                     label={t("professionalProfile.languages")}
                     value={languageNames(data.professional.languages) || t("professionalProfile.notStated")}
                   />
                   <Row label={t("professionalProfile.rating")} value={ratingLabel(data.rating) || t("professionalProfile.noRatingsYet")} />
-                  <Row label={t("professionalProfile.bio")} value={data.professional.bio ?? "—"} />
+                  {canEdit ? (
+                    <div className="space-y-1">
+                      <dt className="text-text-dim">{t("professionalProfile.bio")}</dt>
+                      <dd className="space-y-1">
+                        <textarea
+                          aria-label={t("professionalProfile.bio")}
+                          value={draftBio}
+                          onChange={(e) => setDraftBio(e.target.value)}
+                          maxLength={MAX_BIO}
+                          rows={4}
+                          disabled={profileMutation.isPending}
+                          className="w-full rounded-md border border-border-subtle bg-surface-raised px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] tabular-nums text-text-dim">
+                            {t("professionalProfile.bioCount", { used: draftBio.length, max: MAX_BIO })}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={profileMutation.isPending || bioValue === (data.professional.bio ?? null)}
+                            onClick={() => profileMutation.mutate({ bio: bioValue })}
+                            className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-canvas disabled:opacity-40"
+                          >
+                            {savingField === "bio" ? t("professionalProfile.saving") : t("professionalProfile.save")}
+                          </button>
+                        </div>
+                      </dd>
+                    </div>
+                  ) : (
+                    <Row label={t("professionalProfile.bio")} value={data.professional.bio ?? "—"} />
+                  )}
                   <Row label={t("professionalProfile.joined")} value={new Date(data.professional.createdAt).toLocaleDateString()} />
                 </dl>
+                {canEdit && !yearsValid && (
+                  <p className="mt-3 text-xs text-danger">{t("professionalProfile.yearsHint", { max: MAX_YEARS })}</p>
+                )}
+                {profileMutation.isError && (
+                  <p className="mt-3 text-xs text-danger">
+                    {extractErrorMessage(profileMutation.error, t("professionalProfile.profileSaveFailed"))}
+                  </p>
+                )}
+                {profileMutation.isSuccess && !profileMutation.isPending && (
+                  <p className="mt-3 text-xs text-accent">{t("professionalProfile.profileSaved")}</p>
+                )}
               </div>
               <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center justify-between">
@@ -274,6 +419,7 @@ export function ProfessionalProfileScreen() {
               </div>
 
               {/* Coach payout details (27 Oct 2026): masked view, verify/reject, reason-gated reveal. */}
+              <CoachFeesCard professionalId={data.professional.id} />
               <PayoutDetailsPanel professionalId={data.professional.id} />
             </div>
           )}

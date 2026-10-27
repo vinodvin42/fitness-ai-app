@@ -6,6 +6,7 @@ import { EndRelationshipInput, ListChangeRequestsQuery, ListRelationshipsQuery, 
 import type { HandoverRelationshipInput } from "../relationshipLifecycle/relationshipLifecycle.schema";
 import * as relationshipLifecycleService from "../relationshipLifecycle/relationshipLifecycle.service";
 import { resolveActionItemsFor } from "../../lib/adminActionQueue";
+import { professionalPhotoUpdatedAtMap, userPhotoUpdatedAtMap } from "../adminPhotos/adminPhotos.service";
 import { notifyMemberOfChangeRequestDenied } from "../coaching/memberNotices";
 
 /**
@@ -201,6 +202,10 @@ export async function getRelationshipDetail(id: string) {
       professionalId: relationship.professional.id,
       serviceType: relationship.serviceType,
     }),
+    // 27 Oct 2026 (owner: admins may see profile photos): when each side's photo last changed; null with none.
+    userPhotoUpdatedAt: (await userPhotoUpdatedAtMap([relationship.user.id])).get(relationship.user.id) ?? null,
+    professionalPhotoUpdatedAt:
+      (await professionalPhotoUpdatedAtMap([relationship.professional.id])).get(relationship.professional.id) ?? null,
     notAvailable: [] as string[],
   };
 }

@@ -7,6 +7,11 @@
  * Availability & Capacity, Form reviews); the wording is unchanged.
  */
 export const business = {
+  // Fee structure card (27 Oct 2026), components/LevelFeesCard.tsx.
+  fees: {
+    clientPaysYouGet: "Client pays {{pays}} with GST · you get {{get}}",
+    commissionNote: "\"You get\" is the fee after Fynrox's {{pct}}% commission. Each booking keeps the fee and rate it was made at.",
+  },
   earnings: {
     commissionNote: "Fynrox takes {{pct}}% commission on new bookings. Each booking keeps the rate it was made at.",
     levelTitle: "Your level: {{name}}",

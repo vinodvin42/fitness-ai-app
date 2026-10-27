@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { AdminUserDirectoryResponse, MembershipTier, UserAccountStatus } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { PersonAvatar } from "../../components/PersonAvatar";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
@@ -273,12 +274,17 @@ export function UserDirectoryScreen() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-text-primary">{u.fullName}</div>
-                      <div className="text-xs text-text-dim">
-                        {u.email}
-                        {u.countryCode ? ` · ${u.countryCode}` : ""}
+                      <div className="flex items-center gap-3">
+                        <PersonAvatar kind="user" id={u.id} name={u.fullName} photoUpdatedAt={u.photoUpdatedAt ?? null} />
+                        <div className="min-w-0">
+                          <div className="font-medium text-text-primary">{u.fullName}</div>
+                          <div className="text-xs text-text-dim">
+                            {u.email}
+                            {u.countryCode ? ` · ${u.countryCode}` : ""}
+                          </div>
+                          <div className="text-[10px] text-text-dim">{u.id}</div>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-text-dim">{u.id}</div>
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{MEMBERSHIP_LABELS[u.membership]}</td>
                     <td className="px-4 py-3 text-text-secondary">{CHANNEL_LABELS[u.channel] ?? u.channel}</td>

@@ -1,16 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Award, CalendarRange, Info, Landmark, Wallet } from "lucide-react";
-import type { CoachMyLevelResponse } from "@fitness-ai-app/types";
+import { AlertTriangle, CalendarRange, Info, Landmark, Wallet } from "lucide-react";
 import { fetchEarnings, fetchMyLevel } from "@/api/professionalDashboard";
 import { fetchPayoutAccount } from "@/api/payoutAccount";
 import { EmptyState, ErrorState, ListCard, Page, PageHeader, Section, StatCard } from "@/components/page";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dateLabel, money } from "@/lib/format";
 import { PAYOUT_ACCOUNT_QUERY_KEY, PayoutDetailsCard } from "./PayoutDetailsCard";
+import { LevelFeesCard } from "@/components/LevelFeesCard";
 
 const STATUS_COPY_KEYS = ["eligible", "approved", "pending", "paid", "payout_failed"] as const;
 
@@ -148,56 +147,10 @@ export function EarningsScreen() {
 
         <div className="flex flex-col gap-6 self-start">
           {payout ? <PayoutDetailsCard data={payout} /> : null}
-          {myLevel ? <LevelCard level={myLevel} /> : null}
+          {myLevel ? <LevelFeesCard level={myLevel} /> : null}
         </div>
       </div>
     </Page>
   );
 }
 
-function LevelCard({ level }: { level: CoachMyLevelResponse }) {
-  const { t } = useTranslation();
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-semibold">
-          <Award className="size-4 text-primary-ink" />
-          {level.level ? t("web.business.earnings.levelTitle", { name: level.level.name }) : t("web.business.earnings.levelNotSet")}
-        </CardTitle>
-        <CardDescription>
-          {level.level
-            ? t("web.business.earnings.levelSetBody", { gst: level.gstPercent })
-            : t("web.business.earnings.levelUnsetBody")}
-        </CardDescription>
-      </CardHeader>
-      {level.fees.length > 0 ? (
-        <CardContent>
-          <ul className="divide-y rounded-lg border">
-            {level.fees.map((f) => (
-              <li key={f.label} className="flex items-start justify-between gap-3 px-3 py-2.5">
-                <span className="min-w-0 text-sm">
-                  {t("web.business.earnings.feeLine", { label: f.label, minutes: f.durationMinutes })}
-                  {f.upcoming ? (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {t("web.business.earnings.feeUpcoming", {
-                        price: money(f.upcoming.priceCents),
-                        date: new Date(f.upcoming.effectiveFrom).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
-                      })}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 text-sm font-semibold tabular-nums">
-                  {f.priceCents === null ? (
-                    <span className="font-normal text-muted-foreground">{t("web.business.earnings.feeNotSet")}</span>
-                  ) : (
-                    money(f.priceCents)
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      ) : null}
-    </Card>
-  );
-}

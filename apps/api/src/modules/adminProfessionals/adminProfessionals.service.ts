@@ -7,6 +7,8 @@ import * as professionalLifecycleService from "../professionalLifecycle/professi
 import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
 import { ratingSummaries } from "../adminCoachingReads/adminCoachingReads.service";
 import { professionalPublicId } from "../../lib/professionalCode";
+import { professionalPhotoUpdatedAtMap } from "../adminPhotos/adminPhotos.service";
+import { setCoachProfile, SetCoachProfileInput } from "../../lib/coachProfile";
 import {
   notifyCoachOfAccountStatus,
   notifyCoachOfCredentialDecision,
@@ -234,6 +236,8 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
   );
   // 27 Oct 2026: the member's private session ratings, averaged (staff-only view).
   const ratings = await ratingSummaries(filtered.map((p) => p.id));
+  // 27 Oct 2026 (owner: admins may see profile photos): when each coach's photo last changed. Never the image here.
+  const photoUpdatedAtById = await professionalPhotoUpdatedAtMap(filtered.map((p) => p.id));
 
   return {
     professionals: filtered.map((p) => ({
@@ -259,6 +263,7 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       // the average of their session ratings.
       languages: p.languages ?? [],
       rating: ratings.get(p.id) ?? { average: null, count: 0 },
+      photoUpdatedAt: photoUpdatedAtById.get(p.id) ?? null,
     })),
     counts,
     // Figma-spec'd columns with no backing field (no region is stored for a
@@ -330,7 +335,12 @@ export async function getProfessionalDetail(id: string) {
   const { passwordHash: _passwordHash, ...publicProfessional } = professional;
 
   return {
-    professional: { ...publicProfessional, publicId: professionalPublicId(p.id) },
+    professional: {
+      ...publicProfessional,
+      publicId: professionalPublicId(p.id),
+      // 27 Oct 2026: when the coach's profile photo last changed; null with none.
+      photoUpdatedAt: (await professionalPhotoUpdatedAtMap([p.id])).get(p.id) ?? null,
+    },
     clients: p.relationships.map((r) => ({
       relationshipId: r.id,
       userId: r.user.id,
@@ -534,4 +544,13 @@ export async function updateMaxActiveClients(
   input: AdminUpdateMaxActiveClientsInput,
 ) {
   return professionalLifecycleService.updateMaxActiveClients(professionalId, input, { adminId });
+}
+
+/**
+ * About you (27 Oct 2026) — an admin corrects a coach's years of experience, bio or specialties
+ * (partial update). Same function the coach's own PATCH /professionals/me/profile uses
+ * (lib/coachProfile.ts), audited as the admin. Members see the change straight away.
+ */
+export async function updateProfessionalProfile(adminId: string, professionalId: string, input: SetCoachProfileInput) {
+  return setCoachProfile(professionalId, input, { adminId });
 }

@@ -83,6 +83,7 @@ export function VerificationStatusScreen() {
   if (isOnboarding) {
     return (
       <OnboardingLayout
+        step={4}
         footer={
           <Button size="lg" className="h-10 w-full sm:ml-auto sm:w-auto sm:px-5" onClick={goToDashboard}>
             {t("onboarding.verification.goToDashboard")}

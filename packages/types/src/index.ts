@@ -2962,6 +2962,8 @@ export interface AdminProfessionalListItem {
   languages: string[];
   /** 27 Oct 2026: average of the members' private session ratings (staff-only). */
   rating: AdminRatingSummary;
+  /** 27 Oct 2026 (owner: admins may see profile photos): when the coach's photo last changed; null with none (GET /admin/professionals/:id/photo). */
+  photoUpdatedAt?: string | null;
 }
 
 /** Average stars (1 decimal; null when unrated) and how many ratings. */
@@ -3093,6 +3095,8 @@ export interface AdminProfessionalDetailRecord {
   createdAt: string;
   updatedAt: string;
   credentials: AdminProfessionalCredential[];
+  /** 27 Oct 2026: when the coach's profile photo last changed; null with none (GET /admin/professionals/:id/photo). */
+  photoUpdatedAt?: string | null;
 }
 
 export interface AdminProfessionalClient {
@@ -3190,6 +3194,9 @@ export interface AdminRelationshipDetailResponse {
     sessionList: AdminSessionItem[];
     paymentList: Array<{ paymentId: string; amountCents: number; status: string; createdAt: string }>;
   };
+  /** 27 Oct 2026: when the member's / coach's profile photo last changed; null with none. */
+  userPhotoUpdatedAt?: string | null;
+  professionalPhotoUpdatedAt?: string | null;
   notAvailable: string[];
 }
 
@@ -3334,6 +3341,8 @@ export interface AdminUserListItem {
   countryCode: string | null;
   /** Oct 2026: newest sync across the member's connected devices; null with none. */
   lastSyncAt: string | null;
+  /** 27 Oct 2026 (owner: admins may see profile photos): when the member's photo last changed; null with none. Fetch it from GET /admin/users/:id/photo. */
+  photoUpdatedAt?: string | null;
 }
 
 /** The shape returned by GET /admin/users. */
@@ -3360,6 +3369,8 @@ export interface AdminUserProfileRecord {
   updatedAt: string;
   /** Added 26 Aug 2026 — real, see AdminUserListItem's own comment. */
   status: UserAccountStatus;
+  /** 27 Oct 2026: when the member's profile photo last changed; null with none (GET /admin/users/:id/photo). */
+  photoUpdatedAt?: string | null;
 }
 
 export interface AdminUserLifetimeValue {

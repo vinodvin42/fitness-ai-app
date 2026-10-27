@@ -1,4 +1,5 @@
 import type {
+  Professional,
   ProfessionalAuthResponse,
   ProfessionalLoginInput,
   ProfessionalMeResponse,
@@ -26,6 +27,17 @@ export function setMyGender(gender: "male" | "female" | null) {
 /** Languages (25 Oct 2026): the ISO 639-1 codes you coach in; an empty list clears them. */
 export function setMyLanguages(languages: string[]) {
   return apiClient.patch<{ languages: string[] }>("/professionals/me/languages", { languages }).then((r) => r.data);
+}
+
+/** About you (27 Oct 2026): years of experience, bio and specialties. Send only the fields that changed. */
+export interface MyProfileInput {
+  bio?: string | null;
+  yearsExperience?: number | null;
+  specializationTags?: string[];
+}
+
+export function setMyProfile(input: MyProfileInput) {
+  return apiClient.patch<{ professional: Professional }>("/professionals/me/profile", input).then((r) => r.data);
 }
 
 export function fetchMe() {

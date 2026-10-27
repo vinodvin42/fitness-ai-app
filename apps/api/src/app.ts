@@ -32,6 +32,7 @@ import { adminAuthRouter } from "./modules/adminAuth/adminAuth.routes";
 import { adminDashboardRouter } from "./modules/adminDashboard/adminDashboard.routes";
 import { adminUsersRouter } from "./modules/adminUsers/adminUsers.routes";
 import { adminProfessionalsRouter } from "./modules/adminProfessionals/adminProfessionals.routes";
+import { adminPhotosRouter } from "./modules/adminPhotos/adminPhotos.routes";
 import { adminRelationshipsRouter } from "./modules/adminRelationships/adminRelationships.routes";
 import { adminMemberSessionsRouter } from "./modules/adminMemberSessions/adminMemberSessions.routes";
 import { adminCoachingReadsRouter } from "./modules/adminCoachingReads/adminCoachingReads.routes";
@@ -51,6 +52,7 @@ import { adminIntegrationsRouter } from "./modules/adminIntegrations/adminIntegr
 import { adminFinanceRouter } from "./modules/adminFinance/adminFinance.routes";
 import { adminSettlementsRouter } from "./modules/adminSettlements/adminSettlements.routes";
 import { adminCoachLevelsRouter } from "./modules/adminCoachLevels/adminCoachLevels.routes";
+import { adminCoachFeesRouter } from "./modules/adminCoachFees/adminCoachFees.routes";
 import { payoutRunsRouter } from "./modules/payoutRuns/payoutRuns.routes";
 import { adminInfluencersRouter } from "./modules/adminInfluencers/adminInfluencers.routes";
 import { adminAcquisitionRouter } from "./modules/adminAcquisition/adminAcquisition.routes";
@@ -256,6 +258,8 @@ export function createApp() {
   // adminProfessionals.service.ts's own doc comment for what's real vs.
   // honestly not modeled against the Figma's fuller spec.
   app.use("/", adminProfessionalsRouter);
+  // Admin console profile photos (owner decision, 27 Oct 2026). See adminPhotos.service.ts.
+  app.use("/", adminPhotosRouter);
   // Module 04 — Relationships (added 21 Aug 2026) — Directory/Detail are
   // real against the existing Relationship model; Change/Intervention
   // Queue (04.03) is NOT built this pass — see adminRelationships.service.ts's
@@ -352,6 +356,8 @@ export function createApp() {
   app.use("/", adminSettlementsRouter);
   // Package 4 — coach levels, fees and FynroX commission.
   app.use("/", adminCoachLevelsRouter);
+  // One coach's level and fees for the admin profile (27 Oct 2026).
+  app.use("/", adminCoachFeesRouter);
   // A-M3 — the payout run the settlement rows were waiting on.
   app.use("/", payoutRunsRouter);
   app.use("/", adminInfluencersRouter);

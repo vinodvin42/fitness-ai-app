@@ -6,6 +6,7 @@ import type { AdminProfessionalDirectoryResponse, ProfessionalDirectoryTab } fro
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { PersonAvatar } from "../../components/PersonAvatar";
 import { useCan } from "../../lib/permissions";
 import { languageNames, ratingLabel } from "../../lib/languages";
 import { apiClient } from "../../lib/api";
@@ -199,9 +200,14 @@ export function ProfessionalDirectoryScreen() {
                   return (
                     <tr key={p.id} className="border-b border-border-subtle last:border-0">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-text-primary">{p.fullName}</div>
-                        <div className="text-xs text-text-dim">{p.email}</div>
-                        <div className="font-mono text-[11px] text-text-dim">{p.publicId}</div>
+                        <div className="flex items-center gap-3">
+                          <PersonAvatar kind="professional" id={p.id} name={p.fullName} photoUpdatedAt={p.photoUpdatedAt ?? null} />
+                          <div className="min-w-0">
+                            <div className="font-medium text-text-primary">{p.fullName}</div>
+                            <div className="text-xs text-text-dim">{p.email}</div>
+                            <div className="font-mono text-[11px] text-text-dim">{p.publicId}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">

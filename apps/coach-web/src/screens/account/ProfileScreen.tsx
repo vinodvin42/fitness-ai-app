@@ -1,14 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, Check, ImageUp, Loader2, Trash2 } from "lucide-react";
-import { SPOKEN_LANGUAGES } from "@fitness-ai-app/types";
-import { fetchMe, setMyGender, setMyLanguages } from "@/api/professionalAuth";
+import { Camera, Check, ImageUp, Loader2, Plus, Trash2, X } from "lucide-react";
+import { SPOKEN_LANGUAGES, type Professional } from "@fitness-ai-app/types";
+import { fetchMe, setMyGender, setMyLanguages, setMyProfile, type MyProfileInput } from "@/api/professionalAuth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/lib/auth";
 import { deleteMyPhoto, saveMyPhoto } from "@/api/professionalPhoto";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { CoachIdCard } from "@/components/CoachIdCard";
+import { LevelFeesCard } from "@/components/LevelFeesCard";
+import { fetchMyLevel } from "@/api/professionalDashboard";
 import { initials, useMyPhoto } from "@/components/shell/AccountMenu";
 import { ThemeSegmented } from "@/components/shell/ThemeMenu";
 import { Button } from "@/components/ui/button";
@@ -51,15 +57,18 @@ function squareJpegOnWeb(uri: string): Promise<string | null> {
 
 /**
  * My profile, ported from apps/coach-mobile's more/ProfileScreen: profile
- * photo (25 Oct 2026), the languages you coach in (25 Oct 2026) and your
- * gender for members who ask for a male or female coach (20 Oct 2026). Plus
- * the web app's Appearance choice.
+ * photo (25 Oct 2026), About you (years of experience, specialties and bio,
+ * 27 Oct 2026), the languages you coach in (25 Oct 2026) and your gender for
+ * members who ask for a male or female coach (20 Oct 2026). Plus the web
+ * app's Appearance choice.
  */
 export function ProfileScreen() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["professionalMe"], queryFn: fetchMe });
+  // The coach's level and fee structure (27 Oct 2026), same query as Earnings.
+  const myLevel = useQuery({ queryKey: ["professionalMyLevel"], queryFn: fetchMyLevel });
 
   const [choice, setChoice] = useState<Choice | null>(null);
   const current: Choice = me.data?.professional.gender ?? "none";
@@ -116,6 +125,8 @@ export function ProfileScreen() {
         <>
           <CoachIdCard />
           <PhotoCard name={me.data?.professional.fullName ?? ""} />
+          {me.data ? <AboutCard professional={me.data.professional} /> : null}
+          {myLevel.data ? <LevelFeesCard level={myLevel.data} /> : null}
 
           <Card>
             <CardHeader>
@@ -200,6 +211,220 @@ export function ProfileScreen() {
         </CardContent>
       </Card>
     </Page>
+  );
+}
+
+/** The limits PATCH /professionals/me/profile enforces (apps/api/src/lib/coachProfile.ts). */
+const YEARS_MAX = 60;
+const BIO_MAX = 1000;
+const SPECIALTIES_MAX = 12;
+const SPECIALTY_MAX_LENGTH = 40;
+
+/** The specialties already on coach profiles (apps/api seed data); any other wording is fine too. */
+const SPECIALTY_SUGGESTIONS = [
+  "Strength Training",
+  "HIIT",
+  "Weight Management",
+  "Sports Nutrition",
+  "Nutrition Coaching",
+  "Injury Recovery",
+];
+
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);
+
+/**
+ * About you (27 Oct 2026): years of experience, specialties and bio. Members see them on the coach's
+ * profile as soon as they're saved (no approval). Only the fields that changed are sent.
+ */
+function AboutCard({ professional }: { professional: Professional }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { refreshProfessional } = useAuth();
+  const yearsId = useId();
+  const tagsId = useId();
+  const bioId = useId();
+
+  const [years, setYears] = useState(professional.yearsExperience == null ? "" : String(professional.yearsExperience));
+  const [tags, setTags] = useState<string[]>(professional.specializationTags);
+  const [tagDraft, setTagDraft] = useState("");
+  const [tagError, setTagError] = useState<string | null>(null);
+  const [bio, setBio] = useState(professional.bio ?? "");
+
+  const yearsText = years.trim();
+  const parsedYears = yearsText === "" ? null : Number(yearsText);
+  const yearsValid = parsedYears === null || (Number.isInteger(parsedYears) && parsedYears >= 0 && parsedYears <= YEARS_MAX);
+  const bioValue = bio.trim() === "" ? null : bio.trim();
+
+  const changes: MyProfileInput = {};
+  if (yearsValid && parsedYears !== professional.yearsExperience) changes.yearsExperience = parsedYears;
+  if (!sameTags(tags, professional.specializationTags)) changes.specializationTags = tags;
+  if (bioValue !== (professional.bio ?? null)) changes.bio = bioValue;
+  const changed = Object.keys(changes).length > 0;
+
+  /** Adds one or more comma-separated specialties, skipping blanks and ones already added (any case). */
+  const addTags = (raw: string) => {
+    let next = tags;
+    let error: string | null = null;
+    for (const part of raw.split(",")) {
+      const tag = part.trim();
+      if (!tag) continue;
+      if (tag.length > SPECIALTY_MAX_LENGTH) {
+        error = t("web.settings.profile.specialtyTooLong", { max: SPECIALTY_MAX_LENGTH });
+        continue;
+      }
+      if (next.some((x) => x.toLocaleLowerCase() === tag.toLocaleLowerCase())) continue;
+      if (next.length >= SPECIALTIES_MAX) {
+        error = t("web.settings.profile.specialtiesFull", { max: SPECIALTIES_MAX });
+        break;
+      }
+      next = [...next, tag];
+    }
+    setTags(next);
+    setTagError(error);
+    setTagDraft("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags(tags.filter((x) => x !== tag));
+    setTagError(null);
+  };
+
+  const save = useMutation({
+    mutationFn: () => setMyProfile(changes),
+    onSuccess: async ({ professional: saved }) => {
+      setYears(saved.yearsExperience == null ? "" : String(saved.yearsExperience));
+      setTags(saved.specializationTags);
+      setBio(saved.bio ?? "");
+      toast.success(t("profile.saved"));
+      queryClient.invalidateQueries({ queryKey: ["professionalMe"] });
+      await refreshProfessional().catch(() => undefined);
+    },
+    onError: (err) => toast.error(t("profile.saveFailed"), { description: extractErrorMessage(err, t("common.checkConnection")) }),
+  });
+
+  const suggestions = SPECIALTY_SUGGESTIONS.filter((s) => !tags.some((x) => x.toLocaleLowerCase() === s.toLocaleLowerCase()));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-semibold">{t("web.settings.profile.aboutTitle")}</CardTitle>
+        <CardDescription>{t("web.settings.profile.aboutHelp")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-1.5">
+          <Label htmlFor={yearsId}>{t("web.settings.profile.yearsLabel")}</Label>
+          <Input
+            id={yearsId}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={YEARS_MAX}
+            step={1}
+            value={years}
+            onChange={(e) => setYears(e.target.value)}
+            disabled={save.isPending}
+            aria-invalid={!yearsValid || undefined}
+            aria-describedby={`${yearsId}-hint`}
+            className="h-10 w-28"
+          />
+          <p id={`${yearsId}-hint`} className={cn("text-xs", yearsValid ? "text-muted-foreground" : "text-destructive")}>
+            {yearsValid ? t("web.settings.profile.yearsHint", { max: YEARS_MAX }) : t("web.settings.profile.yearsInvalid", { max: YEARS_MAX })}
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={tagsId}>{t("web.settings.profile.specialtiesLabel")}</Label>
+          <div
+            className={cn(
+              "flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input px-2 py-1.5 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+              save.isPending && "opacity-50",
+            )}
+          >
+            {tags.map((tag) => (
+              <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-full bg-primary/15 pr-1 pl-2.5 text-sm font-medium text-primary-ink">
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  disabled={save.isPending}
+                  aria-label={t("web.settings.profile.removeSpecialty", { tag })}
+                  className="inline-flex size-5 items-center justify-center rounded-full hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            ))}
+            <input
+              id={tagsId}
+              value={tagDraft}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.includes(",")) addTags(value);
+                else setTagDraft(value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTags(tagDraft);
+                } else if (e.key === "Backspace" && tagDraft === "" && tags.length > 0) {
+                  removeTag(tags[tags.length - 1]);
+                }
+              }}
+              onBlur={() => tagDraft.trim() && addTags(tagDraft)}
+              disabled={save.isPending || tags.length >= SPECIALTIES_MAX}
+              maxLength={SPECIALTY_MAX_LENGTH + 1}
+              placeholder={tags.length >= SPECIALTIES_MAX ? "" : t("web.settings.profile.specialtiesPlaceholder")}
+              aria-describedby={`${tagsId}-hint`}
+              className="h-7 min-w-32 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground md:text-sm"
+            />
+          </div>
+          <p id={`${tagsId}-hint`} className={cn("text-xs", tagError ? "text-destructive" : "text-muted-foreground")}>
+            {tagError ?? t("web.settings.profile.specialtiesHint", { max: SPECIALTIES_MAX })}
+          </p>
+          {suggestions.length > 0 && tags.length < SPECIALTIES_MAX ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-xs text-muted-foreground">{t("web.settings.profile.suggestions")}</span>
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => addTags(s)}
+                  disabled={save.isPending}
+                  className="inline-flex h-7 items-center gap-1 rounded-full border bg-card px-2.5 text-xs font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
+                >
+                  <Plus className="size-3" />
+                  {s}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={bioId}>{t("web.settings.profile.bioLabel")}</Label>
+          <Textarea
+            id={bioId}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            maxLength={BIO_MAX}
+            disabled={save.isPending}
+            placeholder={t("web.settings.profile.bioPlaceholder")}
+            aria-describedby={`${bioId}-count`}
+            className="min-h-28"
+          />
+          <p id={`${bioId}-count`} className="text-right text-xs text-muted-foreground tabular-nums">
+            {t("web.settings.profile.bioCount", { used: bio.length, max: BIO_MAX })}
+          </p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button size="lg" className="h-10 w-full sm:w-auto sm:px-5" onClick={() => save.mutate()} disabled={!changed || !yearsValid || save.isPending}>
+            {save.isPending ? <Loader2 className="animate-spin" /> : null}
+            {t("common.save")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

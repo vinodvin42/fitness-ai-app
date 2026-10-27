@@ -11,6 +11,7 @@ import type {
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
+import { PersonAvatar, type PersonAvatarKind } from "../../components/PersonAvatar";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
 import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
@@ -43,12 +44,29 @@ async function fetchDetail(id: string): Promise<AdminRelationshipDetailResponse>
   return res.data;
 }
 
-function PartyCard({ label, name, email }: { label: string; name: string; email: string }) {
+function PartyCard({
+  label,
+  kind,
+  id,
+  name,
+  email,
+  photoUpdatedAt,
+}: {
+  label: string;
+  kind: PersonAvatarKind;
+  id: string;
+  name: string;
+  email: string;
+  photoUpdatedAt: string | null | undefined;
+}) {
   return (
-    <div className="flex-1 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
-      <div className="text-xs uppercase tracking-wide text-text-dim">{label}</div>
-      <div className="mt-1 text-base font-semibold text-text-primary">{name}</div>
-      <div className="text-sm text-text-secondary">{email}</div>
+    <div className="flex flex-1 items-center gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
+      <PersonAvatar kind={kind} id={id} name={name} photoUpdatedAt={photoUpdatedAt} size="lg" />
+      <div className="min-w-0">
+        <div className="text-xs uppercase tracking-wide text-text-dim">{label}</div>
+        <div className="mt-1 text-base font-semibold text-text-primary">{name}</div>
+        <div className="text-sm text-text-secondary">{email}</div>
+      </div>
     </div>
   );
 }
@@ -174,9 +192,23 @@ export function RelationshipDetailScreen() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-1 items-center gap-3">
-              <PartyCard label={t("relationshipDetail.user")} name={relationship.userFullName} email={relationship.userEmail} />
+              <PartyCard
+                label={t("relationshipDetail.user")}
+                kind="user"
+                id={relationship.userId}
+                name={relationship.userFullName}
+                email={relationship.userEmail}
+                photoUpdatedAt={data.userPhotoUpdatedAt}
+              />
               <span className="text-2xl text-text-dim">⇄</span>
-              <PartyCard label={t("relationshipDetail.professional")} name={relationship.professionalFullName} email={relationship.professionalEmail} />
+              <PartyCard
+                label={t("relationshipDetail.professional")}
+                kind="professional"
+                id={relationship.professionalId}
+                name={relationship.professionalFullName}
+                email={relationship.professionalEmail}
+                photoUpdatedAt={data.professionalPhotoUpdatedAt}
+              />
             </div>
             <Link to="/relationships" className="ml-4 text-xs text-text-secondary hover:text-text-primary">
               {t("relationshipDetail.backToDirectory")}

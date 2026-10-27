@@ -1589,8 +1589,10 @@ model ProgressPhoto {
 // 512 px before upload (about 30-80 KB); the API caps it at about 1 MB.
 // Kept in its own table, not on User, so the many queries that load a User
 // don't carry the image. One per member, deleted with the account
-// (cascade). Only the member sees it: nothing shares it with coaches, gyms
-// or admins. Included in "Download my data" as profile_photo.jpg/.png.
+// (cascade). The member sees it, and since 27 Oct 2026 (owner decision)
+// admins see it in the admin console (GET /admin/users/:id/photo, users:view;
+// see modules/adminPhotos). Nothing else shares it: not coaches, not gyms.
+// Included in "Download my data" as profile_photo.jpg/.png.
 model UserProfilePhoto {
   userId    String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

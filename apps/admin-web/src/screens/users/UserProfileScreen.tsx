@@ -15,6 +15,7 @@ import type {
 } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
+import { PersonAvatar } from "../../components/PersonAvatar";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatCard } from "../../components/StatCard";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
@@ -235,17 +236,26 @@ export function UserProfileScreen() {
       {data && (
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface shadow-xs p-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">{data.user.fullName}</h2>
-                <span className="rounded-full border border-accent/40 px-2.5 py-0.5 text-[11px] font-medium text-accent">
-                  {MEMBERSHIP_LABELS[data.membership]}
-                </span>
-                <StatusBadge status={data.user.status} />
+            <div className="flex items-center gap-4">
+              <PersonAvatar
+                kind="user"
+                id={data.user.id}
+                name={data.user.fullName}
+                photoUpdatedAt={data.user.photoUpdatedAt ?? null}
+                size="xl"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{data.user.fullName}</h2>
+                  <span className="rounded-full border border-accent/40 px-2.5 py-0.5 text-[11px] font-medium text-accent">
+                    {MEMBERSHIP_LABELS[data.membership]}
+                  </span>
+                  <StatusBadge status={data.user.status} />
+                </div>
+                <div className="mt-1 text-sm text-text-secondary">{data.user.email}</div>
+                {data.user.phone && <div className="text-xs text-text-dim">{data.user.phone}</div>}
+                <div className="text-[10px] text-text-dim">{data.user.id}</div>
               </div>
-              <div className="mt-1 text-sm text-text-secondary">{data.user.email}</div>
-              {data.user.phone && <div className="text-xs text-text-dim">{data.user.phone}</div>}
-              <div className="text-[10px] text-text-dim">{data.user.id}</div>
             </div>
             <Link to="/users" className="text-xs text-text-secondary hover:text-text-primary">
               {t("userProfile.backToDirectory")}
