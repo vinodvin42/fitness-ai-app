@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { r1Flags } from "@fitness-ai-app/config";
 import { useTranslation } from "react-i18next";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bot,
@@ -12,6 +12,7 @@ import {
   Landmark,
   LayoutDashboard,
   LifeBuoy,
+  KeyRound,
   LogOut,
   MapPin,
   Settings,
@@ -328,6 +329,7 @@ export function AppShell({
   const location = useLocation();
   const { adminUser, logout } = useAuth();
   const { choice, setChoice } = useTheme();
+  const navigate = useNavigate();
   const permissions = adminUser?.permissions;
   const visibleSubNav = subNav?.filter((item) => canView(permissions, item.module));
   const navItems = NAV_ITEMS.flatMap((item) => {
@@ -411,6 +413,12 @@ export function AppShell({
                       <div className="truncate text-xs font-normal text-text-dim">{adminUser?.email}</div>
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  {/* Your own password and authenticator app (27 Oct 2026). */}
+                  <DropdownMenuItem onClick={() => navigate("/admin-system/security")}>
+                    <KeyRound />
+                    {t("appShell.mySecurity")}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>{t("appShell.theme")}</DropdownMenuLabel>

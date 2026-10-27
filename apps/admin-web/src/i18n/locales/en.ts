@@ -106,6 +106,7 @@ export const en = {
     signOut: "Sign out",
     console: "Admin console",
     accountMenu: "Account menu",
+    mySecurity: "My account & security",
     toggleSidebar: "Show or hide the menu",
     groupOverview: "Overview",
     groupPeople: "People",
