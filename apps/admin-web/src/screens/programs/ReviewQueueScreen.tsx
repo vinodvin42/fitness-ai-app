@@ -94,14 +94,14 @@ export function ReviewQueueScreen() {
           </div>
         )}
 
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           A content creator can submit a draft Program, Exercise, Recipe or Article here for a second admin to sign off on.
           Approving publishes it (the same effect as the direct Publish button on its own Directory screen); rejecting
           leaves it as a draft with your notes attached. You can't approve or reject something you submitted yourself.
           Articles have no direct Publish button: approving one needs the expert who checked it.
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("reviewQueue.status")}
             <select
@@ -136,7 +136,7 @@ export function ReviewQueueScreen() {
 
         {data &&
           data.reviews.map((r) => (
-            <div key={r.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div key={r.id} className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-text-primary">{r.contentName ?? "(deleted)"}</div>

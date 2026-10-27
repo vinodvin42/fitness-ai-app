@@ -138,7 +138,7 @@ export function PayoutRunsScreen() {
       ) : null}
 
       {awaiting.data && (awaiting.data.commissions.length > 0 || awaiting.data.settlements.length > 0) && (
-        <div className="mb-5 rounded-lg border border-border-subtle bg-surface">
+        <div className="mb-5 rounded-xl border border-border-subtle bg-surface shadow-xs">
           <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
             Waiting for approval · approved rows are paid by the next run
           </div>

@@ -231,7 +231,7 @@ export function UserProfileScreen() {
 
       {data && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface p-5">
+          <div className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface shadow-xs p-5">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{data.user.fullName}</h2>
@@ -269,7 +269,7 @@ export function UserProfileScreen() {
           {tab === "overview" && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.profile")}</div>
                   <dl className="mt-3 space-y-2 text-sm">
                     <Row label={t("userProfile.referralCode")} value={data.user.referralCode} />
@@ -286,7 +286,7 @@ export function UserProfileScreen() {
                   </dl>
                 </div>
 
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.lifetimeValue")}</div>
                   <dl className="mt-3 space-y-2 text-sm">
                     <Row label={t("userProfile.totalSpent")} value={money(data.lifetimeValue.totalSpentCents)} />
@@ -304,7 +304,7 @@ export function UserProfileScreen() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.currentSubscription")}</div>
                   {data.currentSubscription && <StatusBadge status={data.currentSubscription.status} />}
@@ -325,7 +325,7 @@ export function UserProfileScreen() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.recentActivity")}</div>
                 <ul className="mt-3 divide-y divide-border-subtle">
                   {data.recentActivity.map((a) => (
@@ -465,7 +465,7 @@ export function UserProfileScreen() {
                 <StatCard label="Meals logged" value={data.activity.mealsLogged} hint={`Last ${data.activity.windowDays} days`} />
                 <StatCard label="Recovery logs" value={data.activity.recoveryLogs} hint={`Last ${data.activity.windowDays} days`} />
               </div>
-              <dl className="space-y-2 rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+              <dl className="space-y-2 rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                 <Row label="Last workout" value={data.activity.lastWorkoutAt ? new Date(data.activity.lastWorkoutAt).toLocaleString() : "—"} />
                 <Row label="Last meal logged" value={data.activity.lastMealAt ? new Date(data.activity.lastMealAt).toLocaleString() : "—"} />
                 <Row label="Last device sync" value={data.activity.lastSyncAt ? new Date(data.activity.lastSyncAt).toLocaleString() : "—"} />
@@ -475,7 +475,7 @@ export function UserProfileScreen() {
 
           {tab === "subscription" && (
             <div className="space-y-4">
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -568,7 +568,7 @@ export function UserProfileScreen() {
           )}
 
           {tab === "payments" && (
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -605,7 +605,7 @@ export function UserProfileScreen() {
 
           {tab === "relationships" && (
             <div className="space-y-4">
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -661,7 +661,7 @@ export function UserProfileScreen() {
                 full "why a new, parallel model" reasoning.
               */}
               {(canPropose || (userOffersQuery.data?.offers.length ?? 0) > 0) && (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("userProfile.proposeProfessional")}</div>
                   {canPropose && (
                     <>
@@ -770,7 +770,7 @@ export function UserProfileScreen() {
           )}
 
           {tab === "support" && (
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

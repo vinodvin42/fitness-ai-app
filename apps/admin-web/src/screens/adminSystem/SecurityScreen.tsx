@@ -91,7 +91,7 @@ export function SecurityScreen() {
       <div className="space-y-4">
         <form
           onSubmit={handleSubmit}
-          className="max-w-md space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+          className="max-w-md space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
         >
           <div className="text-sm font-medium">{t("security.changePassword")}</div>
           <p className="text-xs text-text-secondary">
@@ -158,7 +158,7 @@ export function SecurityScreen() {
           </button>
         </form>
 
-        <div className="max-w-xl space-y-2 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="max-w-xl space-y-2 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-medium">Sign-in code (MFA)</div>
             <span
@@ -180,13 +180,13 @@ export function SecurityScreen() {
         {security.data && (
           <>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                 <div className="text-xs uppercase tracking-wide text-text-dim">Password policy</div>
                 <p className="mt-2 text-text-secondary">
                   {security.data.passwordPolicy.minLength} to {security.data.passwordPolicy.maxLength} characters.
                 </p>
               </div>
-              <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                 <div className="text-xs uppercase tracking-wide text-text-dim">Session settings</div>
                 <p className="mt-2 text-text-secondary">
                   You stay signed in for {Math.round(security.data.session.lengthMinutes / 60)} hours, then sign in again.{" "}
@@ -196,7 +196,7 @@ export function SecurityScreen() {
                 </p>
               </div>
             </div>
-            <div className="rounded-lg border border-border-subtle bg-surface">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">Your security events</div>
               <ul className="divide-y divide-border-subtle text-sm">
                 {security.data.events.map((e) => (

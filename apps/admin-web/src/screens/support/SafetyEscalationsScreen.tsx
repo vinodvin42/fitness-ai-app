@@ -58,7 +58,7 @@ export function SafetyEscalationsScreen() {
           </div>
         )}
 
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           BR-SAF-004: a real, human-reviewable record that a user reported a medical condition or injury during
           their assessment — captured as a snapshot at that moment, independent of anything the AI plan-generation
           step recommends. No automated action is taken on this data — "Mark Reviewed" is the one real action a
@@ -66,7 +66,7 @@ export function SafetyEscalationsScreen() {
           diagnosis, and reviewing an entry does not message or restrict the user in any way.
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("safetyEscalations.status")}
             <select

@@ -95,7 +95,7 @@ export function NotificationsScreen() {
               <StatCard label="People on default settings" value={data.preferences.usersOnDefaults} hint="Never changed their notification settings" />
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-3 text-sm font-medium">Channels</div>
               <ul className="space-y-2">
                 {data.channels.map((c) => (
@@ -114,7 +114,7 @@ export function NotificationsScreen() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <div className="px-4 pt-4 text-sm font-medium">In-app notifications by kind (last {data.windowDays} days)</div>
                 <table className="mt-2 w-full text-left text-sm">
                   <thead>
@@ -138,7 +138,7 @@ export function NotificationsScreen() {
                 </table>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <div className="px-4 pt-4 text-sm font-medium">What people chose</div>
                 <p className="px-4 text-xs text-text-dim">
                   Among the {data.preferences.usersWithSavedSettings} people who saved their settings.

@@ -90,7 +90,7 @@ export function SafetyReportsScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             Status
             <select value={status} onChange={(e) => setStatus(e.target.value as SafetyReportStatus | "")} className={SELECT_CLASS}>
@@ -122,7 +122,7 @@ export function SafetyReportsScreen() {
 
         {list.data && (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-            <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xs">
               {list.data.reports.length === 0 && <p className="px-4 py-8 text-center text-sm text-text-dim">No reports match these filters.</p>}
               <ul>
                 {list.data.reports.map((r) => (
@@ -159,7 +159,7 @@ export function SafetyReportsScreen() {
               </ul>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               {!selectedId && <p className="text-sm text-text-dim">Select a report to see the details and the conversation.</p>}
               {selectedId && detail.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
               {selectedId && detail.isError && <p className="text-sm text-danger">{extractErrorMessage(detail.error, "Couldn't load this report.")}</p>}

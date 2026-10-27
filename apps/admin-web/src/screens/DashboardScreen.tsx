@@ -75,7 +75,7 @@ export function DashboardScreen() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 lg:col-span-2">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.userGrowthLast6")}</div>
               <div className="mt-3 h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -92,7 +92,7 @@ export function DashboardScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.paidConversionFunnel")}</div>
               <div className="mt-3 space-y-2 text-sm">
                 <FunnelRow label={t("dashboard.freeRegistered")} value={data.conversionFunnel.freeRegistered} />
@@ -103,7 +103,7 @@ export function DashboardScreen() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.subscriptionsByTier")}</div>
               <div className="mt-3 space-y-2 text-sm">
                 {data.subscriptionsByTier.length === 0 && (
@@ -118,7 +118,7 @@ export function DashboardScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.revenue")}</div>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -136,7 +136,7 @@ export function DashboardScreen() {
               </p>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex items-center justify-between">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.requiresAttention")}</div>
                 <Link to="/action-required" className="text-xs text-accent hover:underline">
@@ -197,7 +197,7 @@ export function DashboardScreen() {
             />
           </div>
 
-          <div className="rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             <div className="text-xs uppercase tracking-wide text-text-dim">{t("dashboard.recentSignups")}</div>
             <table className="mt-3 w-full text-left text-sm">
               <thead>

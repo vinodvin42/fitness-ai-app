@@ -129,7 +129,7 @@ export function EducationalContentScreen() {
           </div>
         )}
 
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           Articles appear in the app's Learn library. They're health information, so each one is published only through{" "}
           <Link to="/programs/review-queue" className="text-accent hover:underline">
             Review/Approval
@@ -138,7 +138,7 @@ export function EducationalContentScreen() {
           shows in the app once at least one article is published.
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             Status
             <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className={INPUT_CLASS}>
@@ -188,7 +188,7 @@ export function EducationalContentScreen() {
 
         {list.data && (
           <div className={`grid gap-4 ${selectedId || creating ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]" : ""}`}>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               {list.data.articles.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-text-dim">
                   {list.data.stats.total === 0 ? "No articles yet. Your team writes them; none are pre-loaded." : "No articles match these filters."}
@@ -233,7 +233,7 @@ export function EducationalContentScreen() {
             </div>
 
             {(selectedId || creating) && (
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-2 flex justify-end">
                   <button
                     type="button"

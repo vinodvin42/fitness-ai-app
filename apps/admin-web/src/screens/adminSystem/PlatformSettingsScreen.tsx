@@ -105,7 +105,7 @@ export function PlatformSettingsScreen() {
               </p>
 
               {section === "general" && (
-                <div className="rounded-lg border border-border-subtle bg-surface px-4 py-2">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs px-4 py-2">
                   <Row label="Environment" value={data.general.environment} />
                   <Row label="Public API address" value={data.general.publicApiUrl ?? "Not set (links use the server's own address)"} />
                   <Row label="Currency" value={data.general.currency} />
@@ -130,7 +130,7 @@ export function PlatformSettingsScreen() {
               )}
 
               {section === "security" && (
-                <div className="rounded-lg border border-border-subtle bg-surface px-4 py-2">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs px-4 py-2">
                   <Row label="Admin sign-in code (MFA)" value={<YesNo on={data.security.adminMfaRequired} yes="Required" no="Not required" />} />
                   <Row
                     label="Reason required for Super Admin's risky changes"
@@ -144,7 +144,7 @@ export function PlatformSettingsScreen() {
               )}
 
               {section === "integrations" && (
-                <div className="rounded-lg border border-border-subtle bg-surface px-4 py-2">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs px-4 py-2">
                   <Row
                     label="Payments"
                     value={
@@ -173,7 +173,7 @@ export function PlatformSettingsScreen() {
               )}
 
               {section === "ai" && (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium">AI Coach chat</div>

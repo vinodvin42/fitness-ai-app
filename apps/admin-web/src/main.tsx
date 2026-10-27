@@ -8,11 +8,19 @@ import App from "./App";
 // "LOGIN.SUPERADMINCONSOLE" because the catalogue was never loaded.
 import "./i18n";
 import "./styles/index.css";
+import { ThemeProvider } from "./lib/theme";
+import { TooltipProvider } from "./components/ui/tooltip";
+import { Toaster } from "./components/ui/sonner";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ThemeProvider>
+      <TooltipProvider delay={300}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+        <Toaster position="top-center" richColors closeButton />
+      </TooltipProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

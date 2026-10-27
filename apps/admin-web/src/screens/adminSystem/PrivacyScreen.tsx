@@ -59,7 +59,7 @@ export function PrivacyScreen() {
 
         {data && (
           <>
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.dsarLog")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Every self-service data export and account deletion a user has made, from the mobile app's own
@@ -112,7 +112,7 @@ export function PrivacyScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.sensitiveDataAccessLog")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Every ADMIN request to view a user's locked sensitive health data — a different, internal
@@ -168,7 +168,7 @@ export function PrivacyScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("privacy.consentManagement")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Real, read-only per-user consent state (marketing emails, data analytics, health-data processing) —

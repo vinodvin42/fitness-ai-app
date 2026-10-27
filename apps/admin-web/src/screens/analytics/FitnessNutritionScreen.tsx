@@ -50,7 +50,7 @@ export function FitnessNutritionScreen() {
           <p className="max-w-md text-xs text-text-secondary">
             {t("fitnessNutrition.aSplitViewOf")}
           </p>
-          <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="flex items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("fitnessNutrition.from")}
               <input
@@ -87,7 +87,7 @@ export function FitnessNutritionScreen() {
         {data && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="space-y-4">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.training")}</div>
                 <div className="grid grid-cols-3 gap-2">
                   <StatCard label={t("fitnessNutrition.workouts")} value={data.training.stats.totalWorkoutsCompleted} />
@@ -96,7 +96,7 @@ export function FitnessNutritionScreen() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.topExercises")}</div>
                 {data.training.topExercises.length === 0 ? (
                   <p className="text-xs text-text-dim">{t("fitnessNutrition.noSetsLoggedIn")}</p>
@@ -114,7 +114,7 @@ export function FitnessNutritionScreen() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.programProgress")}</div>
                 <p className="mb-2 text-[11px] text-text-dim">
                   {t("fitnessNutrition.avgOfEachProgram")}
@@ -145,7 +145,7 @@ export function FitnessNutritionScreen() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.nutrition")}</div>
                 <div className="grid grid-cols-3 gap-2">
                   <StatCard label={t("fitnessNutrition.mealsLogged")} value={data.nutrition.stats.totalMealsLogged} />
@@ -154,7 +154,7 @@ export function FitnessNutritionScreen() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.topLoggedMeals")}</div>
                 {data.nutrition.topMeals.length === 0 ? (
                   <p className="text-xs text-text-dim">{t("fitnessNutrition.noMealsLoggedIn")}</p>
@@ -170,7 +170,7 @@ export function FitnessNutritionScreen() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("fitnessNutrition.recoveryAiUsage")}</div>
                 <div className="grid grid-cols-3 gap-2">
                   <StatCard label={t("fitnessNutrition.aiMessages")} value={data.ai.totalMessages} />

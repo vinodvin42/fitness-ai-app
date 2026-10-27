@@ -183,7 +183,7 @@ export function SupportTicketsScreen() {
         <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-4">
           {/* Left panel — filterable list */}
           <div className="space-y-3">
-            <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border-subtle bg-surface p-3">
+            <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border-subtle bg-surface shadow-xs p-3">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
                 {t("supportTickets.status")}
                 <select
@@ -261,7 +261,7 @@ export function SupportTicketsScreen() {
             )}
 
             {data && (
-              <div className="max-h-[600px] overflow-y-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="max-h-[600px] overflow-y-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <ul className="divide-y divide-border-subtle">
                   {data.tickets.map((t) => (
                     <li key={t.id}>
@@ -302,7 +302,7 @@ export function SupportTicketsScreen() {
           </div>
 
           {/* Right panel — selected ticket detail */}
-          <div className="rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             {!selectedId && (
               <p className="text-sm text-text-dim">{t("supportTickets.selectATicketFrom")}</p>
             )}

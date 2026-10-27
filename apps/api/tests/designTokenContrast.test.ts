@@ -137,7 +137,18 @@ const PALETTES: Palette[] = [
     backgrounds: ["bg", "surface", "surface-raised", "surface-high"],
     text: ["text-primary", "text-secondary", "text-muted", "accent", "accent-alt"],
   },
-  ...["admin-web", "gym-portal", "creator-portal"].map((app) => ({
+  // The admin console has a light and a dark palette since 27 Oct 2026: the
+  // first rule is light, the dark-class rule is dark, each read on its own.
+  ...[
+    ["admin-web light", ":root"],
+    ["admin-web dark", ".dark"],
+  ].map(([name, block]) => ({
+    name,
+    tokens: cssTokens(read("apps/admin-web/src/styles/index.css"), "(?:)", block),
+    backgrounds: ["canvas", "surface", "surface-raised"],
+    text: ["text-primary", "text-secondary", "text-dim", "accent", "danger", "warning", "info"],
+  })),
+  ...["gym-portal", "creator-portal"].map((app) => ({
     name: app,
     tokens: cssTokens(read(`apps/${app}/src/styles/index.css`), "color-"),
     backgrounds: ["canvas", "surface", "surface-raised"],

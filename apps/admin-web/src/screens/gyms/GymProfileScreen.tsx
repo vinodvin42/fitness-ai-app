@@ -140,7 +140,7 @@ export function GymProfileScreen() {
 
       {data && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface p-5">
+          <div className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface shadow-xs p-5">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{data.gym.name}</h2>
@@ -166,7 +166,7 @@ export function GymProfileScreen() {
           {canApprove && (
             <div className="flex flex-wrap gap-4">
               {data.gym.status !== "approved" && (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.approvePartner")}</div>
                   <p className="mt-1 text-xs text-text-secondary">
                     Moves this gym from {data.gym.status} to Approved — the normal partner-onboarding path.
@@ -204,7 +204,7 @@ export function GymProfileScreen() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Commercial terms */}
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.commercialTerms")}</div>
               {draft && !canEdit && (
                 <dl className="mt-3 space-y-2 text-sm">
@@ -285,7 +285,7 @@ export function GymProfileScreen() {
             {/* Member activation summary — real, honest aggregate; see
                 getMemberActivationSummary()'s own doc comment for why it's
                 always zero today (User.gymId resolution is later-wave work). */}
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.memberActivationSummary")}</div>
               {isSummaryLoading && <p className="mt-3 text-sm text-text-secondary">{t("gymProfile.loading")}</p>}
               {summary && (
@@ -307,7 +307,7 @@ export function GymProfileScreen() {
               bootstrap for apps/gym-portal's login. See
               gyms.service.ts#setGymPortalPassword's own doc comment. */}
           {canEdit && (
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex items-center justify-between">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("gymProfile.gymPortalAccess")}</div>
                 <button
@@ -361,7 +361,7 @@ export function GymProfileScreen() {
           )}
 
           {/* Locations */}
-          <div className="rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             <div className="flex items-center justify-between">
               <div className="text-xs uppercase tracking-wide text-text-dim">Locations ({data.gym.locations.length})</div>
               {canEdit && (

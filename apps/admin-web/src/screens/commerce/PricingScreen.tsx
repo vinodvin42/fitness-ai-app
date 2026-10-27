@@ -194,7 +194,7 @@ export function PricingScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("pricing.tier")}
             <select
@@ -257,7 +257,7 @@ export function PricingScreen() {
               if (editingId) updateMutation.mutate({ id: editingId, payload });
               else createMutation.mutate(payload);
             }}
-            className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+            className="space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
           >
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium">{editingId ? "Edit Plan" : "Create Plan"}</div>
@@ -340,7 +340,7 @@ export function PricingScreen() {
               e.preventDefault();
               scheduleMutation.mutate(schedulingPlan.id);
             }}
-            className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+            className="space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
           >
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium">
@@ -416,7 +416,7 @@ export function PricingScreen() {
         {toggleError && <p className="text-xs text-danger">{extractErrorMessage(toggleError, "That action didn't go through.")}</p>}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

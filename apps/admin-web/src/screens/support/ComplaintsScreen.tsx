@@ -118,7 +118,7 @@ export function ComplaintsScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             Status
             <select value={status} onChange={(e) => setStatus(e.target.value as "open" | "closed" | "")} className={INPUT_CLASS}>
@@ -155,7 +155,7 @@ export function ComplaintsScreen() {
 
         {list.data && (
           <div className={`grid gap-4 ${selectedId ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" : ""}`}>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               {list.data.complaints.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-text-dim">
                   {search ? "No complaints match this search." : status === "open" ? "No open complaints." : "No complaints yet."}
@@ -209,7 +209,7 @@ export function ComplaintsScreen() {
             </div>
 
             {selectedId && (
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="mb-3 flex justify-end">
                   <button
                     type="button"

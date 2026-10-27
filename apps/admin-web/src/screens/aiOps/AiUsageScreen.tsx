@@ -97,7 +97,7 @@ export function AiUsageScreen() {
               <StatCard label="Personalised answers" value={pct(data.totals.personalisedRate)} hint="Used the person's own goals, workouts or measurements" />
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-2 text-sm font-medium">Questions and answers per day</div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -113,7 +113,7 @@ export function AiUsageScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-2 text-sm font-medium">People asking per day</div>
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">

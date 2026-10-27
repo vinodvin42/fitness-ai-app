@@ -97,7 +97,7 @@ export function FinancialReportsScreen() {
                 value={data.ratios.expenseToRevenuePct === null ? "—" : `${data.ratios.expenseToRevenuePct}%`}
               />
             </div>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
                 {t("financialReports.expensesByCategory")}
               </div>
@@ -121,7 +121,7 @@ export function FinancialReportsScreen() {
         )}
 
         {data && tab === "cashFlow" && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -151,7 +151,7 @@ export function FinancialReportsScreen() {
               <StatCard label={t("financialReports.subscriptions")} value={money(data.revenue.byPurpose.subscriptionCents)} />
               <StatCard label={t("financialReports.programPurchases")} value={money(data.revenue.byPurpose.programPurchaseCents)} />
             </div>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -182,7 +182,7 @@ export function FinancialReportsScreen() {
         {data && tab === "expense" && (
           <div className="space-y-4">
             <StatCard label={t("financialReports.totalExpenses")} value={money(data.expense.totalCents)} />
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <tbody>
                   {Object.entries(data.expense.byCategory).map(([cat, cents]) => (

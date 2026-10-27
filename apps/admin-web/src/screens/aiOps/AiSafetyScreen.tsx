@@ -88,7 +88,7 @@ export function AiSafetyScreen() {
               <StatCard label="Share reported" value={share == null ? "—" : `${(share * 100).toFixed(1)}%`} />
             </div>
 
-            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
                 Status
                 <select value={status} onChange={(e) => setStatus(e.target.value as AiAnswerReportStatus | "")} className={SELECT_CLASS}>
@@ -102,7 +102,7 @@ export function AiSafetyScreen() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-              <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xs">
                 {list.data.reports.length === 0 && <p className="px-4 py-8 text-center text-sm text-text-dim">No reports here.</p>}
                 <ul>
                   {list.data.reports.map((r) => (
@@ -129,7 +129,7 @@ export function AiSafetyScreen() {
                 </ul>
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 {!selectedId && <p className="text-sm text-text-dim">Select a report to read the question and the answer.</p>}
                 {selectedId && detail.isLoading && <p className="text-sm text-text-secondary">Loading…</p>}
                 {selectedId && detail.isError && <p className="text-sm text-danger">{extractErrorMessage(detail.error, "Couldn't load this report.")}</p>}
@@ -145,7 +145,7 @@ export function AiSafetyScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
               <div className="px-4 pt-4 text-sm font-medium">Overrides log</div>
               <p className="px-4 text-xs text-text-dim">Every change staff made to AI Coach: answers hidden, and AI Coach turned on or off.</p>
               <table className="mt-2 w-full text-left text-sm">

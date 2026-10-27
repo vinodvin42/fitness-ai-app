@@ -114,7 +114,7 @@ export function CredentialVerificationScreen() {
   return (
     <AppShell title={t("credentialVerification.credentialVerification")} subNav={PROFESSIONALS_SUB_NAV}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-        <div className="rounded-lg border border-border-subtle bg-surface">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
           <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
             Pending Review Queue ({queue.length})
           </div>
@@ -165,7 +165,7 @@ export function CredentialVerificationScreen() {
 
           {detail && (
             <>
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-semibold">{detail.professional.fullName}</h3>
                   <StatusBadge status={detail.professional.status} />
@@ -174,7 +174,7 @@ export function CredentialVerificationScreen() {
               </div>
 
               {detail.professional.credentials.map((c) => (
-                <div key={c.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={c.id} className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{SERVICE_LABELS[c.serviceType] ?? c.serviceType} Credential Review</div>
                     <StatusBadge status={c.status} />
@@ -253,7 +253,7 @@ export function CredentialVerificationScreen() {
                 </div>
               ))}
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{t("credentialVerification.governmentKycIdentityCheck")}</div>
                   <StatusBadge status={detail.professional.kycStatus} />
@@ -293,7 +293,7 @@ export function CredentialVerificationScreen() {
               </div>
 
               {detail.professional.status === "suspended" ? (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-xs text-text-dim">{t("credentialVerification.alreadySuspended")}</div>
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-xs text-text-dim">{t("credentialVerification.alreadySuspended")}</div>
               ) : canEdit && (
                 <ReasonGatedAction
                   title={t("credentialVerification.suspendApplication")}

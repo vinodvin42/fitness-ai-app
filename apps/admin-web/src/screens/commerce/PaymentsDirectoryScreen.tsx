@@ -81,7 +81,7 @@ export function PaymentsDirectoryScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("paymentsDirectory.status")}
             <select
@@ -153,7 +153,7 @@ export function PaymentsDirectoryScreen() {
         )}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

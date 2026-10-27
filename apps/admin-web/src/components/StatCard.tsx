@@ -38,28 +38,32 @@ export function StatCard({
   const goodDirection = invert ? falling : rising;
   const badDirection = invert ? rising : falling;
 
+  // Atlas metric card (27 Oct 2026): quiet label, a large figure, and the
+  // trend as a pill under it beside the hint.
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase tracking-wide text-text-dim">{label}</div>
-        {trendPct !== undefined && (
-          <span
-            className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-              trendPct === null
-                ? "text-text-dim"
-                : goodDirection
-                  ? "bg-accent/15 text-accent"
-                  : badDirection
-                    ? "bg-danger/15 text-danger"
-                    : "text-text-dim"
-            }`}
-          >
-            {trendPct === null ? "—" : `${trendPct > 0 ? "+" : ""}${trendPct}%`}
-          </span>
-        )}
-      </div>
-      <div className="mt-2 text-2xl font-semibold text-text-primary">{value}</div>
-      {hint && <div className="mt-1 text-xs text-text-secondary">{hint}</div>}
+    <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-surface p-4 shadow-xs">
+      <div className="text-sm font-medium text-text-secondary">{label}</div>
+      <div className="text-[28px] leading-none font-semibold tracking-tight text-text-primary tabular-nums">{value}</div>
+      {trendPct !== undefined || hint ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-text-dim">
+          {trendPct !== undefined && (
+            <span
+              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
+                trendPct === null
+                  ? "bg-surface-raised text-text-dim"
+                  : goodDirection
+                    ? "bg-accent/12 text-accent"
+                    : badDirection
+                      ? "bg-danger/12 text-danger"
+                      : "bg-surface-raised text-text-dim"
+              }`}
+            >
+              {trendPct === null ? "—" : `${trendPct > 0 ? "↑" : trendPct < 0 ? "↓" : ""}${Math.abs(trendPct)}%`}
+            </span>
+          )}
+          {hint && <span>{hint}</span>}
+        </div>
+      ) : null}
     </div>
   );
 }

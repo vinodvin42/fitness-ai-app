@@ -72,13 +72,13 @@ export function ChangeRequestQueueScreen() {
   return (
     <AppShell title={t("changeRequestQueue.changeInterventionQueue")} subNav={RELATIONSHIPS_SUB_NAV}>
       <div className="space-y-4">
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           A user asking to change professionals doesn't end their current pairing automatically — it stays active
           until a request here is approved. Approving ends the flagged relationship; the user then finds a new
           professional themselves through Discovery. Denying leaves everything as it is.
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("changeRequestQueue.status")}
             <select
@@ -113,7 +113,7 @@ export function ChangeRequestQueueScreen() {
 
         {data &&
           data.requests.map((r) => (
-            <div key={r.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div key={r.id} className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-text-primary">{r.userFullName}</div>

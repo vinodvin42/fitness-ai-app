@@ -64,7 +64,7 @@ export function AcquisitionReportScreen() {
   return (
     <AppShell title={t("acquisitionReport.acquisitionReport")} subNav={GROWTH_SUB_NAV}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("acquisitionReport.from")}
             <input
@@ -126,7 +126,7 @@ export function AcquisitionReportScreen() {
             </div>
 
             <div className="text-xs uppercase tracking-wide text-text-dim">{t("acquisitionReport.byChannel")}</div>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -167,7 +167,7 @@ export function AcquisitionReportScreen() {
             </div>
 
             <div className="text-xs uppercase tracking-wide text-text-dim">{t("acquisitionReport.byCampaign")}</div>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

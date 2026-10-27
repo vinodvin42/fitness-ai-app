@@ -43,7 +43,7 @@ async function fetchDetail(id: string): Promise<AdminRelationshipDetailResponse>
 
 function PartyCard({ label, name, email }: { label: string; name: string; email: string }) {
   return (
-    <div className="flex-1 rounded-lg border border-border-subtle bg-surface p-4">
+    <div className="flex-1 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
       <div className="text-xs uppercase tracking-wide text-text-dim">{label}</div>
       <div className="mt-1 text-base font-semibold text-text-primary">{name}</div>
       <div className="text-sm text-text-secondary">{email}</div>
@@ -184,7 +184,7 @@ export function RelationshipDetailScreen() {
 
           {tab === "overview" && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("relationshipDetail.pairing")}</div>
                   <StatusBadge status={relationship.status} />
@@ -208,7 +208,7 @@ export function RelationshipDetailScreen() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                   <div className="text-xs uppercase tracking-wide text-text-dim">Pricing</div>
                   {data.activity.lastPriceCents != null ? (
                     <dl className="mt-2 space-y-1">
@@ -229,7 +229,7 @@ export function RelationshipDetailScreen() {
                     <p className="mt-2 text-text-dim">No sessions booked yet.</p>
                   )}
                 </div>
-                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                   <div className="text-xs uppercase tracking-wide text-text-dim">Sessions</div>
                   <p className="mt-2 text-text-secondary">
                     {data.activity.sessions.delivered} done · {data.activity.sessions.upcoming} upcoming · {data.activity.sessions.cancelled} cancelled
@@ -238,7 +238,7 @@ export function RelationshipDetailScreen() {
                     <p className="mt-1 text-xs text-text-dim">Next: {new Date(data.activity.sessions.nextAt).toLocaleString()}</p>
                   )}
                 </div>
-                <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
                   <div className="text-xs uppercase tracking-wide text-text-dim">Payments</div>
                   <p className="mt-2 text-text-secondary">
                     {rupees(data.activity.paidCents)} paid over {data.activity.paymentsCount} payment{data.activity.paymentsCount === 1 ? "" : "s"}
@@ -248,7 +248,7 @@ export function RelationshipDetailScreen() {
 
               {(data.activity.sessionList.length > 0 || data.activity.paymentList.length > 0) && (
                 <div className="grid gap-4 md:grid-cols-2">
-                  <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
+                  <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface shadow-xs text-sm">
                     {data.activity.sessionList.map((s) => (
                       <li key={s.bookingId} className="flex justify-between px-4 py-2">
                         <span className="text-text-secondary">
@@ -258,7 +258,7 @@ export function RelationshipDetailScreen() {
                       </li>
                     ))}
                   </ul>
-                  <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface text-sm">
+                  <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface shadow-xs text-sm">
                     {data.activity.paymentList.map((p) => (
                       <li key={p.paymentId} className="flex justify-between px-4 py-2">
                         <Link to={`/commerce/${p.paymentId}`} className="text-accent hover:underline">
@@ -298,7 +298,7 @@ export function RelationshipDetailScreen() {
                     Relationship above — the picker sits above it since
                     ReasonGatedAction owns its own reason state internally.
                   */}
-                  <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                     <div className="text-xs uppercase tracking-wide text-text-dim">{t("relationshipDetail.handoverToAnotherCoach")}</div>
                     <p className="mt-1 text-xs text-text-secondary">
                       Ends this pairing and, if you pick a replacement below, creates a real offer for them targeting
@@ -349,7 +349,7 @@ export function RelationshipDetailScreen() {
                   </div>
                 </>
               ) : (
-                <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="text-sm font-medium">{t("relationshipDetail.reactivateRelationship")}</div>
                   <p className="mt-1 text-xs text-text-secondary">{t("relationshipDetail.reopensThisPairingAs")}</p>
                   <button
@@ -371,7 +371,7 @@ export function RelationshipDetailScreen() {
           )}
 
           {tab === "history" && (
-            <div className="rounded-lg border border-border-subtle bg-surface">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
                 {t("relationshipDetail.adminActionHistoryNot")}
               </div>

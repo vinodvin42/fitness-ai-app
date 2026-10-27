@@ -98,7 +98,7 @@ export function CouponsScreen() {
         )}
 
         {canCreate && (
-          <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="flex items-center justify-end rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             <button
               type="button"
               onClick={() => setShowForm((p) => !p)}
@@ -115,7 +115,7 @@ export function CouponsScreen() {
               e.preventDefault();
               createMutation.mutate();
             }}
-            className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+            className="space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-text-dim">
@@ -202,7 +202,7 @@ export function CouponsScreen() {
         )}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

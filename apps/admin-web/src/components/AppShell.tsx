@@ -1,10 +1,60 @@
 import { ReactNode } from "react";
 import { r1Flags } from "@fitness-ai-app/config";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import {
+  BarChart3,
+  Bot,
+  CheckSquare,
+  ChevronsUpDown,
+  Dumbbell,
+  HeartHandshake,
+  Landmark,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  MapPin,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+  TrendingUp,
+  UserRoundCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { useTheme, type ThemeChoice } from "../lib/theme";
 import { GlobalSearch } from "./GlobalSearch";
 import { BrandLockup } from "./BrandLockup";
+import { ThemeMenu, THEME_OPTIONS } from "./ThemeMenu";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "./ui/sidebar";
 import { AI_OPS_SUB_NAV } from "../screens/aiOps/subNav";
 import { ADMIN_SYSTEM_SUB_NAV } from "../screens/adminSystem/subNav";
 import { can, moduleForPath } from "../lib/permissions";
@@ -225,6 +275,45 @@ const NAV_ITEMS: NavItem[] = [
   ...(r1Flags.PARTNER_PROGRAMS_ENABLED ? [{ label: "Gym Partners", path: "/gyms", glyph: "⛳", builtIn: true, module: "gyms" }] : []),
 ];
 
+/** Icons for the sidebar (Atlas redesign, 27 Oct 2026); they replace the old text glyphs. */
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/": LayoutDashboard,
+  "/approvals": CheckSquare,
+  "/users": Users,
+  "/professionals": UserRoundCheck,
+  "/relationships": HeartHandshake,
+  "/programs": Dumbbell,
+  "/commerce": ShoppingBag,
+  "/growth": TrendingUp,
+  "/support": LifeBuoy,
+  "/analytics": BarChart3,
+  "/finance": Landmark,
+  "/ai-operations": Bot,
+  "/admin-system": Settings,
+  "/gyms": MapPin,
+};
+
+/** Sidebar sections, in order; each nav item belongs to one by its path. */
+const NAV_GROUPS: { labelKey: string; paths: string[] }[] = [
+  { labelKey: "appShell.groupOverview", paths: ["/", "/approvals"] },
+  { labelKey: "appShell.groupPeople", paths: ["/users", "/professionals", "/relationships", "/gyms"] },
+  { labelKey: "appShell.groupBusiness", paths: ["/programs", "/commerce", "/growth", "/finance", "/analytics"] },
+  { labelKey: "appShell.groupOperations", paths: ["/support", "/ai-operations", "/admin-system"] },
+];
+
+function initials(name: string | undefined) {
+  if (!name) return "A";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")).toUpperCase();
+}
+
+/** The sidebar opens collapsed if the admin last left it collapsed (shadcn's cookie), and always on tablets. */
+function sidebarStartsOpen() {
+  if (typeof window === "undefined") return true;
+  if (window.innerWidth < 1024) return false;
+  return !document.cookie.split("; ").includes("sidebar_state=false");
+}
+
 export function AppShell({
   children,
   title,
@@ -238,6 +327,7 @@ export function AppShell({
   const { t } = useTranslation();
   const location = useLocation();
   const { adminUser, logout } = useAuth();
+  const { choice, setChoice } = useTheme();
   const permissions = adminUser?.permissions;
   const visibleSubNav = subNav?.filter((item) => canView(permissions, item.module));
   const navItems = NAV_ITEMS.flatMap((item) => {
@@ -250,94 +340,144 @@ export function AppShell({
   const roleLabel = adminUser ? (ROLE_LABELS[adminUser.role] ?? adminUser.role.replace(/_/g, " ")) : "";
   const pageModule = moduleForPath(location.pathname);
   const pageAllowed = canView(permissions, pageModule ?? undefined);
+  const isActive = (prefix: string) =>
+    location.pathname === prefix || (prefix !== "/" && location.pathname.startsWith(`${prefix}/`));
+  const section = navItems.find((item) => isActive(item.activePrefix));
 
   return (
-    <div className="flex min-h-screen bg-canvas text-text-primary">
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-border-subtle bg-surface">
-        <BrandLockup subtitle={roleLabel || t("appShell.superAdmin")} />
-
-        <nav className="flex-1 space-y-0.5 px-3 py-4">
-          {navItems.map((item) => {
-            const isActive =
-              location.pathname === item.activePrefix ||
-              (item.activePrefix !== "/" && location.pathname.startsWith(`${item.activePrefix}/`));
+    <SidebarProvider defaultOpen={sidebarStartsOpen()}>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="h-16 justify-center border-b px-3 group-data-[collapsible=icon]:px-2">
+          <Link to="/" className="overflow-hidden" aria-label="Fynrox Admin">
+            <BrandLockup subtitle={t("appShell.console")} />
+          </Link>
+        </SidebarHeader>
+        <SidebarContent>
+          {NAV_GROUPS.map((group) => {
+            const items = navItems.filter((item) => group.paths.includes(item.activePrefix));
+            if (items.length === 0) return null;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                  isActive
-                    ? "bg-accent/15 font-medium text-accent"
-                    : "text-text-secondary hover:bg-surface-raised hover:text-text-primary"
-                }`}
-              >
-                <span className="w-4 text-center">{item.glyph}</span>
-                {item.label}
-              </Link>
+              <SidebarGroup key={group.labelKey}>
+                <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {items.map((item) => {
+                      const Icon = NAV_ICONS[item.activePrefix] ?? LayoutDashboard;
+                      return (
+                        <SidebarMenuItem key={item.activePrefix}>
+                          <SidebarMenuButton
+                            isActive={isActive(item.activePrefix)}
+                            tooltip={item.label}
+                            render={<NavLink to={item.path} end={item.activePrefix === "/"} />}
+                          >
+                            <Icon />
+                            <span>{item.label}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             );
           })}
-        </nav>
-
-        <div className="border-t border-border-subtle px-4 py-3">
-          <div className="flex items-center gap-2 rounded-md bg-surface-raised px-2.5 py-2 text-xs text-accent">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+        </SidebarContent>
+        <SidebarFooter className="border-t">
+          <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-accent group-data-[collapsible=icon]:hidden">
+            <ShieldCheck className="size-3.5 shrink-0" />
             {t("appShell.auditLoggingActive")}
           </div>
-        </div>
-      </aside>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<SidebarMenuButton size="lg" aria-label={t("appShell.accountMenu")} className="data-popup-open:bg-sidebar-accent" />}
+                >
+                  <Avatar className="size-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-accent/15 text-xs font-semibold text-accent">
+                      {initials(adminUser?.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="grid min-w-0 flex-1 text-left leading-tight">
+                    <span className="truncate text-sm font-semibold">{adminUser?.fullName}</span>
+                    <span className="truncate text-xs text-text-dim">{roleLabel}</span>
+                  </span>
+                  <ChevronsUpDown className="ml-auto size-4 text-text-dim" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end" className="w-60">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="text-text-primary">
+                      <div className="truncate text-sm font-semibold">{adminUser?.fullName}</div>
+                      <div className="truncate text-xs font-normal text-text-dim">{adminUser?.email}</div>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>{t("appShell.theme")}</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={choice} onValueChange={(v) => setChoice(v as ThemeChoice)}>
+                      {THEME_OPTIONS.map((o) => (
+                        <DropdownMenuRadioItem key={o.value} value={o.value}>
+                          <o.icon />
+                          {t(o.labelKey)}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={logout}>
+                    <LogOut />
+                    {t("appShell.signOut")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-[72px] items-center justify-between border-b border-border-subtle bg-canvas px-8">
-          <div>
-            <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-xs text-text-dim">Last updated {new Date().toLocaleTimeString()}</p>
+      <SidebarInset className="min-w-0 bg-canvas">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-canvas/85 px-4 backdrop-blur md:px-6">
+          <SidebarTrigger className="-ml-1" aria-label={t("appShell.toggleSidebar")} />
+          <div className="min-w-0 flex-1">
+            {section && section.label !== title ? (
+              <div className="truncate text-xs text-text-dim">{section.label}</div>
+            ) : null}
+            <h1 className="truncate text-base font-semibold md:text-lg">{title}</h1>
           </div>
-
-          <div className="flex items-center gap-4">
+          <div className="hidden md:block">
             <GlobalSearch />
-            <div className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-secondary">
-              {t("appShell.allRegions")}
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-medium">{adminUser?.fullName}</div>
-              <div className="text-[10px] uppercase tracking-widest text-text-dim">{roleLabel}</div>
-            </div>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-danger hover:text-danger"
-            >
-              {t("appShell.signOut")}
-            </button>
           </div>
+          <ThemeMenu />
         </header>
 
         {visibleSubNav && visibleSubNav.length > 0 && (
-          <div className="flex gap-1 border-b border-border-subtle bg-canvas px-8 py-2">
+          <nav aria-label={title} className="flex gap-1 overflow-x-auto border-b bg-canvas px-4 md:px-6">
             {visibleSubNav.map((item) => {
               const isSubActive = location.pathname === item.path;
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  aria-current={isSubActive ? "page" : undefined}
+                  className={`relative shrink-0 px-3 py-2.5 text-sm whitespace-nowrap transition-colors ${
                     isSubActive
-                      ? "bg-accent/15 font-medium text-accent"
-                      : "text-text-secondary hover:bg-surface-raised hover:text-text-primary"
+                      ? "font-medium text-text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-accent"
+                      : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
                   {item.label}
                 </Link>
               );
             })}
-          </div>
+          </nav>
         )}
 
-        <main className="flex-1 overflow-y-auto px-8 py-6">
+        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
           {pageAllowed ? (
             children
           ) : (
-            <div role="alert" className="mx-auto mt-12 max-w-md rounded-lg border border-border-subtle bg-surface p-6 text-center">
+            <div role="alert" className="mx-auto mt-12 max-w-md rounded-xl border bg-surface p-6 text-center">
               <div className="text-sm font-medium text-text-primary">No access</div>
               <p className="mt-2 text-xs text-text-secondary">
                 Your role ({roleLabel}) can't open this page. If you need it, ask a Super Admin to change your role.
@@ -350,7 +490,7 @@ export function AppShell({
             </div>
           )}
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

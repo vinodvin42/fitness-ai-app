@@ -84,7 +84,7 @@ export function FinanceDashboardScreen() {
               />
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("financeDashboard.cashFlowTrailing6")}</div>
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -100,7 +100,7 @@ export function FinanceDashboardScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("financeDashboard.requiredFinancialActions")}</div>
               <div className="flex items-center justify-between rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-sm">
                 <span className="text-text-secondary">{t("financeDashboard.overdueReceivables")}</span>

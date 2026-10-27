@@ -62,14 +62,14 @@ export function EscalationsScreen() {
           </div>
         )}
 
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           Tickets that first-line support flagged as needing more attention. Escalating doesn't change the
           underlying ticket's own Status/Priority — triage that separately from its detail panel — this is just a
           record of who raised it, why, and when it was handled. Formal complaints and safety reports have their own
           screens (Support → Complaints and Support → Safety Reports).
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("escalations.status")}
             <select
@@ -103,7 +103,7 @@ export function EscalationsScreen() {
 
         {data &&
           data.escalations.map((e) => (
-            <div key={e.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div key={e.id} className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-text-primary">{e.ticketSubject}</div>

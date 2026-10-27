@@ -25,7 +25,7 @@ async function fetchIntegrations(): Promise<AdminIntegrationDirectoryResponse> {
 
 function IntegrationCard({ integration }: { integration: AdminIntegrationListItem }) {
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface p-4">
+    <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
       <div className="flex items-start justify-between">
         <div>
           <div className="text-sm font-medium text-text-primary">{integration.name}</div>

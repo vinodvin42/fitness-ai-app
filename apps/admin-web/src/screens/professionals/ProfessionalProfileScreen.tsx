@@ -111,7 +111,7 @@ export function ProfessionalProfileScreen() {
 
       {data && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface p-5">
+          <div className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface shadow-xs p-5">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{data.professional.fullName}</h2>
@@ -153,7 +153,7 @@ export function ProfessionalProfileScreen() {
 
           {tab === "overview" && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.profile")}</div>
                 <dl className="mt-3 space-y-2 text-sm">
                   <Row label={t("professionalProfile.yearsExperience")} value={data.professional.yearsExperience ?? "—"} />
@@ -192,7 +192,7 @@ export function ProfessionalProfileScreen() {
                   <Row label={t("professionalProfile.joined")} value={new Date(data.professional.createdAt).toLocaleDateString()} />
                 </dl>
               </div>
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.identityVerificationKyc")}</div>
                   <StatusBadge status={data.professional.kycStatus} />
@@ -205,7 +205,7 @@ export function ProfessionalProfileScreen() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 lg:col-span-2">
                 <div className="flex items-center justify-between">
                   <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalProfile.lifecycleCapacity")}</div>
                   <StatusBadge status={data.professional.lifecycleStatus} />
@@ -273,7 +273,7 @@ export function ProfessionalProfileScreen() {
           )}
 
           {tab === "clients" && (
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -315,7 +315,7 @@ export function ProfessionalProfileScreen() {
                 <p className="text-sm text-text-dim">{t("professionalProfile.noServicesSelectedYet")}</p>
               )}
               {data.professional.credentials.map((c) => (
-                <div key={c.id} className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={c.id} className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{SERVICE_LABELS[c.serviceType] ?? c.serviceType} Credential</div>
                     <StatusBadge status={c.status} />
@@ -342,7 +342,7 @@ export function ProfessionalProfileScreen() {
                 <StatCard label="Delivered" value={data.activity.summary.delivered} />
                 <StatCard label="Cancelled" value={data.activity.summary.cancelled} />
               </div>
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

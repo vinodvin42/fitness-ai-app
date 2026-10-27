@@ -76,7 +76,7 @@ export function PayoutDetailsPanel({ professionalId }: { professionalId: string 
   }
 
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface p-4 lg:col-span-2">
+    <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 lg:col-span-2">
       <div className="flex items-center justify-between">
         <div className="text-xs uppercase tracking-wide text-text-dim">{t("professionalPayoutDetails.title")}</div>
         {account && <StatusBadge status={account.status} />}

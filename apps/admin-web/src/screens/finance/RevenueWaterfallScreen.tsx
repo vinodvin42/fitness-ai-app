@@ -94,7 +94,7 @@ export function RevenueWaterfallScreen() {
   return (
     <AppShell title={t("revenueWaterfall.revenueWaterfall")} subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("revenueWaterfall.from")}
             <input
@@ -143,7 +143,7 @@ export function RevenueWaterfallScreen() {
               />
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
               <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
                 {t("revenueWaterfall.grossNetStageBy")}
               </div>

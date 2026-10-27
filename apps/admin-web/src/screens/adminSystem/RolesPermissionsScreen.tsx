@@ -117,7 +117,7 @@ export function RolesPermissionsScreen() {
               {detailLoading && <p className="text-sm text-text-secondary">{t("rolesPermissions.loadingRoleDetail")}</p>}
               {detail && (
                 <>
-                  <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                     <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("rolesPermissions.permissionMatrix")}</div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
@@ -157,7 +157,7 @@ export function RolesPermissionsScreen() {
                     </p>
                   </div>
 
-                  <div className="rounded-lg border border-border-subtle bg-surface p-4">
+                  <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                     <div className="mb-2 text-xs uppercase tracking-wide text-text-dim">{t("rolesPermissions.members")}</div>
                     {detail.members.length === 0 ? (
                       <p className="text-xs text-text-dim">{t("rolesPermissions.noAdminAccountsHold")}</p>

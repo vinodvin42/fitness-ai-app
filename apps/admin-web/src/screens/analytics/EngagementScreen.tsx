@@ -64,7 +64,7 @@ export function EngagementScreen() {
           <p className="max-w-md text-xs text-text-secondary">
             {t("engagement.howNewSignupsConvert")}
           </p>
-          <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="flex items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("engagement.from")}
               <input
@@ -100,7 +100,7 @@ export function EngagementScreen() {
 
         {data && (
           <>
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="mb-3 text-xs uppercase tracking-wide text-text-dim">{t("engagement.signupRetentionFunnel")}</div>
               <div className="grid grid-cols-4 gap-3">
                 {FUNNEL_STAGES.map((stage, i) => {
@@ -118,7 +118,7 @@ export function EngagementScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("engagement.weeklyRetentionLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 % of each week's new signups who logged ≥1 workout in that relative week. Independent of the date
@@ -163,7 +163,7 @@ export function EngagementScreen() {
             </div>
 
             {data.byDay && (
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("engagement.dayByDayFunnel")}</div>
                 <div className="mt-3 max-h-72 overflow-y-auto overflow-x-auto">
                   <table className="w-full text-left text-sm">

@@ -93,7 +93,7 @@ export function SubscriptionsScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             Status
             <select value={filters.status} onChange={(e) => setFilter("status", e.target.value as Filters["status"])} className={SELECT_CLASS}>
@@ -160,7 +160,7 @@ export function SubscriptionsScreen() {
               {data.matched} matching subscription{data.matched === 1 ? "" : "s"}
               {data.truncated ? ` — showing the newest ${data.subscriptions.length}` : ""}.
             </p>
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -246,7 +246,7 @@ export function SubscriptionsScreen() {
               </table>
             </div>
             {data.byCountry.length > 0 && (
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">Giving access now, by country</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {data.byCountry.map((c) => (

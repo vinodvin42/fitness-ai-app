@@ -60,7 +60,7 @@ export function ReceivablesPayablesScreen() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
                   {t("receivablesPayables.receivables")}
                 </div>
@@ -96,7 +96,7 @@ export function ReceivablesPayablesScreen() {
                 </table>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
                 <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
                   {t("receivablesPayables.payablesExpensesOnly")}
                 </div>

@@ -22,7 +22,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@fitness-ai-app/types": ["../../packages/types/src/index.ts"]
+      "@fitness-ai-app/types": ["../../packages/types/src/index.ts"],
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

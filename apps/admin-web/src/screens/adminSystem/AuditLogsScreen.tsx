@@ -100,7 +100,7 @@ export function AuditLogsScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("auditLogs.actor")}
             <select
@@ -171,7 +171,7 @@ export function AuditLogsScreen() {
         )}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <div className="flex items-center gap-1.5 border-b border-border-subtle px-4 py-2 text-xs text-text-dim">
               {t("auditLogs.writeOnceNothingOn")}
             </div>

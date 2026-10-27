@@ -47,7 +47,7 @@ export function ReasonDialogHost() {
               e.preventDefault();
               if (valid) request.resolve(trimmed);
             }}
-            className="w-full max-w-md space-y-3 rounded-lg border border-border-subtle bg-surface p-5 shadow-xl"
+            className="w-full max-w-md space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-5 shadow-xl"
           >
             <h2 id="reason-dialog-title" className="text-sm font-medium text-text-primary">
               Reason for this change

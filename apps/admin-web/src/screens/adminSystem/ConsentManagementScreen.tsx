@@ -70,7 +70,7 @@ export function ConsentManagementScreen() {
   return (
     <AppShell title={t("consentManagement.consentManagement")} subNav={ADMIN_SYSTEM_SUB_NAV}>
       <div className="space-y-4">
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           Real, per-user consent state — marketing emails, data analytics, and health-data processing — exactly as
           set from that user's own Privacy Settings screen. Read-only: consent is the user's own choice everywhere
           else in this app, so nothing here can grant or revoke it on their behalf.
@@ -82,7 +82,7 @@ export function ConsentManagementScreen() {
             setSearch(searchInput.trim());
             setSelectedUserId(null);
           }}
-          className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
         >
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("consentManagement.searchForAUser")}
@@ -112,7 +112,7 @@ export function ConsentManagementScreen() {
         )}
 
         {searchQuery.data && !selectedUserId && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
@@ -150,7 +150,7 @@ export function ConsentManagementScreen() {
         )}
 
         {selectedUserId && (
-          <div className="rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             <button
               type="button"
               onClick={() => setSelectedUserId(null)}

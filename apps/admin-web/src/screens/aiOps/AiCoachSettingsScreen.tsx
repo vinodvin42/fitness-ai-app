@@ -60,7 +60,7 @@ export function AiCoachSettingsScreen() {
   return (
     <AppShell title={t("aiCoachSettings.aiOperations")} subNav={AI_OPS_SUB_NAV}>
       <div className="space-y-4">
-        <div className="max-w-xl rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="max-w-xl rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-sm font-medium">{t("aiCoachSettings.aiCoachChat")}</div>

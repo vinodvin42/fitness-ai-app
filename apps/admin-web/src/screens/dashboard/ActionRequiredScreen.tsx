@@ -273,7 +273,7 @@ export function ActionRequiredScreen() {
   return (
     <AppShell title={t("actionRequired.actionRequired")} subNav={DASHBOARD_SUB_NAV}>
       <div className="space-y-4">
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           The unified exception queue (`AdminActionItem`) every real source in this build funnels into — see
           apps/api's lib/adminActionQueue.ts. This is a page-load/manual-refresh read, not a live-updating feed;
           use Refresh (below) to pull the latest rows.
@@ -288,7 +288,7 @@ export function ActionRequiredScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("actionRequired.type")}
             <select

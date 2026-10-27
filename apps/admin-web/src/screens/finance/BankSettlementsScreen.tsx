@@ -67,7 +67,7 @@ export function BankSettlementsScreen() {
   return (
     <AppShell title="Bank Settlements" subNav={FINANCE_SUB_NAV}>
       <div className="space-y-4">
-        <div className="rounded-lg border border-border-subtle bg-surface/50 p-4 text-xs text-text-secondary">
+        <div className="rounded-xl border border-border-subtle bg-surface shadow-xs/50 p-4 text-xs text-text-secondary">
           What Razorpay has paid into your bank account, read live from Razorpay. Match each settlement to your bank statement by its
           UTR (Unique Transaction Reference). Nothing on this screen changes anything.
         </div>
@@ -77,7 +77,7 @@ export function BankSettlementsScreen() {
             e.preventDefault();
             setRange({ from: fromInput || undefined, to: toInput || undefined });
           }}
-          className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
         >
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             From
@@ -137,7 +137,7 @@ export function BankSettlementsScreen() {
               <p className="text-xs text-warning">Razorpay returned its maximum of 100 settlements; older ones in this range aren't shown. Narrow the dates.</p>
             )}
 
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               {data.settlements.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-text-dim">No settlements in this period.</p>
               ) : (

@@ -279,7 +279,7 @@ export function CoachLevelsScreen() {
             )}
 
             {/* ---- Fees: levels × services ---- */}
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs text-text-dim">
@@ -374,7 +374,7 @@ export function CoachLevelsScreen() {
             )}
 
             {/* ---- Commission ---- */}
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-text-primary">FynroX commission on coach fees: {data.commission.defaultPct}%</p>
                 {canEdit && (
@@ -398,7 +398,7 @@ export function CoachLevelsScreen() {
             </div>
 
             {/* ---- Coaches ---- */}
-            <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+            <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle text-xs text-text-dim">

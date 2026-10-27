@@ -210,7 +210,7 @@ export function RecipesDirectoryScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("recipesDirectory.mealType2")}
             <select
@@ -274,7 +274,7 @@ export function RecipesDirectoryScreen() {
               if (editingId) updateMutation.mutate({ id: editingId, payload });
               else createMutation.mutate(payload);
             }}
-            className="space-y-3 rounded-lg border border-border-subtle bg-surface p-4"
+            className="space-y-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4"
           >
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium">{editingId ? "Edit Recipe" : "Create Recipe"}</div>
@@ -459,7 +459,7 @@ export function RecipesDirectoryScreen() {
         )}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

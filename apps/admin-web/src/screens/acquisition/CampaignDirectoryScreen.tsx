@@ -138,7 +138,7 @@ export function CampaignDirectoryScreen() {
         )}
 
         {canCreate && (
-          <div className="flex items-center justify-end rounded-lg border border-border-subtle bg-surface p-4">
+          <div className="flex items-center justify-end rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
             <button
               type="button"
               onClick={() => setShowForm((p) => !p)}
@@ -155,7 +155,7 @@ export function CampaignDirectoryScreen() {
               e.preventDefault();
               createMutation.mutate();
             }}
-            className="grid grid-cols-1 gap-3 rounded-lg border border-border-subtle bg-surface p-4 sm:grid-cols-3 lg:grid-cols-6"
+            className="grid grid-cols-1 gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4 sm:grid-cols-3 lg:grid-cols-6"
           >
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("campaignDirectory.name")}
@@ -266,7 +266,7 @@ export function CampaignDirectoryScreen() {
         )}
 
         {campaigns.data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

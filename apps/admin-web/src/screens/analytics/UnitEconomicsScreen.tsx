@@ -73,7 +73,7 @@ export function UnitEconomicsScreen() {
           <p className="max-w-md text-xs text-text-secondary">
             {t("unitEconomics.whatItCostsTo")}
           </p>
-          <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="flex items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("unitEconomics.from")}
               <input
@@ -141,7 +141,7 @@ export function UnitEconomicsScreen() {
               />
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("unitEconomics.cohortEconomicsLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 Each signup cohort's real avg lifetime revenue alongside that calendar month's real marketing spend
@@ -173,7 +173,7 @@ export function UnitEconomicsScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">New members by signup channel</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {data.newUsersByChannel.map((c) => (

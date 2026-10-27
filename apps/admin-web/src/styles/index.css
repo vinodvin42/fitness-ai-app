@@ -1,75 +1,127 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * Design tokens (docs/admin/04-design-system.md).
+ * Design tokens, light and dark (27 Oct 2026, Atlas redesign).
  *
- * The colours below are no longer the eyeballed Figma approximations this
- * file shipped with — they come from the brand, and each is measured (see
- * the note in @theme). Spacing and sizing are still approximations taken
- * from rendered screenshots, because the Figma file has no published
- * Variables or styles (`get_variable_defs` returns empty); confirm those
- * with design.
+ * The screens use semantic tokens only (`bg-surface`, `text-text-dim`,
+ * `border-border-subtle`, `text-accent` …), so a theme is just a second set
+ * of values: the first rule below is light, the second (class "dark" on
+ * <html>, set by lib/theme.tsx from the saved choice or the device) is dark.
+ * The dark set is the charcoal + mint palette the console has used since
+ * 18 Oct 2026, unchanged.
+ *
+ * The light set follows ReUI's Atlas admin: white cards on a near-white
+ * canvas, zinc text. Mint (#70D4A8) is too light to be text on white, so
+ * light mode uses a deep green for `accent` (5.3:1 on surface-raised); fills
+ * that carry `text-canvas` stay readable both ways.
+ *
+ * Every text token is measured against every surface, in both palettes, by
+ * apps/api/tests/designTokenContrast.test.ts (WCAG AA 4.5:1), which reads
+ * each palette from its own rule, so keep these two rules first.
+ *
+ * The shadcn variables in @theme map onto the same values, so the
+ * shadcn/ReUI components (src/components/ui) match the screens.
  */
-@theme {
-  /*
-   * Website look, 18 Oct 2026: ink surfaces and the mint accent (#70D4A8)
-   * that the marketing site and the new mint F logo use, replacing the
-   * charcoal and gold below. Mint is 10.4:1 and text-dim 7.2:1 on the
-   * lightest surface (surface-raised).
-   */
-  /*
-   * Brand palette, 3 Oct 2026. These were a mint accent on a blue-black
-   * canvas, eyeballed from Figma screenshots and matching nothing the
-   * brand actually uses — the consoles still looked like a different
-   * product from the marketing site after it moved to charcoal and gold.
-   *
-   * Charcoal rather than cream, deliberately: these are data tools people
-   * keep open for a shift, and the dashboard's charts and dense tables
-   * read better dark. The brand's gold does work as text here, which it
-   * cannot do on cream — #DA9F3E is 2.12:1 on the site's cream and
-   * 6.16:1 on the lightest surface below, so the consoles get the real
-   * brand gold rather than the darkened derivation the site needs.
-   *
-   * Measured against the lightest surface (--color-surface-raised), the
-   * worst case for light text, by apps/api/tests/designTokenContrast.ts:
-   *   text-primary 13.03   text-dim 5.42   warning 7.60
-   *   text-secondary 8.92  accent   6.16   info    6.99
-   *   danger 5.21
-   */
-  --color-canvas: #0a0a0a;
-  --color-surface: #1a1a1a;
-  --color-surface-raised: #1f1f1f;
-  --color-border-subtle: #2e2e2e;
+:root {
+  --canvas: #f7f7f8;
+  --surface: #ffffff;
+  --surface-raised: #f4f4f5;
+  --border-subtle: #e4e4e7;
+  --accent: #13734f;
+  --danger: #c0392b;
+  --warning: #8a5a00;
+  --info: #2952c8;
+  --text-primary: #09090b;
+  --text-secondary: #3f3f46;
+  --text-dim: #66666e;
+  /* Brand mint for fills and marks that never carry text on white. */
+  --brand: #70d4a8;
+}
 
-  --color-accent: #70d4a8;
-  --color-danger: #f2776b;
-  --color-warning: #e8b45c;
-  --color-info: #9db4f0;
+.dark {
+  --canvas: #0a0a0a;
+  --surface: #141414;
+  --surface-raised: #1f1f1f;
+  --border-subtle: #2e2e2e;
+  --accent: #70d4a8;
+  --danger: #f2776b;
+  --warning: #e8b45c;
+  --info: #9db4f0;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  /* 5.42:1 on surface-raised (WCAG AA pass, 29 Sep 2026). */
+  --text-dim: #a3a3a3;
+  --brand: #70d4a8;
+}
 
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #e5e5e5;
-  /*
-   * `text-dim` carries exactly the text a low-vision reader most needs:
-   * table column headers, row timestamps, the "—" that stands in for an
-   * empty field, and every form field's own label.
-   *
-   * It was #5b6472 until 29 Sep 2026, when a WCAG 2.1 AA pass measured
-   * it at 2.89:1 on `surface-raised` against a 4.5:1 requirement, and it
-   * became #7d8590 at 4.64:1. The charcoal repaint carried that fix
-   * across rather than losing it: #a29f95 is 5.42:1 on the new
-   * `surface-raised`.
-   *
-   * Every palette in this repo failed on precisely one token — the
-   * dim/muted one — in the user app, the coach app, the marketing site and
-   * all three of these consoles. All of them were eyeballed; none had been
-   * measured until that pass.
-   */
-  --color-text-dim: #a3a3a3;
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border-subtle: var(--border-subtle);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-dim: var(--text-dim);
+  --color-brand: var(--brand);
+
+  /* shadcn / ReUI */
+  --color-background: var(--canvas);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--canvas);
+  --color-secondary: var(--surface-raised);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-raised);
+  --color-muted-foreground: var(--text-dim);
+  --color-destructive: var(--danger);
+  --color-border: var(--border-subtle);
+  --color-input: var(--border-subtle);
+  --color-ring: var(--accent);
+  --color-sidebar: var(--surface);
+  --color-sidebar-foreground: var(--text-primary);
+  --color-sidebar-primary: var(--accent);
+  --color-sidebar-primary-foreground: var(--canvas);
+  --color-sidebar-accent: var(--surface-raised);
+  --color-sidebar-accent-foreground: var(--text-primary);
+  --color-sidebar-border: var(--border-subtle);
+  --color-sidebar-ring: var(--accent);
+  --color-success: var(--accent);
+  --color-chart-1: var(--brand);
+  --color-chart-2: var(--info);
+  --color-chart-3: var(--warning);
+  --color-chart-4: var(--danger);
+  --color-chart-5: var(--text-dim);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background-color: var(--color-canvas);
-  color: var(--color-text-primary);
+  background-color: var(--canvas);
+  color: var(--text-primary);
   font-family:
     -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  border-color: var(--border-subtle);
 }

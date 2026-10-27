@@ -98,7 +98,7 @@ export function GlobalSearch() {
       />
 
       {showPanel && (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-50 max-h-96 w-96 overflow-y-auto rounded-lg border border-border-subtle bg-surface shadow-lg">
+        <div className="absolute right-0 top-[calc(100%+4px)] z-50 max-h-96 w-96 overflow-y-auto rounded-xl border border-border-subtle bg-surface shadow-xs shadow-lg">
           {isLoading && <div className="px-4 py-3 text-xs text-text-secondary">{t("globalSearch.searching")}</div>}
 
           {isError && (

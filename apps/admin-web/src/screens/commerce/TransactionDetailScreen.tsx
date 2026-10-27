@@ -93,7 +93,7 @@ export function TransactionDetailScreen() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.ledger")}</div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <Field label={t("transactionDetail.purpose")} value={PURPOSE_LABELS[payment.purpose] ?? payment.purpose} />
@@ -105,7 +105,7 @@ export function TransactionDetailScreen() {
               </dl>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.relatedEntities")}</div>
               <dl className="mt-3 space-y-3 text-sm">
                 <div>
@@ -138,7 +138,7 @@ export function TransactionDetailScreen() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-border-subtle bg-surface">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
             <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">Ledger</div>
             <table className="w-full text-left text-sm">
               <tbody>
@@ -169,7 +169,7 @@ export function TransactionDetailScreen() {
 
           <NotAvailablePanel keys={data.notAvailable} />
 
-          <div className="rounded-lg border border-border-subtle bg-surface">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
             <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">
               {t("transactionDetail.auditTrail")}
             </div>

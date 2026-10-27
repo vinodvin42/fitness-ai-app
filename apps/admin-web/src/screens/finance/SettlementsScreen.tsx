@@ -66,7 +66,7 @@ export function SettlementsScreen() {
           </div>
         )}
 
-        <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="flex items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
           <label className="flex flex-col gap-1 text-xs text-text-dim">
             {t("settlements.month")}
             <input
@@ -96,7 +96,7 @@ export function SettlementsScreen() {
         )}
 
         {data && (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface">
+          <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">

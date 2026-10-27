@@ -116,7 +116,7 @@ export function UserAnalyticsScreen() {
             ))}
           </div>
 
-          <div className="flex items-end gap-3 rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="flex items-end gap-3 rounded-xl border border-border-subtle bg-surface shadow-xs p-3">
             <label className="flex flex-col gap-1 text-xs text-text-dim">
               {t("userAnalytics.from")}
               <input
@@ -184,7 +184,7 @@ export function UserAnalyticsScreen() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.signupsPerDay")}</div>
                 <div className="mt-3 h-40">
                   <ResponsiveContainer width="100%" height="100%">
@@ -197,7 +197,7 @@ export function UserAnalyticsScreen() {
                   </ResponsiveContainer>
                 </div>
               </div>
-              <div className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
                 <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.revenuePerDay")}</div>
                 <div className="mt-3 h-40">
                   <ResponsiveContainer width="100%" height="100%">
@@ -216,7 +216,7 @@ export function UserAnalyticsScreen() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.retentionCohortsLast6")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 % of each month's new signups who logged ≥1 workout in that relative month. Independent of the date
@@ -292,7 +292,7 @@ export function UserAnalyticsScreen() {
         )}
 
         {data && tab === "business" && (
-          <div className="rounded-lg border border-border-subtle bg-surface p-4 text-sm text-text-secondary">
+          <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm text-text-secondary">
             Marketplace and revenue numbers have their own page:{" "}
             <Link to="/analytics/business" className="text-accent hover:underline">
               Business analytics
@@ -308,7 +308,7 @@ export function UserAnalyticsScreen() {
               <StatCard label={t("userAnalytics.usersUsingAiCoach")} value={data.aiStats.usersUsingAi} />
               <StatCard label={t("userAnalytics.avgMessagesAiUser")} value={data.aiStats.avgMessagesPerAiUser ?? "—"} />
             </div>
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.aiCoachMessagesPer")}</div>
               <div className="mt-3 h-40">
                 <ResponsiveContainer width="100%" height="100%">
@@ -338,7 +338,7 @@ export function UserAnalyticsScreen() {
                 hint="Users who haven't set a country on Edit Profile"
               />
             </div>
-            <div className="rounded-lg border border-border-subtle bg-surface p-4">
+            <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
               <div className="text-xs uppercase tracking-wide text-text-dim">{t("userAnalytics.usersByCountry")}</div>
               <p className="mt-1 text-xs text-text-dim">
                 A live snapshot of the current user base, independent of the date filter above — same reasoning as
