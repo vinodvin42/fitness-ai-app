@@ -4,6 +4,7 @@ import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQu
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { assertHighImpactConfirmed } from "../../lib/highImpactAction";
 import { payoutProvider } from "../../providers";
+import { notifyCoachesOfPayout } from "../professionalNotifications/professionalNotices";
 
 /**
  * A-M3 — "Payout run: approve professional earnings and creator
@@ -314,11 +315,14 @@ export async function settlePayoutRun(
       });
       await resolveActionItemsFor("CoachSettlement", s.id, adminId, "Paid in a payout run");
     }
+    // The coaches' inbox and email (26 Oct 2026): paid, or not.
+    await notifyCoachesOfPayout(paidSettlements.map((s) => s.id), "paid");
     if (failedIds.length > 0) {
       await prisma.coachSettlement.updateMany({
         where: { payoutBatchId: batchId, id: { in: failedIds } },
         data: { status: "payout_failed", payoutFailureReason: failureReason },
       });
+      await notifyCoachesOfPayout(failedIds, "failed");
       for (const id of failedIds) {
         await createActionItem({
           type: "payout_failed",

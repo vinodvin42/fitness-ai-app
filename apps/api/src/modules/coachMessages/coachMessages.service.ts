@@ -3,6 +3,7 @@ import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
+import { notifyCoachOfMessage } from "../professionalNotifications/professionalNotices";
 import { ReportConversationInput, SendCoachMessageInput } from "./coachMessages.schema";
 
 /**
@@ -138,6 +139,9 @@ export async function sendMessage(
       body: input.content.slice(0, 140),
       deepLink: "coach-messages",
     });
+  } else {
+    // And the coach's inbox when the client writes (26 Oct 2026; one per burst).
+    await notifyCoachOfMessage(userId, professionalId, input.content);
   }
 
   return toMessageItem(message as MessageRow);

@@ -15,6 +15,7 @@ import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from
 import { activeGstPercent, gstOnTop } from "../../lib/gst";
 import { professionalPublicId } from "../../lib/professionalCode";
 import { notifyMemberOfAcceptance, notifyMemberOfDecline } from "./memberNotices";
+import { notifyCoachOfBooking, notifyCoachOfRequest } from "../professionalNotifications/professionalNotices";
 import {
   AvailabilityQuery,
   CreateBookingInput,
@@ -753,6 +754,8 @@ export async function createGuidanceRequest(userId: string, input: CreateGuidanc
       requestNote: input.note?.trim() ? input.note.trim() : null,
     },
   });
+  // The coach's inbox and email (26 Oct 2026): the reply window has started.
+  await notifyCoachOfRequest(updated.id);
   return { relationshipId: updated.id, status: "requested", created: true, replyBy: replyBy(updated) };
 }
 
@@ -1045,6 +1048,8 @@ export async function createBooking(
     where: { id: { in: relationshipIds }, status: { not: "active" } },
     data: { status: "active" },
   });
+  // The coach's inbox (26 Oct 2026): a paid session is on their calendar.
+  await notifyCoachOfBooking(booking.id);
 
   // §8 "relationship.activated" — fired for every relationship this
   // booking confirms as active. Honest simplification: a relationship

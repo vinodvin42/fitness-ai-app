@@ -5,6 +5,7 @@ import { coachEarnings, coachSessions } from "../../lib/coachActivity";
 import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
+import { notifyCoachOfCredentialDecision, notifyCoachOfKycDecision } from "../professionalNotifications/professionalNotices";
 import {
   AdminUpdateMaxActiveClientsInput,
   ListProfessionalsQuery,
@@ -391,6 +392,8 @@ export async function verifyCredential(
   // Package 4 — a coach already placed in a level gets an offering for the
   // newly verified service (priced from the level fee).
   if (input.status === "verified") await syncCoachOfferings(professionalId);
+  // The coach's inbox and email (26 Oct 2026): the decision, with the reason.
+  await notifyCoachOfCredentialDecision(credentialId);
 
   return updated;
 }
@@ -425,6 +428,8 @@ export async function verifyKyc(adminId: string, professionalId: string, input: 
   // change.
   await professionalLifecycleService.maybeAdvanceToApproved(adminId, professionalId);
   await professionalLifecycleService.recomputeAvailability(professionalId, adminId);
+  // The coach's inbox and email (26 Oct 2026).
+  await notifyCoachOfKycDecision(professionalId);
 
   return updated;
 }

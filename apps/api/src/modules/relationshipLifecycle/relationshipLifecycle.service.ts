@@ -5,6 +5,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { createOffer, createOfferAsProfessional } from "../professionalOffers/professionalOffers.service";
 import { createNotification } from "../notifications/notifications.service";
 import { notifyMemberOfCompletion } from "../coaching/memberNotices";
+import { notifyCoachOfEndByFynrox } from "../professionalNotifications/professionalNotices";
 
 /**
  * Relationship Lifecycle — End Relationship / Handover (R1 U6, Wave 3,
@@ -188,6 +189,8 @@ export async function endRelationship(actor: Actor, relationshipId: string, reas
     stateAfter: { status: "ended" },
     metadata: { reason, previousStatus: relationship.status },
   });
+  // The coach's inbox (26 Oct 2026) when Fynrox, not the coach, ended it.
+  if (actor.adminId) await notifyCoachOfEndByFynrox(relationshipId, reason);
 
   // "relationship.ended" — mirrors coaching.service.ts's own
   // "relationship.activated" precedent of reporting real relationship

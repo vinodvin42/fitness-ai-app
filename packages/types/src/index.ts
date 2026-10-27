@@ -2154,6 +2154,35 @@ export interface CoachAlertsResponse {
   asOf: string;
 }
 
+/** Coach inbox (26 Oct 2026): what happened, newest first. See professionalNotifications.service.ts. */
+export type ProfessionalNotificationKind =
+  | "request"
+  | "offer"
+  | "booking"
+  | "message"
+  | "relationship"
+  | "verification"
+  | "payout"
+  | "system";
+
+export interface ProfessionalNotificationItem {
+  id: string;
+  kind: ProfessionalNotificationKind;
+  title: string;
+  body: string;
+  /** A coach-web path, e.g. "/clients/requests"; null when there's nothing to open. */
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ProfessionalNotificationListResponse {
+  items: ProfessionalNotificationItem[];
+  unreadCount: number;
+  /** Pass as `before` for the next page; null on the last page. */
+  nextBefore: string | null;
+}
+
 // ---- Coach Discovery & Booking (added 25 Aug 2026) -------------------
 // Closes docs/coach/07-open-questions-gaps.md gap §1 — v1-coach's
 // 7-screen version (Discovery Filters+List, Coach Profile Detail,

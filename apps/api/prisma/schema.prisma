@@ -430,8 +430,8 @@ model User {
   // model's own doc comment below.
   coachMessages               CoachMessage[]
   // Safety & Abuse Reports (08.04, Oct 2026) — see SafetyReport.
-  safetyReportsMade           SafetyReport[]   @relation("SafetyReportReporterUser")
-  safetyReportsAgainst        SafetyReport[]   @relation("SafetyReportReportedUser")
+  safetyReportsMade           SafetyReport[]               @relation("SafetyReportReporterUser")
+  safetyReportsAgainst        SafetyReport[]               @relation("SafetyReportReportedUser")
   coachChatBlocks             CoachChatBlock[]
   // AI Safety (11.03, Oct 2026) — see AiAnswerReport.
   aiAnswerReports             AiAnswerReport[]
@@ -1823,27 +1823,27 @@ model SafetyEscalation {
 // replies so a real thread redisplays on next open, same "history is
 // real, not just the current turn" precedent as WorkoutSession/MealLog.
 model AiCoachMessage {
-  id        String             @id @default(uuid())
-  userId    String
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      AiCoachMessageRole
-  content   String             @db.Text
-  createdAt DateTime           @default(now())
+  id            String             @id @default(uuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          AiCoachMessageRole
+  content       String             @db.Text
+  createdAt     DateTime           @default(now())
   // Oct 2026 (Figma AI 02/04): client-generated idempotency key for a USER
   // message, so a retry after a failed AI reply reuses the stored message
   // instead of duplicating it. Null for assistant rows / older clients.
-  clientId  String?
+  clientId      String?
   // Set on a user message whose AI reply failed; hidden from the thread,
   // history and the daily quota until a retry succeeds (then reset to false).
-  failed    Boolean            @default(false)
+  failed        Boolean            @default(false)
   // Assistant rows only: the real context items that were injected into the
   // prompt for this reply ([{kind,label,value}]) — what the "Why this?" sheet
   // shows. Null for replies generated before this column existed.
-  sources   Json?
+  sources       Json?
   // Set when staff hid this answer after a report (AI Safety, 11.03). The
   // app shows "This answer was removed after review" and the answer is left
   // out of the conversation history sent to the AI.
-  hiddenAt  DateTime?
+  hiddenAt      DateTime?
   answerReports AiAnswerReport[]
 
   @@unique([userId, clientId])
@@ -2547,26 +2547,26 @@ enum AdminUserStatus {
 }
 
 model AdminUser {
-  id           String          @id @default(uuid())
-  email        String          @unique
-  passwordHash String
-  fullName     String
-  role         AdminRole       @default(super_admin)
-  status       AdminUserStatus @default(active)
-  lastLoginAt  DateTime?
+  id               String          @id @default(uuid())
+  email            String          @unique
+  passwordHash     String
+  fullName         String
+  role             AdminRole       @default(super_admin)
+  status           AdminUserStatus @default(active)
+  lastLoginAt      DateTime?
   // Admin sign-in uses an authenticator app (blueprint section 5): email +
   // password + 6-digit code, no OTP. `mfaSecret` is AES-256-GCM encrypted
   // (lib/twoFactor.ts), `mfaEnabled` flips true only after a real code is
   // confirmed, and recovery codes are bcrypt-hashed, single use.
   mfaSecret        String?
-  mfaEnabled       Boolean  @default(false)
+  mfaEnabled       Boolean         @default(false)
   mfaEnabledAt     DateTime?
-  mfaRecoveryCodes String[] @default([])
+  mfaRecoveryCodes String[]        @default([])
   // Last accepted TOTP code + time, so a code can't be used twice.
   mfaLastCode      String?
   mfaLastCodeAt    DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   auditLogEntries                 AuditLog[]
   // 22 Aug 2026 (Module 05 — Programs CMS) — the reverse side of
@@ -2886,40 +2886,42 @@ model Professional {
   createdAt          DateTime                    @default(now())
   updatedAt          DateTime                    @updatedAt
 
-  credentials      ProfessionalCredential[]
-  refreshTokens    ProfessionalRefreshToken[]
-  relationships    Relationship[]
-  auditLogEntries  AuditLog[]
+  credentials          ProfessionalCredential[]
+  refreshTokens        ProfessionalRefreshToken[]
+  relationships        Relationship[]
+  auditLogEntries      AuditLog[]
   // Coach Discovery & Booking, added 25 Aug 2026 — see the
   // ProfessionalServiceOffering/Booking models' own doc comments below.
-  serviceOfferings ProfessionalServiceOffering[]
-  bookings         Booking[]
-  sessionRatings   SessionRating[]
+  serviceOfferings     ProfessionalServiceOffering[]
+  bookings             Booking[]
+  sessionRatings       SessionRating[]
   // Coach ↔ Client Messaging, added 31 Aug 2026 — see the CoachMessage
   // model's own doc comment below.
-  coachMessages    CoachMessage[]
+  coachMessages        CoachMessage[]
   // Safety & Abuse Reports (08.04, Oct 2026) — see SafetyReport.
-  safetyReportsMade    SafetyReport[]   @relation("SafetyReportReporterProfessional")
-  safetyReportsAgainst SafetyReport[]   @relation("SafetyReportReportedProfessional")
+  safetyReportsMade    SafetyReport[]                @relation("SafetyReportReporterProfessional")
+  safetyReportsAgainst SafetyReport[]                @relation("SafetyReportReportedProfessional")
   coachChatBlocks      CoachChatBlock[]
   // Coach Settlements, added 31 Aug 2026 — see the CoachSettlement model.
-  settlements      CoachSettlement[]
+  settlements          CoachSettlement[]
   // Professional Offers (R2 Wave 2, 20 Sep 2026) — see ProfessionalOffer's
   // own doc comment below.
-  offersReceived   ProfessionalOffer[]
+  offersReceived       ProfessionalOffer[]
+  // Coach inbox (26 Oct 2026) — see ProfessionalNotification.
+  notifications        ProfessionalNotification[]
   // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — see the CoachNote
   // model's own doc comment below.
-  coachNotes       CoachNote[]
+  coachNotes           CoachNote[]
   // Wave 3 (20 Sep 2026) — the reverse side of ProfessionalOffer's own new
   // `proposedByProfessionalId`: offers THIS professional proposed for a
   // replacement via a Handover action, distinct from `offersReceived`
   // above (offers proposed FOR this professional by someone else).
-  offersProposed   ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
-  dataSharing      ProfessionalDataSharing[]
+  offersProposed       ProfessionalOffer[]           @relation("ProfessionalOfferProposedBy")
+  dataSharing          ProfessionalDataSharing[]
   // Package 4 — per-coach commission overrides (see CommissionRate).
-  commissionRates  CommissionRate[]
+  commissionRates      CommissionRate[]
   // Profile photo (25 Oct 2026), shown to members on the profile. See ProfessionalProfilePhoto.
-  profilePhoto     ProfessionalProfilePhoto?
+  profilePhoto         ProfessionalProfilePhoto?
 
   @@index([coachLevelId])
   @@map("professionals")
@@ -3549,29 +3551,29 @@ enum SafetyReportOutcome {
 }
 
 model SafetyReport {
-  id                     String                @id @default(uuid())
+  id                     String               @id @default(uuid())
   reporterUserId         String?
-  reporterUser           User?                 @relation("SafetyReportReporterUser", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  reporterUser           User?                @relation("SafetyReportReporterUser", fields: [reporterUserId], references: [id], onDelete: SetNull)
   reporterProfessionalId String?
-  reporterProfessional   Professional?         @relation("SafetyReportReporterProfessional", fields: [reporterProfessionalId], references: [id], onDelete: SetNull)
+  reporterProfessional   Professional?        @relation("SafetyReportReporterProfessional", fields: [reporterProfessionalId], references: [id], onDelete: SetNull)
   reportedUserId         String?
-  reportedUser           User?                 @relation("SafetyReportReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  reportedUser           User?                @relation("SafetyReportReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
   reportedProfessionalId String?
-  reportedProfessional   Professional?         @relation("SafetyReportReportedProfessional", fields: [reportedProfessionalId], references: [id], onDelete: SetNull)
+  reportedProfessional   Professional?        @relation("SafetyReportReportedProfessional", fields: [reportedProfessionalId], references: [id], onDelete: SetNull)
   messageId              String?
-  message                CoachMessage?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
-  messageExcerpt         String?               @db.Text
+  message                CoachMessage?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  messageExcerpt         String?              @db.Text
   reason                 SafetyReportReason
-  details                String?               @db.Text
+  details                String?              @db.Text
   severity               SafetyReportSeverity
-  status                 SafetyReportStatus    @default(open)
+  status                 SafetyReportStatus   @default(open)
   outcome                SafetyReportOutcome?
-  resolutionNote         String?               @db.Text
+  resolutionNote         String?              @db.Text
   resolvedAt             DateTime?
   resolvedByAdminId      String?
-  resolvedByAdmin        AdminUser?            @relation("SafetyReportResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  resolvedByAdmin        AdminUser?           @relation("SafetyReportResolvedBy", fields: [resolvedByAdminId], references: [id], onDelete: SetNull)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   @@index([status, severity, createdAt])
   @@index([reportedUserId])
@@ -4123,9 +4125,9 @@ model ReferralReward {
 // (the unique), upserted. A future native-wearable integration can populate
 // the same fields without a schema change.
 model RecoveryLog {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   date             DateTime
   restingHeartRate Int?
   sleepHours       Float?
@@ -4150,8 +4152,8 @@ model RecoveryLog {
   sleepLightMin    Int?
   sleepDeepMin     Int?
   sleepRemMin      Int?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
@@ -4492,6 +4494,41 @@ model Notification {
   @@index([userId, createdAt])
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+// What a coach's inbox shows (26 Oct 2026, coach app gap "notifications both
+// ways"). Members already had `Notification`; coaches had only polled counts,
+// so nothing told them about a verification decision or a payout. One row per
+// event, written by the module where the event happens
+// (professionalNotices.ts). `link` is a coach-web path ("/clients/requests").
+enum ProfessionalNotificationKind {
+  request
+  offer
+  booking
+  message
+  relationship
+  verification
+  payout
+  system
+}
+
+model ProfessionalNotification {
+  id             String                       @id @default(uuid())
+  professionalId String
+  professional   Professional                 @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  kind           ProfessionalNotificationKind @default(system)
+  title          String
+  body           String
+  link           String?
+  readAt         DateTime?
+  // Set when the same notice was also emailed; null when it wasn't (not an
+  // emailed kind, or SMTP isn't configured).
+  emailedAt      DateTime?
+  createdAt      DateTime                     @default(now())
+
+  @@index([professionalId, createdAt])
+  @@index([professionalId, readAt])
+  @@map("professional_notifications")
 }
 
 // Storage only — nothing sends pushes yet. One row per device token.
@@ -4926,8 +4963,6 @@ model GymAnnouncement {
   @@index([gymId, postedAt])
   @@map("gym_announcements")
 }
-
-
 
 /// Spec §10 "Creator commission": PENDING_CALCULATION -> ELIGIBLE ->
 /// APPROVED -> PAID; any -> DISPUTED / REVERSED on refund or chargeback.

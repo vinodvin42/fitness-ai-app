@@ -201,6 +201,10 @@ const envSchema = z.object({
   // (e.g. https://www.example.com/app), used to build the emailed reset
   // link. Without it an admin reset can't be emailed.
   ADMIN_WEB_URL: z.string().url().optional(),
+  // Coach inbox emails (26 Oct 2026): where Fynrox Coach is served (e.g.
+  // https://coach.example.com), for the "Open Fynrox Coach" link. Without it
+  // the email still goes, just with no link.
+  COACH_WEB_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

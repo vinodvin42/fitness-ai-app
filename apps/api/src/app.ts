@@ -75,6 +75,7 @@ import { professionalOnboardingRouter } from "./modules/professionalOnboarding/p
 import { professionalLifecycleRouter } from "./modules/professionalLifecycle/professionalLifecycle.routes";
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
 import { professionalAlertsRouter } from "./modules/professionalAlerts/professionalAlerts.routes";
+import { professionalNotificationsRouter } from "./modules/professionalNotifications/professionalNotifications.routes";
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
@@ -414,6 +415,9 @@ export function createApp() {
   // Coach Alerts badge counts (25 Oct 2026): pending requests, open offers,
   // new bookings. Professional-authed. See professionalAlerts.service.ts.
   app.use("/", professionalAlertsRouter);
+  // Coach inbox (26 Oct 2026): what happened, newest first, with read state.
+  // Professional-authed. See professionalNotifications.service.ts.
+  app.use("/", professionalNotificationsRouter);
   // Coach Client Profile (31 Aug 2026) — professional-authed (the coach's
   // own clients). See professionalClients.service.ts's doc comment.
   app.use("/", professionalClientsRouter);

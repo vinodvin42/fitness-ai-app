@@ -5,6 +5,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { createActionItem } from "../../lib/adminActionQueue";
 import { isAvailableForNewClients } from "../professionalLifecycle/professionalLifecycle.service";
 import { acceptRelationship, claimRelationship } from "../coaching/coaching.service";
+import { notifyCoachOfOffer } from "../professionalNotifications/professionalNotices";
 import {
   CreateOfferInput,
   ListAvailableProfessionalsQuery,
@@ -264,6 +265,8 @@ async function createOfferInternal(proposer: OfferProposer, input: CreateOfferIn
     entityId: offer.id,
     metadata: { professionalId: input.professionalId, userId: input.userId, serviceType: input.serviceType },
   });
+  // The coach's inbox and email (26 Oct 2026): an offer can expire unseen.
+  await notifyCoachOfOffer(offer.id);
 
   return offer;
 }
