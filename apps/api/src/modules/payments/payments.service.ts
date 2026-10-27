@@ -13,7 +13,7 @@ import { purchaseProgram } from "../programPurchases/programPurchases.service";
 import { claimRelationship, createBooking, expireUnpaidAcceptances, hasBookingConflict } from "../coaching/coaching.service";
 import { ensureInvoiceForPayment } from "../adminFinance/adminFinance.service";
 import { validateCoupon, recordRedemptionForPayment } from "../coupons/coupons.service";
-import { createActionItem } from "../../lib/adminActionQueue";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { createCommissionForPayment } from "../creatorCommissions/creatorCommissions.service";
 import { CreateOrderInput } from "./payments.schema";
 import { BRAND_NAME } from "@fitness-ai-app/config";
@@ -540,6 +540,9 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
     await ensureInvoiceForPayment(payment.id);
 
     await prisma.payment.update({ where: { id: payment.id }, data: { activatedAt: new Date() } });
+    // A retry that finally went through closes the `entitlement_activation_failed`
+    // item an earlier attempt queued (27 Oct 2026). A no-op on a first-time success.
+    await resolveActionItemsFor("Payment", payment.id, null, "Activation succeeded on retry");
 
     // §8 "entitlement.activated" — the real BR-COM-011 boundary (see this
     // function's own top comment): money captured is not the same fact as

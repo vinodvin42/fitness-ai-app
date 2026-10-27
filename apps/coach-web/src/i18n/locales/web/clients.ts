@@ -38,7 +38,7 @@ export const clients = {
   tryAgain: "Please try again.",
   declineRequestTitle: "Decline this request?",
   declineRequestBody:
-    "{{name}} won't be notified of a reason unless you add one later — they'll see this request was declined.",
+    "{{name}} will get a notice that you can't take this request right now. No reason is shared with them.",
   declineOfferTitle: "Decline this offer?",
   declineOfferBody: "Fynrox proposed {{name}} as a new client. Declining won't notify them of a reason.",
   requestDeclined: "Request declined",

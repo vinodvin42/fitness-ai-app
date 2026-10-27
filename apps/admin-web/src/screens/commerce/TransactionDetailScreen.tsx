@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
-import type { AdminPaymentDetailResponse } from "@fitness-ai-app/types";
+import type { AdminPaymentBooking, AdminPaymentDetailResponse } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
@@ -9,7 +9,7 @@ import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { COMMERCE_SUB_NAV } from "./subNav";
 
-const PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase" };
+const PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase", booking: "Coach session" };
 
 const ACTION_LABELS: Record<string, string> = {
   "payment.order_created": "Order created",
@@ -111,12 +111,19 @@ export function TransactionDetailScreen() {
                 <div>
                   <dt className="text-xs text-text-dim">{t("transactionDetail.user")}</dt>
                   <dd className="text-text-secondary">
-                    {payment.userFullName} <span className="text-xs text-text-dim">({payment.userEmail})</span>
+                    <Link to={`/users/${payment.userId}`} className="text-accent hover:underline">
+                      {payment.userFullName}
+                    </Link>{" "}
+                    <span className="text-xs text-text-dim">({payment.userEmail})</span>
                   </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-text-dim">{t("transactionDetail.purchased")}</dt>
-                  {data.reference ? (
+                  {payment.purpose === "booking" ? (
+                    <dd className="text-text-secondary">
+                      {data.booking ? `${data.booking.offeringLabel} · ${data.booking.coachName}` : t("transactionDetail.coachSession")}
+                    </dd>
+                  ) : data.reference ? (
                     <dd className="text-text-secondary">
                       {data.reference.name}
                       {data.reference.type === "plan" && (
@@ -137,6 +144,8 @@ export function TransactionDetailScreen() {
               </dl>
             </div>
           </div>
+
+          {payment.purpose === "booking" && <BookingCard booking={data.booking ?? null} />}
 
           <div className="rounded-xl border border-border-subtle bg-surface shadow-xs">
             <div className="border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-dim">Ledger</div>
@@ -188,5 +197,76 @@ export function TransactionDetailScreen() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+const CANCELLED_BY_KEYS: Record<string, string> = {
+  member: "transactionDetail.cancelledByMember",
+  coach: "transactionDetail.cancelledByCoach",
+  admin: "transactionDetail.cancelledByAdmin",
+};
+
+/**
+ * 27 Oct 2026: the coach session a booking payment bought (Booking.paymentId),
+ * read-only — status, time, whether it was cancelled and credited, and links
+ * to the member and coach.
+ */
+function BookingCard({ booking }: { booking: AdminPaymentBooking | null }) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4">
+      <div className="text-xs uppercase tracking-wide text-text-dim">{t("transactionDetail.sessionBought")}</div>
+      {!booking ? (
+        <p className="mt-2 text-sm text-text-dim">{t("transactionDetail.noLinkedBooking")}</p>
+      ) : (
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-4">
+          <Field label={t("transactionDetail.session")} value={`${booking.offeringLabel} · ${booking.durationMinutes} min`} />
+          <div>
+            <dt className="text-xs text-text-dim">{t("transactionDetail.coach")}</dt>
+            <dd>
+              <Link to={`/professionals/${booking.professionalId}`} className="text-accent hover:underline">
+                {booking.coachName}
+              </Link>
+            </dd>
+          </div>
+          <Field label={t("transactionDetail.scheduled")} value={new Date(booking.scheduledAt).toLocaleString()} />
+          <div>
+            <dt className="text-xs text-text-dim">{t("transactionDetail.sessionStatus")}</dt>
+            <dd className="text-text-secondary">
+              {booking.status === "cancelled"
+                ? t(CANCELLED_BY_KEYS[booking.cancelledBy ?? ""] ?? "transactionDetail.cancelled")
+                : new Date(booking.scheduledAt) > new Date()
+                  ? t("transactionDetail.upcoming")
+                  : t("transactionDetail.delivered")}
+              {booking.cancelledAt && (
+                <span className="block text-xs text-text-dim">{new Date(booking.cancelledAt).toLocaleString()}</span>
+              )}
+              {booking.cancelReason && <span className="block text-xs text-text-dim">“{booking.cancelReason}”</span>}
+              {booking.proposedScheduledAt && (
+                <span className="block text-xs font-medium text-warning">
+                  {t("transactionDetail.newTimeProposed", { time: new Date(booking.proposedScheduledAt).toLocaleString() })}
+                </span>
+              )}
+            </dd>
+          </div>
+          {booking.credit && (
+            <div className="col-span-2 md:col-span-4">
+              <dt className="text-xs text-text-dim">{t("transactionDetail.sessionCredit")}</dt>
+              <dd className="text-text-secondary">
+                {t(`transactionDetail.credit_${booking.credit.state}`, {
+                  amount: money(booking.credit.amountCents),
+                  date: new Date(booking.credit.usedAt ?? booking.credit.expiresAt).toLocaleDateString(),
+                })}
+              </dd>
+            </div>
+          )}
+          <div className="col-span-2 md:col-span-4">
+            <Link to={`/users/${booking.userId}`} className="text-xs text-accent hover:underline">
+              {t("transactionDetail.viewMemberSessions")}
+            </Link>
+          </div>
+        </dl>
+      )}
+    </div>
   );
 }

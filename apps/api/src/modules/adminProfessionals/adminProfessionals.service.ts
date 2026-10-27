@@ -5,7 +5,12 @@ import { coachEarnings, coachSessions } from "../../lib/coachActivity";
 import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
-import { notifyCoachOfCredentialDecision, notifyCoachOfKycDecision } from "../professionalNotifications/professionalNotices";
+import { ratingSummaries } from "../adminCoachingReads/adminCoachingReads.service";
+import {
+  notifyCoachOfAccountStatus,
+  notifyCoachOfCredentialDecision,
+  notifyCoachOfKycDecision,
+} from "../professionalNotifications/professionalNotices";
 import {
   AdminUpdateMaxActiveClientsInput,
   ListProfessionalsQuery,
@@ -192,6 +197,7 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       // R2 Wave 2 (20 Sep 2026) — see this function's own return mapping.
       lifecycleStatus: string;
       maxActiveClients: number;
+      languages: string[];
     }>
   ).map((p) => ({
     ...p,
@@ -225,6 +231,8 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
     { from: monthStart },
     now,
   );
+  // 27 Oct 2026: the member's private session ratings, averaged (staff-only view).
+  const ratings = await ratingSummaries(filtered.map((p) => p.id));
 
   return {
     professionals: filtered.map((p) => ({
@@ -244,11 +252,15 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
       lifecycleStatus: p.lifecycleStatus,
       maxActiveClients: p.maxActiveClients,
       earningsMtdCents: earningsMtd.get(p.id)?.netCents ?? 0,
+      // 27 Oct 2026: languages (Professional.languages, ISO 639-1 codes) and
+      // the average of their session ratings.
+      languages: p.languages ?? [],
+      rating: ratings.get(p.id) ?? { average: null, count: 0 },
     })),
     counts,
-    // Figma-spec'd columns with no backing field (no region, language or
-    // rating is stored for a coach). Named so the frontend can say so.
-    notAvailable: ["region", "languages", "rating"],
+    // Figma-spec'd columns with no backing field (no region is stored for a
+    // coach). Named so the frontend can say so.
+    notAvailable: ["region"],
   };
 }
 
@@ -328,9 +340,11 @@ export async function getProfessionalDetail(id: string) {
     })),
     // Sessions/Earnings tabs (03.02), Oct 2026: real, from Bookings
     // (lib/coachActivity.ts; earnings follow the Coach Settlements rule).
-    // Reviews still have no backing model.
     activity: await coachSessions(p.id),
-    notAvailable: ["reviews"],
+    // 27 Oct 2026: reviews are the members' private session ratings
+    // (GET /admin/professionals/:id/ratings lists them).
+    rating: (await ratingSummaries([p.id])).get(p.id) ?? { average: null, count: 0 },
+    notAvailable: [] as string[],
   };
 }
 
@@ -470,6 +484,10 @@ export async function suspendProfessional(adminId: string, professionalId: strin
   // own doc comment for how this is restored on reactivation.
   await professionalLifecycleService.suspendLifecycle(adminId, professionalId);
 
+  // The coach hears it from Fynrox, not from a failed sign-in (27 Oct 2026).
+  // Generic wording: the admin's note can be internal, so it isn't sent.
+  if (professional.status !== "suspended") await notifyCoachOfAccountStatus(professionalId, "suspended");
+
   return updated;
 }
 
@@ -495,6 +513,8 @@ export async function reactivateProfessional(adminId: string, professionalId: st
   // it was at before suspension (or recomputes it from real signals if no
   // suspend record exists) instead of leaving it stuck at `suspended`.
   await professionalLifecycleService.restoreLifecycleAfterReactivation(adminId, professionalId);
+
+  if (professional.status === "suspended") await notifyCoachOfAccountStatus(professionalId, "active");
 
   return updated;
 }

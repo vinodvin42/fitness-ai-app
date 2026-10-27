@@ -450,6 +450,10 @@ export function AppShell({
           </div>
           <ThemeMenu />
         </header>
+        {/* Phones: search gets its own row under the header. */}
+        <div className="border-b bg-canvas px-4 py-2 md:hidden">
+          <GlobalSearch />
+        </div>
 
         {visibleSubNav && visibleSubNav.length > 0 && (
           <nav aria-label={title} className="flex gap-1 overflow-x-auto border-b bg-canvas px-4 md:px-6">

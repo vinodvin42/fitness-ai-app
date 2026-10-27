@@ -51,3 +51,17 @@ adminCouponsRouter.patch(
     }
   },
 );
+
+// Who redeemed this coupon (read-only, 27 Oct 2026).
+adminCouponsRouter.get(
+  "/admin/coupons/:id/redemptions",
+  requireAdminAuth,
+  requirePermission("commerce", "view"),
+  async (req, res, next) => {
+    try {
+      res.status(200).json(await service.listCouponRedemptions(req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  },
+);

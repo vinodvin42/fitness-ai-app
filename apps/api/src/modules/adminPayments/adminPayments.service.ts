@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { ListPaymentsQuery } from "./adminPayments.schema";
+import { creditStateOf } from "../adminMemberSessions/adminMemberSessions.service";
 
 /**
  * Module 06 — Commerce, 06.02 Transactions + 06.03 Payments only
@@ -238,7 +239,7 @@ export async function getPaymentDetail(id: string) {
       const p = plan as { id: string; tier: string; name: string; priceCents: number; billingCycle: string };
       reference = { type: "plan", id: p.id, name: p.name, tier: p.tier, priceCents: p.priceCents, billingCycle: p.billingCycle };
     }
-  } else {
+  } else if (payment.purpose === "program_purchase") {
     const program = await prisma.program.findUnique({ where: { id: payment.referenceId } });
     if (program) {
       const p = program as { id: string; name: string; priceCents: number };
@@ -286,6 +287,8 @@ export async function getPaymentDetail(id: string) {
   }));
   const refundedCents = refunds.filter((r) => r.status === "processed").reduce((s, r) => s + r.amountCents, 0);
 
+  const booking = payment.purpose === "booking" ? await bookingForPayment(id) : null;
+
   return {
     payment: toListItem(payment, referenceLabel),
     reference,
@@ -304,6 +307,67 @@ export async function getPaymentDetail(id: string) {
       refundedCents,
       netCents: payment.status === "paid" ? payment.amountCents - refundedCents : 0,
     },
+    booking,
     notAvailable: [] as string[],
+  };
+}
+
+/**
+ * 27 Oct 2026: the coach session a booking payment bought (Booking.paymentId
+ * = this payment), with its cancelled/credited state. Read-only. Null when no
+ * booking stores this payment — bookings made before 27 Oct 2026 don't, and
+ * we don't guess which booking an older payment became.
+ */
+async function bookingForPayment(paymentId: string) {
+  const b = (await prisma.booking.findFirst({
+    where: { paymentId },
+    select: {
+      id: true,
+      userId: true,
+      professionalId: true,
+      status: true,
+      scheduledAt: true,
+      durationMinutes: true,
+      cancelledAt: true,
+      cancelledBy: true,
+      cancelReason: true,
+      proposedScheduledAt: true,
+      professional: { select: { fullName: true } },
+      offering: { select: { label: true } },
+      credit: { select: { id: true, amountCents: true, expiresAt: true, usedAt: true } },
+    },
+  })) as {
+    id: string;
+    userId: string;
+    professionalId: string;
+    status: string;
+    scheduledAt: Date;
+    durationMinutes: number;
+    cancelledAt: Date | null;
+    cancelledBy: string | null;
+    cancelReason: string | null;
+    proposedScheduledAt: Date | null;
+    professional: { fullName: string };
+    offering: { label: string };
+    credit: { id: string; amountCents: number; expiresAt: Date; usedAt: Date | null } | null;
+  } | null;
+  if (!b) return null;
+  const now = new Date();
+  return {
+    bookingId: b.id,
+    userId: b.userId,
+    professionalId: b.professionalId,
+    coachName: b.professional.fullName,
+    offeringLabel: b.offering.label,
+    status: b.status,
+    scheduledAt: b.scheduledAt,
+    durationMinutes: b.durationMinutes,
+    cancelledAt: b.cancelledAt,
+    cancelledBy: b.cancelledBy,
+    cancelReason: b.cancelReason,
+    proposedScheduledAt: b.status === "confirmed" && b.scheduledAt > now ? b.proposedScheduledAt : null,
+    credit: b.credit
+      ? { id: b.credit.id, amountCents: b.credit.amountCents, expiresAt: b.credit.expiresAt, usedAt: b.credit.usedAt, state: creditStateOf(b.credit, now) }
+      : null,
   };
 }

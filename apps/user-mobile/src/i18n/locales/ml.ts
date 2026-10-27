@@ -336,6 +336,17 @@ export const ml: LocaleCatalogue = {
     },
   },
 
+  // Form review (27 Oct 2026): still English; needs translating and a native speaker's review.
+  formReview: {
+    noCoach: {
+      title: "No coach to review this yet",
+      body: "Form clips are reviewed by your coach, and you don't have an active coach right now. A clip sent now would wait with nobody to review it.",
+      pendingBody: "Your coach can review form clips once coaching is active. Until then a clip would wait with nobody to review it.",
+      findCoach: "Find a coach",
+      viewRequest: "See your coach request",
+    },
+  },
+
   reminders: {
     label: "ലേബൽ",
     labelPlaceholder: "ഉദാ. വെള്ളം കുടിക്കുക",

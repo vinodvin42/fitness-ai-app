@@ -2,7 +2,7 @@ import { prisma } from "../../db/prisma";
 import { markFulfilled, returnToQueue } from "../guidanceRequests/guidanceRequests.service";
 import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
-import { createActionItem } from "../../lib/adminActionQueue";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { isAvailableForNewClients } from "../professionalLifecycle/professionalLifecycle.service";
 import { acceptRelationship, claimRelationship } from "../coaching/coaching.service";
 import { notifyCoachOfOffer } from "../professionalNotifications/professionalNotices";
@@ -200,6 +200,8 @@ async function expireIfStale(offer: OfferRow): Promise<OfferRow> {
       stateAfter: { status: "expired" },
       metadata: { professionalId: offer.professionalId, userId: offer.userId },
     });
+    // A stalled-offer item for it is done: the offer is no longer waiting (27 Oct 2026).
+    await resolveActionItemsFor("ProfessionalOffer", offer.id, null, "Offer expired");
     await settleGuidanceRequestFor(offer.id, (id) => returnToQueue(id, "expired"));
   }
 
@@ -344,6 +346,7 @@ export async function acceptOffer(professionalId: string, offerId: string) {
     stateAfter: { status: "accepted", relationshipId: relationship.id },
     metadata: { userId: existing.userId, serviceType: existing.serviceType, relationshipId: relationship.id },
   });
+  await resolveActionItemsFor("ProfessionalOffer", offerId, null, "Offer accepted");
 
   // Close the guidance request this offer came from, if any. Offers can
   // also originate from a handover, which has no request behind it —
@@ -387,6 +390,7 @@ export async function declineOffer(professionalId: string, offerId: string, reas
     stateAfter: { status: "declined" },
     metadata: { userId: existing.userId, serviceType: existing.serviceType, reason: reason ?? null },
   });
+  await resolveActionItemsFor("ProfessionalOffer", offerId, null, "Offer declined");
 
   // D11: a decline returns the request to A-M1's queue for re-match,
   // up to the re-match limit. U-M7 renders both outcomes.

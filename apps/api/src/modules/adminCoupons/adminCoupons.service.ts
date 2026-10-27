@@ -124,3 +124,57 @@ export async function updateCoupon(actorAdminId: string, id: string, input: Upda
   });
   return toItem(coupon as CouponRow);
 }
+
+/**
+ * Who redeemed a coupon (27 Oct 2026 gap fix) — read-only. CouponRedemption
+ * joined to its User and, through the loose `paymentId` scalar, the Payment
+ * the discount was applied to (null if that payment row is gone).
+ */
+export async function listCouponRedemptions(id: string) {
+  const coupon = await getCouponOrThrow(id);
+  const redemptions = (await prisma.couponRedemption.findMany({
+    where: { couponId: id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      paymentId: true,
+      discountCents: true,
+      createdAt: true,
+      user: { select: { id: true, fullName: true, email: true } },
+    },
+  })) as Array<{
+    id: string;
+    paymentId: string | null;
+    discountCents: number;
+    createdAt: Date;
+    user: { id: string; fullName: string; email: string };
+  }>;
+
+  const paymentIds = redemptions.map((r) => r.paymentId).filter((p): p is string => !!p);
+  const payments = paymentIds.length
+    ? ((await prisma.payment.findMany({
+        where: { id: { in: paymentIds } },
+        select: { id: true, purpose: true, amountCents: true, currency: true, status: true, createdAt: true },
+      })) as Array<{ id: string; purpose: string; amountCents: number; currency: string; status: string; createdAt: Date }>)
+    : [];
+  const paymentById = new Map(payments.map((p) => [p.id, p]));
+
+  return {
+    coupon: toItem(coupon),
+    redemptions: redemptions.map((r) => {
+      const p = r.paymentId ? paymentById.get(r.paymentId) : undefined;
+      return {
+        id: r.id,
+        userId: r.user.id,
+        userFullName: r.user.fullName,
+        userEmail: r.user.email,
+        discountCents: r.discountCents,
+        redeemedAt: r.createdAt,
+        paymentId: r.paymentId,
+        payment: p
+          ? { id: p.id, purpose: p.purpose, amountCents: p.amountCents, currency: p.currency, status: p.status, createdAt: p.createdAt }
+          : null,
+      };
+    }),
+  };
+}

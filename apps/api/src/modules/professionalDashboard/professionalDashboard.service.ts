@@ -116,8 +116,9 @@ async function detectAndQueueStuckRelationships(professionalId: string): Promise
  * `todaysSchedule` uses a UTC calendar day, the same convention
  * `coaching.service.ts`'s fixed 9:00–18:00 availability grid already
  * commits to, not the requester's local timezone (never sent by either
- * client). `avgRating` is still NOT real — no Review model exists
- * anywhere in this build.
+ * client). The average rating isn't part of this response: since 24 Oct
+ * 2026 it comes from the session ratings (coachSummaries.service.ts
+ * listMyRatings), so `notAvailable` no longer lists it (27 Oct 2026).
  */
 export async function getDashboardStats(professionalId: string) {
   const now = new Date();
@@ -174,7 +175,7 @@ export async function getDashboardStats(professionalId: string) {
       serviceType: r.serviceType,
       stuckSince: r.updatedAt,
     })),
-    notAvailable: ["avgRating"],
+    notAvailable: [] as string[],
   };
 }
 

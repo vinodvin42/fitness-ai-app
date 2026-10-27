@@ -6,6 +6,7 @@ import type { AdminMfaSetupResponse } from "@fitness-ai-app/types";
 import { useAuth, type MfaConfirmResult } from "../lib/auth";
 import { extractErrorMessage } from "../lib/apiError";
 import { BrandLockup } from "../components/BrandLockup";
+import { ThemeMenu } from "../components/ThemeMenu";
 
 type Step =
   | { kind: "credentials" }
@@ -82,8 +83,11 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
-      <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8">
+    <div className="relative flex min-h-screen items-center justify-center bg-canvas px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeMenu />
+      </div>
+      <div className="w-full max-w-sm rounded-xl border border-border-subtle bg-surface p-8 shadow-sm">
         <div className="mb-6 flex items-center">
           <BrandLockup subtitle={t("login.superAdminConsole")} />
         </div>

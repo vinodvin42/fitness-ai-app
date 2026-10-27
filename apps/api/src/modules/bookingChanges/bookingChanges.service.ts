@@ -182,6 +182,13 @@ export async function withdrawProposal(professionalId: string, bookingId: string
   if (!b.proposedScheduledAt) throw new ApiHttpError(409, "no_proposal", "There's no new time waiting for an answer");
   await prisma.booking.update({ where: { id: b.id }, data: { proposedScheduledAt: null, proposedAt: null } });
   await recordAudit({ actorProfessionalId: professionalId, action: "booking.proposal_withdrawn", entityType: "Booking", entityId: b.id });
+  // The member was asked to answer the proposal, so they hear it's gone (27 Oct 2026).
+  await createNotification(b.userId, {
+    kind: "coach",
+    title: `${b.professional.fullName} kept your session time`,
+    body: `${b.professional.fullName} withdrew the new time they proposed and kept your session at ${when(b.scheduledAt)}.`,
+    deepLink: sessionLink(b.id),
+  });
   return { bookingId: b.id };
 }
 

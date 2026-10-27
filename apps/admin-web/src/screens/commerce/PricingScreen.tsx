@@ -81,9 +81,7 @@ function formToPayload(form: FormState) {
  * new subscribers (`apps/api/src/modules/subscriptions`'s `listPlans()`
  * now filters to `isActive: true`) but anyone already on it is untouched.
  *
- * **Coupons are honestly not built** — no `Coupon` entity exists anywhere
- * (no discount-code field in the checkout flow to apply one against) — see
- * `adminPlans.service.ts`'s own doc comment for the full reasoning.
+ * Coupons live on their own screen (CouponsScreen.tsx, /commerce/coupons).
  */
 export function PricingScreen() {
   const { t } = useTranslation();
@@ -512,7 +510,7 @@ export function PricingScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel keys={data.notAvailable} subtitle={t("pricing.noCouponEntityExists")} />
+          <NotAvailablePanel keys={data.notAvailable} />
         )}
       </div>
     </AppShell>

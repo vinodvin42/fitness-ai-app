@@ -7,6 +7,7 @@ import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { useCan } from "../../lib/permissions";
+import { languageNames, ratingLabel } from "../../lib/languages";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
@@ -166,6 +167,10 @@ export function ProfessionalDirectoryScreen() {
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.professional")}</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.services")}</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.experience")}</th>
+                  <th className="px-4 py-3 font-normal">{t("professionalDirectory.languages")}</th>
+                  <th className="px-4 py-3 font-normal" title={t("professionalDirectory.ratingHint")}>
+                    {t("professionalDirectory.rating")}
+                  </th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.activeClients")}</th>
                   <th className="px-4 py-3 font-normal" title="Delivered sessions this month, after commission">Earned this month</th>
                   <th className="px-4 py-3 font-normal">{t("professionalDirectory.status")}</th>
@@ -223,6 +228,8 @@ export function ProfessionalDirectoryScreen() {
                       <td className="px-4 py-3 text-text-secondary">
                         {p.yearsExperience != null ? `${p.yearsExperience} yrs` : "—"}
                       </td>
+                      <td className="px-4 py-3 text-xs text-text-secondary">{languageNames(p.languages) || "—"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-text-secondary">{ratingLabel(p.rating) || "—"}</td>
                       <td className={`px-4 py-3 ${capacityClass}`} title={idleDespiteAvailable ? "Available but has zero active clients" : overCapacity ? "At or over capacity" : undefined}>
                         {p.activeClients} / {p.maxActiveClients}
                         {overCapacity ? " ⚠" : idleDespiteAvailable ? " ○" : ""}
@@ -261,7 +268,7 @@ export function ProfessionalDirectoryScreen() {
                 })}
                 {sortedProfessionals.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-text-dim">
+                    <td colSpan={11} className="px-4 py-8 text-center text-text-dim">
                       {t("professionalDirectory.noProfessionalsInThis")}
                     </td>
                   </tr>
@@ -278,7 +285,7 @@ export function ProfessionalDirectoryScreen() {
         )}
 
         {data && (
-          <NotAvailablePanel keys={data.notAvailable} subtitle="Coaches don't record a region, languages or a rating." />
+          <NotAvailablePanel keys={data.notAvailable} subtitle={t("professionalDirectory.noRegionRecorded")} />
         )}
       </div>
     </AppShell>

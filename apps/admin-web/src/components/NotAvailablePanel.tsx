@@ -146,12 +146,12 @@ export function NotAvailablePanel({ keys, subtitle = DEFAULT_SUBTITLE }: { keys:
   if (keys.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-dashed border-border-subtle bg-surface/50 p-4">
-      <div className="text-xs uppercase tracking-wide text-text-dim">{t("notAvailablePanel.notAvailableYet")}</div>
-      <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>
-      <ul className="mt-3 flex flex-wrap gap-2">
+    <div className="rounded-xl border border-dashed border-border-subtle p-4">
+      <div className="text-sm font-medium text-text-secondary">{t("notAvailablePanel.notAvailableYet")}</div>
+      <p className="mt-1 text-xs text-text-dim">{subtitle}</p>
+      <ul className="mt-3 flex flex-wrap gap-1.5">
         {keys.map((key) => (
-          <li key={key} className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-dim">
+          <li key={key} className="rounded-md bg-surface-raised px-2 py-1 text-xs text-text-dim">
             {LABELS[key] ?? key}
           </li>
         ))}

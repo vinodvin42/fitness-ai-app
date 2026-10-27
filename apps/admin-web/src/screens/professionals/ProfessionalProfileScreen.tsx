@@ -5,9 +5,10 @@ import { Link, useParams } from "react-router-dom";
 import type { AdminProfessionalDetailResponse, UpdateMaxActiveClientsInput } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatusBadge } from "../../components/StatusBadge";
-import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatCard } from "../../components/StatCard";
 import { useCan } from "../../lib/permissions";
+import { languageNames, ratingLabel } from "../../lib/languages";
+import { ProfessionalRatingsTab } from "./ProfessionalRatingsTab";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
@@ -43,10 +44,9 @@ async function fetchDetail(id: string): Promise<AdminProfessionalDetailResponse>
 
 /**
  * 03.02 Professional Profile (docs/admin/03-screen-inventory.md §03) —
- * Overview/Clients/Credentials are real; Sessions/Earnings/Reviews render
- * an honest "not available" panel instead of the tab's real content — no
- * Booking/session log, per-professional payment ledger, or Review model
- * exists in this schema. The Credentials tab reuses the same
+ * Every tab is real: Sessions/Earnings come from Bookings (Oct 2026) and
+ * Reviews lists the members' private session ratings (27 Oct 2026,
+ * ProfessionalRatingsTab.tsx). The Credentials tab reuses the same
  * verify/reject actions as the dedicated Credential Verification queue
  * (03.03) — this is just a second, per-professional entry point to the
  * same real endpoints, not a separate implementation.
@@ -188,6 +188,11 @@ export function ProfessionalProfileScreen() {
                     </dd>
                   </div>
                   <Row label={t("professionalProfile.specializations")} value={data.professional.specializationTags.join(", ") || "—"} />
+                  <Row
+                    label={t("professionalProfile.languages")}
+                    value={languageNames(data.professional.languages) || t("professionalProfile.notStated")}
+                  />
+                  <Row label={t("professionalProfile.rating")} value={ratingLabel(data.rating) || t("professionalProfile.noRatingsYet")} />
                   <Row label={t("professionalProfile.bio")} value={data.professional.bio ?? "—"} />
                   <Row label={t("professionalProfile.joined")} value={new Date(data.professional.createdAt).toLocaleDateString()} />
                 </dl>
@@ -392,7 +397,7 @@ export function ProfessionalProfileScreen() {
             </div>
           )}
 
-          {tab === "reviews" && <NotAvailablePanel keys={["reviews"]} subtitle="Clients can't leave reviews yet." />}
+          {tab === "reviews" && <ProfessionalRatingsTab professionalId={data.professional.id} />}
         </div>
       )}
     </AppShell>

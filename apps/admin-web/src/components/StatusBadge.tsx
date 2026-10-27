@@ -136,7 +136,6 @@ const TONE_CLASSES: Record<string, string> = {
   converted: "bg-accent/15 text-accent",
 };
 
-const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "published", "approved", "processed", "available"]);
 
 /**
  * "Verification status badge (Verified ✓ / Not Verified / Pending,
@@ -149,10 +148,11 @@ const CHECKMARK_STATUSES = new Set(["verified", "active", "paid", "resolved", "p
  */
 export function StatusBadge({ status }: { status: string }) {
   const toneClass = TONE_CLASSES[status] ?? TONE_CLASSES.not_verified;
+  // Atlas badge (27 Oct 2026): a status dot in place of the old trailing ✓, never wrapping.
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${toneClass}`}>
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
       {LABELS[status] ?? status}
-      {CHECKMARK_STATUSES.has(status) ? " ✓" : ""}
     </span>
   );
 }

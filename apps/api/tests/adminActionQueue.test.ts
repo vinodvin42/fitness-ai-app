@@ -296,13 +296,16 @@ describe("Admin Action Required queue: AdminActionItem write-path + read endpoin
 
     // The User row is gone (real hard delete) but the queue item's
     // entityId is a plain string, same "polymorphic, unenforced FK"
-    // convention AuditLog.entityId already uses — it survives.
-    const items = await prisma.adminActionItem.findMany({ where: { entityType: "User", entityId: userId, type: "privacy_request" } });
+    // convention AuditLog.entityId already uses — it survives. Since 27 Oct
+    // 2026 it's a "DeletedUser" item, so Action Required doesn't link it to
+    // the deleted user's (now missing) profile page.
+    const items = await prisma.adminActionItem.findMany({ where: { entityType: "DeletedUser", entityId: userId, type: "privacy_request" } });
     expect(items).toHaveLength(1);
     expect(items[0].severity).toBe("medium");
     expect(items[0].metadata).toMatchObject({ requestType: "account_deletion" });
+    expect(await prisma.adminActionItem.count({ where: { entityType: "User", entityId: userId } })).toBe(0);
 
-    await prisma.adminActionItem.deleteMany({ where: { entityType: "User", entityId: userId, type: "privacy_request" } });
+    await prisma.adminActionItem.deleteMany({ where: { entityType: "DeletedUser", entityId: userId, type: "privacy_request" } });
   });
 
   it("a submitted ProfessionalCredential creates a real 'credential_verification_pending' item", async () => {

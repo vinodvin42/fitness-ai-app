@@ -279,11 +279,9 @@ describe("Payment activation failure recovery: money captured, entitlement retri
     expect(afterSecondFailure).toHaveLength(1);
     expect(afterSecondFailure[0].id).toBe(firstItemId);
 
-    // Fix the plan and let a real retry succeed — the open item is left as
-    // an admin's own thing to resolve (this wave doesn't auto-resolve it;
-    // resolution is the existing, real POST /admin/action-items/:id/resolve
-    // path), matching the rest of this queue's own resolve-is-a-separate-
-    // admin-action convention.
+    // Fix the plan and let a real retry succeed — the open item is
+    // resolved by the successful retry (27 Oct 2026; it used to stay open
+    // until an admin resolved it by hand, though nothing was left to do).
     await prisma.subscriptionPlan.create({
       data: { id: planId, tier: "grow", name: "Activation Recovery Dedup Plan", priceCents: 1999, billingCycle: "monthly", isActive: true },
     });
@@ -293,6 +291,7 @@ describe("Payment activation failure recovery: money captured, entitlement retri
       where: { type: "entitlement_activation_failed", entityType: "Payment", entityId: payment.id },
     });
     expect(stillOneRow).toHaveLength(1);
-    expect(stillOneRow[0].status).toBe("open");
+    expect(stillOneRow[0].status).toBe("resolved");
+    expect(stillOneRow[0].resolutionNote).toBe("Activation succeeded on retry");
   });
 });

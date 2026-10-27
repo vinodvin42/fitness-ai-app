@@ -5,6 +5,8 @@ import { relationshipActivity, relationshipHistory } from "../../lib/coachActivi
 import { EndRelationshipInput, ListChangeRequestsQuery, ListRelationshipsQuery, ReviewChangeRequestInput } from "./adminRelationships.schema";
 import type { HandoverRelationshipInput } from "../relationshipLifecycle/relationshipLifecycle.schema";
 import * as relationshipLifecycleService from "../relationshipLifecycle/relationshipLifecycle.service";
+import { resolveActionItemsFor } from "../../lib/adminActionQueue";
+import { notifyMemberOfChangeRequestDenied } from "../coaching/memberNotices";
 
 /**
  * Module 04 — Relationships (docs/admin/03-screen-inventory.md §04), added
@@ -257,6 +259,8 @@ export async function reactivateRelationship(adminId: string, id: string) {
     entityType: "Relationship",
     entityId: id,
   });
+  // The relationship is active again, so a stuck-activation item for it is done (27 Oct 2026).
+  await resolveActionItemsFor("Relationship", id, adminId, "Relationship reactivated by an admin");
 
   return toListItem({
     id: updated.id,
@@ -382,6 +386,7 @@ export async function approveChangeRequest(adminId: string, id: string, input: R
     entityId: id,
     metadata: { relationshipId: request.relationshipId, userId: request.user.id },
   });
+  await resolveActionItemsFor("RelationshipChangeRequest", id, adminId, "Change request approved");
 
   return { request: toChangeRequestItem(updated as ChangeRequestRow) };
 }
@@ -406,6 +411,9 @@ export async function denyChangeRequest(adminId: string, id: string, input: Revi
     entityId: id,
     metadata: { relationshipId: request.relationshipId, userId: request.user.id },
   });
+  await resolveActionItemsFor("RelationshipChangeRequest", id, adminId, "Change request denied");
+  // The member hears the outcome (27 Oct 2026); the review notes stay internal.
+  await notifyMemberOfChangeRequestDenied(request.relationshipId);
 
   return { request: toChangeRequestItem(updated as ChangeRequestRow) };
 }

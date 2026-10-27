@@ -33,6 +33,8 @@ import { adminDashboardRouter } from "./modules/adminDashboard/adminDashboard.ro
 import { adminUsersRouter } from "./modules/adminUsers/adminUsers.routes";
 import { adminProfessionalsRouter } from "./modules/adminProfessionals/adminProfessionals.routes";
 import { adminRelationshipsRouter } from "./modules/adminRelationships/adminRelationships.routes";
+import { adminMemberSessionsRouter } from "./modules/adminMemberSessions/adminMemberSessions.routes";
+import { adminCoachingReadsRouter } from "./modules/adminCoachingReads/adminCoachingReads.routes";
 import { adminAccountsRouter } from "./modules/adminAccounts/adminAccounts.routes";
 import { adminProgramsRouter } from "./modules/adminPrograms/adminPrograms.routes";
 import { adminPaymentsRouter } from "./modules/adminPayments/adminPayments.routes";
@@ -259,6 +261,10 @@ export function createApp() {
   // Queue (04.03) is NOT built this pass — see adminRelationships.service.ts's
   // own doc comment for why.
   app.use("/", adminRelationshipsRouter);
+  // 27 Oct 2026 gap fixes: read-only admin views — a member's sessions &
+  // credits, a coach's session ratings, a relationship's chat blocks.
+  app.use("/", adminMemberSessionsRouter);
+  app.use("/", adminCoachingReadsRouter);
   // Module 12.01 — Admin Users (added 22 Aug 2026) — the admin console's
   // own staff-account management screen, closing the gap adminAuth.service.ts's
   // own doc comment flagged (AdminUser accounts were seed-script-only

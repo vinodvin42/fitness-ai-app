@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { ListSafetyEscalationsQuery } from "./adminSafety.schema";
 import { decryptEscalation } from "../../lib/healthData";
+import { resolveActionItemsFor } from "../../lib/adminActionQueue";
 
 /**
  * BR-SAF-004 Safety Escalations (R1 Developer 1, 18 Sep 2026) — Module 08
@@ -135,6 +136,8 @@ export async function reviewSafetyEscalation(actorAdminId: string, id: string) {
     entityId: id,
     metadata: { userId: escalation.userId },
   });
+  // Reviewing is what the Action Required item asked for (27 Oct 2026).
+  await resolveActionItemsFor("SafetyEscalation", id, actorAdminId, "Safety escalation reviewed");
 
   return toListItem(await getSafetyEscalationOrThrow(id));
 }

@@ -3,6 +3,7 @@ import { recordAudit } from "../../middleware/auditLog";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import type { RateSessionInput } from "./coachSummaries.schema";
 import { notifyMemberOfSummary } from "../coaching/memberNotices";
+import { notifyCoachOfRating } from "../professionalNotifications/professionalNotices";
 
 /**
  * Human Coach 04-09 — session summary. The summary is the coach's own
@@ -102,6 +103,7 @@ export async function rateSession(userId: string, bookingId: string, input: Rate
     throw new ApiHttpError(409, "session_not_started", "You can rate a session once it has started");
   }
   const data = { stars: input.stars, tags: [...new Set(input.tags)], comment: input.comment ? input.comment : null };
+  const hadRating = (await prisma.sessionRating.count({ where: { bookingId } })) > 0;
   const rating = await prisma.sessionRating.upsert({
     where: { bookingId },
     create: { bookingId, userId, professionalId: booking.professionalId, ...data },
@@ -114,23 +116,34 @@ export async function rateSession(userId: string, bookingId: string, input: Rate
     entityId: bookingId,
     metadata: { stars: input.stars },
   });
+  // The coach's inbox (27 Oct 2026): the rating is private to them, so they're the one to tell.
+  await notifyCoachOfRating(bookingId, hadRating);
   return { bookingId, rating: ratingView(rating) };
 }
 
-/** The coach's feedback, newest first, with the average; optionally one client's. */
+/**
+ * The coach's feedback, newest first, with the average; optionally one client's.
+ * The list is capped at the latest 100; the count and average cover every
+ * rating (27 Oct 2026: they used to cover only the listed 100).
+ */
 export async function listMyRatings(professionalId: string, clientId?: string) {
-  const rows = await prisma.sessionRating.findMany({
-    where: { professionalId, ...(clientId ? { userId: clientId } : {}) },
-    include: {
-      user: { select: { fullName: true } },
-      booking: { select: { scheduledAt: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  const average = rows.length ? Math.round((rows.reduce((s, r) => s + r.stars, 0) / rows.length) * 10) / 10 : null;
+  const where = { professionalId, ...(clientId ? { userId: clientId } : {}) };
+  const [rows, totals] = await Promise.all([
+    prisma.sessionRating.findMany({
+      where,
+      include: {
+        user: { select: { fullName: true } },
+        booking: { select: { scheduledAt: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.sessionRating.aggregate({ where, _count: { _all: true }, _avg: { stars: true } }),
+  ]);
+  const avg = totals._avg.stars;
+  const average = totals._count._all > 0 && avg != null ? Math.round(avg * 10) / 10 : null;
   return {
-    count: rows.length,
+    count: totals._count._all,
     average,
     items: rows.map((r) => ({
       bookingId: r.bookingId,

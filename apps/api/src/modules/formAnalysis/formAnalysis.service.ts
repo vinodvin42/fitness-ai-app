@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createNotification } from "../notifications/notifications.service";
+import { notifyCoachesOfFormClip } from "../professionalNotifications/professionalNotices";
 import type { CreateFormAnalysisInput } from "./formAnalysis.schema";
 
 /**
@@ -52,6 +53,8 @@ export async function createSubmission(userId: string, input: CreateFormAnalysis
   const row = (await prisma.formAnalysisSubmission.create({
     data: { userId, exerciseId: input.exerciseId, videoUrl: input.videoUrl },
   })) as Row;
+  // The coach's inbox (27 Oct 2026): before this a clip waited until a coach happened to open Form reviews.
+  await notifyCoachesOfFormClip(row.id);
   const names = await exerciseNames([row.exerciseId]);
   return toSubmission(row, true, row.exerciseId ? names.get(row.exerciseId) ?? null : null);
 }

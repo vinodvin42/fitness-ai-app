@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import type {
+  AdminRelationshipChatBlocksResponse,
   AdminRelationshipDetailResponse,
   AdminRelationshipHandoverResponse,
   AvailableProfessionalsResponse,
@@ -32,6 +33,7 @@ const ACTION_LABELS: Record<string, string> = {
   // so a coach ending this relationship shows up here too, labeled as such.
   "professional.relationship.ended": "Relationship ended (by professional)",
   "relationship.handover": "Handover — replacement professional proposed",
+  "relationship.completed": "Programme completed",
 };
 
 type Tab = "overview" | "history";
@@ -104,6 +106,22 @@ export function RelationshipDetailScreen() {
   const endMutation = useMutation({
     mutationFn: (reason: string) => apiClient.post(`/admin/relationships/${id}/end`, { reason }),
     onSuccess: invalidateAll,
+  });
+
+  // 27 Oct 2026: "Complete programme" — the existing POST
+  // /admin/relationships/:id/complete (body { reason }, required). COMPLETED is
+  // its own terminal state: the work finished, not just stopped.
+  const completeMutation = useMutation({
+    mutationFn: (reason: string) => apiClient.post(`/admin/relationships/${id}/complete`, { reason }),
+    onSuccess: invalidateAll,
+  });
+
+  // 27 Oct 2026: chat blocks between this member and coach (either side can block).
+  const chatBlocksQuery = useQuery({
+    queryKey: ["admin-relationship-chat-blocks", id],
+    queryFn: async () =>
+      (await apiClient.get<AdminRelationshipChatBlocksResponse>(`/admin/relationships/${id}/chat-blocks`)).data,
+    enabled: !!id,
   });
 
   const handoverMutation = useMutation({
@@ -273,6 +291,31 @@ export function RelationshipDetailScreen() {
                 </div>
               )}
 
+              <div className="rounded-xl border border-border-subtle bg-surface shadow-xs p-4 text-sm">
+                <div className="text-xs uppercase tracking-wide text-text-dim">{t("relationshipDetail.chatBlocks")}</div>
+                {chatBlocksQuery.isLoading && <p className="mt-2 text-text-dim">{t("relationshipDetail.loading")}</p>}
+                {chatBlocksQuery.isError && (
+                  <p className="mt-2 text-xs text-danger">{extractErrorMessage(chatBlocksQuery.error, t("relationshipDetail.chatBlocksError"))}</p>
+                )}
+                {chatBlocksQuery.data && chatBlocksQuery.data.blocks.length === 0 && (
+                  <p className="mt-2 text-text-secondary">{t("relationshipDetail.noChatBlocks")}</p>
+                )}
+                {chatBlocksQuery.data && chatBlocksQuery.data.blocks.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {chatBlocksQuery.data.blocks.map((b) => (
+                      <li key={b.id} className="flex justify-between gap-4">
+                        <span className="font-medium text-danger">
+                          {b.blockedBy === "user"
+                            ? t("relationshipDetail.memberBlockedCoach")
+                            : t("relationshipDetail.coachBlockedMember")}
+                        </span>
+                        <span className="text-xs text-text-dim">{new Date(b.createdAt).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <NotAvailablePanel keys={data.notAvailable} />
 
               {canEdit && (relationship.status === "active" ? (
@@ -285,6 +328,17 @@ export function RelationshipDetailScreen() {
                     isError={endMutation.isError}
                     error={endMutation.error}
                     onConfirm={(reason) => endMutation.mutate(reason)}
+                  />
+
+                  <ReasonGatedAction
+                    title={t("relationshipDetail.completeProgramme")}
+                    description={t("relationshipDetail.completeProgrammeDescription")}
+                    actionLabel={t("relationshipDetail.completeProgramme")}
+                    tone="warning"
+                    isPending={completeMutation.isPending}
+                    isError={completeMutation.isError}
+                    error={completeMutation.error}
+                    onConfirm={(reason) => completeMutation.mutate(reason)}
                   />
 
                   {/*

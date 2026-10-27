@@ -592,9 +592,13 @@ export async function deleteAccount(userId: string, input: DeleteAccountInput) {
   // `entityId: userId` still refers to a row that existed at write time
   // (same "polymorphic, unenforced FK" convention `AuditLog.entityId`
   // already uses — this doesn't need the row to still exist afterward).
+  // 27 Oct 2026: entityType "DeletedUser", not "User" — Action Required
+  // links a "User" item to /users/:id, a page that no longer exists once
+  // the delete below runs. The id still matches the `user.account_deleted`
+  // audit row above, which is where an admin follows it up.
   await createActionItem({
     type: "privacy_request",
-    entityType: "User",
+    entityType: "DeletedUser",
     entityId: userId,
     severity: "medium",
     metadata: { requestType: "account_deletion" },

@@ -2954,6 +2954,38 @@ export interface AdminProfessionalListItem {
   maxActiveClients: number;
   /** Oct 2026: net earnings this UTC month (delivered bookings minus commission, the Coach Settlements rule). */
   earningsMtdCents: number;
+  /** 27 Oct 2026: languages the coach speaks (ISO 639-1 codes, Professional.languages); empty = not stated. */
+  languages: string[];
+  /** 27 Oct 2026: average of the members' private session ratings (staff-only). */
+  rating: AdminRatingSummary;
+}
+
+/** Average stars (1 decimal; null when unrated) and how many ratings. */
+export interface AdminRatingSummary {
+  average: number | null;
+  count: number;
+}
+
+/** One member's private rating of a session, as GET /admin/professionals/:id/ratings returns it. */
+export interface AdminSessionRatingItem {
+  id: string;
+  bookingId: string;
+  userId: string;
+  userFullName: string;
+  sessionAt: string;
+  offeringLabel: string;
+  stars: number;
+  tags: string[];
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminProfessionalRatingsResponse {
+  professionalId: string;
+  summary: AdminRatingSummary;
+  /** Newest first, at most 200. */
+  ratings: AdminSessionRatingItem[];
 }
 
 /** Oct 2026 (lib/coachActivity.ts): sessions booked with a coach. */
@@ -3043,6 +3075,8 @@ export interface AdminProfessionalDetailRecord {
   yearsExperience: number | null;
   /** Coach gender (20 Oct 2026); null = not stated. */
   gender?: CoachGender | null;
+  /** Languages the coach speaks (ISO 639-1 codes, 25 Oct 2026); empty = not stated. */
+  languages?: string[];
   status: ProfessionalStatus;
   kycStatus: CredentialStatus;
   kycDocumentData: string | null;
@@ -3076,7 +3110,8 @@ export interface AdminProfessionalDetailResponse {
     earnings: AdminCoachEarnings;
     sessions: Array<AdminSessionItem & { userId: string; userFullName: string }>;
   };
-  /** Still missing: "reviews" (no review model). */
+  /** 27 Oct 2026: the coach's session-rating average (the Reviews tab lists them). */
+  rating: AdminRatingSummary;
   notAvailable: string[];
 }
 
@@ -3738,7 +3773,90 @@ export interface AdminPaymentDetailResponse {
     refundedCents: number;
     netCents: number;
   };
+  /**
+   * 27 Oct 2026: for a booking payment, the session it bought (Booking.paymentId = this payment).
+   * Null for other purposes, and for bookings made before 27 Oct 2026 (they don't store their payment).
+   */
+  booking?: AdminPaymentBooking | null;
   notAvailable: string[];
+}
+
+/** Who cancelled a booking (Booking.cancelledBy). */
+export type BookingCancelledBy = "member" | "coach" | "admin";
+
+export type AdminSessionCreditState = "available" | "used" | "expired";
+
+export interface AdminPaymentBooking {
+  bookingId: string;
+  userId: string;
+  professionalId: string;
+  coachName: string;
+  offeringLabel: string;
+  status: "confirmed" | "cancelled";
+  scheduledAt: string;
+  durationMinutes: number;
+  cancelledAt: string | null;
+  cancelledBy: BookingCancelledBy | string | null;
+  cancelReason: string | null;
+  /** A coach's proposed new time awaiting the member's answer (null once answered or the session started). */
+  proposedScheduledAt: string | null;
+  /** The session credit this booking's cancellation gave the member, if any. */
+  credit: { id: string; amountCents: number; expiresAt: string; usedAt: string | null; state: AdminSessionCreditState } | null;
+}
+
+// ---- Member sessions & credits (GET /admin/users/:id/sessions, 27 Oct 2026) ----
+
+/** How a booking was paid: a Razorpay payment (paymentId can be null on bookings before 27 Oct 2026), a session credit, or nothing to pay. */
+export type AdminBookingPaidWith = "payment" | "credit" | "free";
+
+export interface AdminMemberSessionItem {
+  bookingId: string;
+  professionalId: string;
+  coachName: string;
+  offeringLabel: string;
+  serviceType: ProfessionalServiceType | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: "confirmed" | "cancelled";
+  cancelledAt: string | null;
+  cancelledBy: BookingCancelledBy | string | null;
+  cancelReason: string | null;
+  proposedScheduledAt: string | null;
+  proposedAt: string | null;
+  priceCents: number;
+  gstCents: number;
+  paidWith: AdminBookingPaidWith;
+  paymentId: string | null;
+  paidWithCreditId: string | null;
+  /** The credit this booking's cancellation produced, if any. */
+  creditIssued: { id: string; amountCents: number; expiresAt: string; usedAt: string | null; state: AdminSessionCreditState } | null;
+  createdAt: string;
+}
+
+export interface AdminMemberCreditItem {
+  id: string;
+  amountCents: number;
+  reason: "member_cancelled" | "reschedule_declined";
+  state: AdminSessionCreditState;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+  sourceBooking: { bookingId: string; scheduledAt: string; coachName: string; offeringLabel: string };
+  usedBooking: { bookingId: string; scheduledAt: string; coachName: string } | null;
+}
+
+export interface AdminMemberSessionsResponse {
+  userId: string;
+  /** Newest session first, at most 200. */
+  sessions: AdminMemberSessionItem[];
+  /** Every credit, including used and expired ones. */
+  credits: AdminMemberCreditItem[];
+}
+
+/** GET /admin/relationships/:id/chat-blocks — chat blocks between the relationship's member and coach. */
+export interface AdminRelationshipChatBlocksResponse {
+  relationshipId: string;
+  blocks: Array<{ id: string; blockedBy: "user" | "professional"; createdAt: string }>;
 }
 
 // ---- Module 08 — Support & Safety (08.01 Support Tickets + 08.02
@@ -5026,6 +5144,24 @@ export interface AdminCouponListItem {
 export interface AdminCouponListResponse {
   coupons: AdminCouponListItem[];
   counts: { total: number; active: number; totalRedemptions: number };
+}
+
+/** GET /admin/coupons/:id/redemptions (27 Oct 2026) — who redeemed a coupon, newest first. */
+export interface AdminCouponRedemptionItem {
+  id: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
+  discountCents: number;
+  redeemedAt: string;
+  paymentId: string | null;
+  /** Null when the redemption has no payment id or that payment row is gone. */
+  payment: { id: string; purpose: PaymentPurpose; amountCents: number; currency: string; status: PaymentStatus; createdAt: string } | null;
+}
+
+export interface AdminCouponRedemptionsResponse {
+  coupon: AdminCouponListItem;
+  redemptions: AdminCouponRedemptionItem[];
 }
 
 export type CouponValidationResult =

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AdminCouponListResponse, CouponDiscountType } from "@fitness-ai-app/types";
+import { Link } from "react-router-dom";
+import type { AdminCouponListResponse, AdminCouponRedemptionsResponse, CouponDiscountType } from "@fitness-ai-app/types";
 import { AppShell } from "../../components/AppShell";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -49,6 +50,8 @@ export function CouponsScreen() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // 27 Oct 2026: the coupon whose redemptions are open below the table.
+  const [redemptionsFor, setRedemptionsFor] = useState<string | null>(null);
   // Hide what this role can't do (the API still checks every call).
   const canCreate = useCan("commerce", "create");
   const canEdit = useCan("commerce", "edit");
@@ -233,18 +236,30 @@ export function CouponsScreen() {
                       <StatusBadge status={c.isActive ? "active" : "archived"} />
                     </td>
                     <td className="px-4 py-3">
-                      {canEdit ? (
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => toggleMutation.mutate({ id: c.id, isActive: !c.isActive })}
-                          disabled={toggleMutation.isPending}
-                          className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+                          onClick={() => setRedemptionsFor((cur) => (cur === c.id ? null : c.id))}
+                          aria-expanded={redemptionsFor === c.id}
+                          className={`rounded-md border px-2.5 py-1 text-xs ${
+                            redemptionsFor === c.id
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-border-subtle text-text-secondary hover:border-accent hover:text-accent"
+                          }`}
                         >
-                          {c.isActive ? "Deactivate" : "Activate"}
+                          {t("coupons.viewRedemptions")}
                         </button>
-                      ) : (
-                        <span className="text-text-dim">—</span>
-                      )}
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => toggleMutation.mutate({ id: c.id, isActive: !c.isActive })}
+                            disabled={toggleMutation.isPending}
+                            className="rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-secondary hover:border-accent hover:text-accent disabled:opacity-40"
+                          >
+                            {c.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -259,7 +274,90 @@ export function CouponsScreen() {
             </table>
           </div>
         )}
+
+        {redemptionsFor && <CouponRedemptions couponId={redemptionsFor} onClose={() => setRedemptionsFor(null)} />}
       </div>
     </AppShell>
+  );
+}
+
+const PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase", booking: "Coach session" };
+
+function rupees(cents: number): string {
+  return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Who redeemed a coupon (27 Oct 2026) — read-only, from
+ * GET /admin/coupons/:id/redemptions: the member, the discount and the
+ * payment it was applied to.
+ */
+function CouponRedemptions({ couponId, onClose }: { couponId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["admin-coupon-redemptions", couponId],
+    queryFn: async () => (await apiClient.get<AdminCouponRedemptionsResponse>(`/admin/coupons/${couponId}/redemptions`)).data,
+  });
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
+      <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+        <div className="text-xs uppercase tracking-wide text-text-dim">
+          {data ? t("coupons.redemptionsOf", { code: data.coupon.code }) : t("coupons.redemptions")}
+        </div>
+        <button type="button" onClick={onClose} className="text-xs text-text-secondary hover:text-text-primary">
+          {t("coupons.close")}
+        </button>
+      </div>
+      {isLoading && <p className="px-4 py-6 text-sm text-text-secondary">{t("coupons.loading")}</p>}
+      {isError && (
+        <p className="px-4 py-6 text-sm text-danger">{extractErrorMessage(error, t("coupons.redemptionsLoadError"))}</p>
+      )}
+      {data && (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-dim">
+              <th className="px-4 py-3 font-normal">{t("coupons.member")}</th>
+              <th className="px-4 py-3 font-normal">{t("coupons.discount")}</th>
+              <th className="px-4 py-3 font-normal">{t("coupons.payment")}</th>
+              <th className="px-4 py-3 font-normal">{t("coupons.redeemed")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.redemptions.map((r) => (
+              <tr key={r.id} className="border-b border-border-subtle last:border-0">
+                <td className="px-4 py-3">
+                  <Link to={`/users/${r.userId}`} className="font-medium text-text-primary hover:text-accent hover:underline">
+                    {r.userFullName}
+                  </Link>
+                  <div className="text-xs text-text-dim">{r.userEmail}</div>
+                </td>
+                <td className="px-4 py-3 text-text-secondary">{rupees(r.discountCents)}</td>
+                <td className="px-4 py-3 text-text-secondary">
+                  {r.payment ? (
+                    <div className="flex items-center gap-2">
+                      <Link to={`/commerce/${r.payment.id}`} className="text-accent hover:underline">
+                        {rupees(r.payment.amountCents)} · {PURPOSE_LABELS[r.payment.purpose] ?? r.payment.purpose}
+                      </Link>
+                      <StatusBadge status={r.payment.status} />
+                    </div>
+                  ) : (
+                    <span className="text-text-dim">{t("coupons.noPayment")}</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-text-secondary">{new Date(r.redeemedAt).toLocaleString()}</td>
+              </tr>
+            ))}
+            {data.redemptions.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-text-dim">
+                  {t("coupons.noRedemptionsYet")}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

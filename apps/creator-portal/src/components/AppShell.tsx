@@ -73,7 +73,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
             </div>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void logout()}
               className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-text-secondary hover:border-danger hover:text-danger"
             >
               {t("shell.signOut")}

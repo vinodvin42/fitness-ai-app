@@ -6,7 +6,7 @@ interface AuthContextValue {
   influencer: PublicInfluencer | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,7 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInfluencer(res.data.influencer);
   }
 
-  function logout() {
+  // Revoke the refresh token on the server first (best-effort, as coach-web
+  // does) so signing out ends the session instead of only forgetting it in
+  // this browser. A failed call still signs out locally.
+  async function logout() {
+    const refreshToken = getStoredRefreshToken();
+    if (refreshToken) {
+      await apiClient.post("/influencers/auth/logout", { refreshToken }).catch(() => undefined);
+    }
     clearTokens();
     setInfluencer(null);
   }

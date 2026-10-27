@@ -5,6 +5,7 @@ import { resolveActionItemsFor } from "../../lib/adminActionQueue";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { createNotification } from "../notifications/notifications.service";
 import { REMOVED_MESSAGE_TEXT } from "../coachMessages/coachMessages.service";
+import { notifyCoachReporterOfReview } from "../professionalNotifications/professionalNotices";
 import { ListSafetyReportsQuery, ResolveSafetyReportInput } from "./adminSafetyReports.schema";
 
 /**
@@ -173,10 +174,39 @@ export async function getSafetyReport(adminId: string, id: string) {
  * id, so it's matched on what sendMessage wrote: same client, the chat link,
  * the same excerpt, and created moments after the message (the closest one
  * wins if the same text was sent twice).
+ *
+ * 27 Oct 2026: the other direction too. A member's message can be copied
+ * into the coach's inbox (professionalNotices.ts notifyCoachOfMessage writes
+ * its first 140 characters as the body of a "message" notice), so that copy
+ * is matched the same way and scrubbed.
  */
-async function hideRemovedMessageInInbox(message: { userId: string; sender: string; content: string; createdAt: Date }) {
-  if (message.sender !== "professional") return;
+async function hideRemovedMessageInInbox(message: {
+  userId: string;
+  professionalId: string;
+  sender: string;
+  content: string;
+  createdAt: Date;
+}) {
   const sentAt = message.createdAt.getTime();
+  if (message.sender === "user") {
+    const coachCopies = await prisma.professionalNotification.findMany({
+      where: {
+        professionalId: message.professionalId,
+        kind: "message",
+        link: `/messages/${message.userId}`,
+        body: message.content.slice(0, 140),
+        createdAt: { gte: new Date(sentAt - 5_000), lte: new Date(sentAt + 60_000) },
+      },
+      select: { id: true, createdAt: true },
+    });
+    if (coachCopies.length === 0) return;
+    const nearest = coachCopies.reduce((a, b) =>
+      Math.abs(b.createdAt.getTime() - sentAt) < Math.abs(a.createdAt.getTime() - sentAt) ? b : a,
+    );
+    await prisma.professionalNotification.update({ where: { id: nearest.id }, data: { body: REMOVED_MESSAGE_TEXT } });
+    return;
+  }
+  if (message.sender !== "professional") return;
   const candidates = await prisma.notification.findMany({
     where: {
       userId: message.userId,
@@ -250,6 +280,9 @@ export async function resolveSafetyReport(adminId: string, id: string, input: Re
       body: "Our team reviewed your report and took action where needed.",
     });
   }
+  // A coach who reported gets the same acknowledgement in their inbox (27 Oct 2026).
+  // A reported coach is still not told: that's a policy call for the owner.
+  if (r.reporterProfessional) await notifyCoachReporterOfReview(r.reporterProfessional.id);
 
   return { id: updated.id, status: updated.status, outcome: updated.outcome, removedText: input.outcome === "message_removed" ? REMOVED_MESSAGE_TEXT : null };
 }

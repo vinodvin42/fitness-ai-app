@@ -375,6 +375,17 @@ export const en = {
     },
   },
 
+  // Form review (27 Oct 2026): clips go to the member's active coach; without one there is nobody to review them.
+  formReview: {
+    noCoach: {
+      title: "No coach to review this yet",
+      body: "Form clips are reviewed by your coach, and you don't have an active coach right now. A clip sent now would wait with nobody to review it.",
+      pendingBody: "Your coach can review form clips once coaching is active. Until then a clip would wait with nobody to review it.",
+      findCoach: "Find a coach",
+      viewRequest: "See your coach request",
+    },
+  },
+
   reminders: {
     label: "Label",
     labelPlaceholder: "e.g. Drink water",

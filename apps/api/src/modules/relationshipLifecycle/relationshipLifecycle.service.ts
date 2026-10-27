@@ -5,7 +5,7 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { createOffer, createOfferAsProfessional } from "../professionalOffers/professionalOffers.service";
 import { createNotification } from "../notifications/notifications.service";
 import { notifyMemberOfCompletion } from "../coaching/memberNotices";
-import { notifyCoachOfEndByFynrox } from "../professionalNotifications/professionalNotices";
+import { notifyCoachOfCompletionByFynrox, notifyCoachOfEndByFynrox } from "../professionalNotifications/professionalNotices";
 
 /**
  * Relationship Lifecycle — End Relationship / Handover (R1 U6, Wave 3,
@@ -164,6 +164,8 @@ export async function completeRelationship(
   );
 
   await notifyMemberOfCompletion(relationshipId);
+  // The coach completing it themself needs no notice; Fynrox doing it does (27 Oct 2026).
+  if (actor.adminId) await notifyCoachOfCompletionByFynrox(relationshipId);
   return updated as RelationshipRow;
 }
 

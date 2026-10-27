@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { Exercise } from "@fitness-ai-app/types";
+import type { Exercise, RelationshipStatus } from "@fitness-ai-app/types";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -18,6 +19,7 @@ import { Skeleton } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { useToast } from "../../components/Toast";
 import { createFormSubmission, fetchFormSubmissions } from "../../api/formAnalysis";
+import { fetchRelationshipStatus } from "../../api/coaching";
 import { fetchExercises } from "../../api/programs";
 import { extractErrorMessage } from "../../lib/apiError";
 import { colors, fonts, radius, spacing, typography } from "../../theme/tokens";
@@ -51,6 +53,11 @@ function toDataUrl(uri: string): Promise<string> {
     );
 }
 
+// A coach sees a member's clips only while their relationship is `active`
+// (formAnalysis.service.ts activeClientIds). These are the states on the way
+// there, where the member already has a coach request in progress.
+const PENDING_STATUSES: RelationshipStatus[] = ["requested", "offered", "accepted", "awaiting_payment", "activating", "activation_failed", "changing"];
+
 function mb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -76,6 +83,14 @@ export function FormAnalysisScreen({ navigation }: Props) {
 
   const exercisesQuery = useQuery({ queryKey: ["exercises"], queryFn: fetchExercises, enabled: pickerOpen });
   const listQuery = useQuery({ queryKey: ["formAnalysis"], queryFn: fetchFormSubmissions });
+  const { t } = useTranslation();
+  // Without an active coach a clip would sit "queued" with nobody able to see
+  // it, so the submit button gives way to a way to find one (27 Oct 2026). If
+  // the status can't be loaded, submitting stays possible as before.
+  const coachStatus = useQuery({ queryKey: ["coaching", "relationships", "status"], queryFn: fetchRelationshipStatus });
+  const relationships = coachStatus.data?.relationships ?? [];
+  const noActiveCoach = coachStatus.isSuccess && !relationships.some((r) => r.status === "active");
+  const coachPending = relationships.some((r) => PENDING_STATUSES.includes(r.status));
 
   useFocusEffect(
     React.useCallback(() => {
@@ -251,7 +266,34 @@ export function FormAnalysisScreen({ navigation }: Props) {
             {clip.durationMs ? ` · ${Math.round(clip.durationMs / 1000)}s` : ""}
             {clip.sizeBytes ? ` · ${mb(clip.sizeBytes)}` : ""}
           </Text>
-          <Button label="Submit for coach review" onPress={() => submit.mutate()} loading={submit.isPending} disabled={!consented} />
+          {noActiveCoach ? (
+            <View style={{ borderWidth: 1, borderColor: colors.infoBorder, backgroundColor: colors.infoSurface, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs }}>
+              <Text style={{ color: colors.textPrimary, ...typography.h3 }}>{t("formReview.noCoach.title")}</Text>
+              <Text style={{ color: colors.textSecondary, ...typography.body, fontSize: 13, lineHeight: 18 }}>
+                {t(coachPending ? "formReview.noCoach.pendingBody" : "formReview.noCoach.body")}
+              </Text>
+              <Pressable
+                onPress={() =>
+                  coachPending
+                    ? tabs.navigate("More", { screen: "ProfessionalRelationship", initial: false })
+                    : tabs.navigate("More", { screen: "CoachDiscovery", params: { serviceType: "fitness" }, initial: false })
+                }
+                accessibilityRole="link"
+                hitSlop={8}
+              >
+                <Text style={{ color: theme.accentText, ...typography.meta }}>
+                  {t(coachPending ? "formReview.noCoach.viewRequest" : "formReview.noCoach.findCoach")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Button
+              label="Submit for coach review"
+              onPress={() => submit.mutate()}
+              loading={submit.isPending}
+              disabled={!consented || coachStatus.isLoading}
+            />
+          )}
           <Button label="Remove clip" variant="secondary" onPress={() => setClip(null)} disabled={submit.isPending} />
         </Card>
       ) : (

@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
-import { createActionItem } from "../../lib/adminActionQueue";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
 import {
   FINISHED_RELATIONSHIP_STATUSES,
   FINISHED_RELATIONSHIP_WINDOW_MS,
@@ -14,8 +14,14 @@ import { ApiHttpError } from "../../middleware/errorHandler";
 import { commissionPctFor, offeringFees, priceOffering, type BookingPrice } from "../../lib/coachFees";
 import { activeGstPercent, gstOnTop } from "../../lib/gst";
 import { professionalPublicId } from "../../lib/professionalCode";
-import { notifyMemberOfAcceptance, notifyMemberOfDecline } from "./memberNotices";
-import { notifyCoachOfBooking, notifyCoachOfRequest } from "../professionalNotifications/professionalNotices";
+import { notifyMemberOfAcceptance, notifyMemberOfDecline, notifyMemberOfRequestExpired } from "./memberNotices";
+import {
+  notifyCoachOfBooking,
+  notifyCoachOfRequest,
+  notifyCoachOfRequestCancelled,
+  notifyCoachOfRequestExpired,
+  notifyCoachOfReschedule,
+} from "../professionalNotifications/professionalNotices";
 import {
   AvailabilityQuery,
   CreateBookingInput,
@@ -477,6 +483,8 @@ export async function rescheduleBooking(userId: string, bookingId: string, input
     entityId: booking.id,
     metadata: { from: booking.scheduledAt.toISOString(), to: next.toISOString() },
   });
+  // The coach's inbox (27 Oct 2026): their calendar just changed.
+  await notifyCoachOfReschedule(booking.id, booking.scheduledAt);
   return updated;
 }
 
@@ -666,15 +674,40 @@ export async function acceptRelationship(professionalId: string, relationshipId:
  */
 export async function expireOverdueRequests(extra: { id?: string; userId?: string; professionalId?: string }, now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - REQUEST_REPLY_WINDOW_MS);
-  const result = await prisma.relationship.updateMany({
-    where: {
+  const expired = await expireMatching(
+    {
       ...extra,
       status: "requested",
       OR: [{ requestedAt: { lt: cutoff } }, { requestedAt: null, createdAt: { lt: cutoff } }],
     },
-    data: { status: "expired", endedAt: now, endReason: "no_reply" },
-  });
-  return result.count + (await expireUnpaidAcceptances(extra, now));
+    "no_reply",
+    now,
+  );
+  return expired + (await expireUnpaidAcceptances(extra, now));
+}
+
+/**
+ * Moves every relationship matching `where` to `expired` and tells both sides
+ * (27 Oct 2026: before this a request just vanished from the coach's list and
+ * the member only found out by opening it). Each row is claimed with its own
+ * status-filtered `updateMany` (`where` carries the status), so a concurrent
+ * accept, decline or second expiry pass is never overwritten or notified
+ * twice: only the call that actually moved the row sends the notices.
+ */
+async function expireMatching(where: Prisma.RelationshipWhereInput, endReason: "no_reply" | "not_paid", now: Date): Promise<number> {
+  const due = await prisma.relationship.findMany({ where, select: { id: true } });
+  let count = 0;
+  for (const { id } of due) {
+    const moved = await prisma.relationship.updateMany({
+      where: { AND: [where, { id }] },
+      data: { status: "expired", endedAt: now, endReason },
+    });
+    if (moved.count === 0) continue;
+    count += 1;
+    await notifyCoachOfRequestExpired(id, endReason);
+    await notifyMemberOfRequestExpired(id, endReason);
+  }
+  return count;
 }
 
 /**
@@ -687,11 +720,11 @@ export async function expireUnpaidAcceptances(
   extra: { id?: string; userId?: string; professionalId?: string; serviceType?: { in: Array<"fitness" | "nutrition"> } },
   now: Date = new Date(),
 ): Promise<number> {
-  const result = await prisma.relationship.updateMany({
-    where: { ...extra, status: "accepted", acceptedAt: { lt: new Date(now.getTime() - PAYMENT_WINDOW_MS) } },
-    data: { status: "expired", endedAt: now, endReason: "not_paid" },
-  });
-  return result.count;
+  return expireMatching(
+    { ...extra, status: "accepted", acceptedAt: { lt: new Date(now.getTime() - PAYMENT_WINDOW_MS) } },
+    "not_paid",
+    now,
+  );
 }
 
 /** When the member's time to pay ends, for an accepted request (null for a legacy row without acceptedAt). */
@@ -796,6 +829,8 @@ export async function cancelGuidanceRequest(userId: string, relationshipId: stri
   if (result.count === 0) {
     throw new ApiHttpError(409, "relationship_not_cancellable", "This request can no longer be cancelled here");
   }
+  // The coach's inbox (27 Oct 2026): the request leaves their pending list.
+  await notifyCoachOfRequestCancelled(relationshipId);
   return { id: relationshipId, status: "ended" as const };
 }
 
@@ -1070,6 +1105,12 @@ export async function createBooking(
     where: { id: { in: relationshipIds }, status: { not: "active" } },
     data: { status: "active" },
   });
+  // A relationship the dashboard flagged as stuck at `activating` (or one an
+  // earlier attempt left at activation_failed) has a real session now, so its
+  // Action Required item is done (27 Oct 2026).
+  for (const relationshipId of relationshipIds) {
+    await resolveActionItemsFor("Relationship", relationshipId, null, "Coaching started: the booking went through");
+  }
   // The coach's inbox (26 Oct 2026): a paid session is on their calendar.
   await notifyCoachOfBooking(booking.id);
 

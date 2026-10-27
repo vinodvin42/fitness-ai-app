@@ -18,20 +18,23 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { NotAvailablePanel } from "../../components/NotAvailablePanel";
 import { StatCard } from "../../components/StatCard";
 import { ReasonGatedAction } from "../../components/ReasonGatedAction";
+import { MemberSessionsTab } from "./MemberSessionsTab";
 import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 
 const MEMBERSHIP_LABELS: Record<MembershipTier, string> = { free: "Free", basic: "Basic", grow: "Grow (retired)", prime: "Prime" };
 const SERVICE_LABELS: Record<string, string> = { fitness: "Fitness", nutrition: "Nutrition" };
-const PAYMENT_PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase" };
+const PAYMENT_PURPOSE_LABELS: Record<string, string> = { subscription: "Subscription", program_purchase: "Program purchase", booking: "Coach session" };
 
-type Tab = "overview" | "activity" | "subscription" | "payments" | "relationships" | "support";
+type Tab = "overview" | "activity" | "subscription" | "payments" | "sessions" | "relationships" | "support";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "activity", label: "Activity" },
   { key: "subscription", label: "Subscription" },
   { key: "payments", label: "Payments" },
+  // 27 Oct 2026: coach bookings and session credits (MemberSessionsTab.tsx).
+  { key: "sessions", label: "Sessions & credits" },
   { key: "relationships", label: "Relationships" },
   { key: "support", label: "Support History" },
 ];
@@ -602,6 +605,8 @@ export function UserProfileScreen() {
               </table>
             </div>
           )}
+
+          {tab === "sessions" && id && <MemberSessionsTab userId={id} />}
 
           {tab === "relationships" && (
             <div className="space-y-4">

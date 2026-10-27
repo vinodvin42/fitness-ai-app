@@ -161,3 +161,134 @@ export async function notifyCoachesOfPayout(settlementIds: string[], outcome: "p
     });
   }
 }
+
+// ---- Gap fixes, 27 Oct 2026: events the coach heard about nowhere ----------
+
+async function relationshipForNotice(relationshipId: string) {
+  return prisma.relationship
+    .findUnique({ where: { id: relationshipId }, select: { professionalId: true, serviceType: true, userId: true, user: { select: { fullName: true } } } })
+    .catch(() => null);
+}
+
+/** The member moved one of their sessions to another free slot. */
+export async function notifyCoachOfReschedule(bookingId: string, from: Date): Promise<void> {
+  const b = await prisma.booking
+    .findUnique({ where: { id: bookingId }, select: { professionalId: true, scheduledAt: true, user: { select: { fullName: true } } } })
+    .catch(() => null);
+  if (!b) return;
+  await notifyProfessional(b.professionalId, {
+    kind: "booking",
+    title: `${b.user.fullName} moved a session`,
+    body: `From ${dateTime(from)} to ${dateTime(b.scheduledAt)}.`,
+    link: "/calendar",
+  });
+}
+
+/** The member took back a request before paying (still waiting, or accepted but unpaid). */
+export async function notifyCoachOfRequestCancelled(relationshipId: string): Promise<void> {
+  const r = await relationshipForNotice(relationshipId);
+  if (!r) return;
+  await notifyProfessional(r.professionalId, {
+    kind: "request",
+    title: `${r.user.fullName} cancelled their coaching request`,
+    body: `${r.user.fullName} took back their ${service(r.serviceType)} coaching request. Nothing was charged.`,
+    link: "/clients/requests",
+  });
+}
+
+/** A request closed on its own: the coach didn't reply in time, or the member didn't pay in time. */
+export async function notifyCoachOfRequestExpired(relationshipId: string, cause: "no_reply" | "not_paid"): Promise<void> {
+  const r = await relationshipForNotice(relationshipId);
+  if (!r) return;
+  await notifyProfessional(r.professionalId, {
+    kind: "request",
+    title:
+      cause === "no_reply"
+        ? `${r.user.fullName}'s coaching request expired`
+        : `${r.user.fullName}'s request closed without payment`,
+    body:
+      cause === "no_reply"
+        ? `The time to reply to ${r.user.fullName}'s ${service(r.serviceType)} coaching request has passed, so it closed. They can ask you again.`
+        : `${r.user.fullName} didn't complete payment for ${service(r.serviceType)} coaching in time, so the request closed. Nothing was charged.`,
+    link: "/clients/requests",
+  });
+}
+
+/** Fynrox marked a coaching relationship complete (the coach completing it themself needs no notice). */
+export async function notifyCoachOfCompletionByFynrox(relationshipId: string): Promise<void> {
+  const r = await relationshipForNotice(relationshipId);
+  if (!r) return;
+  await notifyProfessional(r.professionalId, {
+    kind: "relationship",
+    title: `Coaching with ${r.user.fullName} was marked complete by Fynrox`,
+    body: `Fynrox marked your ${service(r.serviceType)} coaching with ${r.user.fullName} as complete.`,
+    link: `/clients/${r.userId}`,
+  });
+}
+
+/**
+ * A member sent a form clip. Every coach with an active relationship with
+ * them can review it (formAnalysis.service.ts activeClientIds), so each one
+ * hears about it.
+ */
+export async function notifyCoachesOfFormClip(submissionId: string): Promise<void> {
+  const s = await prisma.formAnalysisSubmission
+    .findUnique({ where: { id: submissionId }, select: { id: true, userId: true, user: { select: { fullName: true } } } })
+    .catch(() => null);
+  if (!s) return;
+  const rels = await prisma.relationship
+    .findMany({ where: { userId: s.userId, status: "active" }, select: { professionalId: true } })
+    .catch(() => []);
+  for (const professionalId of new Set(rels.map((r) => r.professionalId))) {
+    await notifyProfessional(professionalId, {
+      kind: "system",
+      title: `${s.user.fullName} sent a form clip`,
+      body: `${s.user.fullName} would like you to review their exercise form.`,
+      link: `/form-reviews/${s.id}`,
+    });
+  }
+}
+
+/** A member rated (or re-rated) a session. The stars go in the body, not the title. */
+export async function notifyCoachOfRating(bookingId: string, updated: boolean): Promise<void> {
+  const r = await prisma.sessionRating
+    .findUnique({
+      where: { bookingId },
+      select: { professionalId: true, userId: true, stars: true, booking: { select: { scheduledAt: true } }, user: { select: { fullName: true } } },
+    })
+    .catch(() => null);
+  if (!r) return;
+  await notifyProfessional(r.professionalId, {
+    kind: "booking",
+    title: updated ? `${r.user.fullName} updated their session rating` : `${r.user.fullName} rated a session`,
+    body: `${r.stars} out of 5 for your session on ${dateTime(r.booking.scheduledAt)}.`,
+    link: `/clients/${r.userId}`,
+  });
+}
+
+/**
+ * An admin suspended or reactivated this coach's account. Factual and generic
+ * on purpose: the admin's note can be internal, so it never goes out here.
+ * Emailed too, because a suspended coach is signed out and can't open the inbox.
+ */
+export async function notifyCoachOfAccountStatus(professionalId: string, status: "suspended" | "active"): Promise<void> {
+  const suspended = status === "suspended";
+  await notifyProfessional(professionalId, {
+    kind: "system",
+    title: suspended ? "Your Fynrox Coach account has been suspended" : "Your Fynrox Coach account is active again",
+    body: suspended
+      ? "Your Fynrox Coach account has been suspended. Contact support@fynrox.com."
+      : "Your Fynrox Coach account is active again. You can sign in and carry on coaching.",
+    link: suspended ? null : "/",
+    email: true,
+  });
+}
+
+/** A coach's own safety report was reviewed. Says it was reviewed, never what happened to the other person. */
+export async function notifyCoachReporterOfReview(professionalId: string): Promise<void> {
+  await notifyProfessional(professionalId, {
+    kind: "system",
+    title: "Thanks for your report",
+    body: "Our team reviewed your report and took action where needed.",
+  });
+}

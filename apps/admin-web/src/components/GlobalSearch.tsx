@@ -84,7 +84,7 @@ export function GlobalSearch() {
   const showPanel = isOpen && debouncedQuery.length > 0;
 
   return (
-    <div ref={containerRef} className="relative w-72">
+    <div ref={containerRef} className="relative w-full md:w-72">
       <input
         type="search"
         value={inputValue}
@@ -98,7 +98,7 @@ export function GlobalSearch() {
       />
 
       {showPanel && (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-50 max-h-96 w-96 overflow-y-auto rounded-xl border border-border-subtle bg-surface shadow-xs shadow-lg">
+        <div className="absolute right-0 top-[calc(100%+4px)] z-50 max-h-96 w-full overflow-y-auto rounded-xl border border-border-subtle bg-surface shadow-lg md:w-96">
           {isLoading && <div className="px-4 py-3 text-xs text-text-secondary">{t("globalSearch.searching")}</div>}
 
           {isError && (

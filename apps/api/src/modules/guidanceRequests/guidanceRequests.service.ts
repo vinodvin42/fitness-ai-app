@@ -2,7 +2,8 @@ import { prisma } from "../../db/prisma";
 import { r1Flags } from "@fitness-ai-app/config";
 import { recordAudit } from "../../middleware/auditLog";
 import { trackEvent } from "../../lib/analytics";
-import { createActionItem } from "../../lib/adminActionQueue";
+import { createActionItem, resolveActionItemsFor } from "../../lib/adminActionQueue";
+import { createNotification } from "../notifications/notifications.service";
 import { ApiHttpError } from "../../middleware/errorHandler";
 
 /**
@@ -106,6 +107,7 @@ export async function cancelMyGuidanceRequest(userId: string, id: string) {
     stateBefore: { status: req.status },
     stateAfter: { status: "cancelled" },
   });
+  await resolveActionItemsFor("GuidanceRequest", id, null, "Cancelled by the member");
   return updated;
 }
 
@@ -141,6 +143,9 @@ export async function markOffered(requestId: string, offerId: string, adminId: s
     stateBefore: { status: "open" },
     stateAfter: { status: "offered", offerId },
   });
+  // Matching was the queue item's job (27 Oct 2026). If the offer comes back
+  // declined or expired, returnToQueue queues the request again.
+  await resolveActionItemsFor("GuidanceRequest", requestId, adminId, "Matched with a professional");
 
   return updated;
 }
@@ -193,6 +198,29 @@ export async function returnToQueue(requestId: string, cause: "declined" | "expi
       severity: "high",
       metadata: { userId: req.userId, serviceType: req.serviceType, reason: "rematch_limit_reached" },
     });
+    // The member hears that no match was found (27 Oct 2026); before this the
+    // request just sat at "finding a professional" from their side.
+    await createNotification(req.userId, {
+      kind: "coach",
+      title: "We couldn't find you a coach this time",
+      body: `Fynrox couldn't find a ${req.serviceType} coach who could take you on right now, so your request has closed. You can browse coaches and ask one directly, or send a new request later.`,
+      deepLink: "coaching",
+    });
+  } else {
+    // Back in A-M1's queue: it needs a queue item again (the match resolved
+    // the first one). At most one open item per request.
+    const open = await prisma.adminActionItem
+      .findFirst({ where: { entityType: "GuidanceRequest", entityId: requestId, status: "open" }, select: { id: true } })
+      .catch(() => null);
+    if (!open) {
+      await createActionItem({
+        type: "professional_assignment_pending",
+        entityType: "GuidanceRequest",
+        entityId: requestId,
+        severity: "medium",
+        metadata: { userId: req.userId, serviceType: req.serviceType, reason: `offer_${cause}` },
+      }).catch(() => undefined);
+    }
   }
 
   return updated;
@@ -216,6 +244,7 @@ export async function markFulfilled(requestId: string, relationshipId: string) {
     stateBefore: { status: req.status },
     stateAfter: { status: "fulfilled", relationshipId },
   });
+  await resolveActionItemsFor("GuidanceRequest", requestId, null, "A professional accepted the offer");
 
   return updated;
 }
