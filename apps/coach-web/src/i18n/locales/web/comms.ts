@@ -22,6 +22,7 @@ export const comms = {
   proposePickDay: "Day",
   proposePickTime: "Time",
   proposeNoSlots: "No free times on this day.",
+  proposeLoadFailed: "Couldn't load your free times. Check your connection and try again.",
   proposeSend: "Send to {{name}}",
   proposeSent: "New time sent to {{name}}",
   proposedPending: "New time proposed: {{when}}",

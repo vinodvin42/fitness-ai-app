@@ -78,6 +78,8 @@ export function ProposeTimeDialog({ session, onClose }: { session: CoachSchedule
     queryKey: ["coach-my-availability", day],
     queryFn: () => fetchMyAvailability(day),
     enabled: !!session,
+    // A refused read (e.g. a server without this endpoint yet) should say so at once, not spin.
+    retry: false,
   });
   const now = Date.now();
   const free = (slots.data?.slots ?? []).filter((s) => s.available && new Date(s.time).getTime() > now && s.time !== session?.scheduledAt);
@@ -143,6 +145,13 @@ export function ProposeTimeDialog({ session, onClose }: { session: CoachSchedule
             {slots.isLoading ? (
               <div className="flex h-20 items-center justify-center">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : slots.isError ? (
+              <div role="alert" className="flex flex-col items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-sm">
+                <span>{t("web.comms.proposeLoadFailed")}</span>
+                <Button variant="outline" size="sm" onClick={() => void slots.refetch()}>
+                  {t("common.retry")}
+                </Button>
               </div>
             ) : free.length === 0 ? (
               <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{t("web.comms.proposeNoSlots")}</p>
