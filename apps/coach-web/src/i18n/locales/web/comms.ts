@@ -24,7 +24,6 @@ export const comms = {
   proposeNoSlots: "No free times on this day.",
   proposeSend: "Send to {{name}}",
   proposeSent: "New time sent to {{name}}",
-  proposeTooLate: "A new time can be proposed up to 12 hours before the session.",
   proposedPending: "New time proposed: {{when}}",
   proposedWaiting: "Waiting for the client to answer.",
   withdraw: "Withdraw",

@@ -118,6 +118,8 @@ const router = createBrowserRouter([
       { path: "/verification/kyc", element: lazyPage(<KycUploadScreen />) },
       { path: "/help", element: lazyPage(<HelpScreen />) },
       { path: "/more", element: lazyPage(<MoreScreen />) },
+      // The old Expo coach app's paths (/Main/Calendar, …), from bookmarks made before the switch.
+      { path: "/Main/*", element: <Navigate to="/" replace /> },
       { path: "*", element: <NotFoundScreen /> },
     ],
   },

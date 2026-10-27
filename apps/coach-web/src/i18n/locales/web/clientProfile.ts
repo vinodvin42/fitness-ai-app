@@ -15,7 +15,6 @@ export const clientProfile = {
   tabActivity: "Activity",
   tabNotes: "Notes",
   message: "Message",
-  quickActions: "Quick actions",
   tryAgain: "Please try again.",
 
   // Overview
@@ -24,7 +23,6 @@ export const clientProfile = {
   levelAdvanced: "Advanced",
   statCompleted: "Sessions completed",
   statUpcoming: "Upcoming sessions",
-  recommendationsTitle: "Plan recommendations",
   recommendationsHint: "Approve or reject what the AI plan engine suggests for this client.",
   feedbackTitle: "Session feedback",
   feedbackSummary_one: "{{average}} of 5 across {{count}} session · only you see this",
@@ -32,7 +30,6 @@ export const clientProfile = {
   starsLabel: "{{count}} of 5 stars",
 
   // Sessions
-  sessionsTitle: "Sessions",
   completedCount: "{{count}} completed",
   upcoming: "Upcoming",
   recent: "Recent",
@@ -74,7 +71,6 @@ export const clientProfile = {
   handoverFailed: "Couldn't complete the handover",
   formService: "{{service}} coaching with {{name}}",
   reasonLabel: "Reason",
-  continue: "Continue",
   yearsExp: "{{count}}y exp",
   confirmHandoverTitle: "Confirm handover",
   confirmCompleteTitle: "Confirm programme complete",

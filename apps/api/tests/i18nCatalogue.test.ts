@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { en as userEn } from "../../user-mobile/src/i18n/locales/en";
 import { en as coachEn } from "../../coach-mobile/src/i18n/locales/en";
+import { en as coachWebEn } from "../../coach-web/src/i18n/locales/en";
 import { en as gymEn } from "../../gym-portal/src/i18n/locales/en";
 import { en as creatorEn } from "../../creator-portal/src/i18n/locales/en";
 import { en as adminEn } from "../../admin-web/src/i18n/locales/en";
@@ -25,6 +26,7 @@ import { en as adminEn } from "../../admin-web/src/i18n/locales/en";
 const APPS = [
   { name: "user-mobile", src: path.join(__dirname, "../../user-mobile/src"), catalogue: userEn },
   { name: "coach-mobile", src: path.join(__dirname, "../../coach-mobile/src"), catalogue: coachEn },
+  { name: "coach-web", src: path.join(__dirname, "../../coach-web/src"), catalogue: coachWebEn },
   { name: "gym-portal", src: path.join(__dirname, "../../gym-portal/src"), catalogue: gymEn },
   { name: "creator-portal", src: path.join(__dirname, "../../creator-portal/src"), catalogue: creatorEn },
   { name: "admin-web", src: path.join(__dirname, "../../admin-web/src"), catalogue: adminEn },

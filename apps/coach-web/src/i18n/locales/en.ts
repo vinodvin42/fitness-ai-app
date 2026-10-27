@@ -33,7 +33,6 @@ export const en = {
     decline: "Decline",
     somethingWentWrong: "Something went wrong",
     checkConnection: "Check your connection and try again.",
-    comingSoon: "Coming soon",
     notSet: "Not set",
   },
 
@@ -48,8 +47,6 @@ export const en = {
       reviewNote: "We review every application before an account goes live.",
       help: "Questions? Email support@fynrox.com",
     },
-    show: "Show",
-    hide: "Hide",
     showPassword: "Show password",
     hidePassword: "Hide password",
     login: {
@@ -107,12 +104,10 @@ export const en = {
       expires: "Expires {{date}}",
       uploadAgain: "Upload documents again",
       uploadHint: "Upload anything that isn't Verified yet. It goes back to Pending until Fynrox reviews it.",
-      back: "‹ More",
     },
   },
 
   today: {
-    title: "Today",
     earningsError: "Couldn't load your earnings. Check your connection and try again.",
     noServices: "No services selected yet.",
     noSessions: "No sessions scheduled today.",
@@ -120,7 +115,6 @@ export const en = {
     actionRequests: "Client requests",
     actionCalendar: "Calendar",
     actionMessages: "Messages",
-    openClient: "Opens this client's profile",
     avgRating: "Avg. Rating",
     ratingCount_one: "From {{count}} session rating",
     ratingCount_other: "From {{count}} session ratings",
@@ -194,7 +188,6 @@ export const en = {
   },
 
   notifications: {
-    title: "Notifications",
     emptyTitle: "Nothing needs your attention",
     emptySubtitle: "New requests, bookings, offers from Fynrox and unread messages show up here.",
     pendingRequests: "Pending client requests",
@@ -209,7 +202,6 @@ export const en = {
     offeredAgo: "Offered {{ago}}",
     reviewOffers: "Accept or decline ›",
     newBookings: "New bookings",
-    newBookingsHint: "Booked since you last opened Alerts.",
     bookedAgo: "Booked {{ago}}",
     moreBookings: "{{count}} more in Calendar.",
     openCalendar: "Open Calendar ›",
@@ -232,12 +224,10 @@ export const en = {
 
   clients: {
     title: "Clients",
-    tabWaiting: "Clients, {{count}} requests or offers waiting",
     emptyTitle: "No clients yet",
     emptySubtitle: "When a user books you and a coaching relationship starts, they'll appear here.",
     reviewAndRespond: "Review and accept or decline",
     pending: {
-      title: "Pending Requests",
       requests: "Client Requests",
       requestsNote: "Users who requested you directly.",
       emptyTitle: "No pending requests",
@@ -285,7 +275,6 @@ export const en = {
       raiseSafety: "Raise a safety concern",
       safetyPlaceholder: "What happened, when, and what concerns you about it",
       raiseFlag: "Raise flag",
-      privateNotes: "Private notes",
       notesError: "Couldn't load notes.",
       noNotes: "No notes yet.",
       notePlaceholder: "Add a private note about this client…",
@@ -337,7 +326,6 @@ export const en = {
     publishedAt: "Published {{when}}",
     edit: "Edit summary",
     done: "Done",
-    close: "Close",
     failed: "Couldn't publish the summary",
     loading: "Loading the summary",
     loadFailed: "Couldn't load the summary",
@@ -349,13 +337,11 @@ export const en = {
     emptyTitle: "No conversations yet",
     emptySubtitle: "When you have an active client, you can message each other here.",
     placeholder: "Message…",
-    tabUnread: "Messages, {{count}} unread",
   },
 
   /** My profile (20 Oct 2026): the coach's gender, for members who ask for a male or female coach. */
   profile: {
     title: "My profile",
-    back: "‹ More",
     genderTitle: "Your gender",
     genderHelp:
       "Members can ask for a male or female coach. Requests that ask for one only go to coaches of that gender; with \"Prefer not to say\" you only get requests with no preference.",
