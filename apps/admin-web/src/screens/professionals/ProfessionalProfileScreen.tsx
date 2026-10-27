@@ -11,6 +11,7 @@ import { useCan } from "../../lib/permissions";
 import { apiClient } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/apiError";
 import { PROFESSIONALS_SUB_NAV } from "./subNav";
+import { PayoutDetailsPanel } from "./PayoutDetailsPanel";
 
 const MIN_CAPACITY = 1;
 const MAX_CAPACITY = 500;
@@ -265,6 +266,9 @@ export function ProfessionalProfileScreen() {
                   <p className="mt-3 text-xs text-accent">{t("professionalProfile.capacityUpdated")}</p>
                 )}
               </div>
+
+              {/* Coach payout details (27 Oct 2026): masked view, verify/reject, reason-gated reveal. */}
+              <PayoutDetailsPanel professionalId={data.professional.id} />
             </div>
           )}
 

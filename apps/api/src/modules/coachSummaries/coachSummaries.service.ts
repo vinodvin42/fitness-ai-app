@@ -19,6 +19,9 @@ type BookingRow = {
   status: string;
   summaryText: string | null;
   summaryPublishedAt: Date | null;
+  proposedScheduledAt: Date | null;
+  cancelledAt: Date | null;
+  cancelledBy: string | null;
   professional: { fullName: string };
   offering: { label: string; serviceType: string | null };
 };
@@ -35,6 +38,10 @@ function toBooking(b: BookingRow) {
     priceCents: b.priceCents,
     status: b.status as "confirmed" | "cancelled",
     hasSummary: b.summaryPublishedAt != null,
+    // Booking changes (27 Oct 2026): a time the coach proposed, waiting for the member's answer.
+    proposedScheduledAt: b.proposedScheduledAt ? b.proposedScheduledAt.toISOString() : null,
+    cancelledAt: b.cancelledAt ? b.cancelledAt.toISOString() : null,
+    cancelledBy: b.cancelledBy,
   };
 }
 

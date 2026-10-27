@@ -443,6 +443,7 @@ model User {
   healthReadings              HealthReading[]
   notifications               Notification[]
   pushTokens                  PushToken[]
+  sessionCredits              SessionCredit[]
   notificationPreference      NotificationPreference?
   professionalDataSharing     ProfessionalDataSharing[]
   dataExports                 UserDataExport[]
@@ -2909,6 +2910,8 @@ model Professional {
   offersReceived       ProfessionalOffer[]
   // Coach inbox (26 Oct 2026) — see ProfessionalNotification.
   notifications        ProfessionalNotification[]
+  // Coach payout details (27 Oct 2026) — see ProfessionalPayoutAccount.
+  payoutAccount        ProfessionalPayoutAccount?
   // Coach Private Notes (R2 Wave 3, 20 Sep 2026) — see the CoachNote
   // model's own doc comment below.
   coachNotes           CoachNote[]
@@ -3148,37 +3151,83 @@ enum BookingStatus {
 // same "copy the value at write time" precedent MealLog uses for a
 // Recipe's macros.
 model Booking {
-  id                 String                      @id @default(uuid())
-  userId             String
-  user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  professionalId     String
-  professional       Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  offeringId         String
-  offering           ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
-  scheduledAt        DateTime
-  durationMinutes    Int
+  id                  String                      @id @default(uuid())
+  userId              String
+  user                User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalId      String
+  professional        Professional                @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  offeringId          String
+  offering            ProfessionalServiceOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  scheduledAt         DateTime
+  durationMinutes     Int
   // The coach fee for this session, before GST (Package 4). Copied from the
   // level fee when the booking is made and never recomputed.
-  priceCents         Int
+  priceCents          Int
   // GST added on top of the fee (18%), copied at booking time.
-  gstCents           Int                         @default(0)
+  gstCents            Int                         @default(0)
   // FynroX's commission on this booking, copied from the rate in force when
   // it was made — a later rate change never touches it (Package 4).
-  commissionPct      Int
+  commissionPct       Int
   // The coach's level when the booking was made (history only, no FK).
-  coachLevelId       String?
-  status             BookingStatus               @default(confirmed)
+  coachLevelId        String?
+  status              BookingStatus               @default(confirmed)
   // Wave B (Oct 2026) — coach's client-visible session summary; null until published.
-  summaryText        String?                     @db.Text
-  summaryPublishedAt DateTime?
+  summaryText         String?                     @db.Text
+  summaryPublishedAt  DateTime?
   // The member's private rating of this session (24 Oct 2026, Figma coach/11).
-  rating             SessionRating?
-  createdAt          DateTime                    @default(now())
+  rating              SessionRating?
+  createdAt           DateTime                    @default(now())
+  // Booking changes (27 Oct 2026, owner's policy): the Razorpay payment
+  // behind this booking (null for older bookings and credit-paid ones), the
+  // session credit it was paid with instead, and who cancelled it and when.
+  // A member can cancel any time before the start and gets a SessionCredit;
+  // there are no cash refunds from the app.
+  paymentId           String?
+  paidWithCreditId    String?                     @unique
+  cancelledAt         DateTime?
+  // "member" | "coach" | "admin"
+  cancelledBy         String?
+  cancelReason        String?
+  // A coach's proposed new time (27 Oct 2026). The member accepts (the
+  // session moves) or declines (it's cancelled and they get a credit).
+  // Cleared once answered; ignored once the session's own start has passed.
+  proposedScheduledAt DateTime?
+  proposedAt          DateTime?
+  credit              SessionCredit?              @relation("SessionCreditSource")
+  paidWithCredit      SessionCredit?              @relation("SessionCreditSpend", fields: [paidWithCreditId], references: [id])
 
   @@index([userId])
   @@index([professionalId])
   @@index([professionalId, scheduledAt])
   @@map("bookings")
+}
+
+enum SessionCreditReason {
+  member_cancelled
+  reschedule_declined
+}
+
+// A session credit (27 Oct 2026, owner's policy for cancellations): when a
+// member cancels a paid session, or declines a coach's new time, they get a
+// credit worth what they paid (fee + GST, after any coupon), usable on any
+// coach's session within CREDIT_VALIDITY_DAYS. A credit pays for one session
+// whose price it covers in full; any difference is not refunded. Money never
+// goes back to the card from the app (admin refunds stay separate).
+model SessionCredit {
+  id              String              @id @default(uuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents     Int
+  reason          SessionCreditReason
+  sourceBookingId String              @unique
+  sourceBooking   Booking             @relation("SessionCreditSource", fields: [sourceBookingId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedBooking     Booking?            @relation("SessionCreditSpend")
+  createdAt       DateTime            @default(now())
+
+  @@index([userId, usedAt])
+  @@map("session_credits")
 }
 
 // "How was your session?" (Figma coach/11, 24 Oct 2026; the owner left the
@@ -5485,4 +5534,47 @@ model AdminPasswordResetToken {
 
   @@index([adminUserId])
   @@map("admin_password_reset_tokens")
+}
+
+// Coach payout details (27 Oct 2026, owner decision). A coach enters a bank
+// account or a UPI ID in the coach app; an admin verifies it before payouts
+// use it. One row per coach. The account number, IFSC and UPI ID are stored
+// only as AES-256-GCM ciphertext (`iv:authTag:ciphertext`, hex) under
+// PAYOUT_DETAILS_ENCRYPTION_KEY (see professionalPayoutAccount/payoutCrypto.ts);
+// `maskedDisplay` is what every screen shows. Any edit by the coach sets
+// `status` back to `pending`.
+enum PayoutAccountMethod {
+  bank
+  upi
+}
+
+enum PayoutAccountStatus {
+  pending
+  verified
+  rejected
+}
+
+model ProfessionalPayoutAccount {
+  id                     String              @id @default(uuid())
+  professionalId         String              @unique
+  professional           Professional        @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  method                 PayoutAccountMethod
+  accountHolderName      String
+  // Ciphertext only. Bank: account number and IFSC. UPI: the UPI ID.
+  accountNumberEncrypted String?
+  ifscEncrypted          String?
+  upiIdEncrypted         String?
+  // Last 4 digits of the account number (bank only).
+  last4                  String?
+  // e.g. "XXXXXX1234" or "ra***@okhdfc". Never the full value.
+  maskedDisplay          String
+  status                 PayoutAccountStatus @default(pending)
+  adminNotes             String?
+  verifiedAt             DateTime?
+  verifiedByAdminId      String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@index([status])
+  @@map("professional_payout_accounts")
 }

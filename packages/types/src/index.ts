@@ -2098,6 +2098,29 @@ export interface CoachScheduleItem {
   status: BookingStatus;
   /** 25 Oct 2026: the coach has published a session summary for this booking; its text is GET /professionals/me/bookings/:id/summary. */
   hasSummary: boolean;
+  /** 27 Oct 2026: the new time this coach proposed, waiting for the member's answer; null when none. */
+  proposedScheduledAt?: string | null;
+  /** "member" | "coach" | "admin" when cancelled. */
+  cancelledBy?: string | null;
+}
+
+/** Booking changes (27 Oct 2026): a member's unspent session credit. GET /coaching/credits. */
+export interface SessionCreditItem {
+  id: string;
+  /** What it's worth: what the member paid for the cancelled session (fee + GST, after any coupon). */
+  amountCents: number;
+  reason: "member_cancelled" | "reschedule_declined";
+  expiresAt: string;
+  createdAt: string;
+}
+export interface SessionCreditListResponse {
+  items: SessionCreditItem[];
+}
+export interface CancelBookingResponse {
+  bookingId: string;
+  status: "cancelled";
+  /** Null when the session cost nothing. */
+  credit: SessionCreditItem | null;
 }
 
 /** One `Relationship` stuck at `activating` past the read-time detection threshold — see professionalDashboard.service.ts's detectAndQueueStuckRelationships doc comment. Added Wave 3, 20 Sep 2026. */
@@ -6423,6 +6446,11 @@ export interface CoachBookingListItem {
   priceCents: number;
   status: "confirmed" | "cancelled";
   hasSummary: boolean;
+  /** 27 Oct 2026: a new time the coach proposed, waiting for the member to accept or decline; null when none. */
+  proposedScheduledAt?: string | null;
+  cancelledAt?: string | null;
+  /** "member" | "coach" | "admin" when cancelled. */
+  cancelledBy?: string | null;
 }
 export interface CoachBookingListResponse {
   items: CoachBookingListItem[];
@@ -6892,4 +6920,72 @@ export interface AdminBankSettlementsResponse {
     taxCents: number;
   };
   notAvailable: string[];
+}
+
+// ---- Coach payout details (added 27 Oct 2026) --------------------------
+// A coach's bank account or UPI ID for payouts. Stored encrypted by the API
+// (apps/api professionalPayoutAccount module); every read is masked except
+// the admin's audited reveal. An admin verifies it before payouts use it,
+// and any edit by the coach sends it back to `pending`.
+
+export type PayoutAccountMethod = "bank" | "upi";
+export type PayoutAccountStatus = "pending" | "verified" | "rejected";
+
+/** Masked: never the full account number or UPI ID. */
+export interface PayoutAccountView {
+  method: PayoutAccountMethod;
+  accountHolderName: string;
+  /** e.g. "XXXXXX1234" (bank) or "ra***@okhdfc" (UPI). */
+  maskedDisplay: string;
+  /** Bank only. */
+  last4: string | null;
+  /** Bank only; null when the API can't decrypt (key not configured). */
+  ifsc: string | null;
+  status: PayoutAccountStatus;
+  adminNotes: string | null;
+  verifiedAt: string | null;
+  updatedAt: string;
+}
+
+export interface PayoutAccountResponse {
+  /** null when the coach hasn't added details yet. */
+  account: PayoutAccountView | null;
+  /** False when the API has no PAYOUT_DETAILS_ENCRYPTION_KEY: details can't be saved or revealed. */
+  editable: boolean;
+}
+
+export type SavePayoutAccountInput =
+  | { method: "bank"; accountHolderName: string; accountNumber: string; ifsc: string }
+  | { method: "upi"; accountHolderName: string; upiId: string };
+
+export interface AdminPayoutAccountView extends PayoutAccountView {
+  verifiedByAdminId: string | null;
+  createdAt: string;
+}
+
+export interface AdminPayoutAccountResponse {
+  account: AdminPayoutAccountView | null;
+  /** False when the API can't decrypt (no PAYOUT_DETAILS_ENCRYPTION_KEY): reveal is unavailable. */
+  revealAvailable: boolean;
+}
+
+export interface AdminPayoutAccountRevealInput {
+  reason: string;
+}
+
+/** The full details. Only returned by the audited reveal endpoint. */
+export interface AdminPayoutAccountRevealResponse {
+  method: PayoutAccountMethod;
+  accountHolderName: string;
+  accountNumber: string | null;
+  ifsc: string | null;
+  upiId: string | null;
+}
+
+export interface AdminVerifyPayoutAccountInput {
+  status: "verified" | "rejected";
+  /** Required when rejecting; shown to the coach. */
+  adminNotes?: string;
+  /** The `updatedAt` of the details being decided on; 409 payout_account_changed if the coach edited them since. */
+  updatedAt: string;
 }

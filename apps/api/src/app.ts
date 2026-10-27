@@ -76,9 +76,11 @@ import { professionalLifecycleRouter } from "./modules/professionalLifecycle/pro
 import { professionalDashboardRouter } from "./modules/professionalDashboard/professionalDashboard.routes";
 import { professionalAlertsRouter } from "./modules/professionalAlerts/professionalAlerts.routes";
 import { professionalNotificationsRouter } from "./modules/professionalNotifications/professionalNotifications.routes";
+import { professionalPayoutAccountRouter } from "./modules/professionalPayoutAccount/professionalPayoutAccount.routes";
 import { professionalClientsRouter } from "./modules/professionalClients/professionalClients.routes";
 import { coachNotesRouter } from "./modules/coachNotes/coachNotes.routes";
 import { coachingRouter } from "./modules/coaching/coaching.routes";
+import { bookingChangesRouter } from "./modules/bookingChanges/bookingChanges.routes";
 import { professionalPhotoRouter } from "./modules/professionalPhoto/professionalPhoto.routes";
 import { dataSharingRouter } from "./modules/dataSharing/dataSharing.routes";
 import { helpRouter } from "./modules/help/help.routes";
@@ -418,6 +420,9 @@ export function createApp() {
   // Coach inbox (26 Oct 2026): what happened, newest first, with read state.
   // Professional-authed. See professionalNotifications.service.ts.
   app.use("/", professionalNotificationsRouter);
+  // Coach payout details (27 Oct 2026): coach saves bank/UPI (encrypted, masked);
+  // admin verifies and can reveal with a reason. See professionalPayoutAccount.service.ts.
+  app.use("/", professionalPayoutAccountRouter);
   // Coach Client Profile (31 Aug 2026) — professional-authed (the coach's
   // own clients). See professionalClients.service.ts's doc comment.
   app.use("/", professionalClientsRouter);
@@ -430,6 +435,9 @@ export function createApp() {
   // not Professional Bearer, since it's the user-mobile side of the
   // journey — see coaching.service.ts's doc comment (closes gap §1).
   app.use("/", coachingRouter);
+  // Booking changes (27 Oct 2026): member cancel for a session credit, coach-
+  // proposed new times, booking with a credit. See bookingChanges.service.ts.
+  app.use("/", bookingChangesRouter);
   // Professional profile photo (25 Oct 2026): coach sets it, members see it. See professionalPhoto.service.ts.
   app.use("/", professionalPhotoRouter);
   app.use("/", dataSharingRouter);

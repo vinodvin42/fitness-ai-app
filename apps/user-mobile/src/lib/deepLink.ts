@@ -76,6 +76,14 @@ export function openNotificationDeepLink(
         else navigation.navigate("More", { screen: "Conversations", initial: false });
       }
       return true;
+    case "coach-session":
+      {
+        // e.g. fynrox://coach-session?bookingId=… ("your coach asked to move your session", 27 Oct 2026).
+        const bookingId = query.get("bookingId");
+        if (bookingId) navigation.navigate("More", { screen: "SessionSummary", params: { bookingId }, initial: false });
+        else navigation.navigate("More", { screen: "CoachSessions", initial: false });
+      }
+      return true;
     case "billing":
     case "subscription":
       navigation.navigate("More", { screen: "Subscription", initial: false });

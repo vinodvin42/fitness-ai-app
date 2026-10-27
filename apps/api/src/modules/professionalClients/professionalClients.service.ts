@@ -63,6 +63,8 @@ type BookingRow = {
   durationMinutes: number;
   status: string;
   summaryPublishedAt: Date | null;
+  proposedScheduledAt: Date | null;
+  cancelledBy: string | null;
   offering: { label: string; serviceType: string | null };
 };
 
@@ -148,6 +150,8 @@ function toScheduleItem(b: BookingRow) {
     durationMinutes: b.durationMinutes,
     status: b.status,
     hasSummary: b.summaryPublishedAt != null,
+    proposedScheduledAt: b.proposedScheduledAt,
+    cancelledBy: b.cancelledBy,
   };
 }
 

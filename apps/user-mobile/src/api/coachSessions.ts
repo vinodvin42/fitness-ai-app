@@ -1,9 +1,14 @@
 import type {
+  BookingConfirmation,
   BookingSummary,
+  CancelBookingResponse,
   CoachBookingListItem,
   CoachBookingListResponse,
+  CreateBookingInput,
   RescheduleBookingInput,
   RescheduledBooking,
+  SessionCreditItem,
+  SessionCreditListResponse,
 } from "@fitness-ai-app/types";
 import { apiClient } from "./client";
 
@@ -38,4 +43,35 @@ export function fetchSessionRating(bookingId: string) {
 
 export function rateSession(bookingId: string, input: { stars: number; tags: SessionRatingTag[]; comment?: string }) {
   return apiClient.put<{ rating: SessionRating }>(`/coaching/bookings/${bookingId}/rating`, input).then((r) => r.data.rating);
+}
+
+// Booking changes (27 Oct 2026, apps/api bookingChanges.service.ts): a member can cancel any time before the
+// session starts and gets a session credit worth what they paid (no cash refund); a coach can propose a new
+// time, which the member accepts (the session moves) or declines (cancelled, credit given). A credit pays for
+// one session whose full price (fee + GST) it covers; the difference isn't refunded.
+
+/** How long a session credit lasts; mirrors CREDIT_VALIDITY_DAYS in the API. Only used in copy. */
+export const SESSION_CREDIT_VALIDITY_DAYS = 90;
+
+export function cancelBooking(bookingId: string) {
+  return apiClient.post<CancelBookingResponse>(`/coaching/bookings/${bookingId}/cancel`).then((r) => r.data);
+}
+
+export function acceptProposal(bookingId: string) {
+  return apiClient.post<{ bookingId: string; scheduledAt: string }>(`/coaching/bookings/${bookingId}/proposal/accept`).then((r) => r.data);
+}
+
+/** Same response as cancelBooking: the session is cancelled and the member gets a credit. */
+export function declineProposal(bookingId: string) {
+  return apiClient.post<CancelBookingResponse>(`/coaching/bookings/${bookingId}/proposal/decline`).then((r) => r.data);
+}
+
+/** Unspent, unexpired credits, soonest-expiring first. */
+export function fetchCredits(): Promise<SessionCreditItem[]> {
+  return apiClient.get<SessionCreditListResponse>("/coaching/credits").then((r) => r.data.items);
+}
+
+/** Books a session paid for with a credit instead of Razorpay; same response as POST /coaching/bookings. */
+export function bookWithCredit(input: CreateBookingInput & { creditId: string }) {
+  return apiClient.post<BookingConfirmation>("/coaching/bookings/with-credit", input).then((r) => r.data);
 }

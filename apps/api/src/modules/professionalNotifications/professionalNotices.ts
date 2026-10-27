@@ -155,7 +155,7 @@ export async function notifyCoachesOfPayout(settlementIds: string[], outcome: "p
       body:
         outcome === "paid"
           ? `Fynrox paid your ${month} earnings of ${amount}. It can take a working day to show in your bank.`
-          : `We couldn't pay your ${month} earnings of ${amount}. If your bank details have changed, send the new ones to support@fynrox.com and we'll retry.`,
+          : `We couldn't pay your ${month} earnings of ${amount}. If your bank details have changed, update your payout details on the Earnings page and we'll retry once Fynrox has verified them.`,
       link: "/earnings",
       email: true,
     });

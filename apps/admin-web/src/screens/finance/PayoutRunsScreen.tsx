@@ -17,6 +17,8 @@ interface Preview {
   itemCount: number;
   totalCents: number;
   payeeCount: number;
+  /** Coach runs only (27 Oct 2026): payees whose payout details aren't verified yet. */
+  payeesWithoutVerifiedPayoutDetails?: number;
 }
 
 interface PayoutBatch {
@@ -223,6 +225,12 @@ export function PayoutRunsScreen() {
                 <p className="mt-1 text-2xl font-semibold text-text-primary">{money(p?.totalCents ?? 0)}</p>
               </div>
             </div>
+
+            {p?.payeesWithoutVerifiedPayoutDetails ? (
+              <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
+                {t("payoutRuns.unverifiedPayoutDetails", { count: p.payeesWithoutVerifiedPayoutDetails })}
+              </p>
+            ) : null}
 
             {p && p.itemCount > 0 ? (
               canApprove && (

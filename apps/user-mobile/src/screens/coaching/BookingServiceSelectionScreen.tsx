@@ -12,10 +12,12 @@ import { ErrorState } from "../../components/ErrorState";
 import { RazorpayCheckoutModal } from "../../components/RazorpayCheckoutModal";
 import { fetchCoachAvailability, fetchCoachProfile, createBooking } from "../../api/coaching";
 import { fetchPaymentStatus, retryPaymentActivation } from "../../api/payments";
+import { bookWithCredit, fetchCredits } from "../../api/coachSessions";
 import { useRazorpayPurchase, usePaymentsConfigured } from "../../lib/useRazorpayPurchase";
-import { extractErrorMessage } from "../../lib/apiError";
+import { extractErrorCode, extractErrorMessage } from "../../lib/apiError";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { formatRupees } from "../../lib/money";
+import { formatDay } from "../../lib/sessionFormat";
 import type { MoreStackParamList } from "../../navigation/MoreStack";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "BookingServiceSelection">;
@@ -80,6 +82,8 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
   // already have; the backend has always accepted a coupon for any purchase
   // purpose, this screen was just missing the field.
   const [couponCode, setCouponCode] = useState("");
+  // Booking changes (27 Oct 2026): pay with a session credit instead of Razorpay.
+  const [useCredit, setUseCredit] = useState(false);
 
   const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useQuery({
     queryKey: ["coaching", "professional", professionalId],
@@ -100,6 +104,9 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
     queryKey: ["coaching", "availability", professionalId, selectedDateKey],
     queryFn: () => fetchCoachAvailability(professionalId, selectedDateKey),
   });
+
+  // A rebook is already paid for, so credits only matter for a new booking.
+  const { data: credits } = useQuery({ queryKey: ["coaching", "credits"], queryFn: fetchCredits, enabled: !rebookPaymentId });
 
   // A confirmed booking may have just created a new Relationship (or added
   // a session to an existing one) — refresh both queries so My Professional
@@ -135,8 +142,59 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
   const selectedOffering = profile?.offerings.find((o) => o.id === selectedOfferingId) ?? null;
 
+  // A credit only pays for a session whose full price (fee + GST, the total shown on the service card) it
+  // covers; offer the soonest-expiring one that does, and nothing when none does.
+  const coveringCredit =
+    !rebookPaymentId && selectedOffering && selectedOffering.priceCents > 0
+      ? ([...(credits ?? [])].sort((a, b) => a.expiresAt.localeCompare(b.expiresAt)).find((c) => c.amountCents >= selectedOffering.totalCents) ?? null)
+      : null;
+  const creditInUse = useCredit ? coveringCredit : null;
+
+  const creditErrorMessage = (err: unknown) => {
+    switch (extractErrorCode(err)) {
+      case "credit_too_small":
+        return t("bookingChanges.checkout.errors.creditTooSmall");
+      case "credit_used":
+        return t("bookingChanges.checkout.errors.creditUsed");
+      case "credit_expired":
+        return t("bookingChanges.checkout.errors.creditExpired");
+      case "slot_unavailable":
+        return t("bookingChanges.checkout.errors.slotUnavailable");
+      case "relationship_pending_acceptance":
+        return t("bookingChanges.checkout.errors.relationshipPending");
+      default:
+        return extractErrorMessage(err, t("bookingChanges.checkout.errors.generic"));
+    }
+  };
+
   const onConfirm = async () => {
     if (!selectedOffering || !selectedTimeIso) return;
+    if (creditInUse) {
+      setIsBookingFree(true);
+      try {
+        const booking = await bookWithCredit({
+          professionalId,
+          offeringId: selectedOffering.id,
+          scheduledAt: selectedTimeIso,
+          creditId: creditInUse.id,
+        });
+        await Promise.all([
+          invalidateAfterBooking(),
+          queryClient.invalidateQueries({ queryKey: ["coaching", "bookings"] }),
+          queryClient.invalidateQueries({ queryKey: ["coaching", "credits"] }),
+        ]);
+        navigation.navigate("BookingConfirmation", { booking });
+      } catch (err) {
+        Alert.alert(t("bookingChanges.checkout.failedTitle"), creditErrorMessage(err));
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["coaching", "credits"] }),
+          queryClient.invalidateQueries({ queryKey: ["coaching", "availability", professionalId, selectedDateKey] }),
+        ]);
+      } finally {
+        setIsBookingFree(false);
+      }
+      return;
+    }
     if (rebookPaymentId) {
       setIsBookingFree(true);
       try {
@@ -267,7 +325,29 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
         </Text>
       ) : null}
 
-      {!rebookPaymentId && selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
+      {selectedOffering && coveringCredit ? (
+        <View style={{ gap: spacing.xs, marginTop: spacing.md }}>
+          <SelectCard
+            title={t("bookingChanges.checkout.useCredit")}
+            subtitle={t("bookingChanges.checkout.creditSubtitle", { amount: formatPrice(coveringCredit.amountCents), date: formatDay(coveringCredit.expiresAt) })}
+            icon="check"
+            selected={useCredit}
+            onPress={() => setUseCredit((on) => !on)}
+          />
+          {creditInUse ? (
+            <Text style={{ color: colors.textSecondary, ...typography.meta }}>
+              {creditInUse.amountCents > selectedOffering.totalCents
+                ? t("bookingChanges.checkout.leftover", {
+                    price: formatPrice(selectedOffering.totalCents),
+                    leftover: formatPrice(creditInUse.amountCents - selectedOffering.totalCents),
+                  })
+                : t("bookingChanges.checkout.covers")}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {!rebookPaymentId && !creditInUse && selectedOffering && selectedOffering.priceCents > 0 && paymentsConfigured ? (
         <TextInput
           value={couponCode}
           onChangeText={(v) => setCouponCode(v.toUpperCase())}
@@ -289,11 +369,11 @@ export function BookingServiceSelectionScreen({ navigation, route }: Props) {
 
       {/* A paid session can't be bought while online payment is off: say so
           plainly instead of showing a button that does nothing. */}
-      {!rebookPaymentId && selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
+      {!rebookPaymentId && !creditInUse && selectedOffering && selectedOffering.priceCents > 0 && !paymentsConfigured ? (
         <Text style={{ color: colors.warningText, ...typography.meta, marginTop: spacing.lg }}>{t("checkout.paymentsUnavailable")}</Text>
       ) : (
         <Button
-          label={rebookPaymentId ? "Book this time" : "Confirm booking"}
+          label={creditInUse ? t("bookingChanges.checkout.confirm") : rebookPaymentId ? "Book this time" : "Confirm booking"}
           onPress={onConfirm}
           loading={isBookingFree || isPurchasing}
           disabled={!selectedOffering || !selectedTimeIso}

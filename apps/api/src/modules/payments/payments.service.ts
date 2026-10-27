@@ -452,6 +452,8 @@ async function activatePayment(payment: PaymentRecord): Promise<{ booking?: Awai
               payment.feeCents !== null
                 ? { feeCents: payment.feeCents, gstCents: payment.taxCents ?? 0, coachLevelId: payment.coachLevelId }
                 : undefined,
+            // A cancellation credits back what this payment charged (27 Oct 2026).
+            paymentId: payment.id,
           },
         );
       } catch (err) {

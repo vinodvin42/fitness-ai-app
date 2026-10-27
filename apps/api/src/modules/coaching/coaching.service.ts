@@ -412,6 +412,27 @@ export async function hasBookingConflict(
   return overlaps(scheduledAt, scheduledEnd, existingBookings as BookingOverlapRow[]);
 }
 
+/** A whole-hour start on the 9:00-18:00 UTC grid getAvailability() offers. */
+export function isOnSlotGrid(d: Date): boolean {
+  return (
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0 &&
+    d.getUTCHours() >= SLOT_START_HOUR &&
+    d.getUTCHours() < SLOT_END_HOUR
+  );
+}
+
+/** Whether the coach has no other confirmed booking overlapping this time (`exceptBookingId` doesn't block itself). */
+export async function slotIsFree(professionalId: string, start: Date, durationMinutes: number, exceptBookingId?: string): Promise<boolean> {
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+  const others = await prisma.booking.findMany({
+    where: { professionalId, status: "confirmed", ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}) },
+    select: { scheduledAt: true, durationMinutes: true },
+  });
+  return !overlaps(start, end, others as BookingOverlapRow[]);
+}
+
 /** How close to the start a member can still move a session (Figma coach/15; 25 Oct 2026). */
 export const RESCHEDULE_CUTOFF_MS = 24 * 60 * 60 * 1000;
 
@@ -435,24 +456,18 @@ export async function rescheduleBooking(userId: string, bookingId: string, input
   }
 
   const next = new Date(input.scheduledAt);
-  const onGrid =
-    next.getUTCMinutes() === 0 && next.getUTCSeconds() === 0 && next.getUTCMilliseconds() === 0 && next.getUTCHours() >= SLOT_START_HOUR && next.getUTCHours() < SLOT_END_HOUR;
-  if (!onGrid) throw new ApiHttpError(400, "invalid_slot", "Pick one of the times offered for this coach");
+  if (!isOnSlotGrid(next)) throw new ApiHttpError(400, "invalid_slot", "Pick one of the times offered for this coach");
   if (next.getTime() <= now.getTime()) throw new ApiHttpError(400, "invalid_slot", "Pick a time in the future");
   if (next.getTime() === booking.scheduledAt.getTime()) throw new ApiHttpError(400, "same_slot", "That's already the session's time");
 
-  const end = new Date(next.getTime() + booking.durationMinutes * 60 * 1000);
-  const others = await prisma.booking.findMany({
-    where: { professionalId: booking.professionalId, status: "confirmed", id: { not: booking.id } },
-    select: { scheduledAt: true, durationMinutes: true },
-  });
-  if (overlaps(next, end, others as BookingOverlapRow[])) {
+  if (!(await slotIsFree(booking.professionalId, next, booking.durationMinutes, booking.id))) {
     throw new ApiHttpError(409, "slot_unavailable", "That time has just been taken. Pick another one");
   }
 
   const updated = await prisma.booking.update({
     where: { id: booking.id },
-    data: { scheduledAt: next },
+    // Moving it themself answers any time the coach proposed (bookingChanges.service.ts).
+    data: { scheduledAt: next, proposedScheduledAt: null, proposedAt: null },
     select: { id: true, professionalId: true, scheduledAt: true, durationMinutes: true, status: true },
   });
   await recordAudit({
@@ -887,6 +902,11 @@ export async function createBooking(
   opts: {
     verifiedPayment?: boolean;
     paidPrice?: { feeCents: number; gstCents: number; coachLevelId?: string | null };
+    // What paid for it (27 Oct 2026): the captured Payment, or a session
+    // credit (bookingChanges.service.ts). A later cancellation credits back
+    // what was actually paid.
+    paymentId?: string;
+    paidWithCreditId?: string;
   } = {},
 ) {
   const offering = await prisma.professionalServiceOffering.findUnique({ where: { id: input.offeringId } });
@@ -1039,6 +1059,8 @@ export async function createBooking(
       commissionPct,
       coachLevelId: price.coachLevelId,
       status: "confirmed",
+      paymentId: opts.paymentId ?? null,
+      paidWithCreditId: opts.paidWithCreditId ?? null,
     },
   });
 
@@ -1334,6 +1356,8 @@ type ScheduleBookingRow = {
   durationMinutes: number;
   status: string;
   summaryPublishedAt: Date | null;
+  proposedScheduledAt: Date | null;
+  cancelledBy: string | null;
   user: { fullName: string };
   offering: { label: string; serviceType: string | null };
 };
@@ -1351,6 +1375,8 @@ function toScheduleItem(b: ScheduleBookingRow) {
     durationMinutes: b.durationMinutes,
     status: b.status,
     hasSummary: b.summaryPublishedAt != null,
+    proposedScheduledAt: b.proposedScheduledAt,
+    cancelledBy: b.cancelledBy,
   };
 }
 

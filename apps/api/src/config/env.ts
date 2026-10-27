@@ -205,6 +205,21 @@ const envSchema = z.object({
   // https://coach.example.com), for the "Open Fynrox Coach" link. Without it
   // the email still goes, just with no link.
   COACH_WEB_URL: z.string().url().optional(),
+  // Coach payout details (27 Oct 2026): encrypts a coach's bank account
+  // number, IFSC and UPI ID at rest (professionalPayoutAccount/payoutCrypto.ts),
+  // AES-256-GCM like TWO_FACTOR_ENCRYPTION_KEY but its own key, so payout
+  // details can be rotated or revoked without touching 2FA. Optional: unset,
+  // coaches can't save details (503 payout_details_unavailable) and reads
+  // are masked only. When set it must be exactly 64 hex chars — generate
+  // with: openssl rand -hex 32. An empty value counts as unset.
+  PAYOUT_DETAILS_ENCRYPTION_KEY: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z
+      .string()
+      .length(64, "PAYOUT_DETAILS_ENCRYPTION_KEY must be exactly 64 hex chars (32 bytes) — generate with: openssl rand -hex 32")
+      .regex(/^[0-9a-fA-F]+$/, "PAYOUT_DETAILS_ENCRYPTION_KEY must be hex-encoded")
+      .optional(),
+  ),
 });
 
 const parsed = envSchema.safeParse(process.env);

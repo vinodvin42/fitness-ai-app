@@ -270,6 +270,72 @@ export const hi: LocaleCatalogue = {
     },
   },
 
+  // Booking changes (27 Oct 2026): still English; needs translating and a native speaker's review.
+  bookingChanges: {
+    cancel: {
+      action: "Cancel session",
+      hint: "Cancel any time before it starts and get a session credit instead of a refund.",
+      confirmTitle: "Cancel this session?",
+      keep: "Keep session",
+      confirmBody:
+        "You'll get a session credit worth what you paid, valid for {{days}} days and usable with any coach. No money goes back to your card.",
+      done: "Session cancelled",
+      failed: "Couldn't cancel the session. Check your connection and try again.",
+    },
+    cancelled: {
+      byMember: "You cancelled this session.",
+      byCoach: "Your coach cancelled this session.",
+      byAdmin: "FynroX support cancelled this session.",
+      unknown: "This session was cancelled.",
+      on: "Cancelled on {{date}}",
+    },
+    credit: {
+      title: "Session credit added",
+      amount: "{{amount}} to use with any coach",
+      expires: "Use it by {{date}}. Choose it at checkout when you book your next session.",
+      none: "This session was free, so there's no credit to add.",
+    },
+    proposal: {
+      title: "Your coach asked to move this session",
+      body: "{{name}} can't make the booked time and suggested another one.",
+      from: "Booked time",
+      to: "New time",
+      accept: "Accept new time",
+      decline: "Decline",
+      accepted: "Moved to {{when}}",
+      acceptFailed: "Couldn't accept the new time. Try again.",
+      declineTitle: "Decline the new time?",
+      declineBody:
+        "The session will be cancelled and you'll get a session credit worth what you paid, valid for {{days}} days and usable with any coach. No money goes back to your card.",
+      declineConfirm: "Decline and cancel",
+      declineFailed: "Couldn't decline the new time. Try again.",
+      badge: "New time proposed",
+    },
+    credits: {
+      banner_one: "You have {{count}} session credit",
+      banner_other: "You have {{count}} session credits",
+      detail_one: "Worth {{total}}. Use it by {{date}}.",
+      detail_other: "Worth {{total}} in all. The first one expires on {{date}}.",
+      hint: "A credit pays for a session with any coach when it covers the full price.",
+    },
+    checkout: {
+      useCredit: "Use a session credit",
+      creditSubtitle: "{{amount}} credit, use by {{date}}",
+      covers: "Your credit pays for this session. Nothing is charged to your card.",
+      leftover: "This session costs {{price}}. The {{leftover}} left on the credit isn't refunded.",
+      confirm: "Book with credit",
+      failedTitle: "Couldn't book with your credit",
+      errors: {
+        creditTooSmall: "This credit doesn't cover this session's full price.",
+        creditUsed: "This credit has already been used.",
+        creditExpired: "This credit has expired.",
+        slotUnavailable: "That time has just been taken. Pick another one.",
+        relationshipPending: "The coach hasn't accepted your request yet. You can book once they do.",
+        generic: "Check your connection and try again. Your credit hasn't been used.",
+      },
+    },
+  },
+
   reminders: {
     label: "लेबल",
     labelPlaceholder: "जैसे पानी पिएं",

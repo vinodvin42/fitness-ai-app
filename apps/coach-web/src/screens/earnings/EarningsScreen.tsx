@@ -3,12 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Award, CalendarRange, Info, Landmark, Wallet } from "lucide-react";
 import type { CoachMyLevelResponse } from "@fitness-ai-app/types";
 import { fetchEarnings, fetchMyLevel } from "@/api/professionalDashboard";
+import { fetchPayoutAccount } from "@/api/payoutAccount";
 import { EmptyState, ErrorState, ListCard, Page, PageHeader, Section, StatCard } from "@/components/page";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dateLabel, money } from "@/lib/format";
+import { PAYOUT_ACCOUNT_QUERY_KEY, PayoutDetailsCard } from "./PayoutDetailsCard";
 
 const STATUS_COPY_KEYS = ["eligible", "approved", "pending", "paid", "payout_failed"] as const;
 
@@ -24,6 +26,8 @@ export function EarningsScreen() {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["professionalEarnings"], queryFn: fetchEarnings });
   // Package 4: the level and fees Fynrox set for this coach (read-only).
   const { data: myLevel } = useQuery({ queryKey: ["professionalMyLevel"], queryFn: fetchMyLevel });
+  // Coach payout details (27 Oct 2026): bank account or UPI ID, masked, verified by Fynrox.
+  const { data: payout } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
   const back = isMobile ? { to: "/more", label: t("web.nav.more") } : undefined;
 
   if (isLoading) {
@@ -71,7 +75,14 @@ export function EarningsScreen() {
               })}
             </p>
             {data.payoutFailure.reason ? <p className="text-muted-foreground">{data.payoutFailure.reason}</p> : null}
-            <p className="text-muted-foreground">{t("earnings.bankDetailsNote")}</p>
+            {/* With payout details in the app, point there instead of "send them to support". */}
+            <p className="text-muted-foreground">
+              {payout?.editable
+                ? payout.account
+                  ? t("web.business.payout.failedCheckDetails")
+                  : t("web.business.payout.failedAddDetails")
+                : t("earnings.bankDetailsNote")}
+            </p>
           </div>
         </div>
       ) : null}
@@ -135,7 +146,10 @@ export function EarningsScreen() {
           )}
         </Section>
 
-        {myLevel ? <LevelCard level={myLevel} /> : null}
+        <div className="flex flex-col gap-6 self-start">
+          {payout ? <PayoutDetailsCard data={payout} /> : null}
+          {myLevel ? <LevelCard level={myLevel} /> : null}
+        </div>
       </div>
     </Page>
   );
@@ -144,7 +158,7 @@ export function EarningsScreen() {
 function LevelCard({ level }: { level: CoachMyLevelResponse }) {
   const { t } = useTranslation();
   return (
-    <Card className="self-start">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-semibold">
           <Award className="size-4 text-primary-ink" />

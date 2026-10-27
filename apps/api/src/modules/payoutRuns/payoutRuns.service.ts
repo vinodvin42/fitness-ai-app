@@ -53,11 +53,19 @@ export async function previewPayoutRun(kind: PayoutRunKind) {
     where: { status: "approved", payoutBatchId: null },
     select: { id: true, professionalId: true, netCents: true },
   });
+  const payeeIds = [...new Set(rows.map((r) => r.professionalId))];
+  // Coach payout details (27 Oct 2026): payees whose bank/UPI details an
+  // admin hasn't verified (none saved, pending or rejected), so the person
+  // running the payout knows before paying.
+  const verifiedPayees = payeeIds.length
+    ? await prisma.professionalPayoutAccount.count({ where: { professionalId: { in: payeeIds }, status: "verified" } })
+    : 0;
   return {
     kind,
     itemCount: rows.length,
     totalCents: rows.reduce((s, r) => s + r.netCents, 0),
-    payeeCount: new Set(rows.map((r) => r.professionalId)).size,
+    payeeCount: payeeIds.length,
+    payeesWithoutVerifiedPayoutDetails: payeeIds.length - verifiedPayees,
   };
 }
 

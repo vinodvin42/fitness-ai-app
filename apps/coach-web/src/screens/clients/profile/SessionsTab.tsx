@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CalendarDays } from "lucide-react";
 import type { CoachClientProfile, CoachScheduleItem } from "@fitness-ai-app/types";
@@ -5,11 +6,14 @@ import { EmptyState, ListCard, Section } from "@/components/page";
 import { dateLabel, SERVICE_SHORT, timeLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SessionSummaryLink, canWriteSummary } from "./SessionSummaryDialog";
+import { canProposeTime, ProposalPending, ProposeTimeButton, ProposeTimeDialog } from "@/screens/calendar/ProposeTime";
 
 /** Upcoming and recent sessions; a past session that went ahead can get a summary. */
 export function SessionsTab({ profile, onWriteSummary }: { profile: CoachClientProfile; onWriteSummary: (item: CoachScheduleItem) => void }) {
   const { t } = useTranslation();
   const { upcoming, past, pastTruncated, totalCompleted } = profile.sessions;
+  // The profile's rows leave the client's name blank (it's this page's client), so the dialog gets it here.
+  const [proposeSession, setProposeSession] = useState<CoachScheduleItem | null>(null);
 
   return (
     <div className="space-y-6">
@@ -19,7 +23,11 @@ export function SessionsTab({ profile, onWriteSummary }: { profile: CoachClientP
         ) : (
           <ListCard>
             {upcoming.map((item) => (
-              <SessionRow key={item.id} item={item} />
+              <SessionRow
+                key={item.id}
+                item={item}
+                onPropose={canProposeTime(item) ? () => setProposeSession({ ...item, clientFullName: profile.fullName }) : undefined}
+              />
             ))}
           </ListCard>
         )}
@@ -40,11 +48,12 @@ export function SessionsTab({ profile, onWriteSummary }: { profile: CoachClientP
         )}
         {pastTruncated ? <p className="text-xs text-muted-foreground">{t("clients.profile.recentLimit")}</p> : null}
       </Section>
+      <ProposeTimeDialog session={proposeSession} onClose={() => setProposeSession(null)} />
     </div>
   );
 }
 
-function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWriteSummary?: () => void }) {
+function SessionRow({ item, onWriteSummary, onPropose }: { item: CoachScheduleItem; onWriteSummary?: () => void; onPropose?: () => void }) {
   const { t } = useTranslation();
   const cancelled = item.status === "cancelled";
   const svc = item.serviceType ? (SERVICE_SHORT[item.serviceType] ?? item.serviceType) : null;
@@ -63,13 +72,15 @@ function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWrite
         </div>
         {cancelled ? (
           <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-muted px-2 text-[11px] font-semibold text-muted-foreground">
-            {t("web.clientProfile.cancelled")}
+            {item.cancelledBy === "member" ? t("web.comms.cancelledByClient") : t("web.clientProfile.cancelled")}
           </span>
         ) : null}
       </div>
-      {onWriteSummary ? (
-        <div className="pl-19 sm:pl-0">
-          <SessionSummaryLink item={item} onClick={onWriteSummary} />
+      {onWriteSummary || onPropose || (!cancelled && item.proposedScheduledAt) ? (
+        <div className="flex flex-wrap items-center gap-2 pl-19 sm:pl-0">
+          {!cancelled && item.proposedScheduledAt ? <ProposalPending item={item} /> : null}
+          {onPropose ? <ProposeTimeButton onPress={onPropose} /> : null}
+          {onWriteSummary ? <SessionSummaryLink item={item} onClick={onWriteSummary} /> : null}
         </div>
       ) : null}
     </div>

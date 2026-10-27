@@ -12,7 +12,23 @@ export const comms = {
   upcoming: "Upcoming",
   past: "Past",
   cancelled: "Cancelled",
+  cancelledByClient: "Cancelled by client",
   durationMin: "{{count}} min",
+
+  // Proposing a new time (27 Oct 2026)
+  proposeTime: "Propose new time",
+  proposeTitle: "Propose a new time",
+  proposeIntro: "{{name}} gets a notice and can accept the new time, or decline and get a session credit. Until they answer, the session stays at {{when}}.",
+  proposePickDay: "Day",
+  proposePickTime: "Time",
+  proposeNoSlots: "No free times on this day.",
+  proposeSend: "Send to {{name}}",
+  proposeSent: "New time sent to {{name}}",
+  proposeTooLate: "A new time can be proposed up to 12 hours before the session.",
+  proposedPending: "New time proposed: {{when}}",
+  proposedWaiting: "Waiting for the client to answer.",
+  withdraw: "Withdraw",
+  withdrawn: "Proposal withdrawn",
   summaryChars: "{{count}}/{{max}}",
 
   // Messages list and thread (strings the old screens hardcoded)

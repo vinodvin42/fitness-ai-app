@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { extractErrorMessage } from "@/lib/apiError";
 import { dateTimeLabel, dayHeading, SERVICE_SHORT, timeLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { canProposeTime, ProposalPending, ProposeTimeButton, ProposeTimeDialog } from "./ProposeTime";
 
 type DayGroup = { label: string; items: CoachScheduleItem[] };
 
@@ -43,6 +44,7 @@ export function CalendarScreen() {
   const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["coach-schedule"], queryFn: fetchMySchedule });
   const [summarySession, setSummarySession] = useState<CoachScheduleItem | null>(null);
+  const [proposeSession, setProposeSession] = useState<CoachScheduleItem | null>(null);
 
   const upcomingGroups = data ? groupByDay(data.upcoming) : [];
   const pastGroups = data ? groupByDay(data.past) : [];
@@ -77,7 +79,7 @@ export function CalendarScreen() {
                   description={t("calendar.emptyUpcomingSubtitle")}
                 />
               ) : (
-                upcomingGroups.map((group) => <DayList key={group.label} group={group} />)
+                upcomingGroups.map((group) => <DayList key={group.label} group={group} onPropose={setProposeSession} />)
               )}
             </TabsContent>
 
@@ -102,12 +104,21 @@ export function CalendarScreen() {
         clientName={summarySession?.clientFullName ?? ""}
         onClose={() => setSummarySession(null)}
       />
+      <ProposeTimeDialog session={proposeSession} onClose={() => setProposeSession(null)} />
     </Page>
   );
 }
 
-/** One day's sessions. `onWriteSummary` is passed for Past only, where a summary can be written. */
-function DayList({ group, onWriteSummary }: { group: DayGroup; onWriteSummary?: (item: CoachScheduleItem) => void }) {
+/** One day's sessions. `onWriteSummary` is passed for Past only, where a summary can be written; `onPropose` for Upcoming. */
+function DayList({
+  group,
+  onWriteSummary,
+  onPropose,
+}: {
+  group: DayGroup;
+  onWriteSummary?: (item: CoachScheduleItem) => void;
+  onPropose?: (item: CoachScheduleItem) => void;
+}) {
   return (
     <section className="space-y-2">
       <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{group.label}</h2>
@@ -117,6 +128,7 @@ function DayList({ group, onWriteSummary }: { group: DayGroup; onWriteSummary?: 
             key={item.id}
             item={item}
             onWriteSummary={onWriteSummary && canWriteSummary(item) ? () => onWriteSummary(item) : undefined}
+            onPropose={onPropose && canProposeTime(item) ? () => onPropose(item) : undefined}
           />
         ))}
       </ListCard>
@@ -124,7 +136,7 @@ function DayList({ group, onWriteSummary }: { group: DayGroup; onWriteSummary?: 
   );
 }
 
-function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWriteSummary?: () => void }) {
+export function SessionRow({ item, onWriteSummary, onPropose }: { item: CoachScheduleItem; onWriteSummary?: () => void; onPropose?: () => void }) {
   const { t } = useTranslation();
   const cancelled = item.status === "cancelled";
   const meta = [
@@ -153,8 +165,14 @@ function SessionRow({ item, onWriteSummary }: { item: CoachScheduleItem; onWrite
       </Link>
       <div className="flex shrink-0 items-center gap-2 pl-19 sm:pl-0">
         {cancelled ? (
-          <StatusBadge status="cancelled" label={t("web.comms.cancelled")} className="bg-destructive/12 text-destructive" />
+          <StatusBadge
+            status="cancelled"
+            label={item.cancelledBy === "member" ? t("web.comms.cancelledByClient") : t("web.comms.cancelled")}
+            className="bg-destructive/12 text-destructive"
+          />
         ) : null}
+        {!cancelled && item.proposedScheduledAt ? <ProposalPending item={item} /> : null}
+        {onPropose ? <ProposeTimeButton onPress={onPropose} /> : null}
         {onWriteSummary ? <SessionSummaryLink item={item} onPress={onWriteSummary} /> : null}
       </div>
     </div>
