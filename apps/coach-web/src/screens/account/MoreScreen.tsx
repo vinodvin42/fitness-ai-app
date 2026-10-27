@@ -55,6 +55,7 @@ export function MoreScreen() {
         <span className="grid min-w-0 flex-1">
           <span className="truncate font-semibold">{professional?.fullName}</span>
           <span className="truncate text-sm text-muted-foreground">{professional?.email}</span>
+          {professional?.publicId ? <span className="font-mono text-xs text-muted-foreground">{professional.publicId}</span> : null}
         </span>
         <ChevronRight className="size-4 text-muted-foreground" />
       </Link>

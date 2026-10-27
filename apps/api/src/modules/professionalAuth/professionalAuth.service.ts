@@ -7,6 +7,7 @@ import {
   signProfessionalAccessToken,
 } from "../../lib/professionalJwt";
 import { recordAudit } from "../../middleware/auditLog";
+import { professionalPublicId } from "../../lib/professionalCode";
 import { ApiHttpError } from "../../middleware/errorHandler";
 import { ProfessionalLoginInput, ProfessionalSignupInput } from "./professionalAuth.schema";
 
@@ -51,7 +52,8 @@ export function toPublicProfessional(professional: {
     adminNotes: _adminNotes,
     ...publicProfessional
   } = professional;
-  return publicProfessional;
+  // The coach's own FXP- ID (27 Oct 2026), the one members see on their profile.
+  return { ...publicProfessional, publicId: professionalPublicId(professional.id) };
 }
 
 async function issueTokenPair(professionalId: string, email: string) {

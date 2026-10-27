@@ -395,6 +395,11 @@ export const en = {
     account: {
       menu: "Account menu",
       signOut: "Sign out",
+      idLabel: "Your Fynrox ID",
+      idHint: "Members see this on your profile. Quote it to support.",
+      copy: "Copy",
+      copyId: "Copy your Fynrox ID",
+      copied: "Copied",
     },
     auth: {
       loginFailed: "Incorrect email or password.",

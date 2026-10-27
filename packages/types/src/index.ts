@@ -1986,6 +1986,8 @@ export type CoachGender = "male" | "female";
 /** Public shape — never carries passwordHash or the raw kycDocumentData (see professionalAuth.service.ts's toPublicProfessional). */
 export interface Professional {
   id: string;
+  /** The coach's public ID, e.g. FXP-7K3M-9Q2D (27 Oct 2026): permanent, the same one members see. */
+  publicId?: string;
   email: string;
   fullName: string;
   phone: string | null;
@@ -2941,6 +2943,8 @@ export type ProfessionalDirectoryTab = (typeof professionalDirectoryTabs)[number
 /** One row of GET /admin/professionals — a trimmed-down Professional, no passwordHash/kycDocumentData. */
 export interface AdminProfessionalListItem {
   id: string;
+  /** FXP- public ID (27 Oct 2026). */
+  publicId: string;
   fullName: string;
   email: string;
   status: ProfessionalStatus;
@@ -3067,6 +3071,8 @@ export interface AdminProfessionalCredential {
 /** `Professional` as the admin review screen sees it — INCLUDES kycDocumentData/adminNotes, unlike the coach's own public `Professional` type. */
 export interface AdminProfessionalDetailRecord {
   id: string;
+  /** FXP- public ID (27 Oct 2026). */
+  publicId: string;
   email: string;
   fullName: string;
   phone: string | null;

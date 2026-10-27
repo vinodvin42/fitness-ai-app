@@ -8,6 +8,7 @@ import { fetchMe, setMyGender, setMyLanguages } from "@/api/professionalAuth";
 import { deleteMyPhoto, saveMyPhoto } from "@/api/professionalPhoto";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorState, Page, PageHeader } from "@/components/page";
+import { CoachIdCard } from "@/components/CoachIdCard";
 import { initials, useMyPhoto } from "@/components/shell/AccountMenu";
 import { ThemeSegmented } from "@/components/shell/ThemeMenu";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export function ProfileScreen() {
         <ErrorState onRetry={() => me.refetch()} />
       ) : (
         <>
+          <CoachIdCard />
           <PhotoCard name={me.data?.professional.fullName ?? ""} />
 
           <Card>

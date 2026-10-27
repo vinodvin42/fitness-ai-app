@@ -59,6 +59,9 @@ export function AccountMenu({ variant }: { variant: "sidebar" | "avatar" }) {
           <span className="grid min-w-0 text-left">
             <span className="truncate text-sm font-semibold">{professional?.fullName}</span>
             <span className="truncate text-xs font-normal text-muted-foreground">{professional?.email}</span>
+            {professional?.publicId ? (
+              <span className="font-mono text-[11px] font-normal text-muted-foreground">{professional.publicId}</span>
+            ) : null}
           </span>
         </DropdownMenuLabel>
       </DropdownMenuGroup>
@@ -114,6 +117,13 @@ export function AccountMenu({ variant }: { variant: "sidebar" | "avatar" }) {
           </DropdownMenuTrigger>
           {content}
         </DropdownMenu>
+      </SidebarMenuItem>
+      {/* Sign out in plain sight too (27 Oct 2026): it was only inside the account menu. */}
+      <SidebarMenuItem>
+        <SidebarMenuButton tooltip={t("web.account.signOut")} onClick={() => void logout()} className="text-muted-foreground hover:text-destructive">
+          <LogOut />
+          <span>{t("web.account.signOut")}</span>
+        </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
   );

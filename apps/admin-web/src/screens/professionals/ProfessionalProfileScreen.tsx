@@ -119,6 +119,7 @@ export function ProfessionalProfileScreen() {
                 <StatusBadge status={data.professional.lifecycleStatus} />
               </div>
               <div className="mt-1 text-sm text-text-secondary">{data.professional.email}</div>
+              <div className="font-mono text-xs text-text-dim">{data.professional.publicId}</div>
               {data.professional.phone && <div className="text-xs text-text-dim">{data.professional.phone}</div>}
               <div className="mt-2 flex flex-wrap gap-1">
                 {data.professional.credentials.map((c) => (

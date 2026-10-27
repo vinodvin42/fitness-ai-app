@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { hasPermission } from "../../middleware/adminPermissions";
 import { AdminSearchQuery } from "./adminSearch.schema";
+import { professionalPublicId } from "../../lib/professionalCode";
 
 /**
  * Global cross-entity admin search — R1 Wave 6 (22 Sep 2026), Developer 3's
@@ -88,7 +89,20 @@ async function searchUsers(query: string): Promise<AdminSearchResultItem[]> {
   }));
 }
 
+/** FXP-7K3M-9Q2D, with or without the dashes, any case. */
+const PUBLIC_ID = /^FXP-?([0-9A-Z]{4})-?([0-9A-Z]{4})$/i;
+
 async function searchProfessionals(query: string): Promise<AdminSearchResultItem[]> {
+  // A coach's public FXP- ID (27 Oct 2026). It's a hash of the account id, not a
+  // column, so it's matched by computing it for each coach; fine at this scale.
+  const idMatch = query.trim().match(PUBLIC_ID);
+  if (idMatch) {
+    const wanted = `FXP-${idMatch[1]}-${idMatch[2]}`.toUpperCase();
+    const all = await prisma.professional.findMany({ select: { id: true, fullName: true, email: true }, take: 20000 });
+    return all
+      .filter((p) => professionalPublicId(p.id) === wanted)
+      .map((p) => ({ id: p.id, type: "professional" as const, label: p.fullName, sublabel: `${wanted} · ${p.email}`, path: `/professionals/${p.id}` }));
+  }
   const professionals = await prisma.professional.findMany({
     where: prefixOrExactId(query, ["fullName", "email"]),
     select: { id: true, fullName: true, email: true },

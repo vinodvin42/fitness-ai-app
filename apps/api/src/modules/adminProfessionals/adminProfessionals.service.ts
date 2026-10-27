@@ -6,6 +6,7 @@ import { createActionItem } from "../../lib/adminActionQueue";
 import * as professionalLifecycleService from "../professionalLifecycle/professionalLifecycle.service";
 import { syncCoachOfferings } from "../adminCoachLevels/adminCoachLevels.service";
 import { ratingSummaries } from "../adminCoachingReads/adminCoachingReads.service";
+import { professionalPublicId } from "../../lib/professionalCode";
 import {
   notifyCoachOfAccountStatus,
   notifyCoachOfCredentialDecision,
@@ -237,6 +238,8 @@ export async function listProfessionals(query: ListProfessionalsQuery) {
   return {
     professionals: filtered.map((p) => ({
       id: p.id,
+      // The FXP- ID members see on the coach's profile (27 Oct 2026).
+      publicId: professionalPublicId(p.id),
       fullName: p.fullName,
       email: p.email,
       status: p.status,
@@ -327,7 +330,7 @@ export async function getProfessionalDetail(id: string) {
   const { passwordHash: _passwordHash, ...publicProfessional } = professional;
 
   return {
-    professional: publicProfessional,
+    professional: { ...publicProfessional, publicId: professionalPublicId(p.id) },
     clients: p.relationships.map((r) => ({
       relationshipId: r.id,
       userId: r.user.id,

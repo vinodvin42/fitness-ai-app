@@ -201,6 +201,7 @@ export function ProfessionalDirectoryScreen() {
                       <td className="px-4 py-3">
                         <div className="font-medium text-text-primary">{p.fullName}</div>
                         <div className="text-xs text-text-dim">{p.email}</div>
+                        <div className="font-mono text-[11px] text-text-dim">{p.publicId}</div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
