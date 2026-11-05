@@ -109,6 +109,21 @@ jobs:
             exit 1
           fi
 
+                    # Transitional: an earlier version of these workflows uploaded
+          # the binary under its temp-file basename, because gh's
+          # "<path>#<label>" suffix sets the asset's label and not its
+          # name. Any release still carrying that stray has ~90MB of
+          # duplicate on it, and a second asset invites someone to link
+          # the wrong one by hand. Remove it where it exists; this is a
+          # no-op on every release published since the fix, and can go
+          # once none are left.
+          stray=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | select(.name=="app.apk") | .name')
+          if [ -n "$stray" ]; then
+            echo "removing the legacy asset app.apk from $tag"
+            gh release delete-asset "$tag" app.apk --repo "$GITHUB_REPOSITORY" --yes
+          fi
+
           echo "published $tag with fynrox-android.apk ($size bytes)"
           {
             echo "## Preserved $tag"

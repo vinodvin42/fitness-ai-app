@@ -4,7 +4,8 @@
     "exclude": [
       "/assets/*",
       "/favicon.svg",
-      "/robots.txt"
+      "/robots.txt",
+      "/downloads/*"
     ]
   },
   "routes": [
@@ -33,7 +34,8 @@
     ".webmanifest": "application/manifest+json",
     ".woff2": "font/woff2",
     ".mp4": "video/mp4",
-    ".jpg": "image/jpeg"
+    ".jpg": "image/jpeg",
+    ".apk": "application/vnd.android.package-archive"
   },
   "responseOverrides": {
     "404": {

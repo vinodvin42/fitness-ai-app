@@ -84,49 +84,25 @@
     <section class="download">
       <div class="wrap">
         <div class="download-grid">
-          <!-- Android APK updated 25 Oct 2026 — v0.8.7, versionCode 18,
-               94,509,789 bytes (~90MB), built by the "Build Android APK
-               (EAS)" workflow (run 40205136656, started by the
-               android-build-12 tag) from commit a7007ca. The workflow
-               downloads the artifact and checks it starts with "PK" and
-               clears 10MB before reporting it, so the size above is
-               measured rather than copied forward (re-checked by hand: it
-               starts with "PK" and is 94,509,789 bytes).
+          <!-- Android APK: v0.8.7, versionCode 18, 94,509,789 bytes.
 
-               Not in this build: the nine Indian app languages (ea01694).
-               Their build (android-build-13, run 40207876574) stopped
-               because the Expo account had used this month's free Android
-               builds; the quota resets 1 Nov 2026.
+               The href is /downloads/fynrox-android.apk and does not
+               change when a new build ships. The bytes come from a
+               GitHub Release, fetched at deploy time by the site
+               workflow's "Fetch the Android build the download page
+               serves" step. The APK is not in this repository: ~90MB
+               per build would weigh down every clone forever.
 
-               Builds from v0.5.0 on carry the Fynrox spelling. The
-               app.json rename (display name, and the Face ID / camera /
-               photo-library permission strings) only reaches a device
-               through a build, so every APK before v0.5.0 still says FynroX
-               on the home screen and in its permission prompts. v0.6.0 is
-               the first with the mint Fynrox app icon.
+               This replaced a direct EAS artifact link, which had a
+               14-day life and took the download button down twice, on
+               6 Oct and 17 Oct. Nothing here expires now.
 
-               ⚠ THIS LINK EXPIRES 8 Nov 2026 (EAS expirationDate
-               2026-11-08T15:04Z). EAS gives an internal-distribution
-               artifact a 14-day life; the build this replaced was due to die
-               7 Nov (14:03Z), and the ones before it 7 Nov (09:08Z), 4 Nov (18:59Z), 4 Nov
-               (16:02Z), 3 Nov (06:25Z), 3 Nov (02:06Z), 2 Nov, 22 Oct, 17 Oct
-               and 16 Oct. A public
-               download page pointing at an expiring URL goes dead without
-               anyone touching it.
-
-               The durable fix is blocked on a decision, not on work: this
-               repository is private, so a GitHub Release asset needs
-               authentication and a visitor cannot fetch it, and no blob
-               storage is provisioned. The options are to serve the APK
-               from this site's own assets (the build workflow can reach
-               expo.dev, so it could publish it) or to provision storage.
-               Until one is chosen, this comment is the only thing tracking
-               the clock.
-
-               To replace it: run that workflow, then update the href and
-               this comment from its run summary — and regenerate
-               apps/landing/assets/i18n/en.js if any visible copy here
-               changes, because landingI18n.test.ts fails on the drift. -->
+               To ship a new build: run "Build Android APK (EAS)", which
+               publishes its own release, then redeploy the site. This
+               file only needs editing if the visible version or size
+               copy changes — and then apps/landing/assets/i18n/en.js
+               must be regenerated with it, because landingI18n.test.ts
+               fails when the catalogue and the page disagree. -->
           <article class="platform-card">
             <div class="platform-card__top">
               <span class="platform-card__icon" aria-hidden="true">
@@ -146,7 +122,7 @@
             </p>
             <a data-i18n="download.downloadApk"
               class="btn btn--primary btn--block"
-              href="https://expo.dev/artifacts/eas/-jRLGwM0ANeg6hoRDvgGLz5eFrdSNPSw24VPcCCVjUE.apk"
+              href="/downloads/fynrox-android.apk"
             >
               Download APK
             </a>
