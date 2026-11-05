@@ -43,7 +43,9 @@ on:
       - "android-build-*"
 
 permissions:
-  contents: read
+  # write, so the validated APK can be attached to a GitHub Release. The
+  # release is the durable copy — see the publish step at the end.
+  contents: write
 
 concurrency:
   # Same reasoning as deploy-azure-api.yml's: a second dispatch should
@@ -135,6 +137,16 @@ jobs:
           version=$(jq -r '[ .[]?.appVersion?, .appVersion? ] | map(select(. != null)) | first // "unknown"' "$json")
           code=$(jq -r '[ .[]?.appBuildVersion?, .appBuildVersion? ] | map(select(. != null)) | first // "unknown"' "$json")
 
+          # Handed to the publish step below, which runs in its own shell
+          # and cannot see these variables. "unknown" would make a tag
+          # that collides with the next unknown build, so refuse instead.
+          if [ "$version" = "unknown" ] || [ "$code" = "unknown" ]; then
+            echo "::error::Could not read appVersion/appBuildVersion from the build JSON above, so the release tag would be ambiguous." >&2
+            exit 1
+          fi
+          printf '%s' "$version" > "$RUNNER_TEMP/version"
+          printf '%s' "$code" > "$RUNNER_TEMP/code"
+
           # Download the artifact rather than reading Content-Length from a
           # HEAD. Two reasons, both found by testing this logic rather than
           # assuming it: a HEAD can come back with no Content-Length at all
@@ -151,22 +163,10 @@ jobs:
             exit 1
           fi
 
-          bytes=$(wc -c < "$apk")
+          # Shared with publish-apk-release.yml, so the two publishers
+          # cannot drift apart on what counts as a valid APK.
+          bytes=$(scripts/validate-apk.sh "$apk")
 
-          # An APK is a zip, so it starts "PK". This catches the case where
-          # an error page is served with a 200 and would otherwise be
-          # published as the app.
-          if [ "$(head -c 2 "$apk")" != "PK" ]; then
-            echo "::error::The artifact downloaded from $url is not a zip/APK (does not start with 'PK'). Size was $bytes bytes." >&2
-            exit 1
-          fi
-
-          # The last release was ~84MB. Anything in single-digit megabytes
-          # is not this app and should not reach the download page.
-          if [ "$bytes" -lt 10000000 ]; then
-            echo "::error::The artifact is only $bytes bytes, far smaller than expected for this app. Refusing to report it as publishable." >&2
-            exit 1
-          fi
 
           mb=$(( (bytes + 524288) / 1048576 ))
 
@@ -200,4 +200,66 @@ jobs:
             echo "   \`apps/api/tests/landingI18n.test.ts\` fails if the catalogue and the page disagree"
             echo
             echo "Then merge to main, which redeploys the landing site."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Why a GitHub Release, and why the site serves it rather than
+      # linking here.
+      #
+      # An EAS internal-distribution artifact lives 14 days. The download
+      # page has linked one four times now and gone dead twice — on
+      # 6 Oct and again on 17 Oct — because nobody was watching a clock
+      # nobody could see. Rebuilding to refresh the URL is also not free:
+      # run 18 failed outright with "This account has used its Android
+      # builds from the Free plan this month", so a fortnightly rebuild
+      # spends a scarce monthly quota on a link, not on a release.
+      #
+      # A Release asset does not expire. This repository is private, so
+      # a visitor cannot fetch that asset directly — which is fine,
+      # because they are never given its URL. The release is the durable
+      # STORE; the Static Web App is the public DISTRIBUTION. The site
+      # deploy pulls this asset with its own token and serves it from
+      # /downloads/fynrox-android.apk, a path that never changes again.
+      #
+      # The tag carries the versionCode, so every build keeps its own
+      # release and a bad one can be rolled back by re-pointing the
+      # `android-latest` tag rather than rebuilding.
+      - name: Publish the APK to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="$RUNNER_TEMP/app.apk"
+          version=$(cat "$RUNNER_TEMP/version")
+          code=$(cat "$RUNNER_TEMP/code")
+          tag="android-v${version}-${code}"
+
+          # Idempotent: re-running a build for the same versionCode
+          # replaces the asset rather than failing on a tag that exists.
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $tag exists; replacing its asset"
+            gh release upload "$tag" "$apk#fynrox-android.apk" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$apk#fynrox-android.apk" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Android $version (versionCode $code)" \
+              --notes "Built from \`$GITHUB_SHA\` by run $GITHUB_RUN_NUMBER of this workflow. $(wc -c < "$apk") bytes. Served publicly at /downloads/fynrox-android.apk by the Static Web App; this asset is the durable copy and is not linked directly." \
+              --latest
+          fi
+
+          # Read it back. A release that exists with no asset on it would
+          # fail the site deploy later, a long way from here.
+          size=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | select(.name=="fynrox-android.apk") | .size')
+          if [ -z "$size" ] || [ "$size" -lt 10000000 ]; then
+            echo "::error::fynrox-android.apk is missing from release $tag, or is only ${size:-0} bytes." >&2
+            exit 1
+          fi
+          echo "published $tag with fynrox-android.apk ($size bytes)"
+
+          {
+            echo
+            echo "Published as release **$tag**, asset \`fynrox-android.apk\` ($size bytes)."
+            echo
+            echo "The download page does not need editing for the link: it points at"
+            echo "\`/downloads/fynrox-android.apk\`, and the next site deploy picks this up."
           } >> "$GITHUB_STEP_SUMMARY"
