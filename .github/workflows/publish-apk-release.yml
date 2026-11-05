@@ -79,15 +79,21 @@ jobs:
           VERSION_CODE: ${{ inputs.version_code }}
           BYTES: ${{ steps.fetch.outputs.bytes }}
         run: |
-          apk="$RUNNER_TEMP/app.apk"
+          # The asset NAME is the file's basename; the "#label" suffix
+          # below only sets a display label. The first run of this proved
+          # it — the asset uploaded as "app.apk" with the label right,
+          # and the read-back, which looks up the name the site deploy
+          # will use, correctly refused it.
+          apk="$RUNNER_TEMP/fynrox-android.apk"
+          cp "$RUNNER_TEMP/app.apk" "$apk"
           tag="android-v${VERSION}-${VERSION_CODE}"
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "release $tag exists; replacing its asset"
-            gh release upload "$tag" "$apk#fynrox-android.apk" \
+            gh release upload "$tag" "$apk" \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$tag" "$apk#fynrox-android.apk" \
+            gh release create "$tag" "$apk" \
               --repo "$GITHUB_REPOSITORY" \
               --title "Android $VERSION (versionCode $VERSION_CODE)" \
               --notes "Preserved from an existing build artifact by this workflow, $BYTES bytes. Served publicly at /downloads/fynrox-android.apk by the Static Web App; this asset is the durable copy and is not linked directly." \
