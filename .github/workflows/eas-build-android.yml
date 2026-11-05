@@ -227,7 +227,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk="$RUNNER_TEMP/app.apk"
+          # The asset NAME is the file's basename; the "#label" suffix
+          # below only sets a display label. The first run of this proved
+          # it — the asset uploaded as "app.apk" with the label right,
+          # and the read-back, which looks up the name the site deploy
+          # will use, correctly refused it.
+          apk="$RUNNER_TEMP/fynrox-android.apk"
+          cp "$RUNNER_TEMP/app.apk" "$apk"
           version=$(cat "$RUNNER_TEMP/version")
           code=$(cat "$RUNNER_TEMP/code")
           tag="android-v${version}-${code}"
@@ -236,10 +242,10 @@ jobs:
           # replaces the asset rather than failing on a tag that exists.
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "release $tag exists; replacing its asset"
-            gh release upload "$tag" "$apk#fynrox-android.apk" \
+            gh release upload "$tag" "$apk" \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$tag" "$apk#fynrox-android.apk" \
+            gh release create "$tag" "$apk" \
               --repo "$GITHUB_REPOSITORY" \
               --title "Android $version (versionCode $code)" \
               --notes "Built from \`$GITHUB_SHA\` by run $GITHUB_RUN_NUMBER of this workflow. $(wc -c < "$apk") bytes. Served publicly at /downloads/fynrox-android.apk by the Static Web App; this asset is the durable copy and is not linked directly." \
