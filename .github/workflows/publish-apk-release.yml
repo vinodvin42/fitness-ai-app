@@ -1,0 +1,113 @@
+name: Publish an APK to a GitHub Release
+
+# Publishes an Android artifact that ALREADY EXISTS as a durable GitHub
+# Release asset, without spending an EAS build.
+#
+# Why this is separate from eas-build-android.yml, which publishes what
+# it has just built:
+#
+#   - An EAS internal-distribution artifact lives 14 days. The download
+#     page has gone dead twice for that reason, on 6 Oct and 17 Oct.
+#   - Rebuilding to refresh the URL is not free. Run 18 failed with
+#     "This account has used its Android builds from the Free plan this
+#     month", so a fortnightly rebuild spends a scarce quota on a link.
+#   - So when the goal is to preserve a binary that is already built and
+#     already advertised, rebuilding is the wrong move: it would both
+#     burn quota and ship a different, unreviewed build to testers.
+#
+# Both publishers run scripts/validate-apk.sh, so neither can accept
+# something the other would reject.
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_url:
+        description: 'URL of the .apk to preserve (an expo.dev artifact link, while it is still alive)'
+        required: true
+        type: string
+      version:
+        description: 'App version, e.g. 0.8.7 — used only to name the release'
+        required: true
+        type: string
+      version_code:
+        description: 'Android versionCode, e.g. 18 — used only to name the release'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  # Shares the build workflow's group: two jobs writing the same release
+  # tag at once is the one thing worth serialising here.
+  group: android-apk-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch and validate the artifact
+        id: fetch
+        env:
+          ARTIFACT_URL: ${{ inputs.artifact_url }}
+        run: |
+          case "$ARTIFACT_URL" in
+            https://*) ;;
+            *) echo "::error::artifact_url must be an https URL." >&2; exit 1 ;;
+          esac
+
+          apk="$RUNNER_TEMP/app.apk"
+          # --max-time, because an artifact URL that has already expired
+          # can hang rather than refuse.
+          status=$(curl -sSL --max-time 900 -w '%{http_code}' -o "$apk" "$ARTIFACT_URL")
+          if [ "$status" != "200" ]; then
+            echo "::error::The artifact URL answered HTTP $status, not 200. If this is an EAS link it may have expired, in which case the binary is gone and a rebuild is the only option." >&2
+            exit 1
+          fi
+
+          bytes=$(scripts/validate-apk.sh "$apk")
+          echo "bytes=$bytes" >> "$GITHUB_OUTPUT"
+          echo "validated: $bytes bytes"
+
+      - name: Publish it as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          BYTES: ${{ steps.fetch.outputs.bytes }}
+        run: |
+          apk="$RUNNER_TEMP/app.apk"
+          tag="android-v${VERSION}-${VERSION_CODE}"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $tag exists; replacing its asset"
+            gh release upload "$tag" "$apk#fynrox-android.apk" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$apk#fynrox-android.apk" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Android $VERSION (versionCode $VERSION_CODE)" \
+              --notes "Preserved from an existing build artifact by this workflow, $BYTES bytes. Served publicly at /downloads/fynrox-android.apk by the Static Web App; this asset is the durable copy and is not linked directly." \
+              --latest
+          fi
+
+          # Read it back: a release that exists with no asset would fail
+          # the site deploy later, a long way from here.
+          size=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | select(.name=="fynrox-android.apk") | .size')
+          if [ -z "$size" ] || [ "$size" -lt 10000000 ]; then
+            echo "::error::fynrox-android.apk is missing from release $tag, or is only ${size:-0} bytes." >&2
+            exit 1
+          fi
+
+          echo "published $tag with fynrox-android.apk ($size bytes)"
+          {
+            echo "## Preserved $tag"
+            echo
+            echo "Asset \`fynrox-android.apk\`, $size bytes, from the URL supplied."
+            echo
+            echo "The next site deploy serves it at \`/downloads/fynrox-android.apk\`."
+          } >> "$GITHUB_STEP_SUMMARY"
