@@ -1,0 +1,148 @@
+name: Health data encryption check
+
+# Answers one question from the data: does production still hold health
+# data that was never encrypted?
+#
+# apps/api/scripts/verifyHealthEncryptionComplete.ts can answer it, and
+# has existed since the encryption work landed, but it has only ever
+# been runnable by hand against a database nobody has a shell to. So it
+# has never been run against production, and "is there plaintext health
+# data live?" has been unanswered for weeks rather than unanswerable.
+#
+# The check is read-only. The backfill is not, which is why it is behind
+# an input that defaults to off: it writes to the production database,
+# and that should be a deliberate act rather than a side effect of
+# asking a question.
+#
+# The backfill is additive — it copies each plaintext value into its
+# encrypted column and does not drop anything. Dropping the plaintext
+# columns is a separate, destructive step that is deliberately NOT
+# staged as a migration in this repo (see the script's own comment:
+# an unapplied destructive migration gets applied by the next
+# `prisma migrate deploy` anyone runs).
+
+on:
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: 'Also run the backfill if unencrypted rows are found. WRITES to the production database.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never two of these against one database at once.
+  group: health-encryption
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Check whether any health data is still unencrypted
+        id: verify
+        env:
+          DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The AZURE_DATABASE_URL secret is empty, so there is no database to check." >&2
+            exit 1
+          fi
+
+          out="$RUNNER_TEMP/verify.txt"
+          set +e
+          npm run db:verify-health-encryption --workspace=apps/api > "$out" 2>&1
+          code=$?
+          set -e
+
+          # The script prints row counts and, when it finds something,
+          # the ids of the rows. Counts go to the log; ids do not.
+          #
+          # The ids are not health VALUES — the script is already careful
+          # about that. But a list of user ids that have unencrypted
+          # health data is a list of users who have health data recorded,
+          # and this log is readable by anyone with access to this
+          # repository. The full output goes to an artifact instead.
+          echo "--- counts ---"
+          grep -E "^(onboarding_profiles|safety_escalations):" "$out" || true
+          grep -E "^(SAFE TO DROP|NOT SAFE TO DROP)" "$out" || true
+
+          if grep -qE "userIds:|ids:" "$out"; then
+            echo "(row ids withheld from this log; see the verify-output artifact)"
+          fi
+
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Back-fill the rows that are missing an encrypted copy
+        if: inputs.backfill && steps.verify.outputs.clean == 'false'
+        env:
+          DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+        run: |
+          echo "unencrypted rows were found and backfill was requested"
+          npm run db:backfill-health-encryption --workspace=apps/api
+
+      - name: Check again, so the run says what the database looks like now
+        if: inputs.backfill && steps.verify.outputs.clean == 'false'
+        env:
+          DATABASE_URL: ${{ secrets.AZURE_DATABASE_URL }}
+        run: |
+          out="$RUNNER_TEMP/verify-after.txt"
+          set +e
+          npm run db:verify-health-encryption --workspace=apps/api > "$out" 2>&1
+          code=$?
+          set -e
+          echo "--- counts after the backfill ---"
+          grep -E "^(onboarding_profiles|safety_escalations):" "$out" || true
+          grep -E "^(SAFE TO DROP|NOT SAFE TO DROP)" "$out" || true
+          if [ "$code" -ne 0 ]; then
+            echo "::error::Rows are still unencrypted after the backfill ran. See the verify-output artifact." >&2
+            exit 1
+          fi
+
+      # Short retention: this holds row ids, so it should not sit around.
+      - name: Keep the full output where it is not in the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-output
+          path: ${{ runner.temp }}/verify*.txt
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "## Health data encryption"
+            echo
+            if [ "${{ steps.verify.outputs.clean }}" = "true" ]; then
+              echo "No unencrypted health data in this database."
+            else
+              echo "Unencrypted rows were found. Counts are in the job log; row ids are in the"
+              echo "\`verify-output\` artifact, which expires in 3 days."
+              echo
+              if [ "${{ inputs.backfill }}" != "true" ]; then
+                echo "Nothing was changed. Re-run this workflow with **backfill** ticked to fix them."
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
