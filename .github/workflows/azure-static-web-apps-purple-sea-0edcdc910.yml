@@ -128,6 +128,53 @@ jobs:
           echo "landing API base set to $base"
           cat "$target"
 
+      # The public copy of the Android build.
+      #
+      # The APK itself is NOT in this repository — it is ~90MB per build,
+      # and committing one per release would weigh down every clone
+      # forever. It lives on a GitHub Release, which does not expire,
+      # published by eas-build-android.yml or publish-apk-release.yml.
+      #
+      # This repository is private, so a visitor cannot fetch that asset.
+      # They never see its URL: the release is the durable store, this
+      # step is the bridge, and the site serves the bytes from
+      # /downloads/fynrox-android.apk — a path that does not change when
+      # a new build is published, which is the whole point. Before this,
+      # the page linked an EAS artifact directly and went dead twice,
+      # on 6 Oct and 17 Oct, when the 14-day clock ran out.
+      #
+      # Failing here is deliberate. A download page whose button 404s is
+      # worse than a deploy that stops and says why.
+      - name: Fetch the Android build the download page serves
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          target=combined-web-deploy/downloads/fynrox-android.apk
+          mkdir -p "$(dirname "$target")"
+
+          # --latest rather than a pinned tag: whichever release was
+          # published most recently is the one the page should serve.
+          tag=$(gh release list --repo "$GITHUB_REPOSITORY" \
+                  --limit 30 --json tagName,isLatest \
+                  --jq '[.[] | select(.isLatest)] | first | .tagName // empty')
+          if [ -z "$tag" ]; then
+            tag=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+                    --json tagName --jq '[.[] | select(.tagName | startswith("android-v"))] | first | .tagName // empty')
+          fi
+          if [ -z "$tag" ]; then
+            echo "::error::No release carries the Android build. Run the \"Publish an APK to a GitHub Release\" workflow (to preserve an artifact that already exists) or \"Build Android APK (EAS)\" (to build a new one), then re-run this deploy." >&2
+            exit 1
+          fi
+
+          echo "serving the APK from release $tag"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern fynrox-android.apk --output "$target" --clobber
+
+          # Same checks both publishers ran, repeated here because this
+          # is the copy visitors actually receive.
+          bytes=$(scripts/validate-apk.sh "$target")
+          echo "downloads/fynrox-android.apk: $bytes bytes from $tag"
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1

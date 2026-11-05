@@ -75,7 +75,13 @@ describe("landing site URLs are root-absolute", () => {
     // /app/ and /portal/* are the consoles, which only exist once
     // scripts/merge-web-deploy.js mounts them beside this folder, so
     // they cannot be resolved from here.
-    const MOUNTED = ["/app/", "/portal/"];
+    // /downloads/* is the Android build, which is NOT in this
+    // repository — ~90MB per release would weigh down every clone. The
+    // site workflow fetches it from a GitHub Release at deploy time, so
+    // it cannot be resolved here. landingDownload.test.ts covers it
+    // instead, by asserting the link is the stable path and that the
+    // deploy step which produces it still exists.
+    const MOUNTED = ["/app/", "/portal/", "/downloads/"];
     const missing: string[] = [];
     for (const page of PAGES) {
       const src = fs.readFileSync(path.join(LANDING, page), "utf8");
