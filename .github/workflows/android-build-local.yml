@@ -1,0 +1,258 @@
+name: Build Android APK (no EAS cloud)
+
+# Builds the Android APK on the GitHub runner with Gradle, instead of on
+# EAS's build service.
+#
+# Why: eas-build-android.yml sends the build to Expo's cloud, and that
+# is metered. Run 18 failed outright with "This account has used its
+# Android builds from the Free plan this month" — a build quota, not a
+# code problem. The owner's instruction is to stay off paid plans, so
+# the build moves to infrastructure that is already paid for: the
+# GitHub-hosted runner, which ships the Android SDK and a JDK.
+#
+# Nothing here talks to Expo's build service. `expo prebuild` generates
+# the native project locally from app.json — it is the same code EAS
+# would run — and Gradle compiles it.
+#
+# What this needs that the EAS path did not: the signing key. EAS held
+# it ("Using remote Android credentials (Expo server)"). Android
+# identifies an app by its signature, so a build signed with a
+# different key CANNOT upgrade an existing install — a tester would
+# have to uninstall first and lose their local data. The SAME keystore
+# must therefore be used, exported from EAS once:
+#
+#   npx eas-cli credentials --platform android
+#     -> select the build profile -> Keystore -> Download
+#
+# then stored as repository secrets:
+#   ANDROID_KEYSTORE_BASE64   base64 -w0 of the .jks/.keystore file
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+#
+# Exporting credentials is not a paid feature.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the APK as a GitHub Release, which the website then serves'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Check the signing secrets are present
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$KEYSTORE_B64" ]      && missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -z "$KEYSTORE_PASSWORD" ] && missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -z "$KEY_ALIAS" ]         && missing="$missing ANDROID_KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ]      && missing="$missing ANDROID_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing" >&2
+            echo "Export the EXISTING keystore from EAS so installed apps can still upgrade:" >&2
+            echo "  npx eas-cli credentials --platform android   (profile -> Keystore -> Download)" >&2
+            echo "A different key cannot upgrade an existing install; testers would have to uninstall first." >&2
+            exit 1
+          fi
+          echo "signing secrets present"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Android decides whether an install is an upgrade by versionCode,
+      # so it has to rise and must never repeat.
+      #
+      # EAS used to own this counter (eas.json's appVersionSource
+      # "remote"), and prebuild without it writes versionCode 1 into the
+      # generated gradle — which is exactly the bug eas.json's own
+      # comment describes. So the number is computed here instead, from
+      # the release tags that already record every published build:
+      # android-v<version>-<code>.
+      #
+      # Floored at 20 because EAS's counter reached 19 (run 18
+      # incremented it before failing), and reusing 19 would make a new
+      # build look like one already shipped.
+      - name: Work out the next versionCode
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # REST, not `gh release list`, which goes through GraphQL.
+          #
+          # And checked rather than trusted. When this expression
+          # returned nothing during testing, the arithmetic below turned
+          # an empty string into versionCode 1 — the exact value
+          # eas.json's comment warns about, and one that no later check
+          # would have caught, because app.json would have said 1 too and
+          # the build.gradle assertion compares the two. A build that
+          # ships versionCode 1 can never be upgraded over.
+          highest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '[.[] | .tag_name | capture("^android-v.*-(?<c>[0-9]+)$") | .c | tonumber] | max // 0')
+
+          case "$highest" in
+            ''|*[!0-9]*)
+              echo "::error::Could not read the published versionCodes from the releases API (got: '${highest}'). Refusing to guess a build number." >&2
+              exit 1 ;;
+          esac
+
+          # EAS's counter reached 19 (run 18 incremented it before
+          # failing), so anything at or below that could collide with a
+          # number EAS has already handed out.
+          floor=19
+          if [ "$highest" -lt "$floor" ]; then highest=$floor; fi
+          next=$((highest + 1))
+
+          if [ "$next" -le "$floor" ]; then
+            echo "::error::Computed versionCode $next, which is not above the highest EAS ever issued ($floor)." >&2
+            exit 1
+          fi
+
+          version=$(node -p "require('./apps/user-mobile/app.json').expo.version")
+          echo "version=$version"   >> "$GITHUB_OUTPUT"
+          echo "code=$next"         >> "$GITHUB_OUTPUT"
+          echo "building $version, versionCode $next (highest already published: $highest)"
+
+      # Written into app.json so prebuild picks it up. Not committed —
+      # this is a property of one build, and the checkout is thrown away.
+      - name: Put that versionCode where prebuild will read it
+        env:
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const p = "apps/user-mobile/app.json";
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            j.expo.android = j.expo.android || {};
+            j.expo.android.versionCode = Number(process.env.CODE);
+            fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+          '
+          node -p "'app.json now says versionCode ' + require('./apps/user-mobile/app.json').expo.android.versionCode"
+
+      - name: Generate the native Android project
+        working-directory: apps/user-mobile
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Confirm prebuild carried the versionCode through
+        env:
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          # prebuild writing 1 here is the documented failure mode, and a
+          # build that ships versionCode 1 cannot be upgraded over.
+          got=$(grep -oP 'versionCode\s+\K[0-9]+' apps/user-mobile/android/app/build.gradle | head -1)
+          if [ "$got" != "$CODE" ]; then
+            echo "::error::The generated build.gradle says versionCode $got, expected $CODE." >&2
+            exit 1
+          fi
+          echo "generated build.gradle has versionCode $got"
+
+      - name: Point the release build at the real signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.keystore" \
+            node scripts/android-release-signing.js apps/user-mobile/android
+
+      - name: Build the release APK
+        working-directory: apps/user-mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Check what came out
+        id: apk
+        run: |
+          apk=$(find apps/user-mobile/android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$apk" ]; then
+            echo "::error::Gradle reported success but produced no APK." >&2
+            exit 1
+          fi
+          bytes=$(scripts/validate-apk.sh "$apk")
+
+          # The signature is the point of the keystore work above, and a
+          # debug-signed APK installs fine — it just cannot upgrade a
+          # real install. So it is checked rather than assumed.
+          signer=$(apksigner verify --print-certs "$apk" 2>/dev/null | grep -m1 "Signer #1 certificate DN" || true)
+          echo "signed by: ${signer:-unknown}"
+          case "$signer" in
+            *"CN=Android Debug"*)
+              echo "::error::This APK is signed with the Android debug key. It cannot upgrade an existing install." >&2
+              exit 1 ;;
+          esac
+
+          cp "$apk" "$RUNNER_TEMP/fynrox-android.apk"
+          echo "bytes=$bytes" >> "$GITHUB_OUTPUT"
+          echo "APK: $bytes bytes"
+
+      - name: Publish it as a release asset
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          CODE: ${{ steps.version.outputs.code }}
+          BYTES: ${{ steps.apk.outputs.bytes }}
+        run: |
+          apk="$RUNNER_TEMP/fynrox-android.apk"
+          tag="android-v${VERSION}-${CODE}"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$apk" --repo "$GITHUB_REPOSITORY" \
+              --title "Android $VERSION (versionCode $CODE)" \
+              --notes "Built on a GitHub runner by run $GITHUB_RUN_NUMBER, from \`$GITHUB_SHA\`. $BYTES bytes. No EAS cloud build was used. Served publicly at /downloads/fynrox-android.apk by the Static Web App." \
+              --latest
+          fi
+
+          size=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | select(.name=="fynrox-android.apk") | .size')
+          if [ -z "$size" ] || [ "$size" -lt 10000000 ]; then
+            echo "::error::fynrox-android.apk is missing from release $tag, or is only ${size:-0} bytes." >&2
+            exit 1
+          fi
+          echo "published $tag ($size bytes)"
+
+          {
+            echo "## Android $VERSION (versionCode $CODE)"
+            echo
+            echo "Built on the GitHub runner. **No EAS cloud build used.**"
+            echo
+            echo "Published as \`$tag\`, $size bytes. Redeploy the site and it serves this build."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the APK on the run when not publishing
+        if: ${{ !inputs.publish }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fynrox-android-apk
+          path: ${{ runner.temp }}/fynrox-android.apk
+          retention-days: 7
