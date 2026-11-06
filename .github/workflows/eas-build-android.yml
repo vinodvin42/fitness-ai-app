@@ -1,5 +1,14 @@
 name: Build Android APK (EAS)
 
+# NOTE (6 Nov 2026): this builds on EAS's cloud, which is metered — run
+# 18 failed with "This account has used its Android builds from the Free
+# plan this month". android-build-local.yml does the same job on the
+# GitHub runner with Gradle and no EAS build service, which is what the
+# owner asked for. Prefer that one. This is kept because it still works
+# whenever cloud build quota is available, and because it is the only
+# path that uses EAS's stored signing key directly rather than a
+# keystore exported into repository secrets.
+#
 # Builds apps/user-mobile into an installable Android APK on Expo's
 # infrastructure, so the artifact the landing page links to can be
 # produced without anyone's laptop being the release machine.
